@@ -155,6 +155,43 @@ class AuthService:
         """Remove cached role/permission data for user_id.  Call after role changes."""
         await get_redis().delete(f"rbac:{user_id}")
 
+    async def _build_user_dto(self, user: UserModel, roles: List[str], permissions: List[str]) -> UserDTO:
+        """Build the frontend-facing identity DTO with existing profile fields."""
+        extra: dict = {}
+        if user.user_type == "employee":
+            profile_res = await self.db.execute(
+                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
+            )
+            profile = profile_res.scalars().first()
+            if profile:
+                extra.update(
+                    employee_code=profile.employee_code,
+                    employeeCode=profile.employee_code,
+                    designation=profile.designation,
+                    department=profile.department,
+                    department_id=profile.department_id,
+                    section_id=profile.section_id,
+                )
+        elif user.user_type == "admin":
+            # The current schema has no separate admin-profile table/code. Keep
+            # admin identity explicit and stable by exposing the authoritative
+            # user UUID under both legacy aliases without inventing DB fields.
+            extra.update(admin_code=user.id, adminId=user.id)
+
+        return UserDTO(
+            id=user.id,
+            email=user.email,
+            phone=user.phone,
+            full_name=user.full_name,
+            user_type=user.user_type,
+            status=user.status,
+            is_verified=user.is_verified,
+            force_password_change=user.force_password_change,
+            roles=roles,
+            permissions=permissions,
+            **extra,
+        )
+
     # ── Session helpers ───────────────────────────────────────────────────────
 
     async def _create_user_session(
@@ -238,18 +275,7 @@ class AuthService:
 
         await self._create_user_session(user.id, refresh_token, ip_address, user_agent)
 
-        user_dto = UserDTO(
-            id=user.id,
-            email=user.email,
-            phone=user.phone,
-            full_name=user.full_name,
-            user_type=user.user_type,
-            status=user.status,
-            is_verified=user.is_verified,
-            force_password_change=user.force_password_change,
-            roles=roles,
-            permissions=permissions,
-        )
+        user_dto = await self._build_user_dto(user, roles, permissions)
 
         resp_kwargs: dict = dict(
             access_token=access_token,
@@ -449,6 +475,10 @@ class AuthService:
                         "Creating an admin account requires an existing SUPER_ADMIN session "
                         "or the ADMIN_BOOTSTRAP_SECRET key."
                     )
+            else:
+                actor_roles, _actor_permissions = await self._get_user_roles_and_permissions(actor.id)
+                if "SUPER_ADMIN" not in actor_roles:
+                    raise ForbiddenException("Creating an admin account requires a SUPER_ADMIN session.")
 
         email_stmt = select(UserModel).where(UserModel.email == req.email)
         email_res = await self.db.execute(email_stmt)

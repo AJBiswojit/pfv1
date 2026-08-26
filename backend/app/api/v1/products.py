@@ -50,6 +50,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi_cache.decorator import cache
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import TTL_PRODUCTS_LIST, TTL_PRODUCT_DETAIL, TTL_RECOMMENDATIONS
@@ -58,8 +59,10 @@ from app.dependencies import (
     get_current_employee,
     get_current_user,
     get_db,
+    require_permission_for_user,
 )
 from app.models.auth.user import UserModel
+from app.models.employee.employee import EmployeeProfileModel
 from app.schemas.catalog.product import (
     AdminProduct,
     AdminProductListQuery,
@@ -89,6 +92,13 @@ from app.schemas.catalog.product import (
 from app.services.catalog.product_service import ProductService
 
 router = APIRouter(tags=["Product Catalog"])
+
+
+async def _employee_code_for_user(user: UserModel, db: AsyncSession) -> Optional[str]:
+    res = await db.execute(
+        select(EmployeeProfileModel.employee_code).where(EmployeeProfileModel.user_id == user.id)
+    )
+    return res.scalars().first()
 
 
 # ===========================================================================
@@ -231,8 +241,32 @@ async def submit_for_review(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.user_type == "customer":
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Customers cannot submit products for review.")
+
     service = ProductService(db)
-    product = await service.submit_for_review(id, actor=current_user.id)
+    actor_id = current_user.id
+
+    if current_user.user_type == "employee":
+        await require_permission_for_user(current_user, db, "products.manage")
+        employee_code = await _employee_code_for_user(current_user, db)
+        if not employee_code:
+            from app.core.exceptions import ForbiddenException
+            raise ForbiddenException("Employee profile is required for product workflow actions.")
+        actor_id = employee_code
+    elif current_user.user_type == "admin":
+        await require_permission_for_user(current_user, db, "products.manage")
+    else:
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Employee or admin authentication required.")
+
+    product = await service.submit_for_review(
+        id,
+        actor=actor_id,
+        require_assignment=current_user.user_type == "employee",
+        employee_user_id=current_user.id if current_user.user_type == "employee" else None,
+    )
     return SingleProductResponse(product=product)
 
 
@@ -665,10 +699,17 @@ async def employee_update_product(
     current_user: UserModel = Depends(get_current_employee),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_permission_for_user(current_user, db, "products.manage")
+    employee_code = await _employee_code_for_user(current_user, db)
+    if not employee_code:
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Employee profile is required for product workflow actions.")
+
     service = ProductService(db)
-    # SUPER_ADMIN bypass: check role from user object
-    is_super = getattr(current_user, "role", None) == "SUPER_ADMIN"
     product = await service.update_product_employee(
-        id, req, employee_id=current_user.id, is_super_admin=is_super
+        id,
+        req,
+        employee_id=employee_code,
+        employee_user_id=current_user.id,
     )
     return SingleProductResponse(product=product)

@@ -22,6 +22,10 @@ from app.core.logging import get_logger
 from app.core.redis import get_redis
 from app.core.security import decode_token
 from app.models.auth.user import UserModel
+from app.models.rbac.role import RoleModel
+from app.models.rbac.permission import PermissionModel
+from app.models.rbac.role_permission import RolePermissionModel
+from app.models.rbac.user_role import UserRoleModel
 
 logger = get_logger("app.dependencies")
 
@@ -171,3 +175,68 @@ async def get_current_admin(
     if user.user_type != "admin":
         raise ForbiddenException("Admin authentication privileges required.")
     return user
+
+
+# ---------------------------------------------------------------------------
+# RBAC helpers
+# ---------------------------------------------------------------------------
+
+async def get_user_roles_and_permissions(
+    user: UserModel,
+    db: AsyncSession,
+) -> tuple[list[str], list[str]]:
+    """Return role names and permission codes for an already-authenticated user."""
+    role_rows = (
+        await db.execute(
+            select(RoleModel.name)
+            .join(UserRoleModel, UserRoleModel.role_id == RoleModel.id)
+            .where(UserRoleModel.user_id == user.id)
+        )
+    ).scalars().all()
+    roles = list(role_rows)
+
+    permission_rows = (
+        await db.execute(
+            select(PermissionModel.code)
+            .join(RolePermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+            .join(RoleModel, RoleModel.id == RolePermissionModel.role_id)
+            .join(UserRoleModel, UserRoleModel.role_id == RoleModel.id)
+            .where(UserRoleModel.user_id == user.id)
+        )
+    ).scalars().all()
+    permissions = set(permission_rows)
+
+    # Reuse the existing built-in role vocabulary as a fallback for system
+    # roles. This is not a second RBAC model; it mirrors the app's current
+    # built-in roles when the DB role-permission rows are sparse.
+    try:
+        from app.api.v1.admin import BUILT_IN_ROLES
+        for role in roles:
+            for code in BUILT_IN_ROLES.get(role.upper(), {}).get("permissions", []):
+                permissions.add(code)
+    except Exception:
+        logger.debug("Unable to load built-in RBAC fallback", exc_info=True)
+
+    return roles, list(permissions)
+
+
+async def require_permission_for_user(
+    user: UserModel,
+    db: AsyncSession,
+    *required_permissions: str,
+) -> None:
+    """Raise 403 unless the user has every requested permission or wildcard."""
+    roles, permissions = await get_user_roles_and_permissions(user, db)
+    permission_set = set(permissions)
+    if "SUPER_ADMIN" in roles or "*" in permission_set:
+        return
+    missing = [perm for perm in required_permissions if perm not in permission_set]
+    if missing:
+        raise ForbiddenException(f"Missing required permission: {', '.join(missing)}")
+
+
+async def require_super_admin_user(user: UserModel, db: AsyncSession) -> None:
+    """Raise 403 unless the authenticated admin has the SUPER_ADMIN role."""
+    roles, _permissions = await get_user_roles_and_permissions(user, db)
+    if "SUPER_ADMIN" not in roles:
+        raise ForbiddenException("SUPER_ADMIN privileges required.")

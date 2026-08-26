@@ -11,7 +11,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_admin, get_current_employee
+from app.dependencies import get_db, get_current_admin, get_current_employee, get_user_roles_and_permissions, require_permission_for_user
 from app.models.auth.user import UserModel
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.schemas.common import DataResponse, BaseResponse
@@ -54,7 +54,7 @@ router = APIRouter(tags=["Employee Operations"])
 #  Helper — build EmployeeResponse from UserModel                               #
 # =========================================================================== #
 
-def _build_employee_response(user: UserModel) -> EmployeeResponse:
+def _build_employee_response(user: UserModel, roles: Optional[List[str]] = None, permissions: Optional[List[str]] = None) -> EmployeeResponse:
     profile_dto = None
     if user.employee_profile:
         p = user.employee_profile
@@ -78,6 +78,8 @@ def _build_employee_response(user: UserModel) -> EmployeeResponse:
         created_at=user.created_at,
         updated_at=user.updated_at,
         profile=profile_dto,
+        roles=roles or [],
+        permissions=permissions or [],
     )
 
 
@@ -360,7 +362,11 @@ async def get_my_profile(
 ):
     service = EmployeeService(db)
     user = await service.get_employee(current_employee.id)
-    return DataResponse(data=_build_employee_response(user))
+    if not user.employee_profile:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("Employee profile not found.")
+    roles, permissions = await get_user_roles_and_permissions(current_employee, db)
+    return DataResponse(data=_build_employee_response(user, roles=roles, permissions=permissions))
 
 
 @router.get(

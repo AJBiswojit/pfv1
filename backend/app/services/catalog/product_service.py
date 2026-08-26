@@ -33,6 +33,7 @@ from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
+from app.models.catalog.category import CategoryModel
 from app.models.catalog.product import ProductModel
 from app.schemas.catalog.product import (
     EMPLOYEE_EDITABLE_FIELDS,
@@ -412,6 +413,20 @@ class ProductService:
             history=p.history or [],
         )
 
+    async def _category_status_map(self) -> Dict[str, str]:
+        """Map category id/slug/name to status for storefront visibility."""
+        result = await self.db.execute(select(CategoryModel))
+        rows = result.scalars().all()
+        status_map: Dict[str, str] = {}
+        for category in rows:
+            if category.id:
+                status_map[category.id] = category.status
+            if category.slug:
+                status_map[category.slug] = category.status
+            if category.name:
+                status_map[category.name] = category.status
+        return status_map
+
     # ── Public storefront catalogue ───────────────────────────────────────────
 
     async def list_storefront_products(
@@ -428,7 +443,12 @@ class ProductService:
         result = await self.db.execute(stmt)
         all_products = list(result.scalars().all())
 
-        # Apply category-active filter (category_status_map injected from category table)
+        # Apply category-active filter.  General storefront/search/explore
+        # callers do not pass a map, so the service loads it from the existing
+        # category table. Unknown legacy category values remain visible for
+        # backward compatibility; known inactive/archived categories are hidden.
+        if category_status_map is None:
+            category_status_map = await self._category_status_map()
         if category_status_map:
             all_products = [
                 p for p in all_products
@@ -685,6 +705,9 @@ class ProductService:
         p = await self._get_or_404(id_or_slug)
         if p.status != "PUBLISHED" or not p.published:
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
+        category_status_map = await self._category_status_map()
+        if category_status_map.get(p.category, "ACTIVE") != "ACTIVE":
+            raise NotFoundException(f"Product '{id_or_slug}' not found.")
 
         dto = self._to_storefront(p)
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
@@ -721,6 +744,8 @@ class ProductService:
             stmt = stmt.where(ProductModel.category == source.category)
         result = await self.db.execute(stmt.limit(12))
         products = result.scalars().all()
+        category_status_map = await self._category_status_map()
+        products = [p for p in products if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"]
         return [self._to_storefront(p) for p in products]
 
     # ── Recently viewed ───────────────────────────────────────────────────────
@@ -743,7 +768,12 @@ class ProductService:
             ProductModel.published.is_(True),
         )
         result = await self.db.execute(stmt)
-        product_map: Dict[str, ProductModel] = {p.id: p for p in result.scalars().all()}
+        category_status_map = await self._category_status_map()
+        product_map: Dict[str, ProductModel] = {
+            p.id: p
+            for p in result.scalars().all()
+            if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"
+        }
 
         # Preserve recency order (product_ids is already newest-first)
         return [
@@ -923,12 +953,18 @@ class ProductService:
         req: EmployeeProductUpdateRequest,
         employee_id: str,
         is_super_admin: bool = False,
+        employee_user_id: Optional[str] = None,
     ) -> AdminProduct:
         """PATCH /employee/products/{id} — whitelisted fields only."""
         p = await self._get_or_404(product_id)
 
-        # Authorization check
-        if not is_super_admin and p.assigned_employee_id != employee_id:
+        # Authorization check. `employee_id` is the employee code, which is the
+        # canonical product assignment contract.  The UUID fallback preserves
+        # access to legacy rows that were assigned before the identity fix.
+        allowed_assignees = {str(employee_id)}
+        if employee_user_id:
+            allowed_assignees.add(str(employee_user_id))
+        if not is_super_admin and str(p.assigned_employee_id) not in allowed_assignees:
             raise ForbiddenException("You are not assigned to this product.")
 
         data = req.model_dump(exclude_unset=True, by_alias=False)
@@ -972,8 +1008,37 @@ class ProductService:
 
     # ── Workflow actions ──────────────────────────────────────────────────────
 
-    async def submit_for_review(self, product_id: str, actor: str) -> AdminProduct:
+    async def submit_for_review(
+        self,
+        product_id: str,
+        actor: str,
+        require_assignment: bool = False,
+        employee_user_id: Optional[str] = None,
+    ) -> AdminProduct:
         p = await self._get_or_404(product_id)
+
+        if require_assignment:
+            allowed_assignees = {str(actor)}
+            if employee_user_id:
+                # Legacy safety: old rows may have stored the user UUID. The
+                # canonical contract remains employee_code and all new history
+                # uses `actor` (employee code).
+                allowed_assignees.add(str(employee_user_id))
+            if not p.assigned_employee_id or str(p.assigned_employee_id) not in allowed_assignees:
+                raise ForbiddenException("You can only submit products assigned to you.")
+
+        status = (p.status or "DRAFT").upper()
+        review_state = str((p.review or {}).get("state") or "NONE").upper()
+        if status == "PUBLISHED":
+            raise BusinessLogicException("This product is already published.")
+        if status == "ARCHIVED":
+            raise BusinessLogicException("Archived products cannot be submitted for review.")
+        if status == "PENDING_REVIEW" or review_state == "PENDING":
+            raise BusinessLogicException("This product is already pending review.")
+        if review_state == "APPROVED":
+            raise BusinessLogicException("Approved products cannot be resubmitted; publish or return them first.")
+
+        previous_status = p.status or "DRAFT"
         now = _now_utc().isoformat()
         p.status = "PENDING_REVIEW"
         p.published = False
@@ -985,7 +1050,7 @@ class ProductService:
             "reviewedAt": None,
             "rejectionReason": "",
         }
-        self._append_history(p, "status", "DRAFT", "PENDING_REVIEW", actor)
+        self._append_history(p, "status", previous_status, "PENDING_REVIEW", actor)
         p.updated_by = actor
         await self.db.flush()
         return self._to_admin(p)

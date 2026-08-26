@@ -4,21 +4,25 @@
  * Single HTTP seam between the frontend and FastAPI backend.
  * Handles:
  *   - Base URL from VITE_API_BASE (defaults to /api/v1 via Vite proxy)
- *   - Authorization: Bearer <access_token> header injection
+ *   - Explicit Authorization token scoping (customer / admin / employee / none)
  *   - Automatic token refresh on 401 (one retry per request)
- *   - Per-surface token isolation (customer / admin / employee)
+ *   - Per-surface token and refresh isolation
  *   - Structured error normalisation → { ok: false, error: string, status: number }
  *
  * Usage:
  *   import { apiClient } from './apiClient'
- *   const data = await apiClient.post('/auth/customer/sign-in', { ... })
+ *   const data = await apiClient.get('/analytics/overview', { scope: 'admin' })
+ *   const publicData = await apiClient.get('/products', { scope: 'none' })
  *
  * Token contract:
  *   - Customer → "pf_access_token" / "pf_refresh_token"
  *   - Admin    → "pf_admin_access_token" / "pf_admin_refresh_token"
  *   - Employee → "pf_employee_access_token" / "pf_employee_refresh_token"
- *   The active scope is derived from the request path, so admin, employee and
- *   customer sessions can coexist without clobbering each other.
+ *
+ * IMPORTANT: callers must pass an explicit `scope` for protected APIs.  The
+ * path-based `scopeForPath()` helper is retained only as a backwards-compatible
+ * last resort for legacy call sites and tests; authorization correctness must
+ * not depend on URL-prefix guessing.
  */
 
 const BASE_URL = (import.meta.env && import.meta.env.VITE_API_BASE) ?? "/api/v1";
@@ -29,14 +33,40 @@ export const TOKEN_KEYS = {
   employee: { ACCESS: "pf_employee_access_token", REFRESH: "pf_employee_refresh_token" },
 };
 
+export const AUTH_SCOPES = Object.freeze({
+  CUSTOMER: "customer",
+  ADMIN: "admin",
+  EMPLOYEE: "employee",
+  NONE: "none",
+  PUBLIC: "public",
+});
+
+const AUTHENTICATED_SCOPES = new Set(["customer", "admin", "employee"]);
+const PUBLIC_SCOPES = new Set(["none", "public"]);
+
 // ---------------------------------------------------------------------------
-// Path → surface scope
+// Path → surface scope (legacy fallback only)
 // ---------------------------------------------------------------------------
 
 export function scopeForPath(path = "") {
   if (path.startsWith("/auth/admin") || path.startsWith("/admin")) return "admin";
   if (path.startsWith("/auth/employee") || path.startsWith("/employee")) return "employee";
   return "customer";
+}
+
+function normaliseScope(scope) {
+  if (scope === undefined || scope === null || scope === "") return null;
+  const normalized = String(scope).toLowerCase();
+  if (normalized === "public") return "none";
+  if (normalized === "none" || AUTHENTICATED_SCOPES.has(normalized)) return normalized;
+  throw new Error(`Unsupported API auth scope: ${scope}`);
+}
+
+function resolveRequestScope(path, options = {}) {
+  const explicit = normaliseScope(options.scope);
+  if (explicit) return explicit;
+  if (options.skipAuth) return "none";
+  return scopeForPath(path);
 }
 
 const tokenKeysFor = (scope) => TOKEN_KEYS[scope] ?? TOKEN_KEYS.customer;
@@ -46,17 +76,23 @@ const tokenKeysFor = (scope) => TOKEN_KEYS[scope] ?? TOKEN_KEYS.customer;
 // ---------------------------------------------------------------------------
 
 export const getAccessToken = (scope = "customer") => {
-  try { return localStorage.getItem(tokenKeysFor(scope).ACCESS); }
+  const activeScope = normaliseScope(scope) ?? "customer";
+  if (PUBLIC_SCOPES.has(activeScope)) return null;
+  try { return localStorage.getItem(tokenKeysFor(activeScope).ACCESS); }
   catch { return null; }
 };
 
 export const getRefreshToken = (scope = "customer") => {
-  try { return localStorage.getItem(tokenKeysFor(scope).REFRESH); }
+  const activeScope = normaliseScope(scope) ?? "customer";
+  if (PUBLIC_SCOPES.has(activeScope)) return null;
+  try { return localStorage.getItem(tokenKeysFor(activeScope).REFRESH); }
   catch { return null; }
 };
 
 export const setTokens = ({ accessToken, refreshToken }, scope = "customer") => {
-  const keys = tokenKeysFor(scope);
+  const activeScope = normaliseScope(scope) ?? "customer";
+  if (!AUTHENTICATED_SCOPES.has(activeScope)) return;
+  const keys = tokenKeysFor(activeScope);
   try {
     if (accessToken)  localStorage.setItem(keys.ACCESS, accessToken);
     if (refreshToken) localStorage.setItem(keys.REFRESH, refreshToken);
@@ -64,7 +100,10 @@ export const setTokens = ({ accessToken, refreshToken }, scope = "customer") => 
 };
 
 export const clearTokens = (scope) => {
-  const scopes = scope ? [scope] : Object.keys(TOKEN_KEYS);
+  const normalized = normaliseScope(scope);
+  const scopes = normalized
+    ? (AUTHENTICATED_SCOPES.has(normalized) ? [normalized] : [])
+    : Object.keys(TOKEN_KEYS);
   try {
     scopes.forEach((s) => {
       const keys = tokenKeysFor(s);
@@ -100,6 +139,9 @@ function normaliseError(status, data) {
     const field = first?.loc?.slice(1).join(".") ?? "field";
     return `${field}: ${first?.msg ?? "Invalid value"}`;
   }
+  // Backend envelope { ok:false, error:{ code, message, details } }
+  if (typeof data?.error?.message === "string") return data.error.message;
+  if (typeof data?.error === "string") return data.error;
   // Our own error envelope  { detail: "..." } or { message: "..." }
   if (typeof data?.detail === "string") return data.detail;
   if (typeof data?.message === "string") return data.message;
@@ -117,12 +159,20 @@ function normaliseError(status, data) {
 }
 
 // ---------------------------------------------------------------------------
-// Refresh lock — prevents multiple simultaneous refresh calls
+// Refresh locks — isolated by authenticated scope
 // ---------------------------------------------------------------------------
 
-let _refreshPromise = null;
+const refreshPromises = {
+  customer: null,
+  admin: null,
+  employee: null,
+};
 
 async function doRefresh(scope) {
+  if (!AUTHENTICATED_SCOPES.has(scope)) {
+    throw new ApiError("Cannot refresh an unauthenticated request scope.", 401, null);
+  }
+
   const refreshToken = getRefreshToken(scope);
   if (!refreshToken) throw new ApiError("No refresh token.", 401, null);
 
@@ -146,10 +196,19 @@ async function doRefresh(scope) {
 }
 
 async function refreshOnce(scope) {
-  if (!_refreshPromise) {
-    _refreshPromise = doRefresh(scope).finally(() => { _refreshPromise = null; });
+  if (!AUTHENTICATED_SCOPES.has(scope)) {
+    throw new ApiError("Cannot refresh an unauthenticated request scope.", 401, null);
   }
-  return _refreshPromise;
+  if (!refreshPromises[scope]) {
+    refreshPromises[scope] = doRefresh(scope).finally(() => { refreshPromises[scope] = null; });
+  }
+  return refreshPromises[scope];
+}
+
+function emitSessionExpired(scope) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("pf:session-expired", { detail: { scope } }));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,13 +216,14 @@ async function refreshOnce(scope) {
 // ---------------------------------------------------------------------------
 
 async function request(method, path, body, options = {}) {
-  const { skipAuth = false, isRetry = false, headers: extraHeaders = {}, scope } = options;
-  const activeScope = scope ?? scopeForPath(path);
+  const { skipAuth = false, isRetry = false, headers: extraHeaders = {} } = options;
+  const activeScope = resolveRequestScope(path, options);
+  const isPublic = skipAuth || PUBLIC_SCOPES.has(activeScope);
 
   const url = `${BASE_URL}${path}`;
   const headers = { "Content-Type": "application/json", ...extraHeaders };
 
-  if (!skipAuth) {
+  if (!isPublic) {
     const token = getAccessToken(activeScope);
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
@@ -181,17 +241,14 @@ async function request(method, path, body, options = {}) {
     throw new ApiError("Network error. Check your connection.", 0, null);
   }
 
-  // Auto-refresh on 401 (one retry only)
-  if (res.status === 401 && !isRetry && !skipAuth) {
+  // Auto-refresh on 401 (one retry only), isolated to the active scope.
+  if (res.status === 401 && !isRetry && !isPublic) {
     try {
       await refreshOnce(activeScope);
-      return request(method, path, body, { ...options, isRetry: true });
+      return request(method, path, body, { ...options, isRetry: true, scope: activeScope });
     } catch {
       clearTokens(activeScope);
-      // Dispatch an event so auth contexts can react (sign out)
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(`pf:session-expired`, { detail: { scope: activeScope } }));
-      }
+      emitSessionExpired(activeScope);
       throw new ApiError("Session expired. Please sign in again.", 401, null);
     }
   }

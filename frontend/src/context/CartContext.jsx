@@ -117,7 +117,7 @@ function serverCartToState(serverCart) {
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
-  const authenticated = Boolean(user?.id) && Boolean(getAccessToken());
+  const authenticated = Boolean(user?.id) && Boolean(getAccessToken("customer"));
 
   const [lines, setLines] = useState(() => restoreGuestCart().lines);
   const [couponCode, setCouponCode] = useState(() => restoreGuestCart().couponCode);

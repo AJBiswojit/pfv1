@@ -19,7 +19,7 @@
  */
 
 import { apiListProducts, apiGetProduct } from "../api/productsApi";
-import { apiListCategories } from "../api/categoriesApi";
+import { apiListCategories, apiListSubcategories } from "../api/categoriesApi";
 import { apiListCollections } from "../api/collectionsApi";
 import { apiGetHome, apiGetExploreOffers } from "../api/searchApi";
 import { PRODUCT_MEDIA_ROLES } from "../../config/mediaTypes";
@@ -46,8 +46,23 @@ const state = {
 const listeners = new Set();
 let hydratePromise = null;
 let started = false;
+let version = 0;
+let snapshot = { ...state, version };
+let taxonomySnapshot = { categories: state.categories, collections: state.collections, subcategories: state.subcategories, version };
+
+function rebuildSnapshots() {
+  snapshot = { ...state, version };
+  taxonomySnapshot = {
+    categories: state.categories,
+    collections: state.collections,
+    subcategories: state.subcategories,
+    version,
+  };
+}
 
 function emit() {
+  version += 1;
+  rebuildSnapshots();
   listeners.forEach((fn) => {
     try { fn(); } catch { /* listener errors are isolated */ }
   });
@@ -62,7 +77,11 @@ export function subscribeCatalog(fn) {
 }
 
 export function getCatalogState() {
-  return state;
+  return snapshot;
+}
+
+export function getCatalogTaxonomySnapshot() {
+  return taxonomySnapshot;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,17 +167,21 @@ export function toStorefrontProduct(product) {
   };
 }
 
-function applySnapshot(products, categories, collections) {
-  state.products = (products ?? []).map(toStorefrontProduct);
-  state.byId = new Map(state.products.map((p) => [String(p.id), p]));
-  state.bySlug = new Map(state.products.filter((p) => p.slug).map((p) => [p.slug, p]));
+function applySnapshot(products, categories, collections, subcategories = {}) {
   state.categories = categories ?? [];
   state.collections = collections ?? [];
   state.subcategories = {};
+  state.products = (products ?? []).map(toStorefrontProduct);
+  state.byId = new Map(state.products.map((p) => [String(p.id), p]));
+  state.bySlug = new Map(state.products.filter((p) => p.slug).map((p) => [p.slug, p]));
   (state.categories ?? []).forEach((category) => {
-    if (Array.isArray(category.subcategories)) {
-      state.subcategories[category.id] = category.subcategories;
-    }
+    const list = Array.isArray(subcategories[category.id])
+      ? subcategories[category.id]
+      : Array.isArray(category.subcategories)
+        ? category.subcategories
+        : [];
+    state.subcategories[category.id] = list;
+    if (category.slug) state.subcategories[category.slug] = list;
   });
 }
 
@@ -188,7 +211,16 @@ export async function hydrateCatalog({ force = false } = {}) {
     if (!categoriesResult.ok) throw new Error(categoriesResult.error);
     if (!collectionsResult.ok) throw new Error(collectionsResult.error);
 
-    applySnapshot(productsResult.items, categoriesResult.categories ?? categoriesResult.items ?? [], collectionsResult.collections ?? collectionsResult.items ?? []);
+    const categories = categoriesResult.categories ?? categoriesResult.items ?? [];
+    const subcategoryEntries = await Promise.all(
+      categories.map(async (category) => {
+        const result = await apiListSubcategories(category.id, { status: "ACTIVE" });
+        return [category.id, result.ok ? (result.items ?? []) : []];
+      })
+    );
+    const subcategories = Object.fromEntries(subcategoryEntries);
+
+    applySnapshot(productsResult.items, categories, collectionsResult.collections ?? collectionsResult.items ?? [], subcategories);
     if (homeResult.ok) state.home = homeResult;
     if (offersResult.ok) state.offers = offersResult.offers ?? [];
     state.status = "ready";
@@ -293,6 +325,7 @@ export default {
   refreshCatalog,
   subscribeCatalog,
   getCatalogState,
+  getCatalogTaxonomySnapshot,
   getAllProducts,
   getProductById,
   getProductByIdentifier,

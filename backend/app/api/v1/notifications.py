@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessLogicException, ForbiddenException
 from app.core.logging import get_logger
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_current_user, get_db, require_permission_for_user
 from app.models.auth.user import UserModel
 from app.schemas.notification.notification import (
     NotificationSettingsResponse,
@@ -59,9 +59,10 @@ async def get_notification_settings(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Only admin and employee users may read admin settings
+    # Only admin and employee users with settings.view may read admin settings
     if current_user.user_type not in ("admin", "employee"):
         raise ForbiddenException("Admin or employee authentication required.")
+    await require_permission_for_user(current_user, db, "settings.view")
 
     service = NotificationSettingsService(db)
     channel_settings, row = await service.get_settings()
@@ -110,9 +111,10 @@ async def update_notification_settings(
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Only admins may write admin settings
+    # Only admins with settings.edit may write admin settings
     if current_user.user_type != "admin":
         raise ForbiddenException("Admin authentication required to edit settings.")
+    await require_permission_for_user(current_user, db, "settings.edit")
 
     service = NotificationSettingsService(db)
     try:

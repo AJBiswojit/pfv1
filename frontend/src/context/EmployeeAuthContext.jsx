@@ -30,8 +30,10 @@ import {
   apiSignInEmployee,
   apiChangePasswordEmployee,
   apiSignOutEmployee,
+  apiRestoreEmployeeSession,
 } from "../services/api/authApi";
-import { readStorage, writeStorage } from "../utils/shopping";
+import { writeStorage } from "../utils/shopping";
+import { clearTokens, getAccessToken } from "../services/api/apiClient";
 import {
   checkIn as punchIn,
   checkOut as punchOut,
@@ -45,28 +47,16 @@ export const EMPLOYEE_ACCESS_TOKEN_KEY  = "pf_employee_access_token";
 export const EMPLOYEE_REFRESH_TOKEN_KEY = "pf_employee_refresh_token";
 
 // Token helpers specific to the employee surface
-export const getEmployeeAccessToken = () => {
-  try { return localStorage.getItem(EMPLOYEE_ACCESS_TOKEN_KEY); } catch { return null; }
-};
+export const getEmployeeAccessToken = () => getAccessToken("employee");
 
-const clearEmployeeTokens = () => {
-  try {
-    localStorage.removeItem(EMPLOYEE_ACCESS_TOKEN_KEY);
-    localStorage.removeItem(EMPLOYEE_REFRESH_TOKEN_KEY);
-  } catch { /* ignore */ }
-};
+const clearEmployeeTokens = () => clearTokens("employee");
 
 // ---------------------------------------------------------------------------
 // Session restore
 // ---------------------------------------------------------------------------
 
-function restoreSession() {
-  if (!getEmployeeAccessToken()) return { employee: null, isAuthenticated: false };
-  const stored = readStorage(EMPLOYEE_SESSION_KEY, null);
-  if (stored && typeof stored === "object" && stored.id) {
-    return { employee: stored, isAuthenticated: true };
-  }
-  return { employee: null, isAuthenticated: false };
+function hasStoredEmployeeToken() {
+  return Boolean(getEmployeeAccessToken());
 }
 
 // ---------------------------------------------------------------------------
@@ -74,11 +64,36 @@ function restoreSession() {
 // ---------------------------------------------------------------------------
 
 export function EmployeeAuthProvider({ children }) {
-  const [session, setSession] = useState(restoreSession);
-  const [isLoading, setIsLoading] = useState(false);
+  const [session, setSession] = useState({ employee: null, isAuthenticated: false });
+  const [isLoading, setIsLoading] = useState(hasStoredEmployeeToken);
 
   const employee        = session.employee;
   const isAuthenticated = Boolean(session.isAuthenticated && employee);
+
+  // Validate any stored employee token with the backend before marking the
+  // employee surface authenticated. The employee profile/code must exist.
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasStoredEmployeeToken()) {
+      setIsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    setIsLoading(true);
+    apiRestoreEmployeeSession().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setSession({ employee: result.employee, isAuthenticated: true });
+      } else {
+        clearEmployeeTokens();
+        setSession({ employee: null, isAuthenticated: false });
+        try { window.localStorage.removeItem(EMPLOYEE_SESSION_KEY); } catch { /* ignore */ }
+      }
+      setIsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
 
   // Persist employee profile snapshot
   useEffect(() => {
@@ -89,12 +104,12 @@ export function EmployeeAuthProvider({ children }) {
     }
   }, [employee]);
 
-  // Listen for global token expiry — only clear employee session if no employee token
+  // Listen for scope-specific token expiry events from apiClient.
   useEffect(() => {
-    const handleExpiry = () => {
-      if (!getEmployeeAccessToken()) {
-        setSession({ employee: null, isAuthenticated: false });
-      }
+    const handleExpiry = (event) => {
+      if (event?.detail?.scope !== "employee") return;
+      clearEmployeeTokens();
+      setSession({ employee: null, isAuthenticated: false });
     };
     window.addEventListener("pf:session-expired", handleExpiry);
     return () => window.removeEventListener("pf:session-expired", handleExpiry);
@@ -145,8 +160,17 @@ export function EmployeeAuthProvider({ children }) {
 
   // ── Refresh local session (re-read from storage) ─────────────────────────
 
-  const refreshSession = useCallback(() => {
-    const next = restoreSession();
+  const refreshSession = useCallback(async () => {
+    if (!hasStoredEmployeeToken()) {
+      const empty = { employee: null, isAuthenticated: false };
+      setSession(empty);
+      return empty;
+    }
+    const result = await apiRestoreEmployeeSession();
+    const next = result.ok
+      ? { employee: result.employee, isAuthenticated: true }
+      : { employee: null, isAuthenticated: false };
+    if (!result.ok) clearEmployeeTokens();
     setSession(next);
     return next;
   }, []);

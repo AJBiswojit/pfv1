@@ -59,7 +59,7 @@ function normaliseCart(data) {
 /** GET /cart */
 export async function apiGetCart() {
   try {
-    const data = await apiClient.get("/cart");
+    const data = await apiClient.get("/cart", { scope: "customer" });
     return { ok: true, cart: normaliseCart(data) };
   } catch (err) { return handleError(err); }
 }
@@ -69,7 +69,7 @@ export async function apiAddCartItem({ productId, color, size, quantity }) {
   try {
     const data = await apiClient.post("/cart/items", {
       productId, color, size, quantity,
-    });
+    }, { scope: "customer" });
     return { ok: true, cart: normaliseCart(data.cart ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -77,7 +77,7 @@ export async function apiAddCartItem({ productId, color, size, quantity }) {
 /** PATCH /cart/items/{lineId}  body: { quantity } */
 export async function apiUpdateCartItem(lineId, quantity) {
   try {
-    const data = await apiClient.patch(`/cart/items/${lineId}`, { quantity });
+    const data = await apiClient.patch(`/cart/items/${lineId}`, { quantity }, { scope: "customer" });
     return { ok: true, cart: normaliseCart(data.cart ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -85,7 +85,7 @@ export async function apiUpdateCartItem(lineId, quantity) {
 /** DELETE /cart/items/{lineId} */
 export async function apiRemoveCartItem(lineId) {
   try {
-    const data = await apiClient.delete(`/cart/items/${lineId}`);
+    const data = await apiClient.delete(`/cart/items/${lineId}`, { scope: "customer" });
     return { ok: true, cart: normaliseCart(data.cart ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -93,7 +93,7 @@ export async function apiRemoveCartItem(lineId) {
 /** DELETE /cart */
 export async function apiClearCart() {
   try {
-    await apiClient.delete("/cart");
+    await apiClient.delete("/cart", { scope: "customer" });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }
@@ -101,7 +101,7 @@ export async function apiClearCart() {
 /** POST /cart/coupon  body: { code } */
 export async function apiApplyCoupon(code) {
   try {
-    const data = await apiClient.post("/cart/coupon", { code });
+    const data = await apiClient.post("/cart/coupon", { code }, { scope: "customer" });
     return {
       ok:      true,
       coupon:  data.coupon,
@@ -113,7 +113,7 @@ export async function apiApplyCoupon(code) {
 /** DELETE /cart/coupon */
 export async function apiRemoveCoupon() {
   try {
-    await apiClient.delete("/cart/coupon");
+    await apiClient.delete("/cart/coupon", { scope: "customer" });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }
@@ -121,7 +121,7 @@ export async function apiRemoveCoupon() {
 /** GET /cart/totals?deliveryMethod=standard&paymentMethod=online */
 export async function apiGetCartTotals({ deliveryMethod = "standard", paymentMethod = "online" } = {}) {
   try {
-    const data = await apiClient.get(`/cart/totals?deliveryMethod=${deliveryMethod}&paymentMethod=${paymentMethod}`);
+    const data = await apiClient.get(`/cart/totals?deliveryMethod=${deliveryMethod}&paymentMethod=${paymentMethod}`, { scope: "customer" });
     return {
       ok: true,
       totals: {

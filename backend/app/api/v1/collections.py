@@ -75,6 +75,7 @@ router = APIRouter(tags=["Collections"])
 async def get_collection_products(
     collection_id: str,
     q: Optional[str] = Query(None),
+    category: Optional[List[str]] = Query(None),
     subcategory: Optional[List[str]] = Query(None),
     gender: Optional[List[str]] = Query(None),
     price: Optional[List[str]] = Query(None),
@@ -95,6 +96,7 @@ async def get_collection_products(
 
     query = ProductListQuery(
         q=q,
+        category=category,
         # Pass the resolved ids as the collection filter;
         # ProductService interprets a list of ids via the collection facet.
         collection=[col_model.id],

@@ -58,7 +58,7 @@ function normReturn(r) {
 /** POST /orders  — place an order */
 export async function apiPlaceOrder(body) {
   try {
-    const data = await apiClient.post("/orders", body);
+    const data = await apiClient.post("/orders", body, { scope: "customer" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -66,7 +66,7 @@ export async function apiPlaceOrder(body) {
 /** GET /orders?page=&pageSize= */
 export async function apiListOrders({ page = 1, pageSize = 20 } = {}) {
   try {
-    const data = await apiClient.get(`/orders?page=${page}&pageSize=${pageSize}`);
+    const data = await apiClient.get(`/orders?page=${page}&pageSize=${pageSize}`, { scope: "customer" });
     const orders = (data.orders ?? data.items ?? data ?? []).map(normOrder);
     return { ok: true, orders, total: data.total ?? orders.length };
   } catch (err) { return handleError(err); }
@@ -75,7 +75,7 @@ export async function apiListOrders({ page = 1, pageSize = 20 } = {}) {
 /** GET /orders/{orderId} */
 export async function apiGetOrder(orderId) {
   try {
-    const data = await apiClient.get(`/orders/${orderId}`);
+    const data = await apiClient.get(`/orders/${orderId}`, { scope: "customer" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -83,7 +83,7 @@ export async function apiGetOrder(orderId) {
 /** GET /orders/{orderId}/tracking */
 export async function apiGetTracking(orderId) {
   try {
-    const data = await apiClient.get(`/orders/${orderId}/tracking`);
+    const data = await apiClient.get(`/orders/${orderId}/tracking`, { scope: "customer" });
     return { ok: true, tracking: data };
   } catch (err) { return handleError(err); }
 }
@@ -91,7 +91,7 @@ export async function apiGetTracking(orderId) {
 /** POST /orders/{orderId}/cancel */
 export async function apiCancelOrder(orderId, { reason, note } = {}) {
   try {
-    const data = await apiClient.post(`/orders/${orderId}/cancel`, { reason, note });
+    const data = await apiClient.post(`/orders/${orderId}/cancel`, { reason, note }, { scope: "customer" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -99,7 +99,7 @@ export async function apiCancelOrder(orderId, { reason, note } = {}) {
 /** POST /orders/{orderId}/returns  body: { items, pickupMethod } */
 export async function apiCreateReturn(orderId, body) {
   try {
-    const data = await apiClient.post(`/orders/${orderId}/returns`, body);
+    const data = await apiClient.post(`/orders/${orderId}/returns`, body, { scope: "customer" });
     return { ok: true, return_order: normReturn(data.return_order ?? data.returnOrder ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -107,7 +107,7 @@ export async function apiCreateReturn(orderId, body) {
 /** GET /orders/{orderId}/returns/{returnId} */
 export async function apiGetReturn(orderId, returnId) {
   try {
-    const data = await apiClient.get(`/orders/${orderId}/returns/${returnId}`);
+    const data = await apiClient.get(`/orders/${orderId}/returns/${returnId}`, { scope: "customer" });
     return { ok: true, return_order: normReturn(data.return_order ?? data.returnOrder ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -115,7 +115,7 @@ export async function apiGetReturn(orderId, returnId) {
 /** POST /orders/claim-guest  body: { email } */
 export async function apiClaimGuestOrders(email) {
   try {
-    const data = await apiClient.post("/orders/claim-guest", { email });
+    const data = await apiClient.post("/orders/claim-guest", { email }, { scope: "customer" });
     return { ok: true, claimed: data.claimed ?? 0 };
   } catch (err) { return handleError(err); }
 }
@@ -131,7 +131,7 @@ export async function apiAdminListOrders({ status, customerId, q, page = 1, page
     if (status)     qs.set("status", status);
     if (customerId) qs.set("customerId", customerId);
     if (q)          qs.set("q", q);
-    const data = await apiClient.get(`/admin/orders?${qs}`);
+    const data = await apiClient.get(`/admin/orders?${qs}`, { scope: "admin" });
     const orders = (data.orders ?? data.items ?? data ?? []).map(normOrder);
     return { ok: true, orders, total: data.total ?? orders.length };
   } catch (err) { return handleError(err); }
@@ -140,7 +140,7 @@ export async function apiAdminListOrders({ status, customerId, q, page = 1, page
 /** GET /admin/orders/{id} */
 export async function apiAdminGetOrder(id) {
   try {
-    const data = await apiClient.get(`/admin/orders/${id}`);
+    const data = await apiClient.get(`/admin/orders/${id}`, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -148,7 +148,7 @@ export async function apiAdminGetOrder(id) {
 /** GET /admin/orders/{id}/invoice */
 export async function apiAdminGetInvoice(id) {
   try {
-    const data = await apiClient.get(`/admin/orders/${id}/invoice`);
+    const data = await apiClient.get(`/admin/orders/${id}/invoice`, { scope: "admin" });
     return { ok: true, invoice: data };
   } catch (err) { return handleError(err); }
 }
@@ -159,7 +159,7 @@ export async function apiAdminGetInvoice(id) {
 
 const adminOrderPost = (path, body = {}) => async (id) => {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/${path}`, body);
+    const data = await apiClient.post(`/admin/orders/${id}/${path}`, body, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 };
@@ -174,7 +174,7 @@ export const apiAdminMarkDelivered     = adminOrderPost("deliver");
 /** POST /admin/orders/{id}/fulfillment  body: { locationId, handlerId } */
 export async function apiAdminAssignFulfillment(id, body) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/fulfillment`, body);
+    const data = await apiClient.post(`/admin/orders/${id}/fulfillment`, body, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -182,7 +182,7 @@ export async function apiAdminAssignFulfillment(id, body) {
 /** POST /admin/orders/{id}/pick/item  body: { orderItemId } */
 export async function apiAdminPickItem(id, orderItemId) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/pick/item`, { orderItemId });
+    const data = await apiClient.post(`/admin/orders/${id}/pick/item`, { orderItemId }, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -190,7 +190,7 @@ export async function apiAdminPickItem(id, orderItemId) {
 /** POST /admin/orders/{id}/dispatch  body: { carrier?, trackingNumber?, estimatedDelivery? } */
 export async function apiAdminDispatchOrder(id, body) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/dispatch`, body);
+    const data = await apiClient.post(`/admin/orders/${id}/dispatch`, body, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -198,7 +198,7 @@ export async function apiAdminDispatchOrder(id, body) {
 /** POST /admin/orders/{id}/cancel  body: { reason?, note? } */
 export async function apiAdminCancelOrder(id, body = {}) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/cancel`, body);
+    const data = await apiClient.post(`/admin/orders/${id}/cancel`, body, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -206,7 +206,7 @@ export async function apiAdminCancelOrder(id, body = {}) {
 /** POST /admin/orders/{id}/notes  body: { note } */
 export async function apiAdminAddNote(id, note) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/notes`, { note });
+    const data = await apiClient.post(`/admin/orders/${id}/notes`, { note }, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -214,7 +214,7 @@ export async function apiAdminAddNote(id, note) {
 /** POST /admin/orders/{id}/status  body: { status, note? } */
 export async function apiAdminApplyStatus(id, status, note) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/status`, { status, note });
+    const data = await apiClient.post(`/admin/orders/${id}/status`, { status, note }, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -222,7 +222,7 @@ export async function apiAdminApplyStatus(id, status, note) {
 /** POST /admin/orders/{id}/force-status  body: { status, reason } */
 export async function apiAdminForceStatus(id, status, reason) {
   try {
-    const data = await apiClient.post(`/admin/orders/${id}/force-status`, { status, reason });
+    const data = await apiClient.post(`/admin/orders/${id}/force-status`, { status, reason }, { scope: "admin" });
     return { ok: true, order: normOrder(data.order ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -238,7 +238,7 @@ export async function apiAdminListReturns({ status, orderId, customerId, page = 
     if (status)     qs.set("status", status);
     if (orderId)    qs.set("orderId", orderId);
     if (customerId) qs.set("customerId", customerId);
-    const data = await apiClient.get(`/admin/returns?${qs}`);
+    const data = await apiClient.get(`/admin/returns?${qs}`, { scope: "admin" });
     const returns = (data.returns ?? data.items ?? data ?? []).map(normReturn);
     return { ok: true, returns, total: data.total ?? returns.length };
   } catch (err) { return handleError(err); }
@@ -247,14 +247,14 @@ export async function apiAdminListReturns({ status, orderId, customerId, page = 
 /** GET /admin/returns/{id} */
 export async function apiAdminGetReturn(id) {
   try {
-    const data = await apiClient.get(`/admin/returns/${id}`);
+    const data = await apiClient.get(`/admin/returns/${id}`, { scope: "admin" });
     return { ok: true, return_order: normReturn(data.return_order ?? data.returnOrder ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 const returnPost = (path, bodyFn = () => ({})) => async (id, options = {}) => {
   try {
-    const data = await apiClient.post(`/admin/returns/${id}/${path}`, bodyFn(options));
+    const data = await apiClient.post(`/admin/returns/${id}/${path}`, bodyFn(options), { scope: "admin" });
     return { ok: true, return_order: normReturn(data.return_order ?? data.returnOrder ?? data) };
   } catch (err) { return handleError(err); }
 };

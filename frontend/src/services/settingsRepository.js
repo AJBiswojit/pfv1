@@ -49,7 +49,7 @@ const applyDefaults = (server) => merge(clone(SETTINGS_DEFAULTS), server ?? {});
 /** GET /admin/settings (all sections, deep-merged with UI defaults). */
 export async function getSettings() {
   try {
-    const data = await apiClient.get("/admin/settings");
+    const data = await apiClient.get("/admin/settings", { scope: "admin" });
     const values = applyDefaults(data.settings ?? data);
     memorySettings = values;
     return values;
@@ -62,8 +62,8 @@ export async function getSettings() {
 export async function getSection(section) {
   if (!SETTINGS_DEFAULTS[section]) return null;
   try {
-    const data = await apiClient.get(`/admin/settings/${section}`);
-    return merge(clone(SETTINGS_DEFAULTS[section]), data.settings ?? data[section] ?? data);
+    const data = await apiClient.get(`/admin/settings/${section}`, { scope: "admin" });
+    return merge(clone(SETTINGS_DEFAULTS[section]), data.data ?? data.settings ?? data[section] ?? data);
   } catch {
     return clone(SETTINGS_DEFAULTS[section]);
   }
@@ -72,8 +72,8 @@ export async function getSection(section) {
 /** PATCH /admin/settings/{section} */
 export async function updateSection(section, values) {
   if (!SETTINGS_DEFAULTS[section]) throw new Error("Unknown settings section");
-  const data = await apiClient.patch(`/admin/settings/${section}`, values);
-  return merge(clone(SETTINGS_DEFAULTS[section]), data.settings ?? data[section] ?? values);
+  const data = await apiClient.patch(`/admin/settings/${section}`, { data: values }, { scope: "admin" });
+  return merge(clone(SETTINGS_DEFAULTS[section]), data.data ?? data.settings ?? data[section] ?? values);
 }
 
 export async function updateSetting(section, key, value) {
@@ -83,7 +83,7 @@ export async function updateSetting(section, key, value) {
 /** POST /admin/settings/{section}/reset */
 export async function resetSection(section) {
   try {
-    await apiClient.post(`/admin/settings/${section}/reset`, {});
+    await apiClient.post(`/admin/settings/${section}/reset`, {}, { scope: "admin" });
   } catch { /* best-effort */ }
   return clone(SETTINGS_DEFAULTS[section]);
 }
@@ -91,7 +91,7 @@ export async function resetSection(section) {
 /** POST /admin/settings/reset */
 export async function resetToDefaults() {
   try {
-    await apiClient.post("/admin/settings/reset", {});
+    await apiClient.post("/admin/settings/reset", {}, { scope: "admin" });
   } catch { /* best-effort */ }
   return clone(SETTINGS_DEFAULTS);
 }

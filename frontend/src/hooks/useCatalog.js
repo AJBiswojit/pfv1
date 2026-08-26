@@ -10,12 +10,11 @@
 import { useCallback, useSyncExternalStore } from "react";
 import {
   getCatalogState,
+  getCatalogTaxonomySnapshot,
   hydrateCatalog,
   refreshCatalog,
   subscribeCatalog,
   getAllProducts,
-  getCategories,
-  getCollections,
 } from "../services/catalog/catalogStore";
 
 export function useCatalog() {
@@ -27,6 +26,7 @@ export function useCatalog() {
     products: snapshot.products,
     categories: snapshot.categories,
     collections: snapshot.collections,
+    subcategories: snapshot.subcategories,
     retry: useCallback(() => refreshCatalog(), []),
   };
 }
@@ -44,8 +44,8 @@ export function useStorefrontProducts() {
 export function useStorefrontTaxonomy() {
   return useSyncExternalStore(
     subscribeCatalog,
-    () => ({ categories: getCategories(), collections: getCollections() }),
-    () => ({ categories: [], collections: [] })
+    getCatalogTaxonomySnapshot,
+    () => ({ categories: [], collections: [], subcategories: {}, version: 0 })
   );
 }
 

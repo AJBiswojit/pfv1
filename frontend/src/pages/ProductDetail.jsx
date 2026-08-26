@@ -156,7 +156,7 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (!product || isAtelierPreview) return undefined;
-    if (user?.id && getAccessToken()) apiAddRecentlyViewed(product.id);
+    if (user?.id && getAccessToken("customer")) apiAddRecentlyViewed(product.id);
     return undefined;
   }, [product, isAtelierPreview, user?.id]);
 

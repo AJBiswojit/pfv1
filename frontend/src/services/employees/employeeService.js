@@ -151,8 +151,8 @@ export const getServerEmployees = () => serverEmployees;
 export const syncEmployeesFromBackend = async () => {
   const { getAccessToken } = await import("../api/apiClient");
   const { apiAdminListEmployees } = await import("../api/employeesApi");
-  if (!getAccessToken("admin") && !getAccessToken("employee")) {
-    return { ok: false, error: "Authentication required." };
+  if (!getAccessToken("admin")) {
+    return { ok: false, error: "Admin authentication required." };
   }
   const result = await apiAdminListEmployees({ pageSize: 100 });
   if (!result.ok) return result;

@@ -91,7 +91,7 @@ function handleError(err) {
  */
 export async function apiGetMe() {
   try {
-    const data = await apiClient.get("/customers/me");
+    const data = await apiClient.get("/customers/me", { scope: "customer" });
     return {
       ok: true,
       profile:     normaliseProfile(data.profile),
@@ -118,7 +118,7 @@ export async function apiUpdateProfile(fields) {
     if (fields.dateOfBirth !== undefined) body.dateOfBirth = fields.dateOfBirth;
     if (fields.avatar      !== undefined) body.avatar      = fields.avatar;
 
-    const data = await apiClient.patch("/customers/me", body);
+    const data = await apiClient.patch("/customers/me", body, { scope: "customer" });
     return { ok: true, profile: normaliseProfile(data.profile ?? data) };
   } catch (err) {
     return handleError(err);
@@ -138,7 +138,7 @@ export async function apiUpdatePreferences(prefs) {
     if (prefs.orderUpdates        !== undefined) body.orderUpdates        = prefs.orderUpdates;
     if (prefs.stylingInvitations  !== undefined) body.stylingInvitations  = prefs.stylingInvitations;
 
-    const data = await apiClient.patch("/customers/me/preferences", body);
+    const data = await apiClient.patch("/customers/me/preferences", body, { scope: "customer" });
     return { ok: true, preferences: normalisePreferences(data.preferences ?? data) };
   } catch (err) {
     return handleError(err);
@@ -150,7 +150,7 @@ export async function apiUpdatePreferences(prefs) {
  */
 export async function apiRevokeOtherSessions() {
   try {
-    const data = await apiClient.post("/customers/me/sessions/revoke-others", {});
+    const data = await apiClient.post("/customers/me/sessions/revoke-others", {}, { scope: "customer" });
     return { ok: true, revokedCount: data.revokedCount ?? 0 };
   } catch (err) {
     return handleError(err);
@@ -166,7 +166,7 @@ export async function apiRevokeOtherSessions() {
  */
 export async function apiGetAddresses() {
   try {
-    const data = await apiClient.get("/customers/me/addresses");
+    const data = await apiClient.get("/customers/me/addresses", { scope: "customer" });
     const list = Array.isArray(data) ? data : (data.addresses ?? []);
     return { ok: true, addresses: list.map(normaliseAddress) };
   } catch (err) {
@@ -191,7 +191,7 @@ export async function apiAddAddress(address) {
       type:        address.type || "Home",
       isDefault:   Boolean(address.isDefault),
     };
-    const data = await apiClient.post("/customers/me/addresses", body);
+    const data = await apiClient.post("/customers/me/addresses", body, { scope: "customer" });
     return { ok: true, address: normaliseAddress(data.address ?? data) };
   } catch (err) {
     return handleError(err);
@@ -214,7 +214,7 @@ export async function apiUpdateAddress(addressId, fields) {
     if (fields.type        !== undefined) body.type        = fields.type;
     if (fields.isDefault   !== undefined) body.isDefault   = fields.isDefault;
 
-    const data = await apiClient.patch(`/customers/me/addresses/${addressId}`, body);
+    const data = await apiClient.patch(`/customers/me/addresses/${addressId}`, body, { scope: "customer" });
     return { ok: true, address: normaliseAddress(data.address ?? data) };
   } catch (err) {
     return handleError(err);
@@ -226,7 +226,7 @@ export async function apiUpdateAddress(addressId, fields) {
  */
 export async function apiDeleteAddress(addressId) {
   try {
-    await apiClient.delete(`/customers/me/addresses/${addressId}`);
+    await apiClient.delete(`/customers/me/addresses/${addressId}`, { scope: "customer" });
     return { ok: true };
   } catch (err) {
     return handleError(err);
@@ -238,7 +238,7 @@ export async function apiDeleteAddress(addressId) {
  */
 export async function apiSetDefaultAddress(addressId) {
   try {
-    await apiClient.post(`/customers/me/addresses/${addressId}/default`, {});
+    await apiClient.post(`/customers/me/addresses/${addressId}/default`, {}, { scope: "customer" });
     return { ok: true };
   } catch (err) {
     return handleError(err);
@@ -252,11 +252,11 @@ export async function apiSetDefaultAddress(addressId) {
 /**
  * GET /admin/customers?q=&page=&pageSize=
  */
-export async function apiAdminListCustomers({ q, page = 1, pageSize = 20 } = {}) {
+export async function apiAdminListCustomers({ q, page = 1, pageSize = 20, scope = "admin" } = {}) {
   try {
     const params = new URLSearchParams({ page, pageSize });
     if (q) params.set("q", q);
-    const data = await apiClient.get(`/admin/customers?${params}`);
+    const data = await apiClient.get(`/admin/customers?${params}`, { scope });
     const list = (data.customers ?? data.items ?? data ?? []);
     return {
       ok:    true,
@@ -271,9 +271,9 @@ export async function apiAdminListCustomers({ q, page = 1, pageSize = 20 } = {})
 /**
  * GET /admin/customers/{customerId}
  */
-export async function apiAdminGetCustomer(customerId) {
+export async function apiAdminGetCustomer(customerId, { scope = "admin" } = {}) {
   try {
-    const data = await apiClient.get(`/admin/customers/${customerId}`);
+    const data = await apiClient.get(`/admin/customers/${customerId}`, { scope });
     return {
       ok:         true,
       customer:   normaliseProfile(data.customer?.profile ?? data.profile ?? data),

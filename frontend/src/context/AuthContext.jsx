@@ -26,13 +26,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import { readStorage, writeStorage } from "../utils/shopping";
+import { writeStorage } from "../utils/shopping";
 import {
   apiSignInCustomer,
   apiSignUpCustomer,
   apiSignOutCustomer,
   apiForgotPasswordCustomer,
   apiResetPasswordCustomer,
+  apiRestoreCustomerSession,
 } from "../services/api/authApi";
 import { clearTokens, getAccessToken } from "../services/api/apiClient";
 
@@ -45,13 +46,8 @@ const AuthContext = createContext(null);
 // Session restore
 // ---------------------------------------------------------------------------
 
-function restoreSession() {
-  // If there's no access token the session is gone
-  if (!getAccessToken()) return null;
-
-  const stored = readStorage(AUTH_STORAGE_KEY, null);
-  if (stored && typeof stored === "object" && stored.id) return stored;
-  return null;
+function hasStoredToken() {
+  return Boolean(getAccessToken("customer"));
 }
 
 // ---------------------------------------------------------------------------
@@ -59,8 +55,33 @@ function restoreSession() {
 // ---------------------------------------------------------------------------
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(restoreSession);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser]       = useState(null);
+  const [isLoading, setIsLoading] = useState(hasStoredToken);
+
+  // Validate any stored customer token with the backend before marking the
+  // context authenticated. Local profile snapshots are cache only, not auth.
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasStoredToken()) {
+      setIsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    setIsLoading(true);
+    apiRestoreCustomerSession().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setUser(result.user);
+      } else {
+        setUser(null);
+        clearTokens("customer");
+        try { window.localStorage.removeItem(AUTH_STORAGE_KEY); } catch { /* ignore */ }
+      }
+      setIsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
 
   // Persist profile snapshot so cart / wishlist / account pages keep working
   useEffect(() => {
@@ -73,7 +94,8 @@ export function AuthProvider({ children }) {
 
   // Listen for token expiry event dispatched by apiClient refresh failure
   useEffect(() => {
-    const handleExpiry = () => {
+    const handleExpiry = (event) => {
+      if (event?.detail?.scope && event.detail.scope !== "customer") return;
       setUser(null);
       clearTokens("customer");
     };

@@ -58,19 +58,22 @@ function toCustomerProfile(dto) {
 }
 
 function toEmployeeProfile(dto) {
+  const profile = dto.profile ?? {};
   return {
     id:                 dto.id,
-    ...splitName(dto.full_name),
+    ...splitName(dto.full_name ?? dto.fullName),
     email:              dto.email ?? "",
     phone:              dto.phone ?? "",
-    employeeId:         dto.employee_code ?? dto.id,
-    role:               dto.roles?.[0] ?? "EMPLOYEE",
+    // The UI/backend workflow contract expects the employee code here, not a user UUID.
+    employeeId:         dto.employee_code ?? dto.employeeCode ?? profile.employee_code ?? profile.employeeCode ?? "",
+    role:               dto.roles?.[0] ?? dto.role ?? "EMPLOYEE",
+    roles:              dto.roles ?? [],
     permissions:        dto.permissions ?? [],
     status:             dto.status ?? "ACTIVE",
-    mustChangePassword: Boolean(dto.force_password_change),
+    mustChangePassword: Boolean(dto.force_password_change ?? dto.mustChangePassword),
     // employee_profile extras if present
-    department:         dto.department ?? "",
-    designation:        dto.designation ?? "",
+    department:         dto.department ?? profile.department ?? "",
+    designation:        dto.designation ?? profile.designation ?? "",
   };
 }
 
@@ -125,9 +128,9 @@ export async function apiSignUpCustomer({ firstName, lastName, email, phone, pas
       password,
       date_of_birth: dateOfBirth || undefined,
       dateOfBirth:   dateOfBirth || undefined,
-    }, { skipAuth: true });
+    }, { scope: "none" });
 
-    storeTokensFromResponse(data);
+    storeTokensFromResponse(data, "customer");
     const profile = toCustomerProfile(data.user ?? data.employee ?? data.admin ?? {});
     return { ok: true, user: profile };
   } catch (err) {
@@ -140,9 +143,9 @@ export async function apiSignInCustomer({ identifier, password }) {
     const data = await apiClient.post("/auth/customer/sign-in", {
       identifier,
       password,
-    }, { skipAuth: true });
+    }, { scope: "none" });
 
-    storeTokensFromResponse(data);
+    storeTokensFromResponse(data, "customer");
     const profile = toCustomerProfile(data.user ?? {});
     return { ok: true, user: profile };
   } catch (err) {
@@ -152,7 +155,7 @@ export async function apiSignInCustomer({ identifier, password }) {
 
 export async function apiSignOutCustomer() {
   try {
-    await apiClient.post("/auth/customer/sign-out", {});
+    await apiClient.post("/auth/customer/sign-out", {}, { scope: "customer" });
   } catch { /* best-effort */ }
   clearTokens("customer");
   return { ok: true };
@@ -160,7 +163,7 @@ export async function apiSignOutCustomer() {
 
 export async function apiForgotPasswordCustomer(identifier) {
   try {
-    const data = await apiClient.post("/auth/customer/forgot-password", { identifier }, { skipAuth: true });
+    const data = await apiClient.post("/auth/customer/forgot-password", { identifier }, { scope: "none" });
     return { ok: true, message: data.message ?? "Instructions sent." };
   } catch (err) {
     return handleError(err);
@@ -177,7 +180,7 @@ export async function apiResetPasswordCustomer({ userId, token, newPassword, con
       token,
       newPassword,
       confirmPassword,
-    }, { skipAuth: true });
+    }, { scope: "none" });
     return { ok: true };
   } catch (err) {
     return handleError(err);
@@ -193,7 +196,7 @@ export async function apiSignInEmployee({ employeeId, password }) {
     const data = await apiClient.post("/auth/employee/sign-in", {
       employeeId,
       password,
-    }, { skipAuth: true });
+    }, { scope: "none" });
 
     storeTokensFromResponse(data, "employee");
     const profile = toEmployeeProfile(data.employee ?? data.user ?? {});
@@ -214,7 +217,7 @@ export async function apiChangePasswordEmployee({ currentPassword, newPassword, 
       old_password:     currentPassword,
       new_password:     newPassword,
       confirm_password: confirmPassword,
-    });
+    }, { scope: "employee" });
     return { ok: true };
   } catch (err) {
     return handleError(err);
@@ -223,7 +226,7 @@ export async function apiChangePasswordEmployee({ currentPassword, newPassword, 
 
 export async function apiSignOutEmployee() {
   try {
-    await apiClient.post("/auth/employee/sign-out", {});
+    await apiClient.post("/auth/employee/sign-out", {}, { scope: "employee" });
   } catch { /* best-effort */ }
   clearTokens("employee");
   return { ok: true };
@@ -238,7 +241,7 @@ export async function apiSignInAdmin({ adminId, password }) {
     const data = await apiClient.post("/auth/admin/sign-in", {
       adminId,
       password,
-    }, { skipAuth: true });
+    }, { scope: "none" });
 
     storeTokensFromResponse(data, "admin");
     const profile = toAdminProfile(data.admin ?? data.user ?? {});
@@ -250,7 +253,7 @@ export async function apiSignInAdmin({ adminId, password }) {
 
 export async function apiSignOutAdmin() {
   try {
-    await apiClient.post("/auth/admin/sign-out", {});
+    await apiClient.post("/auth/admin/sign-out", {}, { scope: "admin" });
   } catch { /* best-effort */ }
   clearTokens("admin");
   return { ok: true };
@@ -260,10 +263,50 @@ export async function apiSignOutAdmin() {
 // Shared — /auth/me (get current session profile)
 // ---------------------------------------------------------------------------
 
-export async function apiGetMe() {
+export async function apiGetMe(scope = "customer") {
   try {
-    const dto = await apiClient.get("/auth/me");
+    const dto = await apiClient.get("/auth/me", { scope });
     return { ok: true, dto };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export async function apiRestoreCustomerSession() {
+  try {
+    // The customer profile endpoint validates both the token and the existence
+    // of the customer profile row. A token alone is never considered a session.
+    const data = await apiClient.get("/customers/me", { scope: "customer" });
+    const profile = toCustomerProfile(data.profile ?? data.user ?? data);
+    if (!profile.id) return { ok: false, error: "Customer profile is missing." };
+    return { ok: true, user: profile };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export async function apiRestoreAdminSession() {
+  try {
+    const dto = await apiClient.get("/auth/me", { scope: "admin" });
+    if (dto.user_type !== "admin") {
+      return { ok: false, error: "Admin authentication privileges required." };
+    }
+    return { ok: true, admin: toAdminProfile(dto) };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export async function apiRestoreEmployeeSession() {
+  try {
+    // /employee/me validates that the authenticated user is an employee and
+    // that a real employee profile exists, then returns the employee code.
+    const data = await apiClient.get("/employee/me", { scope: "employee" });
+    const employee = toEmployeeProfile(data.data ?? data.employee ?? data);
+    if (!employee.id || !employee.employeeId) {
+      return { ok: false, error: "Employee profile is missing." };
+    }
+    return { ok: true, employee };
   } catch (err) {
     return handleError(err);
   }

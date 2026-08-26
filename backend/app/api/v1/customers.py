@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
-from app.dependencies import get_current_customer, get_current_user, get_db
+from app.dependencies import get_current_customer, get_current_user, get_db, require_permission_for_user
 from app.models.auth.user import UserModel
 from app.schemas.customer.address import AddressResponse
 from app.schemas.customer.customer import (
@@ -186,6 +186,7 @@ async def admin_list_customers(
     # Permission check — admin or employee with customers.view
     if current_user.user_type not in ("admin", "employee"):
         raise ForbiddenException("customers.view permission required.")
+    await require_permission_for_user(current_user, db, "customers.view")
 
     service = CustomerService(db)
     customers, total = await service.list_customers(q=q, page=page, page_size=page_size)
@@ -212,6 +213,7 @@ async def admin_get_customer(
 ):
     if current_user.user_type not in ("admin", "employee"):
         raise ForbiddenException("customers.view permission required.")
+    await require_permission_for_user(current_user, db, "customers.view")
 
     service = CustomerService(db)
     return await service.get_customer_detail(customer_id)

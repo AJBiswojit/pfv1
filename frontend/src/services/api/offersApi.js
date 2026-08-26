@@ -51,7 +51,7 @@ export async function apiListOffers({ status = "ACTIVE" } = {}) {
   try {
     const qs = new URLSearchParams();
     if (status) qs.set("status", status);
-    const data = await apiClient.get(`/offers?${qs}`, { skipAuth: true });
+    const data = await apiClient.get(`/offers?${qs}`, { scope: "none" });
     const list = (data.offers ?? data.items ?? data ?? []);
     return { ok: true, offers: list.map(normaliseOffer) };
   } catch (err) { return handleError(err); }
@@ -65,7 +65,7 @@ export async function apiValidateOfferCode({ code, cartItems = [], customerId, c
       cartItems,
       customerId,
       customerEmail,
-    }, { skipAuth: true });
+    }, { scope: "none" });
     return { ok: true, offer: normaliseOffer(data.offer ?? data), message: data.message ?? "" };
   } catch (err) { return handleError(err); }
 }
@@ -80,7 +80,7 @@ export async function apiAdminListOffers({ status, q, page = 1, pageSize = 20 } 
     const qs = new URLSearchParams({ page, pageSize });
     if (status) qs.set("status", status);
     if (q) qs.set("q", q);
-    const data = await apiClient.get(`/admin/offers?${qs}`);
+    const data = await apiClient.get(`/admin/offers?${qs}`, { scope: "admin" });
     const list = (data.offers ?? data.items ?? data ?? []);
     return { ok: true, offers: list.map(normaliseOffer), total: data.total ?? list.length };
   } catch (err) { return handleError(err); }
@@ -89,7 +89,7 @@ export async function apiAdminListOffers({ status, q, page = 1, pageSize = 20 } 
 /** GET /admin/offers/{id} */
 export async function apiAdminGetOffer(id) {
   try {
-    const data = await apiClient.get(`/admin/offers/${id}`);
+    const data = await apiClient.get(`/admin/offers/${id}`, { scope: "admin" });
     return { ok: true, offer: normaliseOffer(data.offer ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -97,7 +97,7 @@ export async function apiAdminGetOffer(id) {
 /** POST /admin/offers */
 export async function apiAdminCreateOffer(body) {
   try {
-    const data = await apiClient.post("/admin/offers", body);
+    const data = await apiClient.post("/admin/offers", body, { scope: "admin" });
     return { ok: true, offer: normaliseOffer(data.offer ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -105,14 +105,14 @@ export async function apiAdminCreateOffer(body) {
 /** PATCH /admin/offers/{id} */
 export async function apiAdminUpdateOffer(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/offers/${id}`, body);
+    const data = await apiClient.patch(`/admin/offers/${id}`, body, { scope: "admin" });
     return { ok: true, offer: normaliseOffer(data.offer ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 const offerPost = (path) => async (id, body = {}) => {
   try {
-    const data = await apiClient.post(`/admin/offers/${id}/${path}`, body);
+    const data = await apiClient.post(`/admin/offers/${id}/${path}`, body, { scope: "admin" });
     return { ok: true, offer: normaliseOffer(data.offer ?? data) };
   } catch (err) { return handleError(err); }
 };
