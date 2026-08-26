@@ -8,7 +8,7 @@
  * Actions: Approve, Reject, Schedule Pickup, Receive, Inspect, Initiate Refund, Complete Refund
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
@@ -41,6 +41,8 @@ export default function AdminReturnDetail() {
   const { admin } = useAdminAuth();
   const {
     allOrders = [],
+    refreshAdminOrders,
+    isLoadingOrders,
     approveReturn,
     rejectReturn,
     scheduleReturnPickup,
@@ -49,6 +51,10 @@ export default function AdminReturnDetail() {
     initiateReturnRefund,
     completeReturnRefund,
   } = useOrder();
+
+  // Server-backed: load the admin order list (returns travel with their
+  // order) before looking the return up.
+  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
 
   // Find the return record
   const returnRecord = useMemo(() => {
@@ -86,8 +92,28 @@ export default function AdminReturnDetail() {
   const [notice, setNotice] = useState("");
   const [processing, setProcessing] = useState(false);
 
+  // Loading must win over not-found: the return list is fetched.
+  if (isLoadingOrders && !returnRecord) {
+    return (
+      <AdminPage eyebrow="Returns" title="Loading return…">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+          Loading return…
+        </p>
+      </AdminPage>
+    );
+  }
+
   if (!returnRecord) {
-    return <AdminPage title="Return not found" />;
+    return (
+      <AdminPage eyebrow="Returns" title="Return not found">
+        <p className="font-ui text-sm text-graphite">
+          No return exists with this reference, or it is not visible to your role.
+        </p>
+        <Link to="/admin/returns" className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+          Back to returns
+        </Link>
+      </AdminPage>
+    );
   }
 
   const { order } = returnRecord;

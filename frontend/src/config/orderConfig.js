@@ -588,16 +588,48 @@ export const RETURN_REASONS = [
   { id: "other", label: "Other" },
 ];
 
-export const RETURN_RESOLUTIONS = [
-  { id: "refund", label: "Refund", description: "Refunded to the original payment method." },
-  { id: "exchange", label: "Exchange", description: "Exchanged for another size or colour, subject to availability." },
+/**
+ * How the returned pieces get back to the atelier.
+ *
+ * These are the only two values the backend stores on a return
+ * (`orders_return_order.pickup_method`), so they are the only two the
+ * customer may choose.
+ */
+export const RETURN_PICKUP_METHODS = [
+  {
+    id: "SCHEDULED_PICKUP",
+    label: "Scheduled Pickup",
+    description: "We arrange a courier to collect the pieces from your delivery address.",
+  },
+  {
+    id: "CUSTOMER_DROP_OFF",
+    label: "Drop Off",
+    description: "You send or drop the pieces back to the atelier yourself.",
+  },
 ];
+
+export const getReturnPickupMethod = (id) =>
+  RETURN_PICKUP_METHODS.find((method) => method.id === id) ?? null;
+
+/**
+ * PHASE 3 — BACKEND_GAP. `RETURN_RESOLUTIONS` previously offered the
+ * customer a choice of "Refund" or "Exchange". The backend has no
+ * exchange capability at all: a return always produces a refund amount
+ * against the return record, and no exchange field exists on any table.
+ * Offering the choice fabricated a service that does not exist, so it has
+ * been removed. Refund is the only resolution, and it is stated as such.
+ */
+export const RETURN_RESOLUTION = {
+  id: "refund",
+  label: "Refund",
+  description: "Refunded to the original payment method once the return is inspected.",
+};
 
 export const getReturnReason = (id) =>
   RETURN_REASONS.find((reason) => reason.id === id) ?? null;
 
 export const getReturnResolution = (id) =>
-  RETURN_RESOLUTIONS.find((resolution) => resolution.id === id) ?? null;
+  (id === RETURN_RESOLUTION.id ? RETURN_RESOLUTION : null);
 
 export const RETURN_POLICY_SUMMARY =
   "Eligible items can be returned within the applicable return window. Pieces should be unworn, with their original tags and packaging intact.";
@@ -625,32 +657,29 @@ export const REFUND_STATUSES = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Mock courier vocabulary — Phase 15 uses real Indian carriers as demo */
+/* Carrier vocabulary                                                   */
 /* ------------------------------------------------------------------ */
 
-export const MOCK_CARRIERS = [
-  "Atelier Express",
-  "Meridian Courier",
-  "Saffron Logistics",
-  "Indus Freight Line",
-  "Delhivery",
-  "Blue Dart",
-  "DTDC",
-  "India Post",
-  "Store Delivery",
-];
-
+/**
+ * Carriers an admin may select when dispatching an order.
+ *
+ * PHASE 3: `MOCK_CARRIERS` (a list a customer's order was silently
+ * assigned to at random), `FULFILMENT_ORIGIN` (a hard-coded "dispatched
+ * from" city shown on every tracking page) and `TRACKING_ID_LABEL` have
+ * been removed. A carrier is now only ever recorded because a human
+ * chose it at dispatch, and the customer sees it only when it exists.
+ *
+ * This list is a data-entry convenience for the dispatch form, not a
+ * source of order data — no integration exists with any of these
+ * couriers, so no shipment scans are ever fetched or displayed.
+ */
 export const CARRIERS = [
-  { id: "delhivery", label: "Delhivery", demo: true },
-  { id: "bluedart", label: "Blue Dart", demo: true },
-  { id: "dtdc", label: "DTDC", demo: true },
-  { id: "india_post", label: "India Post", demo: true },
-  { id: "store_delivery", label: "Store Delivery", demo: true },
-  { id: "atelier_express", label: "Atelier Express", demo: true },
+  { id: "delhivery", label: "Delhivery" },
+  { id: "bluedart", label: "Blue Dart" },
+  { id: "dtdc", label: "DTDC" },
+  { id: "india_post", label: "India Post" },
+  { id: "store_delivery", label: "Store Delivery" },
 ];
-
-export const FULFILMENT_ORIGIN = "Bhubaneswar, Odisha";
-export const TRACKING_ID_LABEL = "Tracking ID";
 
 /* ------------------------------------------------------------------ */
 /* Order activity types                                                */
@@ -710,13 +739,12 @@ export default {
   nextReturnStatus,
   getReturnStatus,
   RETURN_REASONS,
-  RETURN_RESOLUTIONS,
+  RETURN_PICKUP_METHODS,
+  RETURN_RESOLUTION,
+  getReturnPickupMethod,
   RETURN_POLICY_SUMMARY,
   REFUND_STATUS,
   REFUND_STATUSES,
-  MOCK_CARRIERS,
   CARRIERS,
-  FULFILMENT_ORIGIN,
-  TRACKING_ID_LABEL,
   ORDER_ACTIVITY_TYPES,
 };

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Info } from "lucide-react";
 import OrderPageShell from "../../components/orders/OrderPageShell";
-import OrderNotFound from "../../components/orders/OrderNotFound";
+import OrderErrorState from "../../components/orders/OrderErrorState";
+import OrderLoadingState from "../../components/orders/OrderLoadingState";
 import ReturnSummaryCard from "../../components/orders/ReturnSummaryCard";
 import { useOrder } from "../../context/OrderContext";
 import {
@@ -13,18 +14,19 @@ import {
   transition,
 } from "../../design-system";
 import {
+  RETURN_PICKUP_METHODS,
   RETURN_POLICY_SUMMARY,
   RETURN_REASONS,
-  RETURN_RESOLUTIONS,
+  RETURN_RESOLUTION,
 } from "../../config/orderConfig";
-import { returnableItems } from "../../services/orders/returnService";
 import {
-  canReturnOrder,
+  RETURN_WINDOW_DAYS,
+  canRequestReturnNow,
   formatOrderDate,
   latestReturn,
-  refundAmountFor,
   refundMethodLabel,
   returnBlockedReason,
+  returnWindow,
 } from "../../utils/orders";
 import { formatINR } from "../../utils/shopping";
 import { cn } from "../../utils/cn";
@@ -32,36 +34,60 @@ import { cn } from "../../utils/cn";
 /**
  * Return request — /account/orders/:orderId/return.
  *
- * A premium, single-purpose form: choose the pieces, say why, say how you
- * would like it resolved. Every rule behind it (eligibility, duplicate
- * protection, validation, refund presentation) lives in the return
- * service, so this page only collects and confirms.
+ * PHASE 3: this form now actually creates a return.
  *
- * Access is ownership-checked through the order context — a return can
- * never be raised against another customer's order.
+ * It previously validated and built the return record entirely in the
+ * browser and showed a success confirmation without ever calling the
+ * server, so the "return" existed only in local state and vanished on
+ * reload. It also offered an "Exchange" resolution the backend has no
+ * capability for, and it ignored the backend's return window.
+ *
+ * Now it POSTs to `/orders/{id}/returns`, sends real per-line quantities
+ * and a real pickup method, and renders the server's own return record on
+ * success. Ownership and every eligibility rule are enforced by the
+ * backend; the page mirrors them only so it does not offer an action that
+ * would be rejected.
  */
 export default function OrderReturn() {
   const { orderId } = useParams();
-  const { orders, getOrderById, createReturn } = useOrder();
+  const { fetchOrder, createReturn } = useOrder();
 
-  const [selected, setSelected] = useState(() => new Set());
+  /** lineId → quantity being returned (absent = not selected). */
+  const [selected, setSelected] = useState(() => new Map());
   const [reason, setReason] = useState("");
-  const [resolution, setResolution] = useState("refund");
+  const [pickupMethod, setPickupMethod] = useState(RETURN_PICKUP_METHODS[0].id);
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
   const confirmationRef = useRef(null);
 
-  const order = useMemo(
-    () => getOrderById(orderId),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orderId, getOrderById, orders]
-  );
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    fetchOrder(orderId).then((result) => {
+      if (cancelled) return;
+      setLoading(false);
+      if (result.ok) setOrder(result.order);
+      else {
+        setOrder(null);
+        setLoadError({ status: result.status, message: result.error });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [orderId, fetchOrder, reloadToken]);
 
   useEffect(() => {
     const previousTitle = document.title;
     document.title = order
-      ? `Return ${order.id} — PRATIKSHYA FASHON`
+      ? `Return ${order.orderNumber ?? order.id} — PRATIKSHYA FASHON`
       : "Return — PRATIKSHYA FASHON";
     return () => {
       document.title = previousTitle;
@@ -72,12 +98,24 @@ export default function OrderReturn() {
     if (submitted) confirmationRef.current?.focus();
   }, [submitted]);
 
-  if (!order) return <OrderNotFound />;
+  if (loading) return <OrderLoadingState label="Loading your order…" />;
+
+  if (loadError || !order) {
+    return (
+      <OrderErrorState
+        status={loadError?.status ?? 404}
+        message={loadError?.message}
+        onRetry={reload}
+      />
+    );
+  }
+
+  const orderRef = order.orderNumber ?? order.id;
 
   const breadcrumbs = [
     { label: "Account", to: "/account" },
     { label: "Orders", to: "/account/orders" },
-    { label: order.id, to: `/account/orders/${order.id}` },
+    { label: orderRef, to: `/account/orders/${order.id}` },
     { label: "Return" },
   ];
 
@@ -136,7 +174,9 @@ export default function OrderReturn() {
 
   const existing = latestReturn(order);
 
-  if (!canReturnOrder(order)) {
+  // Mirrors exactly what the backend accepts: delivered, un-returned
+  // lines remaining, and inside the recorded return window.
+  if (!canRequestReturnNow(order)) {
     return (
       <OrderPageShell breadcrumbItems={breadcrumbs}>
         {existing ? (
@@ -199,39 +239,86 @@ export default function OrderReturn() {
 
   /* ------------------------------- Form ------------------------------- */
 
-  const items = returnableItems(order);
-  const selectedItems = order.items.filter((item) => selected.has(item.lineId));
-  const estimatedRefund = refundAmountFor(selectedItems);
+  /* Per-line returnable quantity comes from the backend record
+     (`quantity - returnedQuantity`), so a partially-returned line can only
+     be returned for what actually remains. */
+  const items = (order.items ?? []).map((item) => ({
+    ...item,
+    alreadyRequested: (item.returnableQuantity ?? 0) === 0,
+  }));
 
-  const toggleItem = (lineId) => {
+  const selectedLines = items.filter((item) => selected.has(item.lineId));
+
+  /* Indicative only: the refund a return is actually worth is computed and
+     stored by the backend from the recorded unit prices. */
+  const indicativeRefund = selectedLines.reduce(
+    (total, item) => total + item.unitPrice * (selected.get(item.lineId) ?? 0),
+    0
+  );
+
+  const windowState = returnWindow(order);
+
+  const toggleItem = (item) => {
     setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(lineId)) next.delete(lineId);
-      else next.add(lineId);
+      const next = new Map(current);
+      if (next.has(item.lineId)) next.delete(item.lineId);
+      else next.set(item.lineId, item.returnableQuantity);
       return next;
     });
     setErrors((current) => ({ ...current, items: "" }));
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const result = createReturn({
-      orderId: order.id,
-      lineIds: [...selected],
-      reason,
-      resolution,
-      note,
+  const setQuantity = (item, quantity) => {
+    setSelected((current) => {
+      const next = new Map(current);
+      const clamped = Math.max(1, Math.min(item.returnableQuantity, Number(quantity) || 1));
+      next.set(item.lineId, clamped);
+      return next;
     });
+  };
 
-    if (!result.ok) {
-      setErrors(result.errors ?? {});
-      if (!result.errors || Object.keys(result.errors).length === 0) {
-        setErrors({ form: result.message });
-      }
+  /**
+   * Submit to the backend. The server re-checks ownership, order status,
+   * the return window and per-line quantities, and its response is what
+   * gets displayed — nothing is confirmed locally.
+   */
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    const nextErrors = {};
+    if (selected.size === 0) nextErrors.items = "Choose at least one piece to return.";
+    if (!reason) nextErrors.reason = "Let us know why you are returning these pieces.";
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+
+    setSubmitting(true);
     setErrors({});
+    const result = await createReturn({
+      orderId: order.id,
+      items: [...selected.entries()].map(([lineId, quantity]) => ({
+        lineId,
+        quantity,
+        reason,
+      })),
+      pickupMethod,
+      note,
+    });
+    setSubmitting(false);
+
+    if (!result.ok) {
+      // Backend rejections are surfaced verbatim (422 carries the real
+      // business reason, e.g. an expired window) rather than being
+      // reduced to a generic failure.
+      setErrors({ form: result.message ?? "Your return request could not be submitted." });
+      return;
+    }
+
     setSubmitted(result.record);
+    // Refresh so the order (and its returns) reflect the server record.
+    reload();
   };
 
   const errorCount = Object.values(errors).filter(Boolean).length;
@@ -241,8 +328,12 @@ export default function OrderReturn() {
       <EditorialHeading
         as="h2"
         size="subsection"
-        eyebrow={`Order ${order.id}`}
-        description={`Delivered ${formatOrderDate(order.createdAt)} · Tell us what isn't right and we'll take care of it.`}
+        eyebrow={`Order ${orderRef}`}
+        description={
+          order.tracking?.deliveredAt
+            ? `Delivered ${formatOrderDate(order.tracking.deliveredAt)} · Tell us what isn't right and we'll take care of it.`
+            : "Tell us what isn't right and we'll take care of it."
+        }
         spacing={{ eyebrow: "mb-3", title: "mb-3", description: "mb-0" }}
       >
         Request a <span className="italic text-accent">return.</span>
@@ -255,9 +346,12 @@ export default function OrderReturn() {
         <Info size={14} className="mt-px shrink-0 text-accent" aria-hidden="true" />
         <span>
           {RETURN_POLICY_SUMMARY}{" "}
-          <span className="uppercase tracking-[.14em] text-taupe">
-            Demo policy language — final terms to be confirmed by the atelier.
-          </span>
+          {windowState.known ? (
+            <span className="text-taupe">
+              This order&apos;s {RETURN_WINDOW_DAYS}-day window closes on{" "}
+              {formatOrderDate(windowState.closesAt)}.
+            </span>
+          ) : null}
         </span>
       </p>
 
@@ -308,15 +402,19 @@ export default function OrderReturn() {
                           type="checkbox"
                           checked={checked}
                           disabled={disabled}
-                          onChange={() => toggleItem(item.lineId)}
+                          onChange={() => toggleItem(item)}
                           className="h-4 w-4 shrink-0 accent-[#8a3e22]"
                         />
-                        <img
-                          src={item.image}
-                          alt=""
-                          className="h-20 w-[3.75rem] shrink-0 bg-surface object-cover"
-                          loading="lazy"
-                        />
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt=""
+                            className="h-20 w-[3.75rem] shrink-0 bg-surface object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span aria-hidden="true" className="h-20 w-[3.75rem] shrink-0 bg-surface" />
+                        )}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-display text-base font-light text-ink">
                             {item.name}
@@ -328,12 +426,40 @@ export default function OrderReturn() {
                           </span>
                           {disabled ? (
                             <span className="mt-1 block font-ui text-[10px] uppercase tracking-[.14em] text-accent">
-                              Already part of a return request
+                              Already returned
+                            </span>
+                          ) : item.returnableQuantity < item.quantity ? (
+                            <span className="mt-1 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                              {item.returnableQuantity} of {item.quantity} still returnable
+                            </span>
+                          ) : null}
+
+                          {/* Partial returns: only what the backend says
+                              remains returnable can be selected. */}
+                          {checked && item.returnableQuantity > 1 ? (
+                            <span className="mt-2 flex items-center gap-2">
+                              <label
+                                htmlFor={`${inputId}-qty`}
+                                className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe"
+                              >
+                                Quantity
+                              </label>
+                              <select
+                                id={`${inputId}-qty`}
+                                value={selected.get(item.lineId) ?? item.returnableQuantity}
+                                onClick={(event) => event.preventDefault()}
+                                onChange={(event) => setQuantity(item, event.target.value)}
+                                className="border border-mist bg-canvas px-2 py-1 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                              >
+                                {Array.from({ length: item.returnableQuantity }).map((_, i) => (
+                                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                ))}
+                              </select>
                             </span>
                           ) : null}
                         </span>
                         <span className="shrink-0 font-ui text-sm text-ink">
-                          {formatINR(item.price * item.quantity)}
+                          {formatINR(item.unitPrice * item.quantity)}
                         </span>
                       </label>
                     </li>
@@ -386,21 +512,19 @@ export default function OrderReturn() {
               </div>
             </fieldset>
 
-            {/* ----------------------- Resolution ----------------------- */}
+            {/* --------------------- Pickup method --------------------- */}
+            {/* The backend stores exactly two pickup methods and has no
+                exchange capability at all, so no exchange option is
+                offered here — a return always results in a refund. */}
             <fieldset>
               <legend className="font-display text-xl font-light tracking-tight text-ink">
-                How would you like this resolved?
+                How should we collect them?
               </legend>
-              {errors.resolution ? (
-                <p className="mt-2 font-ui text-[11px] text-accent">
-                  {errors.resolution}
-                </p>
-              ) : null}
 
               <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                {RETURN_RESOLUTIONS.map((entry) => {
-                  const inputId = `return-resolution-${entry.id}`;
-                  const checked = resolution === entry.id;
+                {RETURN_PICKUP_METHODS.map((entry) => {
+                  const inputId = `return-pickup-${entry.id}`;
+                  const checked = pickupMethod === entry.id;
                   return (
                     <label
                       key={entry.id}
@@ -416,13 +540,10 @@ export default function OrderReturn() {
                       <input
                         id={inputId}
                         type="radio"
-                        name="return-resolution"
+                        name="return-pickup"
                         value={entry.id}
                         checked={checked}
-                        onChange={() => {
-                          setResolution(entry.id);
-                          setErrors((current) => ({ ...current, resolution: "" }));
-                        }}
+                        onChange={() => setPickupMethod(entry.id)}
                         className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[#8a3e22]"
                       />
                       <span>
@@ -475,41 +596,38 @@ export default function OrderReturn() {
                   <dt className="font-ui text-[11px] text-graphite">
                     Pieces selected
                   </dt>
-                  <dd className="font-ui text-xs text-ink">{selectedItems.length}</dd>
+                  <dd className="font-ui text-xs text-ink">{selectedLines.length}</dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="font-ui text-[11px] text-graphite">Resolution</dt>
-                  <dd className="font-ui text-xs text-ink">
-                    {RETURN_RESOLUTIONS.find((entry) => entry.id === resolution)
-                      ?.label ?? "—"}
+                  <dd className="font-ui text-xs text-ink">{RETURN_RESOLUTION.label}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 border-t border-mist/70 pt-3.5">
+                  <dt className="font-ui text-[11px] text-graphite">
+                    Indicative refund
+                  </dt>
+                  <dd className="font-display text-lg font-light text-ink">
+                    {formatINR(indicativeRefund)}
                   </dd>
                 </div>
-                {resolution === "refund" ? (
-                  <div className="flex items-baseline justify-between gap-4 border-t border-mist/70 pt-3.5">
-                    <dt className="font-ui text-[11px] text-graphite">
-                      Estimated refund
-                    </dt>
-                    <dd className="font-display text-lg font-light text-ink">
-                      {formatINR(estimatedRefund)}
-                    </dd>
-                  </div>
-                ) : null}
               </dl>
 
-              {resolution === "refund" ? (
-                <p className="mt-4 font-ui text-[11px] leading-relaxed text-taupe">
-                  {refundMethodLabel(order)}. Demo refund status only — no real
-                  payment movement takes place.
-                </p>
-              ) : null}
+              {/* The refund the atelier records after inspection is
+                  authoritative — this figure is indicative only, and no
+                  refund status is claimed before one exists. */}
+              <p className="mt-4 font-ui text-[11px] leading-relaxed text-taupe">
+                {refundMethodLabel(order)}. The final refund is confirmed by the
+                atelier once your return is received and inspected.
+              </p>
 
               <AtelierButton
                 type="submit"
                 variant="primary"
                 size="md"
+                disabled={submitting}
                 className="mt-7 w-full justify-center"
               >
-                Submit Return Request
+                {submitting ? "Submitting…" : "Submit Return Request"}
               </AtelierButton>
 
               <Link

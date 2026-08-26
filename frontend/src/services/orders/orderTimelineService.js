@@ -3,8 +3,14 @@
  *
  * Centralizes every important transition as a timeline event.
  * Timeline lives inside the order record — no second storage.
- * Deterministic timestamps for demo orders, live for real checkout.
+ *
+ * PHASE 3: event ids are derived from the event itself rather than from
+ * `Math.random()`. A random id made the same recorded event look like a
+ * different event on every read, which broke list identity and
+ * deduplication in `appendTimeline`.
  */
+
+let eventSequence = 0;
 
 import { ORDER_ACTIVITY_TYPES } from "../../config/orderConfig";
 
@@ -17,7 +23,7 @@ export const buildTimelineEvent = ({
   note = "",
   meta = {},
 } = {}) => ({
-  id: `evt-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`,
+  id: `evt-${new Date(at).getTime().toString(36)}-${type}-${eventSequence++}`,
   type,
   status,
   at: at instanceof Date ? at.toISOString() : at,
@@ -31,8 +37,8 @@ export const normaliseTimeline = (raw) => {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((e) => e && e.at)
-    .map((e) => ({
-      id: e.id || `evt-${Math.random().toString(36).slice(2)}`,
+    .map((e, index) => ({
+      id: e.id || `evt-${e.at}-${e.type || "STATUS_CHANGED"}-${index}`,
       type: e.type || "STATUS_CHANGED",
       status: e.status || null,
       at: e.at,

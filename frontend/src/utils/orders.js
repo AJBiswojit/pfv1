@@ -1,23 +1,41 @@
 /**
- * PRATIKSHYA FASHON — Order utilities (Phase 15 extended)
+ * PRATIKSHYA FASHON — Order utilities
  *
- * Pure-logic layer: normalisation, ownership, eligibility, formatting,
- * identity generation. Now preserves fulfillment, shipment, timeline,
- * internal notes, cancellation with reason, etc.
+ * Pure-logic layer: defensive normalisation of locally-held order
+ * snapshots, ownership, eligibility, formatting and search.
+ *
+ * PHASE 3 — fabrication removed. This module previously invented order
+ * data that the backend does not have:
+ *   - `buildTrackingId()` / `pickCarrier()` manufactured a plausible
+ *     tracking number and picked a courier from a mock list, so every
+ *     order appeared to be shipped with a real waybill.
+ *   - `buildInvoiceNumber()` manufactured `INV-<id>` and stamped
+ *     `issuedAt` with the order date, so every order appeared invoiced.
+ *   - `paymentStatus` was inferred from the payment method (anything not
+ *     COD became PAID), fabricating a payment outcome and contradicting
+ *     the Phase 2 rule that only the server may mark an order paid.
+ *   - `status` silently defaulted to ORDER_CONFIRMED and orders with no
+ *     items were dropped entirely, hiding real records.
+ *
+ * All of that is gone. Every field is either present in the source
+ * record or explicitly null, and eligibility questions are delegated to
+ * the canonical read model so the UI and the backend agree.
  */
 
 import {
   ACTIVE_RETURN_STATUSES,
-  CANCELLABLE_STATUSES,
-  MOCK_CARRIERS,
   ORDER_PAYMENT_STATUS,
   ORDER_STATUS,
   ORDER_STATUSES,
   RETURNABLE_STATUSES,
   RETURN_STATUS,
   RETURN_STATUSES,
-  FULFILMENT_ORIGIN,
 } from "../config/orderConfig";
+import {
+  isOrderCancellable,
+  isOrderReturnable,
+  latestReturnRecord,
+} from "./orderReadModel";
 import { getProductById, productHref } from "../data/products";
 import { getMaxQuantity } from "./shopping";
 
@@ -25,30 +43,11 @@ import { getMaxQuantity } from "./shopping";
 /* Identity                                                            */
 /* ------------------------------------------------------------------ */
 
-const hash = (value) => {
-  let total = 0;
-  const text = String(value ?? "");
-  for (let index = 0; index < text.length; index += 1) {
-    total = (total * 31 + text.charCodeAt(index)) % 100000;
-  }
-  return total;
-};
-
-const pad = (value, length = 2) => String(value).padStart(length, "0");
-
-export const buildTrackingId = (orderId, createdAt) => {
-  const date = new Date(createdAt);
-  const stamp = Number.isNaN(date.getTime())
-    ? "000000"
-    : `${pad(date.getDate())}${pad(date.getMonth() + 1)}${pad(date.getFullYear() % 100)}`;
-  return `PFX${stamp}${pad(hash(orderId) % 10000, 4)}`;
-};
-
-export const pickCarrier = (orderId) =>
-  MOCK_CARRIERS[hash(orderId) % MOCK_CARRIERS.length];
-
-export const buildInvoiceNumber = (orderId) => `INV-${orderId}`;
-
+/**
+ * Local id for a client-side return draft. Tracking numbers, carriers and
+ * invoice numbers are deliberately NOT generated here — those are real
+ * business identifiers that only the backend may issue.
+ */
 export const buildReturnId = (orderId, sequence = 1) =>
   sequence <= 1 ? `RET-${orderId}` : `RET-${orderId}-${sequence}`;
 
@@ -194,12 +193,23 @@ const normaliseShipment = (raw) => {
   };
 };
 
+/**
+ * PHASE 3: timeline entries used to be given a random id on every render
+ * (`Math.random()`), so the same recorded event had a different identity
+ * each time it was read — breaking React keys and making two reads of one
+ * order look like different data. The id is now derived from the event
+ * itself, so a recorded event always has the same identity.
+ */
+const timelineEventId = (event, index) =>
+  event.id ||
+  ["evt", event.at ?? "", event.type ?? "STATUS_CHANGED", event.status ?? "", index].join("-");
+
 const normaliseTimeline = (raw) => {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((e) => e && e.at)
-    .map((e) => ({
-      id: e.id || String(Math.random()).slice(2),
+    .map((e, index) => ({
+      id: timelineEventId(e, index),
       type: e.type || "STATUS_CHANGED",
       status: e.status || null,
       at: e.at,
@@ -223,20 +233,23 @@ const normaliseNotes = (raw) => {
 export const normaliseOrder = (raw) => {
   if (!raw || typeof raw !== "object" || !raw.id) return null;
 
+  // An order with no readable lines is still a real order — it is kept
+  // and rendered with an explicit empty-items state rather than silently
+  // discarded from the customer's history.
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .map(normaliseItem)
     .filter(Boolean);
-  if (items.length === 0) return null;
 
-  const createdAt = raw.createdAt ?? new Date().toISOString();
-  const status = ORDER_STATUSES[raw.status] ? raw.status : ORDER_STATUS.ORDER_CONFIRMED;
-  const paymentMethodId = raw.paymentMethod?.id ?? "upi";
+  const createdAt = raw.createdAt ?? null;
+  // Status is passed through as recorded. An unrecognised or missing
+  // status stays null so the UI can say "status unavailable" instead of
+  // pretending the order was confirmed.
+  const status = ORDER_STATUSES[raw.status] ? raw.status : null;
+  const paymentMethodId = raw.paymentMethod?.id ?? raw.paymentMethodId ?? null;
+  // Payment status is NEVER inferred from the payment method. Only the
+  // server may declare an order paid (Phase 2 trust model).
   const paymentStatus =
-    raw.paymentStatus && ORDER_PAYMENT_STATUS[raw.paymentStatus]
-      ? raw.paymentStatus
-      : paymentMethodId === "cod"
-        ? ORDER_PAYMENT_STATUS.PENDING
-        : ORDER_PAYMENT_STATUS.PAID;
+    raw.paymentStatus && ORDER_PAYMENT_STATUS[raw.paymentStatus] ? raw.paymentStatus : null;
 
   const pricing = raw.pricing ?? {};
   const returns = (Array.isArray(raw.returns) ? raw.returns : [])
@@ -273,20 +286,23 @@ export const normaliseOrder = (raw) => {
       label: raw.deliveryMethod?.label ?? "Standard Delivery",
       estimate: raw.deliveryMethod?.estimate ?? "",
     },
-    estimatedDelivery: raw.estimatedDelivery ?? raw.deliveryMethod?.estimate ?? "",
+    // Only a real, backend-recorded delivery date — never the static
+    // delivery-method caption dressed up as a promise.
+    estimatedDelivery: raw.estimatedDelivery ?? null,
     paymentMethod: {
       id: paymentMethodId,
-      label: raw.paymentMethod?.label ?? "Payment",
+      label: raw.paymentMethod?.label ?? null,
     },
     paymentStatus,
     status,
     statusHistory: (Array.isArray(raw.statusHistory) ? raw.statusHistory : [])
       .filter((entry) => entry && ORDER_STATUSES[entry.status] && entry.at)
       .map((entry) => ({ status: entry.status, at: entry.at })),
+    // Shipment identity exists only when an admin recorded it at dispatch.
     tracking: {
-      trackingId: raw.tracking?.trackingId ?? buildTrackingId(raw.id, createdAt),
-      carrier: raw.tracking?.carrier ?? pickCarrier(raw.id),
-      origin: raw.tracking?.origin ?? FULFILMENT_ORIGIN,
+      trackingNumber: raw.tracking?.trackingNumber ?? raw.trackingNumber ?? null,
+      carrier: raw.tracking?.carrier ?? raw.carrier ?? null,
+      estimatedDelivery: raw.tracking?.estimatedDelivery ?? null,
     },
     returns,
     refund:
@@ -299,9 +315,13 @@ export const normaliseOrder = (raw) => {
             note: raw.refund.note ?? "",
           }
         : null,
+    // Invoice metadata is only ever what the backend issued. No number is
+    // generated client-side and no document/URL exists anywhere.
     invoice: {
-      number: raw.invoice?.number ?? buildInvoiceNumber(raw.id),
-      issuedAt: raw.invoice?.issuedAt ?? createdAt,
+      number: raw.invoice?.number ?? raw.invoiceNumber ?? null,
+      issuedAt: raw.invoice?.issuedAt ?? raw.invoiceIssuedAt ?? null,
+      available: Boolean(raw.invoice?.number ?? raw.invoiceNumber),
+      documentAvailable: false,
     },
     cancellation:
       raw.cancellation && typeof raw.cancellation === "object"
@@ -321,7 +341,7 @@ export const normaliseOrder = (raw) => {
     channel:
       raw.channel === "ASSISTED" || raw.source === "employee_assisted"
         ? "ASSISTED"
-        : raw.channel || "STOREFRONT",
+        : raw.channel ?? null,
     createdBy: raw.createdBy || raw.employeeId || null,
     source: raw.source || null,
     associate: raw.associate || null,
@@ -365,22 +385,50 @@ export const returnedLineIds = (order) => {
   return ids;
 };
 
-export const latestReturn = (order) => {
-  const records = order?.returns ?? [];
-  if (records.length === 0) return null;
-  return [...records].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )[0];
+export const latestReturn = latestReturnRecord;
+
+/**
+ * Cancellation / return eligibility is decided by ONE definition shared
+ * with the canonical read model, so the buttons the UI offers match the
+ * requests the backend will actually accept.
+ */
+export const canCancelOrder = isOrderCancellable;
+
+export const canReturnOrder = isOrderReturnable;
+
+/**
+ * The backend also enforces a return window measured from the recorded
+ * delivery date. Offering "Return items" outside it would earn a 422, so
+ * the UI checks the same window using the real `deliveredAt` timestamp.
+ * When no delivery date was recorded the window cannot be evaluated and
+ * the answer is "unknown" rather than a guess.
+ */
+export const RETURN_WINDOW_DAYS = 7;
+
+export const returnWindow = (order) => {
+  const deliveredAt = order?.tracking?.deliveredAt ?? order?.deliveredAt ?? null;
+  if (!deliveredAt) return { known: false, open: false, closesAt: null, daysLeft: null };
+  const delivered = new Date(deliveredAt);
+  if (Number.isNaN(delivered.getTime())) {
+    return { known: false, open: false, closesAt: null, daysLeft: null };
+  }
+  const closesAt = new Date(delivered.getTime() + RETURN_WINDOW_DAYS * 86400000);
+  const msLeft = closesAt.getTime() - Date.now();
+  return {
+    known: true,
+    open: msLeft > 0,
+    closesAt: closesAt.toISOString(),
+    daysLeft: Math.max(0, Math.ceil(msLeft / 86400000)),
+  };
 };
 
-export const canCancelOrder = (order) =>
-  Boolean(order) && CANCELLABLE_STATUSES.includes(order.status);
-
-export const canReturnOrder = (order) => {
-  if (!order) return false;
-  if (!RETURNABLE_STATUSES.includes(order.status)) return false;
-  const covered = returnedLineIds(order);
-  return order.items.some((item) => !covered.has(item.lineId));
+/** True only when the backend would accept a return request right now. */
+export const canRequestReturnNow = (order) => {
+  if (!canReturnOrder(order)) return false;
+  const window = returnWindow(order);
+  // Unknown window (no recorded delivery date) is treated as closed —
+  // better an honest "unavailable" than a request the backend rejects.
+  return window.known && window.open;
 };
 
 export const returnBlockedReason = (order) => {
@@ -400,6 +448,13 @@ export const returnBlockedReason = (order) => {
   if (!canReturnOrder(order)) {
     return "Every piece in this order is already part of a return request.";
   }
+  const window = returnWindow(order);
+  if (!window.known) {
+    return "We do not have a recorded delivery date for this order yet, so a return cannot be started here. Please contact the atelier.";
+  }
+  if (!window.open) {
+    return `The ${RETURN_WINDOW_DAYS}-day return window for this order has closed.`;
+  }
   return "";
 };
 
@@ -408,10 +463,12 @@ export const canTrackOrder = (order) =>
 
 export const refundMethodLabel = (order) => {
   if (!order) return "Original payment method";
-  if (order.paymentMethod.id === "cod") {
+  if (order.paymentMethod?.id === "cod") {
     return "Bank transfer to your registered details";
   }
-  return `Refund to original ${order.paymentMethod.label}`;
+  return order.paymentMethod?.label
+    ? `Refund to original ${order.paymentMethod.label}`
+    : "Original payment method";
 };
 
 export const refundAmountFor = (items = []) =>
@@ -449,24 +506,23 @@ export const matchesOrderSearch = (order, term) => {
   const q = term.toLowerCase();
   const haystack = [
     order.id,
+    order.orderNumber,
     order.customer?.fullName,
     order.customer?.email,
     order.customer?.phone,
     order.address?.city,
-    order.tracking?.trackingId,
+    order.tracking?.trackingNumber,
     order.shipment?.trackingNumber,
     ...(order.items?.map((i) => i.name) || []),
     ...(order.items?.map((i) => i.productId) || []),
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return haystack.includes(q);
 };
 
 export default {
-  buildTrackingId,
-  pickCarrier,
-  buildInvoiceNumber,
   buildReturnId,
   formatOrderDate,
   formatEventTime,
@@ -478,6 +534,9 @@ export default {
   latestReturn,
   canCancelOrder,
   canReturnOrder,
+  canRequestReturnNow,
+  returnWindow,
+  RETURN_WINDOW_DAYS,
   returnBlockedReason,
   canTrackOrder,
   refundMethodLabel,

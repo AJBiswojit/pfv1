@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Rule, transition } from "../../design-system";
-import { getReturnResolution } from "../../config/orderConfig";
+import { RETURN_RESOLUTION, getReturnPickupMethod, getReturnReason } from "../../config/orderConfig";
 import { getReturnTimeline } from "../../services/orders/returnService";
 import { formatOrderDate } from "../../utils/orders";
 import { formatINR } from "../../utils/shopping";
@@ -11,8 +11,12 @@ import OrderTimeline from "./OrderTimeline";
 /**
  * A return request, with its own timeline and refund state.
  *
- * Refund figures are presented as demo status throughout — no payment
- * gateway is contacted anywhere in this application and no money moves.
+ * PHASE 3: every value shown here is the backend's own return record —
+ * return number, status, per-line quantities, the refund amount the
+ * atelier computed and the refund status it recorded. Nothing is
+ * synthesised, and no refund is claimed before one exists. The old
+ * "exchange will be arranged" copy is gone: the backend has no exchange
+ * capability, so a return always resolves as a refund.
  */
 export default function ReturnSummaryCard({
   record,
@@ -23,7 +27,13 @@ export default function ReturnSummaryCard({
   if (!record) return null;
 
   const timeline = getReturnTimeline(record);
-  const resolution = getReturnResolution(record.resolution);
+  const reason = record.items?.[0]?.reason ?? record.reason ?? null;
+  const reasonLabel = record.reasonLabel ?? getReturnReason(reason)?.label ?? reason ?? "—";
+  const pickup = getReturnPickupMethod(record.pickupMethod);
+  const refundAmount = record.refundAmount ?? 0;
+  const refundStatus = record.refundStatus ?? null;
+  const refundRecorded = refundAmount > 0;
+  const reference = record.returnNumber ?? record.id;
 
   return (
     <section
@@ -39,7 +49,7 @@ export default function ReturnSummaryCard({
             id={`return-${record.id}-heading`}
             className="mt-2 font-display text-xl font-light tracking-tight text-ink"
           >
-            {record.id}
+            {reference}
           </h3>
           <p className="mt-1 font-ui text-[11px] text-taupe">
             Requested {formatOrderDate(record.createdAt)}
@@ -55,14 +65,14 @@ export default function ReturnSummaryCard({
           <dt className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
             Reason
           </dt>
-          <dd className="mt-1.5 font-ui text-sm text-ink">{record.reasonLabel}</dd>
+          <dd className="mt-1.5 font-ui text-sm text-ink">{reasonLabel}</dd>
         </div>
         <div>
           <dt className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-            Preferred Resolution
+            Collection
           </dt>
           <dd className="mt-1.5 font-ui text-sm text-ink">
-            {resolution?.label ?? "Refund"}
+            {pickup?.label ?? record.pickupMethod ?? "—"}
           </dd>
         </div>
         {record.note ? (
@@ -81,15 +91,19 @@ export default function ReturnSummaryCard({
       <ul className="mt-6 border-t border-mist/70">
         {record.items.map((item) => (
           <li
-            key={`${record.id}-${item.lineId}`}
+            key={item.id ?? `${record.id}-${item.orderItemId}`}
             className="flex items-center gap-4 border-b border-mist/70 py-3.5"
           >
-            <img
-              src={item.image}
-              alt=""
-              className="h-14 w-11 shrink-0 bg-surface object-cover"
-              loading="lazy"
-            />
+            {item.image ? (
+              <img
+                src={item.image}
+                alt=""
+                className="h-14 w-11 shrink-0 bg-surface object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span aria-hidden="true" className="h-14 w-11 shrink-0 bg-surface" />
+            )}
             <div className="min-w-0 flex-1">
               <p className="truncate font-display text-sm font-light text-ink">
                 {item.name}
@@ -100,32 +114,33 @@ export default function ReturnSummaryCard({
               </p>
             </div>
             <p className="shrink-0 font-ui text-xs text-ink">
-              {formatINR(item.price * item.quantity)}
+              {formatINR(item.refundAmount ?? 0)}
             </p>
           </li>
         ))}
       </ul>
 
-      {/* Refund */}
-      {record.refund ? (
+      {/* Refund — the atelier's own recorded figure and state. */}
+      {refundRecorded ? (
         <div className="mt-6 border border-accent/25 bg-accent/5 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">
-              Refund · Backend Status
+              {RETURN_RESOLUTION.label}
             </p>
             <p className="font-display text-xl font-light text-ink">
-              {formatINR(record.refund.amount)}
+              {formatINR(refundAmount)}
             </p>
           </div>
-          <p className="mt-2 font-ui text-xs text-graphite">{record.refund.method}</p>
-          <p className="mt-1 font-ui text-[11px] text-taupe">
-            Refund state and amount come from the backend return/refund record.
+          {record.refundMethod ? (
+            <p className="mt-2 font-ui text-xs text-graphite">{record.refundMethod}</p>
+          ) : null}
+          <p className="mt-1 font-ui text-[11px] uppercase tracking-[.14em] text-taupe">
+            {(refundStatus ?? "NOT_REQUESTED").replace(/_/g, " ").toLowerCase()}
           </p>
         </div>
       ) : (
         <p className="mt-6 font-ui text-xs leading-relaxed text-graphite">
-          An exchange will be arranged with you once the pieces are received,
-          subject to availability.
+          {RETURN_RESOLUTION.description}
         </p>
       )}
 

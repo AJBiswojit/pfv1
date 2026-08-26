@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Search, X } from "lucide-react";
 import AccountShell from "../../components/account/AccountShell";
 import OrderCard from "../../components/orders/OrderCard";
+import { orderErrorCopy } from "../../components/orders/OrderErrorState";
 import { useOrder } from "../../context/OrderContext";
 import {
   AtelierButton,
@@ -12,20 +13,37 @@ import {
   transition,
 } from "../../design-system";
 import { ORDER_FILTERS } from "../../config/orderConfig";
+import { matchesOrderSearch } from "../../utils/orders";
 import { cn } from "../../utils/cn";
 
 /**
  * Order history — /account/orders.
  *
- * Every order this customer has placed, set as editorial cards rather than
- * a dashboard table. Filtering and searching are frontend-only over the
- * orders already in state; there is no backend query and no full-text
- * search behind this page.
+ * Every order this customer has placed, set as editorial cards rather
+ * than a dashboard table. The list itself is server-authoritative
+ * (`GET /orders`, scoped to the session's own customer id); the status
+ * filter and the search box narrow the loaded page client-side.
+ *
+ * PHASE 3 states: this page now distinguishes
+ *   loading   — a request is in flight (never shows "no orders yet")
+ *   error     — the request failed; 401 / 403 / 404 / 409 / 422 / 5xx each
+ *               get their own message and recovery action
+ *   empty     — the request SUCCEEDED and the customer genuinely has none
+ *   success   — the cards
  */
 export default function AccountOrders() {
-  const { orders, guestOrderCount, claimGuestOrders } = useOrder();
+  const {
+    orders,
+    guestOrderCount,
+    claimGuestOrders,
+    isLoadingOrders,
+    ordersError,
+    ordersErrorStatus,
+    refreshOrders,
+  } = useOrder();
   const [filterId, setFilterId] = useState("all");
   const [query, setQuery] = useState("");
+  const retry = useCallback(() => { refreshOrders(); }, [refreshOrders]);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -35,14 +53,17 @@ export default function AccountOrders() {
     };
   }, []);
 
-  /** Orders matching the chosen status filter and the order-id search. */
+  /**
+   * Orders matching the chosen status filter and the search box.
+   * Search covers the order number as well as the id, so a customer can
+   * paste the reference from their confirmation email and find it.
+   */
   const visibleOrders = useMemo(() => {
     const filter = ORDER_FILTERS.find((entry) => entry.id === filterId);
-    const term = query.trim().toLowerCase();
+    const term = query.trim();
     return orders.filter((order) => {
       const statusMatch = !filter?.statuses || filter.statuses.includes(order.status);
-      const searchMatch = !term || order.id.toLowerCase().includes(term);
-      return statusMatch && searchMatch;
+      return statusMatch && matchesOrderSearch(order, term);
     });
   }, [orders, filterId, query]);
 
@@ -58,6 +79,66 @@ export default function AccountOrders() {
   }, [orders]);
 
   const breadcrumbs = [{ label: "Account", to: "/account" }, { label: "Orders" }];
+
+  /* ----------------------------- Loading ----------------------------- */
+  /* Must win over the empty state: a slow request is not "no orders".   */
+
+  if (isLoadingOrders && orders.length === 0) {
+    return (
+      <AccountShell breadcrumbItems={breadcrumbs}>
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="border border-mist/80 bg-surface/30 px-6 py-16 text-center"
+        >
+          <span className="sr-only">Loading your orders…</span>
+          <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
+            Loading your orders…
+          </p>
+        </div>
+      </AccountShell>
+    );
+  }
+
+  /* ------------------------------ Error ------------------------------ */
+  /* A failed request is NEVER rendered as an empty successful history.  */
+
+  if (ordersError && orders.length === 0) {
+    const copy = orderErrorCopy(ordersErrorStatus ?? 500, ordersError);
+    return (
+      <AccountShell breadcrumbItems={breadcrumbs}>
+        <div role="alert" aria-live="assertive" className="border border-mist/80 bg-surface/30 px-6">
+          <EmptyState
+            eyebrow={copy.eyebrow}
+            title={copy.title}
+            description={copy.description}
+            actions={
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                {ordersErrorStatus === 401 ? (
+                  <AtelierButton
+                    as={Link}
+                    to="/auth/sign-in?returnTo=/account/orders"
+                    variant="primary"
+                    size="md"
+                  >
+                    Sign In
+                  </AtelierButton>
+                ) : (
+                  <AtelierButton type="button" variant="primary" size="md" onClick={retry}>
+                    Try Again
+                  </AtelierButton>
+                )}
+                <AtelierButton as={Link} to="/shop" variant="outline" size="md">
+                  Continue Shopping
+                </AtelierButton>
+              </div>
+            }
+          />
+        </div>
+      </AccountShell>
+    );
+  }
 
   /* ------------------------- No orders at all ------------------------- */
 
@@ -210,21 +291,57 @@ export default function AccountOrders() {
         </div>
       )}
 
-      <p className="mt-10 font-ui text-[10px] uppercase tracking-[.18em] text-taupe">
-        Demonstration orders only — no real transactions are recorded.
-      </p>
+      {/* A partial failure (some orders shown, refresh failed) is still
+          reported rather than silently swallowed. */}
+      {ordersError ? (
+        <p
+          role="alert"
+          className="mt-8 border border-mist/80 bg-surface/40 px-5 py-4 font-ui text-[11px] leading-relaxed text-graphite"
+        >
+          {ordersError}{" "}
+          <button
+            type="button"
+            onClick={retry}
+            className="uppercase tracking-[.14em] text-accent underline-offset-2 hover:underline"
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
     </AccountShell>
   );
 }
 
 /**
- * Guest orders placed in this browser before signing in. Adding them to
- * the account is deliberate and one-way; nothing merges automatically for
- * an existing session.
+ * Guest orders that can be claimed into this account.
+ *
+ * The claim itself is server-authoritative (Phase 2, unchanged): the
+ * backend matches guest orders on the authenticated account's OWN email
+ * and no client-supplied address is trusted, so one account can never
+ * claim another person's orders.
+ *
+ * The outcome is reported honestly — the notice only disappears on
+ * success, and a failure says so instead of pretending it worked.
  */
 function GuestOrderNotice({ count, onClaim }) {
-  const [claimed, setClaimed] = useState(false);
-  if (claimed) return null;
+  const [state, setState] = useState({ busy: false, done: false, error: "" });
+  if (state.done) return null;
+
+  const claim = async () => {
+    setState({ busy: true, done: false, error: "" });
+    const result = await onClaim?.();
+    if (result?.ok) {
+      setState({ busy: false, done: true, error: "" });
+      return;
+    }
+    setState({
+      busy: false,
+      done: false,
+      error:
+        result?.error ??
+        "We could not add those orders to your account just now. Please try again.",
+    });
+  };
 
   return (
     <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border border-accent/30 bg-accent/5 px-5 py-4">
@@ -232,16 +349,19 @@ function GuestOrderNotice({ count, onClaim }) {
         {count} {count === 1 ? "order was" : "orders were"} placed as a guest in
         this browser. Add {count === 1 ? "it" : "them"} to your account to keep
         everything in one place.
+        {state.error ? (
+          <span role="alert" className="mt-1 block text-graphite">
+            {state.error}
+          </span>
+        ) : null}
       </p>
       <button
         type="button"
-        onClick={() => {
-          onClaim?.();
-          setClaimed(true);
-        }}
-        className="font-ui text-[10px] uppercase tracking-[.16em] text-accent underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+        onClick={claim}
+        disabled={state.busy}
+        className="font-ui text-[10px] uppercase tracking-[.16em] text-accent underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent disabled:opacity-50"
       >
-        Add to My Account
+        {state.busy ? "Adding…" : "Add to My Account"}
       </button>
     </div>
   );

@@ -25,24 +25,15 @@ import {
 import { useAuth } from "./AuthContext";
 import { ORDER_STATUS, RETURN_STATUS, nextJourneyStatus } from "../config/orderConfig";
 import * as orderService from "../services/orders/orderService";
-import { getTracking as buildTracking } from "../services/orders/trackingService";
-import {
-  advanceReturnRecord,
-  approveReturnRecord,
-  completeRefundRecord,
-  createReturnRecord,
-  initiateRefundRecord,
-  inspectReturnRecord,
-  receiveReturnRecord,
-  rejectReturnRecord,
-  schedulePickupRecord,
-} from "../services/orders/returnService";
+import { buildTrackingView } from "../services/orders/trackingService";
+import { advanceReturnRecord } from "../services/orders/returnService";
 import { latestReturn } from "../utils/orders";
 import inventoryRepository from "../services/inventory/inventoryRepository";
 import { getAccessToken } from "../services/api/apiClient";
 import {
   apiListOrders,
   apiGetOrder,
+  apiGetTracking,
   apiPlaceOrder,
   apiClaimGuestOrders,
   apiCancelOrder as apiCancelOrderCall,
@@ -62,6 +53,13 @@ import {
   apiAdminAddNote,
   apiAdminApplyStatus,
   apiAdminForceStatus,
+  apiAdminApproveReturn,
+  apiAdminRejectReturn,
+  apiAdminSchedulePickup,
+  apiAdminReceiveReturn,
+  apiAdminInspectReturn,
+  apiAdminInitiateRefund,
+  apiAdminCompleteRefund,
 } from "../services/api/ordersApi";
 
 export const ORDERS_STORAGE_KEY = orderService.ORDERS_STORAGE_KEY;
@@ -76,7 +74,11 @@ export function OrderProvider({ children }) {
   const [orders,         setOrders]         = useState(() => orderService.loadOrders());
   const [currentOrderId, setCurrentOrderId] = useState(() => orderService.loadCurrentOrderId());
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  // `ordersError` carries the HTTP status alongside the message so the
+  // list screen can render 401 / 403 / 5xx distinctly instead of showing
+  // an empty "no orders yet" state for a failed request.
   const [ordersError, setOrdersError] = useState(null);
+  const [ordersErrorStatus, setOrdersErrorStatus] = useState(null);
 
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
@@ -89,6 +91,7 @@ export function OrderProvider({ children }) {
   useEffect(() => {
     if (!user?.id || !getAccessToken()) {
       setOrdersError(null);
+      setOrdersErrorStatus(null);
       return;
     }
     let cancelled = false;
@@ -99,8 +102,10 @@ export function OrderProvider({ children }) {
       if (result.ok) {
         setOrders(result.orders ?? []);
         setOrdersError(null);
+        setOrdersErrorStatus(null);
       } else {
         setOrdersError(result.error ?? "Could not load your orders.");
+        setOrdersErrorStatus(result.status ?? 500);
       }
     });
     return () => { cancelled = true; };
@@ -140,6 +145,91 @@ export function OrderProvider({ children }) {
     return orderService.findOwnedOrder(ordersRef.current, orderId, customerId);
   }, [user?.id, customerId]);
 
+  /**
+   * Fetch one order with its full result envelope.
+   *
+   * PHASE 3: order screens need to distinguish "still loading", "not
+   * yours / not found", "session expired" and "our side failed". The
+   * legacy `getOrderById` collapses every failure into `null`, which the
+   * pages then render as "order not found" — including for a 500. This
+   * accessor returns the status so the caller can render the right state.
+   *
+   * Ownership is enforced by the backend: `GET /orders/{id}` 403s when
+   * the order belongs to another customer, and the UI shows the same copy
+   * for 403 and 404 so ids cannot be probed.
+   *
+   * @returns {Promise<{ok: boolean, order: object|null, status: number|null, error?: string}>}
+   */
+  const fetchOrder = useCallback(async (orderId) => {
+    if (!orderId) return { ok: false, order: null, status: 404 };
+    const result = await apiGetOrder(orderId);
+    if (result.ok) {
+      setOrders((current) => {
+        const exists = current.some((o) => o.id === result.order.id);
+        return exists
+          ? current.map((o) => (o.id === result.order.id ? result.order : o))
+          : [result.order, ...current];
+      });
+      return { ok: true, order: result.order, status: 200 };
+    }
+    return { ok: false, order: null, status: result.status ?? 500, error: result.error };
+  }, []);
+
+  /**
+   * Reload the signed-in customer's order list from the server.
+   * Returns the envelope so the list screen can tell an empty history
+   * from a failed request.
+   */
+  const refreshOrders = useCallback(async () => {
+    if (!getAccessToken()) {
+      return { ok: false, orders: [], status: 401, error: "Please sign in to see your orders." };
+    }
+    setIsLoadingOrders(true);
+    const result = await apiListOrders({ pageSize: 100 });
+    setIsLoadingOrders(false);
+    if (result.ok) {
+      setOrders(result.orders ?? []);
+      setOrdersError(null);
+      setOrdersErrorStatus(null);
+      return { ok: true, orders: result.orders ?? [], total: result.total, status: 200 };
+    }
+    setOrdersError(result.error ?? "Could not load your orders.");
+    setOrdersErrorStatus(result.status ?? 500);
+    return { ok: false, orders: [], status: result.status ?? 500, error: result.error };
+  }, []);
+
+  /**
+   * Load the ADMIN order list from the backend into `allOrders`.
+   *
+   * PHASE 3: `allOrders` previously only ever contained the signed-in
+   * customer's own orders (or nothing at all in an admin-only session),
+   * so every admin screen reading it — the orders desk, the returns desk,
+   * analytics — silently showed an empty dataset. `apiAdminListOrders`
+   * was imported but never called. Admin screens now call this on mount.
+   *
+   * Authorization is the backend's: the admin token scope decides what is
+   * returned. Nothing about admin visibility is decided in the browser.
+   *
+   * @returns {Promise<{ok, orders, total, status, error?}>}
+   */
+  const refreshAdminOrders = useCallback(async (params = {}) => {
+    if (!getAccessToken("admin")) {
+      return { ok: false, orders: [], status: 401, error: "Please sign in to the admin desk." };
+    }
+    setIsLoadingOrders(true);
+    const result = await apiAdminListOrders({ pageSize: 100, ...params });
+    setIsLoadingOrders(false);
+    if (result.ok) {
+      setOrders(result.orders ?? []);
+      setOrdersError(null);
+      setOrdersErrorStatus(null);
+      return { ok: true, orders: result.orders ?? [], total: result.total, status: 200 };
+    }
+    setOrdersError(result.error ?? "Could not load orders.");
+    setOrdersErrorStatus(result.status ?? 500);
+    return { ok: false, orders: [], status: result.status ?? 500, error: result.error };
+  }, []);
+
   const getOrderByIdAdmin = useCallback(
     (orderId) => orderService.findOrder(ordersRef.current, orderId),
     []
@@ -155,14 +245,69 @@ export function OrderProvider({ children }) {
     [orders, currentOrderId]
   );
 
-  const getTracking = useCallback((orderId) => {
-    const order = orderService.findOwnedOrder(ordersRef.current, orderId, customerId);
-    return order ? buildTracking(order, { customerView: true }) : null;
-  }, [customerId]);
+  /**
+   * Tracking for one of the caller's own orders.
+   *
+   * PHASE 3: this now calls `GET /orders/{id}/tracking` instead of
+   * building a timeline locally. The backend returns persisted
+   * status-history events plus whatever carrier / tracking number an
+   * admin recorded; `buildTrackingView` only projects those onto the
+   * journey for display. Nothing is invented, and failures are returned
+   * with their HTTP status so the page can distinguish 401 / 403 / 404
+   * from an order that simply has no events yet.
+   *
+   * @returns {Promise<{ok: boolean, tracking?: object, error?: string, status?: number}>}
+   */
+  const getTracking = useCallback(async (orderId) => {
+    const result = await apiGetTracking(orderId);
+    if (!result.ok) {
+      return { ok: false, tracking: null, error: result.error, status: result.status };
+    }
+    return {
+      ok: true,
+      tracking: buildTrackingView(result.tracking, { customerView: true }),
+      status: 200,
+    };
+  }, []);
 
-  const getTrackingAdmin = useCallback((orderId) => {
-    const order = orderService.findOrder(ordersRef.current, orderId);
-    return order ? buildTracking(order, { customerView: false }) : null;
+  /**
+   * Admin view of the same real tracking record. The admin order-read
+   * endpoint carries the identical stored fields, so the admin journey is
+   * projected from the order the admin already loaded — still no
+   * fabricated courier scans.
+   */
+  const getTrackingAdmin = useCallback(async (orderId) => {
+    const result = await apiAdminGetOrder(orderId);
+    if (!result.ok) {
+      return { ok: false, tracking: null, error: result.error, status: result.status };
+    }
+    const order = result.order;
+    const tracking = buildTrackingView(
+      {
+        orderId: order.id,
+        orderStatus: order.status,
+        paymentStatus: order.paymentStatus,
+        carrier: order.tracking?.carrier ?? null,
+        trackingNumber: order.tracking?.trackingNumber ?? null,
+        estimatedDelivery: order.tracking?.estimatedDelivery ?? null,
+        dispatchedAt: order.tracking?.dispatchedAt ?? null,
+        deliveredAt: order.tracking?.deliveredAt ?? null,
+        cancelledAt: order.cancellation?.at ?? null,
+        carrierTrackingAvailable: Boolean(
+          order.tracking?.carrier && order.tracking?.trackingNumber
+        ),
+        carrierEventsAvailable: false,
+        events: (order.statusHistory ?? []).map((entry) => ({
+          status: entry.status,
+          at: entry.at,
+          description: entry.note ?? entry.description ?? null,
+          actorName: entry.actorName ?? null,
+          source: "STATUS_HISTORY",
+        })),
+      },
+      { customerView: false }
+    );
+    return { ok: true, tracking, status: 200 };
   }, []);
 
   const getReturn = useCallback((orderId, returnId = null) => {
@@ -236,32 +381,53 @@ export function OrderProvider({ children }) {
     return applyResult(result);
   }, [user?.id, customerId, applyResult]);
 
-  const createReturn = useCallback(async ({ orderId, lineIds, reason, resolution, note }) => {
-    if (user?.id && getAccessToken()) {
-      const result = await apiCreateReturnCall(orderId, {
-        items: lineIds?.map((lineId) => ({ lineId, quantity: 1, reason })) ?? [],
-        pickupMethod: resolution || "HOME_PICKUP",
-      });
-      if (result.ok) {
-        // Refresh the order
-        const orderResult = await apiGetOrder(orderId);
-        if (orderResult.ok) {
-          setOrders((current) => current.map((o) => o.id === orderId ? orderResult.order : o));
-        }
-        return { ok: true, record: result.return_order, errors: {}, message: "Return request created." };
-      }
-      return { ok: false, errors: {}, message: result.error };
+  /**
+   * Create a return against one of the caller's own orders.
+   *
+   * PHASE 3: this is now always a server call. The previous local branch
+   * built a return record in the browser when no session token was
+   * present, which produced a "return" the atelier never received. A
+   * return is a real business record — only the backend may create one,
+   * and it re-checks ownership, DELIVERED status, the return window and
+   * per-line returnable quantities.
+   *
+   * @param {object}  args
+   * @param {string}  args.orderId
+   * @param {Array}   args.items  [{ lineId, quantity, reason }]
+   * @param {string}  args.pickupMethod  SCHEDULED_PICKUP | CUSTOMER_DROP_OFF
+   */
+  const createReturn = useCallback(async ({ orderId, items = [], pickupMethod }) => {
+    const result = await apiCreateReturnCall(orderId, {
+      items: items.map((item) => ({
+        lineId: item.lineId,
+        quantity: item.quantity ?? 1,
+        reason: item.reason,
+      })),
+      pickupMethod: pickupMethod || "SCHEDULED_PICKUP",
+    });
+
+    if (!result.ok) {
+      // The server's own reason is preserved (422 carries the real rule
+      // violation, 403 an ownership failure) — never flattened.
+      return { ok: false, record: null, status: result.status, message: result.error };
     }
 
-    const order = orderService.findOwnedOrder(ordersRef.current, orderId, customerId);
-    if (!order) return { ok: false, errors: {}, message: "Order not found." };
-    const built = createReturnRecord({ order, lineIds, reason, resolution, note });
-    if (!built.ok) return built;
-    const attached = orderService.attachReturn(ordersRef.current, orderId, built.record, built.orderStatus);
-    if (!attached.ok) return { ok: false, errors: {}, message: "Return could not be created." };
-    applyResult(attached);
-    return { ok: true, record: built.record, errors: {}, message: built.message };
-  }, [user?.id, customerId, applyResult]);
+    // Re-read the order so its `returns[]` and per-line returned
+    // quantities reflect the server record rather than a local guess.
+    const orderResult = await apiGetOrder(orderId);
+    if (orderResult.ok) {
+      setOrders((current) =>
+        current.map((o) => (o.id === orderId ? orderResult.order : o))
+      );
+    }
+
+    return {
+      ok: true,
+      record: result.return_order,
+      status: 200,
+      message: "Return request created.",
+    };
+  }, []);
 
   const updateMockReturnStatus = useCallback((orderId, returnId, nextStatus) => {
     const order  = orderService.findOwnedOrder(ordersRef.current, orderId, customerId);
@@ -390,35 +556,62 @@ export function OrderProvider({ children }) {
     return applyResult(orderService.applyStatus(ordersRef.current, orderId, nextStatus, opts.at, opts.actor));
   }, [applyResult]);
 
-  // Return mutations (local-only until return backend endpoints expose individual operations)
-  const applyReturnMutation = useCallback((returnId, mutationFn, options = {}) => {
-    let foundOrder = null, foundRecord = null;
-    for (const order of ordersRef.current) {
-      const record = (order.returns || []).find((e) => e.id === returnId);
-      if (record) { foundOrder = order; foundRecord = record; break; }
+  /**
+   * Admin returns desk.
+   *
+   * PHASE 3: these were local-only mutations that rewrote the return
+   * record in browser state — an "approved" return was never approved
+   * anywhere, and the change vanished on reload. Every one of them now
+   * calls the real `/admin/returns/{id}/…` endpoint that already existed
+   * in the API layer but was never wired up.
+   *
+   * After a successful mutation the admin order list is re-read so the
+   * desk reflects the server's record, not an optimistic guess.
+   */
+  const applyReturnMutation = useCallback(async (apiFn, returnId, options = {}) => {
+    if (!getAccessToken("admin")) {
+      return { ok: false, status: 401, message: "Please sign in to the admin desk." };
     }
-    if (!foundRecord) return { ok: false, message: "Return not found." };
-    const result = mutationFn(foundRecord, options);
-    if (!result.ok) return result;
-    const updated = orderService.updateReturn(ordersRef.current, foundOrder.id, result.record);
-    if (!updated.ok) return { ok: false, message: "Return could not be updated." };
-    applyResult(updated);
-    return { ok: true, record: result.record, message: result.message };
-  }, [applyResult]);
+    const result = await apiFn(returnId, options);
+    if (!result.ok) {
+      return { ok: false, status: result.status, message: result.error };
+    }
+    await refreshAdminOrders();
+    return { ok: true, record: result.return_order, status: 200, message: "" };
+  }, [refreshAdminOrders]);
 
-  const approveReturn       = useCallback((id, opts) => applyReturnMutation(id, approveReturnRecord, opts),       [applyReturnMutation]);
-  const rejectReturn        = useCallback((id, opts) => applyReturnMutation(id, rejectReturnRecord, opts),        [applyReturnMutation]);
-  const scheduleReturnPickup = useCallback((id, opts) => applyReturnMutation(id, schedulePickupRecord, opts),     [applyReturnMutation]);
-  const receiveReturn       = useCallback((id, opts) => applyReturnMutation(id, receiveReturnRecord, opts),       [applyReturnMutation]);
-  const inspectReturn       = useCallback((id, opts) => applyReturnMutation(id, inspectReturnRecord, opts),       [applyReturnMutation]);
-  const initiateReturnRefund = useCallback((id, opts) => applyReturnMutation(id, initiateRefundRecord, opts),    [applyReturnMutation]);
-  const completeReturnRefund = useCallback((id, opts) => applyReturnMutation(id, completeRefundRecord, opts),    [applyReturnMutation]);
+  const approveReturn = useCallback(
+    (id, opts) => applyReturnMutation(apiAdminApproveReturn, id, opts), [applyReturnMutation]);
+  const rejectReturn = useCallback(
+    (id, opts = {}) => applyReturnMutation(apiAdminRejectReturn, id, {
+      reason: opts.reason,
+      customerMessage: opts.customerMessage ?? opts.note,
+    }), [applyReturnMutation]);
+  const scheduleReturnPickup = useCallback(
+    (id, opts = {}) => applyReturnMutation(apiAdminSchedulePickup, id, {
+      scheduledAt: opts.scheduledAt ?? opts.date,
+      pickupAddress: opts.pickupAddress ?? null,
+    }), [applyReturnMutation]);
+  const receiveReturn = useCallback(
+    (id, opts = {}) => applyReturnMutation(apiAdminReceiveReturn, id, {
+      packageCondition: opts.packageCondition ?? opts.condition,
+      notes: opts.notes ?? opts.note,
+    }), [applyReturnMutation]);
+  const inspectReturn = useCallback(
+    (id, opts = {}) => applyReturnMutation(apiAdminInspectReturn, id, {
+      inspectionCondition: opts.inspectionCondition ?? opts.condition,
+      notes: opts.notes ?? opts.note,
+    }), [applyReturnMutation]);
+  const initiateReturnRefund = useCallback(
+    (id, opts) => applyReturnMutation(apiAdminInitiateRefund, id, opts), [applyReturnMutation]);
+  const completeReturnRefund = useCallback(
+    (id, opts) => applyReturnMutation(apiAdminCompleteRefund, id, opts), [applyReturnMutation]);
 
   // ---------------------------------------------------------------------------
 
   const value = useMemo(() => ({
-    orders: customerOrders, allOrders: orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError,
-    getOrders, getAllOrders, getOrderById, getOrderByIdAdmin, getCustomerOrders,
+    orders: customerOrders, allOrders: orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError, ordersErrorStatus,
+    getOrders, getAllOrders, getOrderById, fetchOrder, refreshOrders, refreshAdminOrders, getOrderByIdAdmin, getCustomerOrders,
     getTracking, getTrackingAdmin, getReturn,
     createOrder, placeOrder: createOrder, clearCurrentOrder,
     updateMockOrderStatus, updateMockReturnStatus, cancelOrder, createReturn, claimGuestOrders,
@@ -429,8 +622,8 @@ export function OrderProvider({ children }) {
     approveReturn, rejectReturn, scheduleReturnPickup, receiveReturn, inspectReturn,
     initiateReturnRefund, completeReturnRefund,
   }), [
-    customerOrders, orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError,
-    getOrders, getAllOrders, getOrderById, getOrderByIdAdmin, getCustomerOrders,
+    customerOrders, orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError, ordersErrorStatus,
+    getOrders, getAllOrders, getOrderById, fetchOrder, refreshOrders, refreshAdminOrders, getOrderByIdAdmin, getCustomerOrders,
     getTracking, getTrackingAdmin, getReturn,
     createOrder, clearCurrentOrder, updateMockOrderStatus, updateMockReturnStatus,
     cancelOrder, createReturn, claimGuestOrders, getCustomerOrders,
@@ -445,8 +638,12 @@ export function OrderProvider({ children }) {
 }
 
 const inertOrders = {
-  orders: [], allOrders: [], currentOrder: null, guestOrderCount: 0, isLoadingOrders: false, ordersError: null,
-  getOrders: () => [], getAllOrders: () => [], getOrderById: () => null, getOrderByIdAdmin: () => null,
+  orders: [], allOrders: [], currentOrder: null, guestOrderCount: 0, isLoadingOrders: false, ordersError: null, ordersErrorStatus: null,
+  getOrders: () => [], getAllOrders: () => [], getOrderById: () => null,
+  fetchOrder: async () => ({ ok: false, order: null, status: 401 }),
+  refreshOrders: async () => ({ ok: false, orders: [], status: 401 }),
+  refreshAdminOrders: async () => ({ ok: false, orders: [], status: 401 }),
+  getOrderByIdAdmin: () => null,
   getCustomerOrders: () => [], getTracking: () => null, getTrackingAdmin: () => null, getReturn: () => null,
   createOrder: () => ({ ok: false, order: null, message: "" }), placeOrder: () => ({ ok: false, order: null, message: "" }),
   clearCurrentOrder: () => {}, updateMockOrderStatus: () => ({ ok: false, message: "" }),

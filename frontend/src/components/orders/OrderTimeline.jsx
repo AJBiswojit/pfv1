@@ -52,7 +52,7 @@ export default function OrderTimeline({
 
         return (
           <motion.li
-            key={event.status}
+            key={event.id ?? event.status}
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -106,10 +106,13 @@ export default function OrderTimeline({
                   {event.title}
                   <span className="sr-only"> — {stateLabels[state]}</span>
                 </h4>
-                {event.timestamp && state !== "upcoming" ? (
+                {/* A date is only ever shown when the atelier actually
+                    recorded that transition. Phase 3 removed the
+                    "· Estimated" path — no step is ever dated by
+                    projection. */}
+                {event.timestamp ? (
                   <p className="font-ui text-[10px] text-taupe">
                     {formatEventTime(event.timestamp)}
-                    {event.projected ? " · Estimated" : ""}
                   </p>
                 ) : null}
               </div>
