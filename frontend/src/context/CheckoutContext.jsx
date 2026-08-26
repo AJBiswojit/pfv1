@@ -63,6 +63,7 @@ import {
   apiVerifyPayment,
   apiCancelPaymentSession,
 } from "../services/api/paymentsApi";
+import { apiGetCartTotals } from "../services/api/cartApi";
 import {
   buildOrderId,
   buildOrderSnapshot,
@@ -77,6 +78,8 @@ import {
   validateAddress,
 } from "../utils/checkout";
 import { readStorage, writeStorage } from "../utils/shopping";
+import { getAccessToken } from "../services/api/apiClient";
+import { readShippingRules } from "../config/commerceDefaults";
 
 export const CHECKOUT_STORAGE_KEY = "pratikshya_checkout";
 
@@ -342,15 +345,66 @@ export function CheckoutProvider({ children }) {
   /* Derived state                                                     */
   /* ---------------------------------------------------------------- */
 
-  const totals = useMemo(
-    () =>
-      calculateCheckoutTotals(
-        cart.totals,
-        state.deliveryMethod,
-        state.paymentMethod
-      ),
-    [cart.totals, state.deliveryMethod, state.paymentMethod]
-  );
+  /**
+   * Display totals. For signed-in customers the delivery/COD-dependent
+   * breakdown is fetched from the backend (`GET /cart/totals`) whenever the
+   * chosen methods or the bag change, so the checkout shows the server's own
+   * numbers. Guests (no server cart) and any totals fetch failure fall back
+   * to the presentation calculation — display-only either way: the placed
+   * order's amounts are ALWAYS recomputed by the Phase 2 order boundary.
+   */
+  const [serverMethodTotals, setServerMethodTotals] = useState(null);
+  const totalsKey = JSON.stringify([
+    user?.id ?? null,
+    state.deliveryMethod,
+    state.paymentMethod,
+    cartFingerprint(cart.items, cart.coupon?.code ?? null),
+  ]);
+  const totalsKeyRef = useRef(null);
+  useEffect(() => {
+    if (!user?.id || !getAccessToken("customer")) {
+      setServerMethodTotals(null);
+      totalsKeyRef.current = null;
+      return;
+    }
+    if (totalsKeyRef.current === totalsKey) return;
+    totalsKeyRef.current = totalsKey;
+    // A method/bag change invalidates the previous server quote — show the
+    // presentation estimate until the fresh server numbers arrive.
+    setServerMethodTotals(null);
+    let cancelled = false;
+    apiGetCartTotals({
+      deliveryMethod: state.deliveryMethod,
+      // Before a payment method is chosen, quote the online rate (no COD fee).
+      paymentMethod: state.paymentMethod === "cod" ? "cod" : "online",
+    }).then((result) => {
+      if (cancelled) return;
+      setServerMethodTotals(result.ok ? result.totals : null);
+    });
+    return () => { cancelled = true; };
+  }, [totalsKey, user?.id, state.deliveryMethod, state.paymentMethod]);
+
+  const totals = useMemo(() => {
+    if (user?.id && serverMethodTotals) {
+      return {
+        ...serverMethodTotals,
+        freeShippingRemainder:
+          serverMethodTotals.freeShippingRemainder ??
+          (serverMethodTotals.shipping > 0
+            ? Math.max(
+                0,
+                readShippingRules().freeShippingThreshold -
+                  (serverMethodTotals.total - serverMethodTotals.shipping - serverMethodTotals.codFee)
+              )
+            : 0),
+      };
+    }
+    return calculateCheckoutTotals(
+      cart.totals,
+      state.deliveryMethod,
+      state.paymentMethod
+    );
+  }, [user?.id, serverMethodTotals, cart.totals, state.deliveryMethod, state.paymentMethod]);
 
   const deliveryEstimate = useMemo(
     () => formatDeliveryEstimate(getDeliveryEstimate(state.deliveryMethod)),
@@ -401,8 +455,9 @@ export function CheckoutProvider({ children }) {
 
   /* ---------------------------------------------------------------- */
   /* Payment resolution                                                */
-  /* (legacy mock handler — kept for backward compat during staged     */
-  /* rollout; the real flow goes through startPayment / Razorpay)      */
+  /* startPayment is THE payment path: COD → POST /orders; online →    */
+  /* POST /orders → POST /payments/session → Razorpay → POST           */
+  /* /payments/verify (server-side HMAC). No mock handlers remain.     */
   /* ---------------------------------------------------------------- */
 
   /**

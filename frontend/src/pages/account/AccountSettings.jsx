@@ -3,6 +3,7 @@ import { CheckCircle2, Bell, Mail } from "lucide-react";
 import AccountShell from "../../components/account/AccountShell";
 import { useAccount } from "../../context/AccountContext";
 import { AtelierButton, EditorialHeading } from "../../design-system";
+import { cn } from "../../utils/cn";
 
 export default function AccountSettings() {
   const { preferences, updatePreferences } = useAccount();
@@ -51,11 +52,15 @@ export default function AccountSettings() {
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    const res = updatePreferences(formPrefs);
+    // Awaits the backend mutation — no optimistic update, no fake delay.
+    const res = await updatePreferences(formPrefs);
     setIsSaving(false);
-    setFeedback({ ok: res.ok, message: res.message });
+    setFeedback({
+      ok: res.ok,
+      message: res.ok
+        ? "Your communication preferences have been saved."
+        : (res.error ?? res.message ?? "Your preferences could not be saved. Please try again."),
+    });
   };
 
   return (
@@ -79,9 +84,18 @@ export default function AccountSettings() {
         {feedback && (
           <div
             role="status"
-            className="mt-6 flex items-center gap-3 border border-cocoa/40 bg-cocoa/10 p-4 font-ui text-xs text-cocoa leading-relaxed"
+            className={cn(
+              "mt-6 flex items-center gap-3 border p-4 font-ui text-xs leading-relaxed",
+              feedback.ok
+                ? "border-cocoa/40 bg-cocoa/10 text-cocoa"
+                : "border-accent/40 bg-accent/5 text-accent"
+            )}
           >
-            <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
+            {feedback.ok ? (
+              <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
+            ) : (
+              <Bell size={16} className="shrink-0" aria-hidden="true" />
+            )}
             <p>{feedback.message}</p>
           </div>
         )}

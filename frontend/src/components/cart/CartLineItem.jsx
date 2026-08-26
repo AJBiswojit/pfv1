@@ -9,6 +9,7 @@ import {
 } from "../../design-system";
 import { productHref } from "../../data/products";
 import { useShopping } from "../../context/ShoppingContext";
+import { getMaxQuantity } from "../../utils/shopping";
 import { cn } from "../../utils/cn";
 import QuantityStepper from "./QuantityStepper";
 
@@ -25,6 +26,21 @@ export default function CartLineItem({ item, compact = false, onNavigate }) {
   const { product } = item;
   const discount = discountPercent(product.price, product.originalPrice);
   const saved = wishlist.isSaved(product);
+  /**
+   * Presentation cap on the quantity control. For server lines this is the
+   * stock the backend already resolved into the cart response (never a
+   * client-invented number); for guest lines it is the client-side config
+   * ceiling. The backend remains the authority — it clamps on every write
+   * and re-checks stock at order placement.
+   */
+  const maximum = Number.isFinite(item.maximum)
+    ? item.maximum
+    : Math.max(1, getMaxQuantity(product) || 1);
+  /** Server-computed line total; guest lines get a display-only product sum. */
+  const lineTotal = Number.isFinite(item.lineTotal)
+    ? item.lineTotal
+    : product.price * item.quantity;
+  const busy = cart.isSyncing;
 
   const variantMeta = [
     item.color ? `Colour · ${item.color}` : null,
@@ -75,10 +91,12 @@ export default function CartLineItem({ item, compact = false, onNavigate }) {
 
           <button
             type="button"
+            disabled={busy}
             onClick={() => cart.removeFromCart(item.id)}
             aria-label={`Remove ${product.name} from your bag`}
             className={cn(
               "-mr-1 -mt-1 shrink-0 p-1.5 text-taupe hover:text-accent",
+              "disabled:cursor-not-allowed disabled:opacity-40",
               transition.colors,
               "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
             )}
@@ -107,20 +125,21 @@ export default function CartLineItem({ item, compact = false, onNavigate }) {
           <div className="flex items-center gap-3">
             <QuantityStepper
               value={item.quantity}
-              max={item.maximum}
+              max={maximum}
+              disabled={busy}
               onChange={(quantity) => cart.updateCartQuantity(item.id, quantity)}
               label={`Quantity of ${product.name}`}
               size={compact ? "sm" : "md"}
             />
-            {item.quantity >= item.maximum ? (
+            {item.quantity >= maximum ? (
               <span className="font-ui text-[9px] uppercase tracking-[.14em] text-accent">
-                All {item.maximum} in your bag
+                All {maximum} in your bag
               </span>
             ) : null}
           </div>
 
           {!compact && (
-            <span className="font-ui text-sm text-ink">{formatPrice(item.lineTotal)}</span>
+            <span className="font-ui text-sm text-ink">{formatPrice(lineTotal)}</span>
           )}
         </div>
 
@@ -128,9 +147,11 @@ export default function CartLineItem({ item, compact = false, onNavigate }) {
           <div className="mt-4 flex items-center gap-6">
             <button
               type="button"
+              disabled={busy}
               onClick={() => moveToWishlist(item)}
               className={cn(
                 "inline-flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.16em] text-brass hover:text-accent",
+                "disabled:cursor-not-allowed disabled:opacity-40",
                 transition.colors,
                 "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
               )}
@@ -140,9 +161,11 @@ export default function CartLineItem({ item, compact = false, onNavigate }) {
             </button>
             <button
               type="button"
+              disabled={busy}
               onClick={() => cart.removeFromCart(item.id)}
               className={cn(
                 "font-ui text-[10px] uppercase tracking-[.16em] text-taupe hover:text-accent",
+                "disabled:cursor-not-allowed disabled:opacity-40",
                 transition.colors,
                 "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
               )}

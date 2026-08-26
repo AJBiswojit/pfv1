@@ -23,8 +23,11 @@ export default function CouponField() {
   const inputId = useId();
   const visibleOffers = getCoupons({ customerId: user?.id, customerEmail: user?.email });
 
-  const apply = (value) => {
-    const result = cart.applyCoupon(value);
+  const apply = async (value) => {
+    // The cart context performs the backend mutation (server validates and
+    // persists the coupon for signed-in customers); the result is awaited so
+    // the customer sees the real outcome — never a fabricated acceptance.
+    const result = await cart.applyCoupon(value);
     setFeedback(result);
     if (result.ok) {
       setCode("");
@@ -49,18 +52,20 @@ export default function CouponField() {
                 {cart.coupon.code} applied
               </p>
               <p className="mt-0.5 truncate font-ui text-[10px] text-taupe">
-                {cart.coupon.summary}
+                {cart.coupon.name ?? cart.coupon.summary ?? ""}
               </p>
             </div>
           </div>
           <button
             type="button"
+            disabled={cart.isSyncing}
             onClick={() => {
               cart.removeCoupon();
               setFeedback(null);
             }}
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:text-accent",
+              "disabled:cursor-not-allowed disabled:opacity-40",
               transition.colors,
               "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
             )}

@@ -44,7 +44,13 @@ router = APIRouter(tags=["Users — Customer Profile"])
     summary="Get current customer profile, addresses, preferences & sessions",
     description=(
         "Returns `{ profile, addresses[], preferences, security: { activeSessions[] } }`. "
-        "Authorization: Customer session (Bearer token)."
+        "Authorization: Customer session (Bearer token).\n\n"
+        "**BACKEND_GAP (documented):** the access token carries no session id "
+        "claim, so the caller's session cannot be identified — every "
+        "`activeSessions[]` entry is returned with `isCurrent: false`. The "
+        "frontend renders these as active sessions without a current-device "
+        "badge. Remediation: mint a `sid` claim at issue time and pass it "
+        "through (the service already accepts it)."
     ),
 )
 async def get_me(
@@ -149,8 +155,15 @@ async def update_preferences(
     status_code=status.HTTP_200_OK,
     summary="Sign out all other active sessions",
     description=(
-        "Revokes every active session except the current one. "
-        "Authorization: Customer session."
+        "Revokes active sessions for the customer. "
+        "Authorization: Customer session.\n\n"
+        "**BACKEND_GAP (documented):** the access token carries no session id "
+        "claim, so the calling session cannot be excluded — this currently "
+        "revokes **ALL** active sessions, including the one making the "
+        "request (the caller is signed out everywhere). The frontend states "
+        "this on the security page instead of promising 'other devices only'. "
+        "Remediation: mint a `sid` claim at issue time and pass it through "
+        "(the service already accepts the current-session argument)."
     ),
 )
 async def revoke_other_sessions(

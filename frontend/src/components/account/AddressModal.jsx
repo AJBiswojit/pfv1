@@ -36,6 +36,7 @@ export default function AddressModal({
   onClose,
   onSave,
   initialAddress = null,
+  isSaving = false,
 }) {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -128,7 +129,7 @@ export default function AddressModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || isSaving) return;
     onSave(formData);
   };
 
@@ -415,12 +416,13 @@ export default function AddressModal({
               type="button"
               variant="outline"
               size="md"
+              disabled={isSaving}
               onClick={onClose}
             >
               Cancel
             </AtelierButton>
-            <AtelierButton type="submit" variant="primary" size="md">
-              {isEditing ? "Update Address" : "Save Address"}
+            <AtelierButton type="submit" variant="primary" size="md" disabled={isSaving}>
+              {isSaving ? "Saving…" : isEditing ? "Update Address" : "Save Address"}
             </AtelierButton>
           </div>
         </form>

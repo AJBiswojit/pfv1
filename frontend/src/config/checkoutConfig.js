@@ -55,8 +55,11 @@ export const COD_FEE = COMMERCE_DEFAULTS.codFee;
 /* ------------------------------------------------------------------ */
 
 /**
- * The payment methods offered at checkout. These are UI/demo options only —
- * no real payment service is connected at this phase.
+ * The payment methods offered at checkout. Method CHOICES are presentation;
+ * the money itself is real backend flow: online methods create a payment
+ * session (`POST /payments/session`) resolved via Razorpay and verified
+ * server-side (`POST /payments/verify`), while COD places the order with
+ * payment PENDING until delivery. See CheckoutContext.startPayment.
  */
 export const PAYMENT_METHODS = [
   {

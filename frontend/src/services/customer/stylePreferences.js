@@ -2,6 +2,14 @@
  * PRATIKSHYA FASHON — Optional style preferences (Phase 19).
  *
  * Isolated namespace. Customer-scoped. Never invents taste.
+ *
+ * BACKEND_GAP (Phase 4 classification, audit §9.2/§23): the backend has no
+ * style-preferences contract, so this store is intentionally client-side
+ * (device-local, customer-scoped) — the same classification as the guest
+ * cart. It is NOT silently presented as server data: the preferences page
+ * says the notes are saved to this device. If/when a backend contract is
+ * added, `saveStylePreferences`/`getStylePreferences` are the single seam
+ * to swap for API calls.
  */
 
 import { readStorage, writeStorage } from "../../utils/shopping";

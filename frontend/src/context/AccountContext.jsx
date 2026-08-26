@@ -1,18 +1,28 @@
 /**
- * PRATIKSHYA FASHON — Customer Account Context (Phase B wired)
+ * PRATIKSHYA FASHON — Customer Account Context (backend-authoritative).
  *
- * Calls the real backend when authenticated:
+ * Every account read and write goes to the backend when the customer is
+ * authenticated:
  *   GET    /customers/me           — on mount / user change
  *   PATCH  /customers/me           — updateProfile
  *   PATCH  /customers/me/preferences — updatePreferences
- *   POST   /customers/me/addresses  — addAddress
+ *   GET    /customers/me/addresses — canonical address list after mutations
+ *   POST   /customers/me/addresses — addAddress
  *   PATCH  /customers/me/addresses/{id}  — updateAddress
  *   DELETE /customers/me/addresses/{id}  — deleteAddress
  *   POST   /customers/me/addresses/{id}/default — setDefaultAddress
  *   POST   /customers/me/sessions/revoke-others — signOutOtherSessions
+ *   POST   /auth/change-password   — changePassword (customer scope)
  *
- * Falls back to localStorage when not authenticated or when the API is
- * unreachable, so the demo mode still works.
+ * Phase 4 rules:
+ *   - No optimistic profile/preference updates: state changes only on a
+ *     successful backend response, which becomes the canonical state.
+ *   - No offline/local address fallback: addresses exist only as backend
+ *     records. When unauthenticated, operations fail honestly.
+ *   - Deleting the default address does NOT promote another default locally —
+ *     the backend does not promote one either; the list is simply re-read.
+ *   - The authenticated identity snapshot in AuthContext is refreshed only
+ *     from the backend response, never from arbitrary form input.
  */
 
 import {
@@ -24,12 +34,9 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
-/* Account data is backend-owned; the cache below is a memory-only session mirror. */
-const accountCache = new Map();
-const readStorage = (key, fallback) => (accountCache.has(key) ? accountCache.get(key) : fallback);
-const writeStorage = (key, value) => { accountCache.set(key, value); };
 import {
   apiGetMe,
+  apiGetAddresses,
   apiUpdateProfile,
   apiUpdatePreferences,
   apiAddAddress,
@@ -38,9 +45,8 @@ import {
   apiSetDefaultAddress,
   apiRevokeOtherSessions,
 } from "../services/api/customersApi";
+import { apiChangePasswordCustomer } from "../services/api/authApi";
 import { getAccessToken } from "../services/api/apiClient";
-
-const ACCOUNT_STORAGE_PREFIX = "pratikshya_account_";
 
 const AccountContext = createContext(null);
 
@@ -52,30 +58,11 @@ const DEFAULT_PREFERENCES = {
   stylingInvitations: true,
 };
 
-// ---------------------------------------------------------------------------
-// Offline / localStorage fallback
-// ---------------------------------------------------------------------------
-
-const loadLocalAccountData = (customer) => {
-  if (!customer?.id) {
-    return { profile: null, addresses: [], preferences: DEFAULT_PREFERENCES, security: { activeSessions: [] } };
-  }
-  /* Session mirror only — a cache of backend data, never seed/demo records. */
-  const stored = readStorage(`${ACCOUNT_STORAGE_PREFIX}${customer.id}`, null);
-  if (stored && typeof stored === "object") {
-    return {
-      profile:     stored.profile     || customer,
-      addresses:   Array.isArray(stored.addresses) ? stored.addresses : [],
-      preferences: stored.preferences || DEFAULT_PREFERENCES,
-      security:    stored.security    || { activeSessions: [] },
-    };
-  }
-  return {
-    profile:     customer,
-    addresses:   [],
-    preferences: DEFAULT_PREFERENCES,
-    security: { activeSessions: [] },
-  };
+const EMPTY_ACCOUNT = {
+  profile: null,
+  addresses: [],
+  preferences: DEFAULT_PREFERENCES,
+  security: { activeSessions: [] },
 };
 
 // ---------------------------------------------------------------------------
@@ -84,212 +71,199 @@ const loadLocalAccountData = (customer) => {
 
 export function AccountProvider({ children }) {
   const { user, updateUser } = useAuth();
-  const [accountData, setAccountData] = useState(() => loadLocalAccountData(user));
+  const [accountData, setAccountData] = useState(EMPTY_ACCOUNT);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [loadErrorStatus, setLoadErrorStatus] = useState(null);
 
   // When the authenticated user changes, fetch fresh data from the backend
   useEffect(() => {
     if (!user?.id) {
-      setAccountData(loadLocalAccountData(null));
-      return;
+      setAccountData(EMPTY_ACCOUNT);
+      setLoadError(null);
+      setLoadErrorStatus(null);
+      return undefined;
     }
 
-    // If we have a real JWT, fetch from backend
-    if (getAccessToken("customer")) {
-      let cancelled = false;
-      setIsLoading(true);
-      apiGetMe().then((result) => {
-        if (cancelled) return;
-        setIsLoading(false);
-        if (result.ok) {
-          setAccountData({
-            profile:     result.profile,
-            addresses:   result.addresses,
-            preferences: result.preferences,
-            security:    result.security,
-          });
-          setLoadError(null);
-        } else {
-          // Show the cached mirror (real backend data from this session) plus
-          // the error so the failure is never silent.
-          setLoadError(result.error ?? "Could not load your account.");
-        }
-      });
-      return () => { cancelled = true; };
+    if (!getAccessToken("customer")) {
+      setAccountData(EMPTY_ACCOUNT);
+      setLoadError(null);
+      setLoadErrorStatus(null);
+      return undefined;
     }
-    setAccountData(loadLocalAccountData(user));
-    setLoadError(null);
-    return undefined;
+    let cancelled = false;
+    setIsLoading(true);
+    apiGetMe().then((result) => {
+      if (cancelled) return;
+      setIsLoading(false);
+      if (result.ok) {
+        setAccountData({
+          profile:     result.profile,
+          addresses:   result.addresses,
+          preferences: result.preferences,
+          security:    result.security,
+        });
+        setLoadError(null);
+        setLoadErrorStatus(null);
+      } else {
+        // A failed load is an error — never a fabricated empty account that
+        // looks like "no addresses / default preferences".
+        setLoadError(result.error ?? "Could not load your account.");
+        setLoadErrorStatus(result.status ?? 0);
+      }
+    });
+    return () => { cancelled = true; };
   }, [user?.id]);
 
-  // Keep localStorage in sync so offline / demo mode keeps working
-  useEffect(() => {
-    if (!user?.id) return;
-    writeStorage(`${ACCOUNT_STORAGE_PREFIX}${user.id}`, accountData);
-
-  }, [user?.id, accountData]);
+  /** Re-reads the canonical address list from the backend. */
+  const refreshAddresses = useCallback(async () => {
+    const result = await apiGetAddresses();
+    if (result.ok) {
+      setAccountData((current) => ({ ...current, addresses: result.addresses }));
+      return { ok: true };
+    }
+    return { ok: false, error: result.error, status: result.status };
+  }, []);
 
   // ── Profile ──────────────────────────────────────────────────────────────
 
+  /**
+   * PATCH /customers/me. No optimistic update — the canonical profile (and
+   * the AuthContext identity snapshot) is set only from the server response.
+   */
   const updateProfile = useCallback(async (newProfile) => {
-    // Optimistic update
-    setAccountData((current) => ({ ...current, profile: { ...current.profile, ...newProfile } }));
-    if (updateUser) updateUser(newProfile);
-
-    if (getAccessToken("customer")) {
-      const result = await apiUpdateProfile(newProfile);
-      if (result.ok) {
-        setAccountData((current) => ({ ...current, profile: result.profile }));
-        if (updateUser) updateUser(result.profile);
-      }
-      return result;
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to update your profile." };
     }
-    return { ok: false, message: "You must be signed in to update your profile." };
+    const result = await apiUpdateProfile(newProfile);
+    if (result.ok) {
+      setAccountData((current) => ({ ...current, profile: result.profile }));
+      // Refresh the identity snapshot from the SERVER response only.
+      if (updateUser) updateUser(result.profile);
+    }
+    return result;
   }, [updateUser]);
 
-  // ── Addresses ────────────────────────────────────────────────────────────
+  // ── Addresses (backend records only — no offline fallback) ───────────────
 
   const addAddress = useCallback(async (addressData) => {
-    if (getAccessToken("customer")) {
-      const result = await apiAddAddress(addressData);
-      if (result.ok) {
-        // Refresh full profile to get updated address list with server-assigned ID
-        const me = await apiGetMe();
-        if (me.ok) {
-          setAccountData((current) => ({ ...current, addresses: me.addresses }));
-          return { ok: true, addressId: result.address?.id, message: "Address added." };
-        }
-      }
-      return { ok: false, addressId: null, message: result.error };
+    if (!getAccessToken("customer")) {
+      return { ok: false, addressId: null, message: "You must be signed in to add an address." };
     }
-
-    // Offline fallback
-    const id = `addr-${Date.now().toString(36)}`;
-    setAccountData((current) => {
-      const currentList = current.addresses || [];
-      const makeDefault = addressData.isDefault || currentList.length === 0;
-      const newAddress = { id, ...addressData, isDefault: makeDefault };
-      const updatedList = makeDefault
-        ? currentList.map((a) => ({ ...a, isDefault: false }))
-        : [...currentList];
-      return { ...current, addresses: [...updatedList, newAddress] };
-    });
-    return { ok: false, addressId: null, message: "You must be signed in to add an address." };
-  }, []);
+    const result = await apiAddAddress(addressData);
+    if (!result.ok) return { ok: false, addressId: null, message: result.error, status: result.status };
+    const refreshed = await refreshAddresses();
+    if (!refreshed.ok) {
+      return { ok: false, addressId: result.address?.id, message: "Address saved, but your list could not be refreshed. Reload the page.", status: refreshed.status };
+    }
+    return { ok: true, addressId: result.address?.id, message: "Address added." };
+  }, [refreshAddresses]);
 
   const updateAddress = useCallback(async (addressId, updatedFields) => {
-    if (getAccessToken("customer")) {
-      const result = await apiUpdateAddress(addressId, updatedFields);
-      if (result.ok) {
-        const me = await apiGetMe();
-        if (me.ok) setAccountData((current) => ({ ...current, addresses: me.addresses }));
-        return { ok: true, message: "Address updated." };
-      }
-      return { ok: false, message: result.error };
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to update an address." };
     }
-
-    setAccountData((current) => {
-      const makeDefault = Boolean(updatedFields.isDefault);
-      const nextList = current.addresses.map((addr) => {
-        if (addr.id === addressId) return { ...addr, ...updatedFields, isDefault: makeDefault };
-        if (makeDefault) return { ...addr, isDefault: false };
-        return addr;
-      });
-      return { ...current, addresses: nextList };
-    });
-    return { ok: false, message: "You must be signed in to update an address." };
-  }, []);
+    const result = await apiUpdateAddress(addressId, updatedFields);
+    if (!result.ok) return { ok: false, message: result.error, status: result.status };
+    const refreshed = await refreshAddresses();
+    if (!refreshed.ok) {
+      return { ok: false, message: "Address updated, but your list could not be refreshed. Reload the page.", status: refreshed.status };
+    }
+    return { ok: true, message: "Address updated." };
+  }, [refreshAddresses]);
 
   const deleteAddress = useCallback(async (addressId) => {
-    if (getAccessToken("customer")) {
-      const result = await apiDeleteAddress(addressId);
-      if (result.ok) {
-        setAccountData((current) => {
-          const remaining = current.addresses.filter((a) => a.id !== addressId);
-          const wasDefault = current.addresses.find((a) => a.id === addressId)?.isDefault;
-          if (wasDefault && remaining.length > 0) remaining[0] = { ...remaining[0], isDefault: true };
-          return { ...current, addresses: remaining };
-        });
-        return { ok: true, message: "Address removed." };
-      }
-      return { ok: false, message: result.error };
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to remove an address." };
     }
-
-    setAccountData((current) => {
-      const remaining = current.addresses.filter((a) => a.id !== addressId);
-      const wasDefault = current.addresses.find((a) => a.id === addressId)?.isDefault;
-      if (wasDefault && remaining.length > 0) remaining[0] = { ...remaining[0], isDefault: true };
-      return { ...current, addresses: remaining };
-    });
-    return { ok: false, message: "You must be signed in to remove an address." };
-  }, []);
+    const result = await apiDeleteAddress(addressId);
+    if (!result.ok) return { ok: false, message: result.error, status: result.status };
+    // No local default-promotion: the backend does not promote a new default
+    // on delete, and the re-read list reflects exactly that.
+    const refreshed = await refreshAddresses();
+    if (!refreshed.ok) {
+      return { ok: false, message: "Address removed, but your list could not be refreshed. Reload the page.", status: refreshed.status };
+    }
+    return { ok: true, message: "Address removed." };
+  }, [refreshAddresses]);
 
   const setDefaultAddress = useCallback(async (addressId) => {
-    if (getAccessToken("customer")) {
-      const result = await apiSetDefaultAddress(addressId);
-      if (result.ok) {
-        setAccountData((current) => ({
-          ...current,
-          addresses: current.addresses.map((a) => ({ ...a, isDefault: a.id === addressId })),
-        }));
-        return { ok: true, message: "Default address updated." };
-      }
-      return { ok: false, message: result.error };
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to change your default address." };
     }
-
-    setAccountData((current) => ({
-      ...current,
-      addresses: current.addresses.map((a) => ({ ...a, isDefault: a.id === addressId })),
-    }));
-    return { ok: false, message: "You must be signed in to change your default address." };
-  }, []);
+    const result = await apiSetDefaultAddress(addressId);
+    if (!result.ok) return { ok: false, message: result.error, status: result.status };
+    const refreshed = await refreshAddresses();
+    if (!refreshed.ok) {
+      return { ok: false, message: "Default address updated, but your list could not be refreshed. Reload the page.", status: refreshed.status };
+    }
+    return { ok: true, message: "Default address updated." };
+  }, [refreshAddresses]);
 
   // ── Preferences ──────────────────────────────────────────────────────────
 
   const updatePreferences = useCallback(async (newPreferences) => {
-    setAccountData((current) => ({
-      ...current,
-      preferences: { ...current.preferences, ...newPreferences },
-    }));
-
-    if (getAccessToken("customer")) {
-      const result = await apiUpdatePreferences(newPreferences);
-      if (result.ok) {
-        setAccountData((current) => ({ ...current, preferences: result.preferences }));
-      }
-      return result;
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to save preferences." };
     }
-    return { ok: false, message: "You must be signed in to save preferences." };
+    const result = await apiUpdatePreferences(newPreferences);
+    if (result.ok) {
+      setAccountData((current) => ({ ...current, preferences: result.preferences }));
+    }
+    return result;
   }, []);
 
   // ── Security ─────────────────────────────────────────────────────────────
 
+  /**
+   * POST /customers/me/sessions/revoke-others.
+   *
+   * Backend limitation (documented, Phase 4): the endpoint cannot identify
+   * the calling session, so it revokes EVERY active session — including this
+   * one. The honest result is "you are signed out everywhere"; the next
+   * authenticated request will fail with 401 and the customer signs in again.
+   */
   const signOutOtherSessions = useCallback(async () => {
-    if (getAccessToken("customer")) {
-      const result = await apiRevokeOtherSessions();
-      if (result.ok) {
-        setAccountData((current) => ({
-          ...current,
-          security: { activeSessions: (current.security?.activeSessions || []).filter((s) => s.isCurrent) },
-        }));
-        return { ok: true, message: "Signed out of all other devices." };
-      }
-      return { ok: false, message: result.error };
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to manage your sessions." };
     }
-
+    const result = await apiRevokeOtherSessions();
+    if (!result.ok) return { ok: false, message: result.error, status: result.status };
     setAccountData((current) => ({
       ...current,
-      security: { activeSessions: (current.security?.activeSessions || []).filter((s) => s.isCurrent) },
+      security: { activeSessions: [] },
     }));
-    return { ok: false, message: "You must be signed in to manage your sessions." };
+    return {
+      ok: true,
+      message:
+        "All sessions have been signed out, including this one. Please sign in again.",
+    };
+  }, []);
+
+  /**
+   * POST /auth/change-password (customer scope). Verifies the current
+   * password server-side, then revokes every session and blacklists the
+   * current token — success means the customer must sign in again.
+   */
+  const changePassword = useCallback(async ({ currentPassword, newPassword, confirmPassword }) => {
+    if (!getAccessToken("customer")) {
+      return { ok: false, message: "You must be signed in to change your password." };
+    }
+    const result = await apiChangePasswordCustomer({ currentPassword, newPassword, confirmPassword });
+    if (result.ok) {
+      setAccountData((current) => ({
+        ...current,
+        security: { activeSessions: [] },
+      }));
+    }
+    return result;
   }, []);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
   const defaultAddress = useMemo(() => {
     const list = accountData.addresses || [];
-    return list.find((a) => a.isDefault) || list[0] || null;
+    return list.find((a) => a.isDefault) || null;
   }, [accountData.addresses]);
 
   const value = useMemo(() => ({
@@ -300,6 +274,7 @@ export function AccountProvider({ children }) {
     security:           accountData.security,
     isLoading,
     loadError,
+    loadErrorStatus,
     updateProfile,
     addAddress,
     updateAddress,
@@ -307,7 +282,8 @@ export function AccountProvider({ children }) {
     setDefaultAddress,
     updatePreferences,
     signOutOtherSessions,
-  }), [accountData, defaultAddress, isLoading, loadError, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions]);
+    changePassword,
+  }), [accountData, defaultAddress, isLoading, loadError, loadErrorStatus, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions, changePassword]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -320,6 +296,7 @@ export function useAccount() {
       preferences: DEFAULT_PREFERENCES, security: { activeSessions: [] },
       isLoading: false,
       loadError: null,
+      loadErrorStatus: null,
       updateProfile:        () => ({ ok: false, message: "" }),
       addAddress:           () => ({ ok: false, addressId: null, message: "" }),
       updateAddress:        () => ({ ok: false, message: "" }),
@@ -327,6 +304,7 @@ export function useAccount() {
       setDefaultAddress:    () => ({ ok: false, message: "" }),
       updatePreferences:    () => ({ ok: false, message: "" }),
       signOutOtherSessions: () => ({ ok: false, message: "" }),
+      changePassword:       () => ({ ok: false, message: "" }),
     };
   }
   return context;

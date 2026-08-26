@@ -51,10 +51,14 @@ export default function AdminCustomerDetail() {
   const orders = allOrders.filter(
     (o) => o.customerId === customer.id || o.customer?.email === customer.email
   );
-  const spend = orders.reduce(
-    (s, o) => s + Number(o.total || o.totalAmount || o.pricing?.total || 0),
-    0
-  );
+  // Order aggregates come from the backend detail response (a real grouped
+  // join over the order ledger) — never recomputed or hardcoded client-side.
+  const orderCount = Number.isFinite(Number(customer.orderCount))
+    ? Number(customer.orderCount)
+    : orders.length;
+  const lifetimeSpend = Number.isFinite(Number(customer.lifetimeSpend))
+    ? Number(customer.lifetimeSpend)
+    : 0;
 
   return (
     <AdminPage
@@ -64,10 +68,10 @@ export default function AdminCustomerDetail() {
     >
       <div className="grid gap-5 md:grid-cols-3 mb-6">
         <AdminPanel title="Overview">
-          <p>Status <b>ACTIVE</b></p>
-          <p>Member since {customer.memberSince}</p>
+          <p>Status <b>{customer.status || "ACTIVE"}</b></p>
+          <p>Member since {customer.memberSince || "—"}</p>
           <p>
-            {orders.length} orders · ₹{Math.round(spend).toLocaleString("en-IN")}
+            {orderCount} orders · ₹{Math.round(lifetimeSpend).toLocaleString("en-IN")} lifetime
           </p>
         </AdminPanel>
         <AdminPanel title="Contact">

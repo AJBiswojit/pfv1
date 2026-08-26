@@ -19,43 +19,44 @@
 
 import { apiClient, ApiError } from "./apiClient";
 
+/** Failures keep their HTTP status so account pages can branch on 401/403/409/422. */
+function handleError(err) {
+  if (err instanceof ApiError) return { ok: false, error: err.message, status: err.status };
+  return { ok: false, error: "An unexpected error occurred.", status: 0 };
+}
+
 // ---------------------------------------------------------------------------
 // Normalisation helpers
 // ---------------------------------------------------------------------------
 
-/** Backend returns snake_case; frontend uses camelCase */
+/**
+ * Backend returns snake_case (ProfileResponse uses camel serialization
+ * aliases); the frontend reads both so no backend field is dropped.
+ * Loyalty tier/points and membership year come from the backend response —
+ * never defaulted to "STANDARD"/0/current-year when the server sent a value.
+ */
 function normaliseProfile(data) {
   if (!data) return null;
+  const createdAt = data.created_at ?? data.createdAt ?? null;
   return {
     id:          data.id,
     firstName:   data.first_name  ?? data.firstName  ?? "",
     lastName:    data.last_name   ?? data.lastName   ?? "",
     email:       data.email       ?? "",
     phone:       data.phone       ?? "",
+    status:      data.status      ?? null,
     dateOfBirth: data.date_of_birth ?? data.dateOfBirth ?? "",
     avatar:      data.avatar      ?? null,
-    loyaltyTier:   data.loyalty_tier   ?? "STANDARD",
-    loyaltyPoints: data.loyalty_points ?? 0,
-    memberSince: data.created_at
-      ? new Date(data.created_at).getFullYear().toString()
-      : new Date().getFullYear().toString(),
-    createdAt: data.created_at ?? new Date().toISOString(),
-  };
-}
-
-function normaliseAddress(a) {
-  if (!a) return null;
-  return {
-    id:          a.id,
-    fullName:    a.full_name    ?? a.fullName    ?? "",
-    phone:       a.phone        ?? "",
-    addressLine: a.address_line ?? a.addressLine ?? "",
-    landmark:    a.landmark     ?? "",
-    city:        a.city         ?? "",
-    state:       a.state        ?? "",
-    pincode:     a.pincode      ?? "",
-    type:        a.type         ?? "Home",
-    isDefault:   Boolean(a.is_default ?? a.isDefault),
+    loyaltyTier:   data.loyalty_tier   ?? data.loyaltyTier   ?? "",
+    loyaltyPoints: data.loyalty_points ?? data.loyaltyPoints ?? 0,
+    // Admin views only: real order aggregates joined by the backend
+    // (list + detail). Absent on the customer's own /customers/me payload.
+    orderCount: data.order_count ?? data.orderCount ?? undefined,
+    lifetimeSpend: data.lifetime_spend ?? data.lifetimeSpend ?? undefined,
+    memberSince: createdAt
+      ? new Date(createdAt).getFullYear().toString()
+      : "",
+    createdAt: createdAt ?? "",
   };
 }
 
@@ -76,9 +77,20 @@ function normalisePreferences(p) {
   };
 }
 
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+function normaliseAddress(a) {
+  if (!a) return null;
+  return {
+    id:          a.id,
+    fullName:    a.full_name    ?? a.fullName    ?? "",
+    phone:       a.phone        ?? "",
+    addressLine: a.address_line ?? a.addressLine ?? "",
+    landmark:    a.landmark     ?? "",
+    city:        a.city         ?? "",
+    state:       a.state        ?? "",
+    pincode:     a.pincode      ?? "",
+    type:        a.type         ?? "Home",
+    isDefault:   Boolean(a.is_default ?? a.isDefault),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -151,7 +163,10 @@ export async function apiUpdatePreferences(prefs) {
 export async function apiRevokeOtherSessions() {
   try {
     const data = await apiClient.post("/customers/me/sessions/revoke-others", {}, { scope: "customer" });
-    return { ok: true, revokedCount: data.revokedCount ?? 0 };
+    return {
+      ok: true,
+      revokedCount: data.revoked_count ?? data.revokedCount ?? 0,
+    };
   } catch (err) {
     return handleError(err);
   }
@@ -276,7 +291,7 @@ export async function apiAdminGetCustomer(customerId, { scope = "admin" } = {}) 
     const data = await apiClient.get(`/admin/customers/${customerId}`, { scope });
     return {
       ok:         true,
-      customer:   normaliseProfile(data.customer?.profile ?? data.profile ?? data),
+      customer:   normaliseProfile(data.customer ?? data),
       addresses:  (data.customer?.addresses ?? data.addresses ?? []).map(normaliseAddress),
       orderCount: data.order_count ?? 0,
       lifetimeSpend: data.lifetime_spend ?? 0,

@@ -1,13 +1,46 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Smartphone, Laptop, CheckCircle2, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AccountShell from "../../components/account/AccountShell";
 import { useAccount } from "../../context/AccountContext";
+import { useAuth } from "../../context/AuthContext";
 import { AtelierButton, EditorialHeading } from "../../design-system";
 import { validatePassword, validatePasswordMatch } from "../../utils/validation";
 import { cn } from "../../utils/cn";
 
+/**
+ * Maps a backend SessionSummary (`{ id, ipAddress, userAgent, createdAt,
+ * expiresAt, isCurrent }`) onto the display shape this page renders. Only
+ * recorded values are shown — no fabricated device names, locations or
+ * "active now" stamps.
+ */
+const sessionDisplay = (session) => {
+  const userAgent = session.userAgent ?? session.user_agent ?? "";
+  const rawDevice =
+    /iphone|ios/i.test(userAgent) ? "iPhone / iOS"
+    : /android/i.test(userAgent) ? "Android device"
+    : /ipad/i.test(userAgent) ? "iPad"
+    : /macintosh|mac os/i.test(userAgent) ? "Mac"
+    : /windows/i.test(userAgent) ? "Windows PC"
+    : userAgent ? "Browser session"
+    : "Session";
+  const ip = session.ipAddress ?? session.ip_address ?? null;
+  const created = session.createdAt ?? session.created_at ?? null;
+  return {
+    id: session.id,
+    device: rawDevice,
+    location: ip ?? "Location not recorded",
+    lastActive: created
+      ? `Signed in ${new Date(created).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+      : "Date not recorded",
+    isCurrent: Boolean(session.isCurrent ?? session.is_current),
+  };
+};
+
 export default function AccountSecurity() {
-  const { security, signOutOtherSessions } = useAccount();
+  const { security, signOutOtherSessions, changePassword } = useAccount();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -61,29 +94,46 @@ export default function AccountSecurity() {
     }
 
     setIsUpdating(true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // POST /auth/change-password — the backend verifies the current
+    // password, updates it, revokes every session and blacklists this
+    // token. Backend rejections ("Current password is not correct.") are
+    // surfaced verbatim; there is no simulated success.
+    const result = await changePassword({
+      currentPassword: currentPwd,
+      newPassword: newPwd,
+      confirmPassword: confirmPwd,
+    });
     setIsUpdating(false);
 
-    setFeedback({ ok: true, message: "Your password has been changed successfully." });
+    if (!result.ok) {
+      setFeedback({
+        ok: false,
+        message: result.error ?? result.message ?? "Your password could not be changed.",
+      });
+      return;
+    }
+
+    setFeedback({ ok: true, message: "Your password has been changed. Please sign in again." });
     setCurrentPwd("");
     setNewPwd("");
     setConfirmPwd("");
+    // All sessions (including this one) were revoked server-side — end the
+    // local customer session honestly.
+    window.setTimeout(() => {
+      signOut();
+      navigate("/signin");
+    }, 1600);
   };
 
-  const handleSignOutOther = () => {
-    const res = signOutOtherSessions();
+  const handleSignOutOther = async () => {
+    setIsUpdating(true);
+    const res = await signOutOtherSessions();
+    setIsUpdating(false);
     setSessionFeedback({ ok: res.ok, message: res.message });
   };
 
-  const sessions = security?.activeSessions || [
-    {
-      id: "sess-cur",
-      device: "Current Browser & Device",
-      location: "India",
-      lastActive: "Active now",
-      isCurrent: true,
-    },
-  ];
+  // Only real backend sessions — no fabricated "current device" fallback.
+  const sessions = (security?.activeSessions ?? []).map(sessionDisplay);
 
   return (
     <AccountShell
@@ -237,20 +287,23 @@ export default function AccountSecurity() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h3 className="font-display text-xl font-light text-ink mb-1">
-                Active Devices &amp; Sessions
+                Devices &amp; Sessions
               </h3>
               <p className="font-ui text-xs text-taupe">
-                Devices currently authenticated into your PRATIKSHYA FASHON atelier.
+                Sessions currently recorded on your account. Signing out ends
+                every session — including this one — so you&rsquo;ll sign in again
+                afterwards.
               </p>
             </div>
 
-            {sessions.length > 1 && (
+            {sessions.length > 0 && (
               <button
                 type="button"
+                disabled={isUpdating}
                 onClick={handleSignOutOther}
-                className="font-ui text-[11px] uppercase tracking-[.14em] text-accent hover:underline font-medium self-start sm:self-auto"
+                className="font-ui text-[11px] uppercase tracking-[.14em] text-accent hover:underline font-medium self-start sm:self-auto disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Sign Out Other Devices
+                Sign Out All Devices
               </button>
             )}
           </div>
@@ -258,13 +311,27 @@ export default function AccountSecurity() {
           {sessionFeedback && (
             <div
               role="status"
-              className="mb-6 flex items-center gap-3 border border-cocoa/40 bg-cocoa/10 p-4 font-ui text-xs text-cocoa leading-relaxed"
+              className={cn(
+                "mb-6 flex items-center gap-3 border p-4 font-ui text-xs leading-relaxed",
+                sessionFeedback.ok
+                  ? "border-cocoa/40 bg-cocoa/10 text-cocoa"
+                  : "border-accent/40 bg-accent/5 text-accent"
+              )}
             >
-              <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
+              {sessionFeedback.ok ? (
+                <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertCircle size={16} className="shrink-0" aria-hidden="true" />
+              )}
               <p>{sessionFeedback.message}</p>
             </div>
           )}
 
+          {sessions.length === 0 ? (
+            <p className="font-ui text-xs text-taupe">
+              No active sessions are recorded for your account right now.
+            </p>
+          ) : (
           <div className="divide-y divide-mist/60">
             {sessions.map((sess) => (
               <div
@@ -296,6 +363,7 @@ export default function AccountSecurity() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </div>
     </AccountShell>

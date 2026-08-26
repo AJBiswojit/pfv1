@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ShoppingBag, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ShoppingBag, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AtelierButton, duration, formatPrice, transition } from "../../design-system";
@@ -67,7 +67,7 @@ export default function CartDrawer() {
     };
   }, [onClose]);
 
-  const isEmpty = cart.items.length === 0;
+  const isEmpty = cart.items.length === 0 && !cart.error;
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -116,7 +116,28 @@ export default function CartDrawer() {
         </div>
 
         {/* Lines */}
-        {isEmpty ? (
+        {cart.error && cart.items.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center" role="alert">
+            <AlertCircle size={22} strokeWidth={1.2} className="text-accent" aria-hidden="true" />
+            <p className="mt-6 font-display text-2xl font-light tracking-tight">
+              Your bag could not be loaded.
+            </p>
+            <p className="mt-3 max-w-xs font-ui text-xs leading-relaxed text-taupe">
+              {cart.errorStatus === 401 || cart.errorStatus === 403
+                ? "Please sign in again to see your bag."
+                : "Please try again in a moment."}
+            </p>
+            <AtelierButton
+              variant="outline"
+              size="md"
+              disabled={cart.isLoading}
+              onClick={() => cart.refreshCart()}
+              className="mt-8"
+            >
+              {cart.isLoading ? "Loading…" : "Try Again"}
+            </AtelierButton>
+          </div>
+        ) : isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
             <ShoppingBag size={22} strokeWidth={1.2} className="text-taupe" aria-hidden="true" />
             <p className="mt-6 font-display text-2xl font-light tracking-tight">
@@ -146,6 +167,11 @@ export default function CartDrawer() {
 
             {/* Foot */}
             <div className="shrink-0 border-t border-mist/50 px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5">
+              {cart.error ? (
+                <p role="alert" className="mb-3 font-ui text-[10px] leading-relaxed text-accent">
+                  {cart.error}
+                </p>
+              ) : null}
               <div className="flex items-baseline justify-between gap-4">
                 <span className="font-ui text-[10px] uppercase tracking-[.2em] text-ink">
                   Subtotal

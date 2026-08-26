@@ -29,10 +29,8 @@ from app.models.orders.order_item import OrderItemModel
 router = APIRouter(prefix="/analytics", tags=["Analytics & Reporting"])
 
 # Revenue counting only orders that were not cancelled / refunded wholesale.
-_REVENUE_STATUSES = ("PENDING_PAYMENT", "PAYMENT_CONFIRMED", "ORDER_CONFIRMED", "PROCESSING",
-                     "ALLOCATED", "PICKING", "PACKED", "READY_TO_DISPATCH", "SHIPPED",
-                     "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED", "PARTIALLY_RETURNED",
-                     "RETURN_REQUESTED", "RETURNED")
+# Canonical definition: app.core.constants.REVENUE_ORDER_STATUSES.
+from app.core.constants import REVENUE_ORDER_STATUSES as _REVENUE_STATUSES
 
 
 def _iso_day(dt: datetime) -> str:
