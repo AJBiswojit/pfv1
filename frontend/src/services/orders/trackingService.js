@@ -1,105 +1,125 @@
 /**
- * PRATIKSHYA FASHON — Tracking service (Phase 15)
+ * PRATIKSHYA FASHON — Tracking presentation service (Phase 3)
  *
- * Generates demo shipment timeline from status history.
- * Supports both legacy and new extended journey.
+ * WHAT THIS IS: a pure projection of the backend tracking response
+ * (`GET /orders/{id}/tracking`, already normalised by
+ * `utils/orderReadModel.buildTrackingReadModel`) onto the order journey so
+ * `OrderTimeline` can render reached / current / upcoming steps.
+ *
+ * WHAT THIS IS NOT (removed in Phase 3): the previous implementation
+ * fabricated shipment data — it invented event timestamps from a
+ * hard-coded `LEG_HOURS` table, stamped every leg with a made-up transit
+ * location (`FULFILMENT_ORIGIN` / the customer's city) and fell back to
+ * the delivery-method caption as an "estimated delivery". None of that
+ * came from the backend. It is all gone.
+ *
+ * Guarantees:
+ *   - A step only carries a timestamp if a real, persisted status-history
+ *     event exists for it. Otherwise `at` is null and `projected` is
+ *     false — steps are never shown with an estimated date.
+ *   - No transit locations are produced: the backend stores none.
+ *   - Carrier / tracking number / estimated delivery are passed through
+ *     verbatim, or reported unavailable.
  */
 
 import {
-  FULFILMENT_ORIGIN,
-  ORDER_JOURNEY,
   CUSTOMER_JOURNEY,
+  ORDER_JOURNEY,
   ORDER_STATUS,
   ORDER_STATUSES,
   getOrderStatus,
 } from "../../config/orderConfig";
 
-const LEG_HOURS = {
-  [ORDER_STATUS.PENDING_PAYMENT]: 0,
-  [ORDER_STATUS.PLACED]: 0,
-  [ORDER_STATUS.PAYMENT_CONFIRMED]: 0.5,
-  [ORDER_STATUS.ORDER_CONFIRMED]: 1,
-  [ORDER_STATUS.CONFIRMED]: 1,
-  [ORDER_STATUS.PROCESSING]: 4,
-  [ORDER_STATUS.ALLOCATED]: 6,
-  [ORDER_STATUS.PICKING]: 10,
-  [ORDER_STATUS.PACKED]: 14,
-  [ORDER_STATUS.READY_TO_DISPATCH]: 18,
-  [ORDER_STATUS.SHIPPED]: 24,
-  [ORDER_STATUS.OUT_FOR_DELIVERY]: 48,
-  [ORDER_STATUS.DELIVERED]: 60,
-};
+const RETURN_FLOW_STATUSES = [
+  ORDER_STATUS.RETURN_REQUESTED,
+  ORDER_STATUS.RETURNED,
+  ORDER_STATUS.REFUND_PENDING,
+  ORDER_STATUS.REFUNDED,
+];
 
-const addHours = (iso, hours) =>
-  new Date(new Date(iso).getTime() + hours * 3600 * 1000).toISOString();
-
-const legLocation = (status, order) => {
-  const city = order.address?.city ? `${order.address.city}` : "Your city";
-  switch (status) {
-    case ORDER_STATUS.SHIPPED:
-      return order.tracking?.origin ?? FULFILMENT_ORIGIN;
-    case ORDER_STATUS.OUT_FOR_DELIVERY:
-    case ORDER_STATUS.DELIVERED:
-      return city;
-    default:
-      return order.tracking?.origin ?? FULFILMENT_ORIGIN;
-  }
-};
-
-export const getTracking = (order, { customerView = false } = {}) => {
-  if (!order) return null;
+/**
+ * Project a normalised tracking read model onto the journey steps.
+ *
+ * @param {object} tracking  Result of `buildTrackingReadModel` (backend truth).
+ * @param {object} options.customerView  Use the shorter customer journey.
+ * @returns {object|null} view model for `OrderTimeline`, or null.
+ */
+export const buildTrackingView = (tracking, { customerView = true } = {}) => {
+  if (!tracking) return null;
 
   const journey = customerView ? CUSTOMER_JOURNEY : ORDER_JOURNEY;
+  const status = tracking.orderStatus ?? null;
 
-  const history = new Map(
-    (order.statusHistory ?? []).map((entry) => [entry.status, entry.at])
-  );
-  const currentStage = getOrderStatus(order.status).stage;
-  const isCancelled = order.status === ORDER_STATUS.CANCELLED;
-  const isReturnFlow =
-    order.status === ORDER_STATUS.RETURN_REQUESTED ||
-    order.status === ORDER_STATUS.RETURNED ||
-    order.status === ORDER_STATUS.REFUND_PENDING ||
-    order.status === ORDER_STATUS.REFUNDED;
+  // Real recorded transitions only, keyed by the status they moved to.
+  const recorded = new Map();
+  (tracking.events ?? []).forEach((event) => {
+    if (!recorded.has(event.status)) recorded.set(event.status, event);
+  });
 
+  const isCancelled = status === ORDER_STATUS.CANCELLED;
+  const isReturnFlow = RETURN_FLOW_STATUSES.includes(status);
+  const currentStage = status ? getOrderStatus(status).stage : null;
   const reachedStage = isReturnFlow
     ? ORDER_STATUSES[ORDER_STATUS.DELIVERED].stage
     : currentStage;
 
-  const events = journey.map((status) => {
-    const definition = ORDER_STATUSES[status];
-    if (!definition) return null;
-    const recorded = history.get(status);
-    // Also check legacy mapping
-    const legacyMap = definition.mapsTo ? history.get(definition.mapsTo) : null;
-    const timestamp = recorded || legacyMap || null;
-    const projected = addHours(order.createdAt, LEG_HOURS[status] ?? 0);
-    const done = reachedStage !== null && definition.stage !== null && definition.stage < reachedStage;
-    const current = reachedStage !== null && definition.stage === reachedStage;
+  const steps = journey
+    .map((stepStatus) => {
+      const definition = ORDER_STATUSES[stepStatus];
+      if (!definition) return null;
 
-    return {
-      status,
-      title: definition.label,
-      description: definition.narrative,
-      timestamp: timestamp ?? (done || current ? projected : null),
-      projected: !timestamp,
-      location: legLocation(status, order),
-      state: isCancelled ? "upcoming" : done ? "done" : current ? "current" : "upcoming",
-    };
-  }).filter(Boolean);
+      // A legacy status (e.g. PLACED) may have been recorded instead.
+      const event =
+        recorded.get(stepStatus) ??
+        (definition.mapsTo ? recorded.get(definition.mapsTo) : null) ??
+        null;
+
+      const done =
+        reachedStage !== null && definition.stage !== null && definition.stage < reachedStage;
+      const current = reachedStage !== null && definition.stage === reachedStage;
+
+      return {
+        status: stepStatus,
+        title: definition.label,
+        description: event?.description ?? definition.narrative,
+        // Real persisted timestamp or nothing at all — never estimated.
+        at: event?.at ?? null,
+        timestamp: event?.at ?? null,
+        recorded: Boolean(event),
+        projected: false,
+        actorName: event?.actorName ?? null,
+        state: isCancelled ? "upcoming" : done ? "done" : current ? "current" : "upcoming",
+      };
+    })
+    .filter(Boolean);
 
   return {
-    orderId: order.id,
-    status: getOrderStatus(order.status),
-    trackingId: order.tracking?.trackingId ?? order.shipment?.trackingNumber ?? null,
-    carrier: order.shipment?.carrier || order.tracking?.carrier || null,
-    origin: order.tracking?.origin ?? FULFILMENT_ORIGIN,
-    estimatedDelivery: order.shipment?.estimatedDelivery || order.estimatedDelivery || order.deliveryMethod?.estimate || "",
-    deliveryMethod: order.deliveryMethod,
+    orderId: tracking.orderId,
+    status: status ? getOrderStatus(status) : null,
+    orderStatus: status,
+    paymentStatus: tracking.paymentStatus ?? null,
+
+    // Shipment identity — only what an admin actually recorded.
+    carrier: tracking.carrier ?? null,
+    trackingNumber: tracking.trackingNumber ?? null,
+    estimatedDelivery: tracking.estimatedDelivery ?? null,
+    dispatchedAt: tracking.dispatchedAt ?? null,
+    deliveredAt: tracking.deliveredAt ?? null,
+    cancelledAt: tracking.cancelledAt ?? null,
+
+    // Honest availability flags for the UI's unavailable states.
+    carrierTrackingAvailable: Boolean(tracking.carrierTrackingAvailable),
+    carrierEventsAvailable: Boolean(tracking.carrierEventsAvailable),
+    estimatedDeliveryAvailable: Boolean(tracking.estimatedDelivery),
+    eventsAvailable: (tracking.events ?? []).length > 0,
+
     cancelled: isCancelled,
-    delivered: reachedStage === ORDER_STATUSES[ORDER_STATUS.DELIVERED].stage,
-    events,
+    delivered: status === ORDER_STATUS.DELIVERED,
+
+    // Raw recorded transitions (chronological), plus the journey projection.
+    events: tracking.events ?? [],
+    steps,
   };
 };
 
-export default { getTracking };
+export default { buildTrackingView };

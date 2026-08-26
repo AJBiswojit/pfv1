@@ -258,15 +258,28 @@ async def _attach_customer_info(db: AsyncSession, order: OrderModel) -> OrderMod
 
 # ── Order query helper ────────────────────────────────────────────────────────
 
+def _order_load_options() -> tuple:
+    """
+    Eager-load options shared by every order read.
+
+    Returns are loaded **with their items** because `OrderResponse.returns`
+    serialises the real return records (Phase 3 read model) and an async
+    session cannot lazy-load them during serialisation.
+    """
+    from app.models.orders.return_order import ReturnOrderModel
+
+    return (
+        selectinload(OrderModel.items),
+        selectinload(OrderModel.status_history),
+        selectinload(OrderModel.returns).selectinload(ReturnOrderModel.items),
+    )
+
+
 async def _load_order(db: AsyncSession, order_id: str) -> OrderModel:
     stmt = (
         select(OrderModel)
         .where(OrderModel.id == order_id)
-        .options(
-            selectinload(OrderModel.items),
-            selectinload(OrderModel.status_history),
-            selectinload(OrderModel.returns),
-        )
+        .options(*_order_load_options())
     )
     result = await db.execute(stmt)
     order = result.scalars().first()
@@ -279,16 +292,23 @@ async def _load_order_by_number(db: AsyncSession, order_number: str) -> OrderMod
     stmt = (
         select(OrderModel)
         .where(OrderModel.order_number == order_number)
-        .options(
-            selectinload(OrderModel.items),
-            selectinload(OrderModel.status_history),
-        )
+        .options(*_order_load_options())
     )
     result = await db.execute(stmt)
     order = result.scalars().first()
     if not order:
         raise NotFoundException(f"Order '{order_number}' not found.")
     return order
+
+
+ORDER_LIST_SORTS = {"newest", "oldest"}
+
+
+def _list_sort_clause(sort: Optional[str]):
+    """Allow-listed customer order-list ordering (defaults to newest first)."""
+    if (sort or "").lower() == "oldest":
+        return OrderModel.created_at.asc()
+    return OrderModel.created_at.desc()
 
 
 def _append_status_history(
@@ -678,16 +698,21 @@ class OrderService:
         customer_id: str,
         page: int = 1,
         page_size: int = 20,
+        sort: str = "newest",
     ) -> Dict[str, Any]:
-        """GET /orders — customer's own order list."""
+        """
+        GET /orders — customer's own order list.
+
+        `sort` is an allow-listed ordering (`newest` | `oldest`) applied in
+        SQL, so paging stays consistent across pages. Ownership is enforced
+        by the `customer_id` filter — the caller's authenticated id, never a
+        client-supplied value.
+        """
         base_stmt = (
             select(OrderModel)
             .where(OrderModel.customer_id == customer_id)
-            .options(
-                selectinload(OrderModel.items),
-                selectinload(OrderModel.status_history),
-            )
-            .order_by(OrderModel.created_at.desc())
+            .options(*_order_load_options())
+            .order_by(_list_sort_clause(sort))
         )
 
         count_stmt = select(func.count()).select_from(
@@ -712,7 +737,12 @@ class OrderService:
         for o in orders:
             o.customer = _customer_info_dict(o, users.get(o.customer_id))  # type: ignore[attr-defined]
 
-        return {"orders": orders, "total": total}
+        return {
+            "orders": orders,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
 
     # ── Customer: get single order ────────────────────────────────────────────
 
@@ -726,42 +756,52 @@ class OrderService:
     # ── Customer: tracking ────────────────────────────────────────────────────
 
     async def get_tracking(self, order_id: str, customer_id: str) -> Dict[str, Any]:
-        """GET /orders/{orderId}/tracking — mock carrier data."""
+        """
+        GET /orders/{orderId}/tracking — real, stored order progress only.
+
+        Phase 3: the previous implementation fabricated shipment events
+        (invented locations, `now()` timestamps and courier-style
+        descriptions) from the order's current status. That is removed.
+
+        Every returned event is a persisted `orders_order_status_history`
+        row with its stored `created_at`. Carrier name, tracking number and
+        estimated delivery are whatever an admin recorded on dispatch and
+        are `null` otherwise. No courier integration exists, so
+        `carrier_events_available` is always `false`.
+        """
         order = await _load_order(self.db, order_id)
         if order.customer_id != customer_id:
             raise ForbiddenException("You do not have access to this order.")
 
-        events = []
-        if order.status in ("SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"):
-            events = [
-                {
-                    "timestamp": (order.dispatched_at or _now_utc()).isoformat(),
-                    "location": "Bhubaneswar, Odisha",
-                    "description": "Order dispatched from warehouse",
-                    "status": "SHIPPED",
-                }
-            ]
-        if order.status in ("OUT_FOR_DELIVERY", "DELIVERED"):
-            events.append({
-                "timestamp": _now_utc().isoformat(),
-                "location": order.shipping_address.get("city", "") if order.shipping_address else "",
-                "description": "Out for delivery",
-                "status": "OUT_FOR_DELIVERY",
-            })
-        if order.status == "DELIVERED":
-            events.append({
-                "timestamp": (order.delivered_at or _now_utc()).isoformat(),
-                "location": order.shipping_address.get("city", "") if order.shipping_address else "",
-                "description": "Delivered successfully",
-                "status": "DELIVERED",
-            })
+        history = sorted(
+            order.status_history or [],
+            key=lambda entry: entry.created_at,
+        )
+        events = [
+            {
+                "status": entry.to_status,
+                "from_status": entry.from_status,
+                "timestamp": entry.created_at,
+                "actor_name": entry.actor_name,
+                "note": entry.note,
+                "source": "STATUS_HISTORY",
+            }
+            for entry in history
+        ]
 
         return {
             "order_id": order.id,
+            "order_status": order.status,
+            "payment_status": order.payment_status,
             "carrier": order.carrier,
             "tracking_number": order.tracking_number,
-            "origin": "Bhubaneswar, Odisha",
-            "estimated_delivery": order.estimated_delivery.isoformat() if order.estimated_delivery else None,
+            "estimated_delivery": order.estimated_delivery,
+            "dispatched_at": order.dispatched_at,
+            "delivered_at": order.delivered_at,
+            "cancelled_at": order.cancelled_at,
+            "carrier_tracking_available": bool(order.carrier and order.tracking_number),
+            # No courier/carrier API is integrated anywhere in this system.
+            "carrier_events_available": False,
             "events": events,
         }
 
@@ -994,16 +1034,26 @@ class OrderService:
 
         paginated = (
             base_query
-            .options(
-                selectinload(OrderModel.items),
-                selectinload(OrderModel.status_history),
-            )
+            .options(*_order_load_options())
             .order_by(OrderModel.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
         result = await self.db.execute(paginated)
-        orders = result.scalars().all()
+        orders = list(result.scalars().all())
+
+        # Attach the same assembled customer projection the customer-facing
+        # reads use, so the admin list shows real customer identity instead
+        # of a null object (batched — one query, no N+1).
+        admin_customer_ids = {o.customer_id for o in orders if o.customer_id}
+        admin_users: Dict[str, UserModel] = {}
+        if admin_customer_ids:
+            user_result = await self.db.execute(
+                select(UserModel).where(UserModel.id.in_(admin_customer_ids))
+            )
+            admin_users = {u.id: u for u in user_result.scalars().all()}
+        for o in orders:
+            o.customer = _customer_info_dict(o, admin_users.get(o.customer_id))  # type: ignore[attr-defined]
 
         return {"orders": orders, "total": total, "page": page, "page_size": page_size}
 
@@ -1011,7 +1061,8 @@ class OrderService:
 
     async def admin_get_order(self, order_id: str) -> OrderModel:
         """GET /admin/orders/{id} — full record incl. internal notes."""
-        return await _load_order(self.db, order_id)
+        order = await _load_order(self.db, order_id)
+        return await _attach_customer_info(self.db, order)
 
     # ── Admin: allocate ───────────────────────────────────────────────────────
 
@@ -1226,12 +1277,20 @@ class OrderService:
     # ── Admin: invoice ────────────────────────────────────────────────────────
 
     async def get_invoice(self, order_id: str) -> Dict[str, Any]:
-        """GET /admin/orders/{id}/invoice."""
+        """
+        GET /admin/orders/{id}/invoice — invoice metadata only.
+
+        Reports honestly whether an invoice number has actually been issued.
+        No invoice document is generated anywhere in this system, so
+        `document_available` is always False and no URL is returned.
+        """
         order = await _load_order(self.db, order_id)
         return {
             "order_id": order.id,
             "invoice_number": order.invoice_number,
             "issued_at": order.invoice_issued_at,
+            "available": bool(order.invoice_number),
+            "document_available": False,
         }
 
     # ── Internal: load return ─────────────────────────────────────────────────

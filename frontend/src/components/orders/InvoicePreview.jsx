@@ -10,13 +10,19 @@ import { formatPhone } from "../../utils/validation";
 /**
  * The invoice preview.
  *
- * A frontend-rendered invoice document from the backend order record; it is
- * no invoicing service, no tax engine and no PDF pipeline at this stage.
- * "Download" hands the page to the browser's own print-to-PDF, which needs
- * nothing installed and no new dependency.
+ * Rendered in the browser from the backend order record. There is NO
+ * invoicing service, no tax engine, no PDF pipeline and no stored invoice
+ * document anywhere in this system — "Download / Print" is the browser's
+ * own print-to-PDF of what is on screen, nothing more.
  *
- * Every figure comes from the order snapshot. No tax line is shown,
- * because the existing business rules do not define one — inventing a tax
+ * PHASE 3: the invoice number and issue date are only ever the values the
+ * backend issued (`invoice_number` / `invoice_issued_at`). They used to be
+ * manufactured client-side (`INV-<orderId>`, dated with the order date),
+ * which made every order look invoiced when none were. When no invoice
+ * has been issued the document says so plainly.
+ *
+ * Every figure comes from the server-authoritative order totals. No tax
+ * line is shown: the order schema has no tax column, and inventing a tax
  * calculation would be worse than omitting it.
  */
 function Row({ label, value, strong = false }) {
@@ -85,6 +91,8 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
 
   const payment = getPaymentStatus(order.paymentStatus);
   const address = order.address;
+  const invoiceIssued = Boolean(order.invoice?.number);
+  const orderRef = order.orderNumber ?? order.id;
 
   return createPortal(
     <div
@@ -101,7 +109,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
         {/* ------------------------- Toolbar ------------------------- */}
         <div className="flex items-center justify-between gap-4 border-b border-mist/80 px-6 py-4 print:hidden">
           <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">
-            Invoice Preview
+            {invoiceIssued ? "Invoice" : "Order Summary"}
           </p>
           <div className="flex items-center gap-3">
             <AtelierButton
@@ -140,13 +148,15 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
             </div>
             <div className="text-left sm:text-right">
               <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-                Invoice
+                {invoiceIssued ? "Invoice" : "Order Summary"}
               </p>
               <p className="mt-1 font-display text-lg font-light text-ink">
-                {order.invoice.number}
+                {invoiceIssued ? order.invoice.number : orderRef}
               </p>
               <p className="mt-1 font-ui text-[11px] text-taupe">
-                {formatOrderDate(order.invoice.issuedAt)}
+                {invoiceIssued && order.invoice.issuedAt
+                  ? formatOrderDate(order.invoice.issuedAt)
+                  : "No invoice issued yet"}
               </p>
             </div>
           </div>
@@ -193,7 +203,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
               <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
                 Order ID
               </p>
-              <p className="mt-1 font-ui text-sm text-ink">{order.id}</p>
+              <p className="mt-1 font-ui text-sm text-ink">{orderRef}</p>
             </div>
             <div>
               <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
@@ -216,7 +226,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
           {/* Pieces */}
           <table className="mt-8 w-full border-collapse text-left">
             <caption className="sr-only">
-              Pieces billed on invoice {order.invoice.number}
+              Pieces on order {orderRef}
             </caption>
             <thead>
               <tr className="border-b border-ink/20">
@@ -302,9 +312,9 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
           <Rule width="w-full" tone="accent" className="my-8" />
 
           <p className="font-ui text-[10px] uppercase leading-relaxed tracking-[.16em] text-taupe">
-            Invoice preview — generated from the PRATIKSHYA FASHON order record for
-            client preview. Not a tax invoice and not a record of any real
-            transaction.
+            {invoiceIssued
+              ? "Rendered from the PRATIKSHYA FASHON order record. This is not a tax invoice; no tax is charged or recorded on this order."
+              : "An invoice has not been issued for this order yet. This is a summary of the order record, not a tax invoice."}
           </p>
         </div>
       </div>

@@ -112,22 +112,92 @@ class StatusHistoryEntry(BaseModel):
 # ── Tracking shapes ───────────────────────────────────────────────────────────
 
 class TrackingEvent(BaseModel):
-    timestamp: str
-    location: str
-    description: str
+    """
+    A real, recorded order event.
+
+    Every event returned by the tracking endpoint is a persisted
+    `orders_order_status_history` row — its `timestamp` is the stored
+    `created_at`, never a projected or estimated value. No carrier event
+    feed exists in this system, so no carrier events are ever synthesised.
+    """
     status: str
+    timestamp: datetime
+    from_status: Optional[str] = None
+    actor_name: Optional[str] = None
+    note: Optional[str] = None
+    source: str = "STATUS_HISTORY"
 
 
 class TrackingResponse(BaseModel):
+    """
+    Order tracking, backed exclusively by stored order data.
+
+    `carrier` / `tracking_number` / `estimated_delivery` are the values an
+    admin recorded on dispatch (`POST /admin/orders/{id}/dispatch`); they
+    are `null` until that happens. `carrier_tracking_available` states
+    honestly whether a shipment identity exists, and
+    `carrier_events_available` is always `false` — no courier integration
+    exists in this system.
+    """
     ok: bool = True
     order_id: str
+    order_status: str
+    payment_status: str
     carrier: Optional[str] = None
     tracking_number: Optional[str] = None
-    origin: str = "Bhubaneswar, Odisha"
-    estimated_delivery: Optional[str] = None
+    estimated_delivery: Optional[datetime] = None
+    dispatched_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    carrier_tracking_available: bool = False
+    carrier_events_available: bool = False
     events: List[TrackingEvent] = []
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+# ── Return response shapes (declared before OrderResponse so the customer
+# order read model can embed the order's real return records) ────────────────
+
+class ReturnItemResponse(BaseModel):
+    id: str
+    order_item_id: str
+    product_id: str
+    product_name: str
+    quantity: int
+    reason: Optional[str] = None
+    refund_amount: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReturnResponse(BaseModel):
+    id: str
+    order_id: str
+    return_number: str
+    customer_id: Optional[str] = None
+    status: str
+    pickup_method: str
+    refund_amount: int = 0
+    refund_status: str
+    items: List[ReturnItemResponse] = []
+    timeline: Optional[List[Dict[str, Any]]] = []
+    rejection_reason: Optional[str] = None
+    rejection_reason_customer: Optional[str] = None
+    package_condition: Optional[str] = None
+    inspection_condition: Optional[str] = None
+    inspection_notes: Optional[str] = None
+    refund_method: Optional[str] = None
+    refund_initiated_at: Optional[datetime] = None
+    refund_completed_at: Optional[datetime] = None
+    pickup_scheduled_at: Optional[datetime] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 # ── Full order response ───────────────────────────────────────────────────────
@@ -166,6 +236,10 @@ class OrderResponse(BaseModel):
     cancellation_reason: Optional[str] = None
     invoice_number: Optional[str] = None
     invoice_issued_at: Optional[datetime] = None
+    # Real return records raised against this order (Phase 3: the order
+    # read model must expose the actual return state instead of the UI
+    # inferring one). Empty list = no return has ever been requested.
+    returns: List[ReturnResponse] = []
     created_at: datetime
     updated_at: datetime
 
@@ -181,6 +255,8 @@ class OrderListResponse(BaseModel):
     ok: bool = True
     orders: List[OrderResponse]
     total: int
+    page: int = 1
+    page_size: int = 20
 
 
 # ── Admin order response (includes internal_notes) ────────────────────────────
@@ -329,46 +405,6 @@ class CreateReturnRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class ReturnItemResponse(BaseModel):
-    id: str
-    order_item_id: str
-    product_id: str
-    product_name: str
-    quantity: int
-    reason: Optional[str] = None
-    refund_amount: int = 0
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ReturnResponse(BaseModel):
-    id: str
-    order_id: str
-    return_number: str
-    customer_id: Optional[str] = None
-    status: str
-    pickup_method: str
-    refund_amount: int = 0
-    refund_status: str
-    items: List[ReturnItemResponse] = []
-    timeline: Optional[List[Dict[str, Any]]] = []
-    rejection_reason: Optional[str] = None
-    rejection_reason_customer: Optional[str] = None
-    package_condition: Optional[str] = None
-    inspection_condition: Optional[str] = None
-    inspection_notes: Optional[str] = None
-    refund_method: Optional[str] = None
-    refund_initiated_at: Optional[datetime] = None
-    refund_completed_at: Optional[datetime] = None
-    pickup_scheduled_at: Optional[datetime] = None
-    reviewed_by: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class SingleReturnResponse(BaseModel):
     ok: bool = True
     return_order: ReturnResponse
@@ -447,10 +483,22 @@ class ForceStatusRequest(BaseModel):
 
 
 class InvoiceResponse(BaseModel):
+    """
+    Invoice metadata for an order.
+
+    The existing schema stores only `invoice_number` / `invoice_issued_at`.
+    There is **no invoice document generator, no PDF pipeline and no
+    invoice file storage** in this system, so no download URL is ever
+    returned. `available` is `true` only when a real invoice number has
+    actually been issued for the order; `document_available` is always
+    `false` until an invoicing service exists.
+    """
     ok: bool = True
     order_id: str
     invoice_number: Optional[str] = None
     issued_at: Optional[datetime] = None
+    available: bool = False
+    document_available: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
 

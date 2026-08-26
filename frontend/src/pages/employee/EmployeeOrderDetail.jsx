@@ -23,7 +23,8 @@ export default function EmployeeOrderDetail() {
 
   const order = getOrderByIdAdmin(orderId);
   const [notice, setNotice] = useState("");
-  const [carrier, setCarrier] = useState("Delhivery");
+  // PHASE 3: no carrier is pre-selected — the handler must state the real one.
+  const [carrier, setCarrier] = useState("");
   const [tracking, setTracking] = useState("");
   const [note, setNote] = useState("");
 
@@ -151,10 +152,27 @@ export default function EmployeeOrderDetail() {
               {order.status === ORDER_STATUS.READY_TO_DISPATCH && canDispatch && (
                 <div className="space-y-2">
                   <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                    <option value="">Select a carrier…</option>
                     {CARRIERS.map((c) => <option key={c.id} value={c.label}>{c.label}</option>)}
                   </select>
-                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number" className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
-                  <button onClick={() => handle(dispatchOrder, { carrier, trackingNumber: tracking || `TRK-${Date.now().toString(36).toUpperCase()}`, shippingMethod: carrier, actor: { name: employee?.name }, estimatedDelivery: "15–17 Aug 2026" }, "Dispatched")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Dispatch</button>
+                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Carrier tracking number" className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
+                  {/*
+                    PHASE 3: dispatch used to invent a tracking number
+                    (`TRK-<timestamp>`) when the field was left blank, and
+                    stamped a hard-coded estimated delivery date. Both were
+                    shown to the customer as fact. The real waybill is now
+                    required, and no delivery date is promised.
+                  */}
+                  <button
+                    disabled={!carrier || !tracking.trim()}
+                    onClick={() => handle(dispatchOrder, { carrier, trackingNumber: tracking.trim(), shippingMethod: carrier, actor: { name: employee?.name } }, "Dispatched")}
+                    className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Dispatch
+                  </button>
+                  {!carrier || !tracking.trim() ? (
+                    <p className="font-ui text-[10px] text-taupe">Carrier and the real tracking number are required before dispatch.</p>
+                  ) : null}
                 </div>
               )}
               {order.status === ORDER_STATUS.SHIPPED && canDispatch && (
@@ -179,8 +197,8 @@ export default function EmployeeOrderDetail() {
             <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
               {(order.notes?.internal || []).map((n, i) => (
                 <div key={i} className="border-l-2 border-brass bg-canvas px-2 py-1">
-                  <p className="font-ui text-xs">{n.text}</p>
-                  <p className="font-ui text-[10px] text-taupe">{n.by}</p>
+                  <p className="font-ui text-xs">{n.note ?? n.text}</p>
+                  <p className="font-ui text-[10px] text-taupe">{n.authorName ?? n.by ?? "Staff"}</p>
                 </div>
               ))}
               {!(order.notes?.internal?.length) && <p className="font-ui text-xs text-taupe">No notes.</p>}

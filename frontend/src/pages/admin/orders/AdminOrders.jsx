@@ -6,7 +6,7 @@
  * Reads from the single orderRepository via OrderContext.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Package, Clock, CheckCircle2, Truck, RotateCcw, Boxes, Filter, X, Eye } from "lucide-react";
@@ -59,8 +59,17 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
 }
 
 export default function AdminOrders() {
-  const { allOrders } = useOrder();
+  /**
+   * PHASE 3: the desk now loads the admin order list from the backend on
+   * mount. It previously read `allOrders` from context, which only ever
+   * held the signed-in CUSTOMER's own orders — so in an admin session the
+   * desk rendered fourteen zeroed metric tiles and an empty table that
+   * looked like "no orders exist" rather than "nothing was ever fetched".
+   */
+  const { allOrders, refreshAdminOrders, isLoadingOrders, ordersError, ordersErrorStatus } = useOrder();
   const inventory = useInventory();
+
+  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -74,7 +83,7 @@ export default function AdminOrders() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const metrics = useMemo(() => {
-    const todayCount = allOrders.filter((o) => o.createdAt.slice(0, 10) === todayStr).length;
+    const todayCount = allOrders.filter((o) => (o.createdAt ?? "").slice(0, 10) === todayStr).length;
     const byStatus = (statuses) => allOrders.filter((o) => statuses.includes(o.status)).length;
     return {
       total: allOrders.length,
@@ -96,19 +105,22 @@ export default function AdminOrders() {
 
   const filtered = useMemo(() => {
     return allOrders.filter((order) => {
-      // Search
+      // Search — includes the human-facing order number, which the desk
+      // previously omitted even though it is what staff are quoted.
       if (search) {
         const q = search.toLowerCase();
         const hay = [
           order.id,
+          order.orderNumber,
           order.customer?.fullName,
           order.customer?.email,
           order.customer?.phone,
           ...(order.items?.map((i) => i.name) || []),
+          ...(order.items?.map((i) => i.sku) || []),
           ...(order.items?.map((i) => i.productId) || []),
-          order.shipment?.trackingNumber,
-          order.tracking?.trackingId,
+          order.tracking?.trackingNumber,
         ]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase();
         if (!hay.includes(q)) return false;
@@ -170,6 +182,27 @@ export default function AdminOrders() {
         </button>
       }
     >
+      {/* Loading / error — never rendered as an empty order book. */}
+      {isLoadingOrders && allOrders.length === 0 ? (
+        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
+          Loading orders…
+        </p>
+      ) : null}
+      {ordersError ? (
+        <div role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+          {ordersErrorStatus === 401
+            ? "Your admin session has expired. Sign in again to load orders."
+            : ordersErrorStatus === 403
+              ? "Your role does not include permission to view orders."
+              : ordersError}
+          {ordersErrorStatus !== 401 && ordersErrorStatus !== 403 ? (
+            <button type="button" onClick={() => refreshAdminOrders()} className="ml-2 uppercase tracking-[.14em] underline-offset-2 hover:underline">
+              Try again
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Metrics */}
       <section aria-label="Order metrics" className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {METRIC_DEFS.map((def) => (
@@ -298,7 +331,7 @@ export default function AdminOrders() {
               {filtered.map((order) => (
                 <tr key={order.id} className="border-b border-mist/50 last:border-0 hover:bg-surface/30">
                   <td className="px-4 py-3 font-mono text-xs text-ink">
-                    <Link to={`/admin/orders/${order.id}`} className="text-brass hover:text-accent hover:underline">{order.id}</Link>
+                    <Link to={`/admin/orders/${order.id}`} className="text-brass hover:text-accent hover:underline">{order.orderNumber ?? order.id}</Link>
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-ui text-sm text-ink">{order.customer?.fullName}</p>
@@ -329,7 +362,7 @@ export default function AdminOrders() {
             <Link key={order.id} to={`/admin/orders/${order.id}`} className="border border-mist/70 bg-canvas p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-xs text-ink">{order.id}</p>
+                  <p className="font-mono text-xs text-ink">{order.orderNumber ?? order.id}</p>
                   <p className="mt-1 font-ui text-sm text-ink">{order.customer?.fullName}</p>
                   <p className="font-ui text-[11px] text-taupe">{order.items?.length} items · {formatINR(order.pricing?.total)}</p>
                 </div>

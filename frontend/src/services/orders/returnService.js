@@ -22,7 +22,7 @@ import {
   RETURN_STATUSES,
   canTransitionReturn,
   getReturnReason,
-  getReturnResolution,
+  RETURN_RESOLUTION,
 } from "../../config/orderConfig";
 import {
   buildReturnId,
@@ -62,15 +62,18 @@ export const isReturnEligible = (order) => canReturnOrder(order);
 /* ------------------------------------------------------------------ */
 
 /**
- * Return request rules: at least one selectable item, a reason and a
- * resolution. The note is always optional. An empty request can never be
- * submitted.
+ * Return request rules: at least one selectable item and a reason.
+ *
+ * PHASE 3 — the request used to also require the customer to pick a
+ * "resolution" (Refund or Exchange). The backend has no exchange
+ * capability and no resolution column: a return always produces a refund
+ * amount. Asking the question offered a service that does not exist, so
+ * the requirement is gone and refund is stated as the only outcome.
  */
 export const validateReturnRequest = ({
   order,
   lineIds = [],
   reason = "",
-  resolution = "",
 } = {}) => {
   const covered = returnedLineIds(order ?? {});
   const selectable = lineIds.filter(
@@ -81,9 +84,6 @@ export const validateReturnRequest = ({
   const errors = {
     items: selectable.length > 0 ? "" : "Please select at least one piece to return.",
     reason: getReturnReason(reason) ? "" : "Please choose a reason for the return.",
-    resolution: getReturnResolution(resolution)
-      ? ""
-      : "Please choose how you would like this resolved.",
   };
 
   return {
@@ -106,7 +106,6 @@ export const createReturnRecord = ({
   order,
   lineIds = [],
   reason = "",
-  resolution = "refund",
   note = "",
   at = new Date(),
 }) => {
@@ -122,7 +121,7 @@ export const createReturnRecord = ({
     };
   }
 
-  const validation = validateReturnRequest({ order, lineIds, reason, resolution });
+  const validation = validateReturnRequest({ order, lineIds, reason });
   if (!validation.ok) {
     return {
       ok: false,
@@ -135,7 +134,6 @@ export const createReturnRecord = ({
   const items = order.items.filter((item) => validation.lineIds.includes(item.lineId));
   const stamped = at instanceof Date ? at.toISOString() : String(at);
   const sequence = (order.returns?.length ?? 0) + 1;
-  const wantsRefund = resolution === "refund";
   const amount = refundAmountFor(items);
 
   const record = {
@@ -145,18 +143,16 @@ export const createReturnRecord = ({
     items: items.map((item) => ({ ...item })),
     reason,
     reasonLabel: getReturnReason(reason)?.label ?? "Other",
-    resolution,
+    resolution: RETURN_RESOLUTION.id,
     note: String(note ?? "").trim().slice(0, 500),
     status: RETURN_STATUS.RETURN_REQUESTED,
     createdAt: stamped,
     history: [{ status: RETURN_STATUS.RETURN_REQUESTED, at: stamped }],
-    refund: wantsRefund
-      ? {
-          amount,
-          method: refundMethodLabel(order),
-          status: ORDER_PAYMENT_STATUS.REFUND_INITIATED,
-        }
-      : null,
+    refund: {
+      amount,
+      method: refundMethodLabel(order),
+      status: ORDER_PAYMENT_STATUS.REFUND_INITIATED,
+    },
   };
 
   /* Every piece requested → the order itself enters the return flow. */
@@ -219,9 +215,27 @@ export const advanceReturnRecord = (record, nextStatus, at = new Date()) => {
  * The return timeline, built the same way the shipment timeline is: one
  * generator, driven by the record's status and its own history.
  */
+/**
+ * Project a return record onto the return journey for display.
+ *
+ * PHASE 3: timestamps come only from transitions the backend actually
+ * recorded (the return's stored `timeline`, falling back to a legacy
+ * local `history`). Steps with no recorded transition carry no date —
+ * nothing is estimated.
+ */
 export const getReturnTimeline = (record) => {
   if (!record) return [];
-  const history = new Map(record.history.map((entry) => [entry.status, entry.at]));
+  const recorded = Array.isArray(record.timeline) && record.timeline.length > 0
+    ? record.timeline
+    : (record.history ?? []);
+  const history = new Map(
+    recorded
+      .filter((entry) => entry && (entry.status || entry.to_status) && (entry.at || entry.created_at))
+      .map((entry) => [
+        entry.status ?? entry.to_status,
+        entry.at ?? entry.created_at,
+      ])
+  );
   const currentStage = RETURN_STATUSES[record.status]?.stage ?? null;
   const rejected = record.status === RETURN_STATUS.REJECTED;
 

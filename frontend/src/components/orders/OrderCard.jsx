@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { AtelierButton, transition } from "../../design-system";
-import { ORDER_STATUS } from "../../config/orderConfig";
 import { canTrackOrder, formatOrderDate, orderItemCount } from "../../utils/orders";
 import { formatINR } from "../../utils/shopping";
 import { cn } from "../../utils/cn";
@@ -18,8 +17,14 @@ import OrderStatusBadge from "./OrderStatusBadge";
 export default function OrderCard({ order, index = 0 }) {
   const reduceMotion = useReducedMotion();
   const count = orderItemCount(order);
-  const preview = order.items.slice(0, 3);
-  const remaining = order.items.length - preview.length;
+  const items = order.items ?? [];
+  const preview = items.slice(0, 3);
+  const remaining = items.length - preview.length;
+  const orderRef = order.orderNumber ?? order.id;
+  const delivered = order.flags?.isDelivered ?? false;
+  const deliveryDate = delivered
+    ? order.tracking?.deliveredAt
+    : order.tracking?.estimatedDelivery;
 
   return (
     <motion.article
@@ -41,7 +46,7 @@ export default function OrderCard({ order, index = 0 }) {
               id={`order-${order.id}-heading`}
               className="font-display text-xl font-light tracking-tight text-ink"
             >
-              Order {order.id}
+              Order {orderRef}
             </h3>
             <OrderStatusBadge status={order.status} kind="order" />
           </div>
@@ -55,7 +60,7 @@ export default function OrderCard({ order, index = 0 }) {
               {preview.map((item, imageIndex) => (
                 <img
                   key={item.lineId}
-                  src={item.image}
+                  src={item.image ?? undefined}
                   alt=""
                   className="h-20 w-[3.75rem] border border-canvas bg-surface object-cover"
                   style={{ zIndex: preview.length - imageIndex }}
@@ -71,14 +76,23 @@ export default function OrderCard({ order, index = 0 }) {
               )}
             </div>
             <div className="min-w-0">
+              {/* An order with no readable lines is still shown — it is a
+                  real order — with an honest note instead of being hidden. */}
               <p className="truncate font-display text-base font-light text-ink">
-                {order.items[0].name}
-                {order.items.length > 1 ? (
-                  <span className="text-taupe"> and more</span>
-                ) : null}
+                {items.length === 0 ? (
+                  <span className="text-taupe">Item details unavailable</span>
+                ) : (
+                  <>
+                    {items[0].name}
+                    {items.length > 1 ? (
+                      <span className="text-taupe"> and more</span>
+                    ) : null}
+                  </>
+                )}
               </p>
               <p className="mt-1 font-ui text-[11px] text-taupe">
-                {count} {count === 1 ? "piece" : "pieces"} · {order.paymentMethod.label}
+                {count} {count === 1 ? "piece" : "pieces"}
+                {order.paymentMethod?.label ? ` · ${order.paymentMethod.label}` : ""}
               </p>
               <p className="mt-2 font-display text-lg font-light text-ink">
                 {formatINR(order.pricing.total)}
@@ -89,16 +103,15 @@ export default function OrderCard({ order, index = 0 }) {
 
         {/* -------------------- Delivery + actions -------------------- */}
         <div className="shrink-0 border-t border-mist/70 pt-5 md:w-64 md:border-l md:border-t-0 md:pl-7 md:pt-0">
+          {/* Only a real recorded date. Nothing is estimated here. */}
           <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">
-            {order.status === ORDER_STATUS.DELIVERED
-              ? "Delivered"
-              : "Estimated Delivery"}
+            {delivered ? "Delivered" : "Estimated Delivery"}
           </p>
           <p className="mt-2 font-ui text-sm text-ink">
-            {order.estimatedDelivery || "To be confirmed"}
+            {deliveryDate ? formatOrderDate(deliveryDate) : "Not yet scheduled"}
           </p>
           <p className="mt-1 font-ui text-[11px] text-taupe">
-            {order.deliveryMethod.label}
+            {order.deliveryMethod?.label ?? "Delivery"}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">

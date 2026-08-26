@@ -87,7 +87,7 @@ export default function OrderSuccess() {
       <AtelierSection rhythm="none" width="wide" className="pb-24 pt-28 sm:pt-32 md:pb-32">
         {/* Screen-reader announcement */}
         <p role="status" aria-live="polite" className="sr-only">
-          Order confirmed. Order {order.id} has been placed successfully.
+          Order confirmed. Order {order.orderNumber ?? order.id} has been placed successfully.
         </p>
 
         <Breadcrumb
@@ -128,8 +128,10 @@ export default function OrderSuccess() {
 
           {/* -------------------------- Meta band -------------------------- */}
           <div className="grid gap-6 border border-mist/80 bg-surface/40 p-6 sm:grid-cols-2 md:grid-cols-4 md:p-8">
-            <Meta label="Order ID">
-              <span className="font-display text-lg font-light tracking-tight">{order.id}</span>
+            <Meta label="Order Number">
+              <span className="font-display text-lg font-light tracking-tight">
+                {order.orderNumber ?? order.id}
+              </span>
             </Meta>
             <Meta label="Order Date">{orderDate}</Meta>
             <Meta label="Payment">
@@ -138,10 +140,14 @@ export default function OrderSuccess() {
                 <OrderStatusBadge status={order.paymentStatus} kind="payment" />
               </span>
             </Meta>
-            <Meta label="Estimated Delivery">
-              {order.deliveryMethod.estimate}
+            {/* The atelier has not scheduled a delivery date at the moment
+                an order is placed, so none is claimed here. The service
+                level below is the shipping option chosen at checkout —
+                not a promised date. */}
+            <Meta label="Delivery">
+              {order.deliveryMethod.label}
               <span className="mt-0.5 block font-ui text-[10px] text-taupe">
-                {order.deliveryMethod.label}
+                {order.deliveryMethod.serviceLevel || order.deliveryMethod.estimate || ""}
               </span>
             </Meta>
           </div>

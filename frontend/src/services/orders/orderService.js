@@ -18,12 +18,9 @@ import {
   ORDER_ACTIVITY_TYPES,
 } from "../../config/orderConfig";
 import {
-  buildInvoiceNumber,
-  buildTrackingId,
   isOrderOwnedBy,
   normaliseOrder,
   normaliseOrders,
-  pickCarrier,
   refundMethodLabel,
 } from "../../utils/orders";
 /* Orders are backend-owned. The helpers below are a SESSION MIRROR:
@@ -180,70 +177,59 @@ export const saveCurrentOrderId = (orderId) => {
 /* Creation                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Build a local order record for the employee-assisted floor flow.
+ *
+ * PHASE 3 — fabrication removed. This previously manufactured a tracking
+ * id, a courier, an invoice number and a three-event "payment confirmed"
+ * timeline, and forced `paymentStatus` to PAID for every non-COD order.
+ * None of that reflected reality, and the forced PAID contradicted the
+ * Phase 2 rule that only the server may declare an order paid.
+ *
+ * The record now carries only what actually happened: the snapshot's own
+ * values, a single ORDER_CREATED timeline entry, and null tracking /
+ * invoice / shipment data.
+ */
 export const buildOrderRecord = (snapshot) => {
   const base = normaliseOrder(snapshot);
   if (!base) return null;
 
-  const isCod = base.paymentMethod.id === "cod";
-  const now = new Date();
-  const nowIso = now.toISOString();
+  const nowIso = new Date().toISOString();
 
-  // Determine initial fulfillment location deterministically: prefer Main Store if available
-  // For real checkout, allocation happens later; create pending fulfillment
   const fulfillment = buildFulfillmentRecord({
     orderId: base.id,
     status: FULFILLMENT_STATUS.PENDING,
     createdAt: nowIso,
   });
 
-  const timeline = [
-    buildTimelineEvent({
-      type: ORDER_ACTIVITY_TYPES.ORDER_CREATED,
-      status: ORDER_STATUS.PENDING_PAYMENT,
-      at: nowIso,
-      actorName: "Customer",
-      note: "Order placed via checkout",
-    }),
-    buildTimelineEvent({
-      type: ORDER_ACTIVITY_TYPES.PAYMENT_CONFIRMED,
-      status: ORDER_STATUS.PAYMENT_CONFIRMED,
-      at: nowIso,
-      actorName: "Payment Gateway (Demo)",
-      note: "Payment confirmed",
-    }),
-    buildTimelineEvent({
-      type: ORDER_ACTIVITY_TYPES.ORDER_CONFIRMED,
-      status: ORDER_STATUS.ORDER_CONFIRMED,
-      at: nowIso,
-      actorName: "System",
-    }),
-  ];
+  const status = base.status ?? snapshot.status ?? ORDER_STATUS.PENDING_PAYMENT;
 
   return {
     ...base,
-    status: ORDER_STATUS.ORDER_CONFIRMED,
-    paymentStatus: isCod ? ORDER_PAYMENT_STATUS.PENDING : ORDER_PAYMENT_STATUS.PAID,
-    statusHistory: [
-      { status: ORDER_STATUS.PENDING_PAYMENT, at: nowIso },
-      { status: ORDER_STATUS.PAYMENT_CONFIRMED, at: nowIso },
-      { status: ORDER_STATUS.ORDER_CONFIRMED, at: nowIso },
-    ],
-    tracking: {
-      trackingId: buildTrackingId(base.id, base.createdAt),
-      carrier: pickCarrier(base.id),
-      origin: base.tracking.origin,
-    },
-    invoice: {
-      number: buildInvoiceNumber(base.id),
-      issuedAt: base.createdAt,
-    },
+    status,
+    // Never inferred from the payment method — carried through as given,
+    // defaulting to PENDING (nothing has been captured yet).
+    paymentStatus: base.paymentStatus ?? ORDER_PAYMENT_STATUS.PENDING,
+    statusHistory: [{ status, at: nowIso }],
+    // No waybill and no invoice exist until a real one is recorded.
+    tracking: { trackingNumber: null, carrier: null, estimatedDelivery: null },
+    invoice: { number: null, issuedAt: null, available: false, documentAvailable: false },
     returns: [],
     refund: null,
     cancellation: null,
     fulfillment,
     shipment: null,
-    timeline,
+    timeline: [
+      buildTimelineEvent({
+        type: ORDER_ACTIVITY_TYPES.ORDER_CREATED,
+        status,
+        at: nowIso,
+        actorName: "Store associate",
+        note: "Assisted order created on the floor",
+      }),
+    ],
     notes: { customer: snapshot.customerNote || "", internal: [] },
+    createdAt: base.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
 };

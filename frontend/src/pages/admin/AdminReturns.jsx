@@ -6,7 +6,7 @@
  * no second return data source.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -73,7 +73,15 @@ const statusToneClass = (status) => {
 };
 
 export default function AdminReturns() {
-  const { allOrders = [] } = useOrder();
+  /**
+   * PHASE 3: the desk now loads the admin order list (which carries each
+   * order's real `returns[]`) from the backend on mount. It previously
+   * projected returns out of `allOrders`, which in an admin session was
+   * always empty — so the desk showed "no returns" whether or not any
+   * existed.
+   */
+  const { allOrders = [], refreshAdminOrders, isLoadingOrders, ordersError } = useOrder();
+  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
   const [query, setQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
@@ -95,7 +103,9 @@ export default function AdminReturns() {
         if (!term) return true;
         const haystack = [
           record.id,
+          record.returnNumber,
           record.order.id,
+          record.order.orderNumber,
           record.order.customer?.fullName || "",
           (record.items || []).map((item) => item.name).join(" "),
           record.reasonLabel || record.reason || "",
@@ -122,8 +132,20 @@ export default function AdminReturns() {
     <AdminPage
       title="Returns"
       eyebrow="Post-purchase operations"
-      description="From request to inspection and demo refund, with one connected order record."
+      description="From request through inspection to refund, on one connected order record."
     >
+      {/* Loading / error — never presented as "no returns exist". */}
+      {isLoadingOrders && allReturns.length === 0 ? (
+        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
+          Loading returns…
+        </p>
+      ) : null}
+      {ordersError ? (
+        <p role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+          {ordersError}
+        </p>
+      ) : null}
+
       {/* Metrics */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         {metricCards.map((card) => {

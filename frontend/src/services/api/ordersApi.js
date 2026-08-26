@@ -5,141 +5,53 @@
  * Customer, Admin (fulfillment pipeline), Returns desk
  */
 import { apiClient, ApiError } from "./apiClient";
-import { getDeliveryMethod, PAYMENT_METHODS } from "../../config/checkoutConfig";
+import {
+  buildInvoiceReadModel,
+  buildOrderReadModel,
+  buildTrackingReadModel,
+  normaliseReturnRecord,
+} from "../../utils/orderReadModel";
 
+/**
+ * Failures are surfaced with the HTTP status attached so screens can react
+ * distinctly to 401 / 403 / 404 / 409 / 422 / 500 instead of collapsing
+ * every failure into an empty "no data" success state.
+ *
+ * `status: 0` means the request never reached the server (network/offline).
+ */
 function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+  if (err instanceof ApiError) {
+    return { ok: false, error: err.message, status: err.status, data: err.data ?? null };
+  }
+  return { ok: false, error: "An unexpected error occurred.", status: null, data: null };
 }
 
 /**
- * Normalise a backend order (snake_case OrderResponse) into the camelCase
- * read model the UI consumes. Done here in the API layer — UI components
- * never scatter field mapping.
+ * Normalise a backend order (snake_case OrderResponse) into the canonical
+ * camelCase read model the UI consumes. The mapping itself lives in
+ * `utils/orderReadModel.js` so customer pages, admin pages and tests all
+ * share one definition of an order.
  *
- * Synthesised sub-objects (Phase 2 — required by the order confirmation
- * and account order views):
- *   - customer: { firstName, lastName, fullName, email, phone }
- *       from the server-assembled `customer` field (guest fallback:
- *       shipping address + guest email)
- *   - address:  from `shipping_address`
- *   - pricing:  from the authoritative top-level totals
- *   - items:    camelCase line items (lineId, name, image, lineTotal, …)
- *   - paymentMethod / deliveryMethod: { id, label } objects
- *
- * All raw backend fields are preserved via spread so admin pages keep
- * working unchanged.
+ * Phase 3 honesty rules enforced by that module:
+ *   - No field is invented. `tracking`, `invoice`, `cancellation`,
+ *     `returns` and `statusHistory` reflect exactly what the backend
+ *     stored; where nothing was stored the value is `null` / `[]` and the
+ *     matching `*available` flag is `false`, so the UI can show an honest
+ *     "not available" state instead of a blank that looks like data.
+ *   - `status` (order lifecycle) and `paymentStatus` (payment lifecycle)
+ *     stay separate and are never derived from each other or from the
+ *     payment method.
+ *   - Raw backend fields are preserved via spread so existing admin pages
+ *     keep working unchanged.
  */
-function normOrder(o) {
-  if (!o) return o;
+const normOrder = buildOrderReadModel;
 
-  const address = o.shipping_address ?? o.shippingAddress ?? {};
-
-  const customer = o.customer
-    ? {
-        firstName: o.customer.firstName ?? "",
-        lastName: o.customer.lastName ?? "",
-        fullName: o.customer.fullName ?? [o.customer.firstName, o.customer.lastName].filter(Boolean).join(" ").trim(),
-        email: o.customer.email ?? o.guest_email ?? "",
-        phone: o.customer.phone ?? address.phone ?? null,
-      }
-    : {
-        firstName: (address.fullName || "").split(" ")[0] ?? "",
-        lastName: (address.fullName || "").split(" ").slice(1).join(" ") ?? "",
-        fullName: address.fullName ?? "",
-        email: o.guest_email ?? "",
-        phone: o.guest_phone ?? address.phone ?? null,
-      };
-
-  // Tolerate both backend strings and legacy local snapshots (objects).
-  const paymentId =
-    typeof o.payment_method === "string"
-      ? o.payment_method
-      : typeof o.paymentMethod === "string"
-        ? o.paymentMethod
-        : o.paymentMethod?.id ?? null;
-  const paymentLabel =
-    o.paymentMethod?.label ??
-    PAYMENT_METHODS.find((method) => method.id === paymentId)?.label ??
-    paymentId ?? "";
-
-  const deliveryId =
-    typeof o.delivery_method === "string"
-      ? o.delivery_method
-      : typeof o.deliveryMethod === "string"
-        ? o.deliveryMethod
-        : o.deliveryMethod?.id ?? "standard";
-  const delivery = getDeliveryMethod(deliveryId);
-
-  return {
-    ...o,
-    id: o.id,
-    orderNumber: o.order_number ?? o.orderNumber ?? null,
-    status: o.status,
-    paymentStatus: o.payment_status ?? o.paymentStatus ?? "PENDING",
-    channel: o.channel ?? "ONLINE",
-    source: o.source ?? "storefront",
-    customerId: o.customer_id ?? o.customerId ?? null,
-    customer,
-    address,
-    items: (o.items ?? []).map((line) => ({
-      ...line,
-      lineId: line.id ?? line.lineId ?? null,
-      productId: line.product_id ?? line.productId ?? null,
-      name: line.product_name ?? line.name ?? "",
-      image: line.product_image ?? line.image ?? null,
-      sku: line.sku ?? null,
-      color: line.color ?? null,
-      size: line.size ?? null,
-      quantity: line.quantity ?? 1,
-      unitPrice: line.unit_price ?? line.unitPrice ?? 0,
-      originalPrice: line.original_price ?? line.originalPrice ?? 0,
-      lineTotal: line.line_total ?? line.lineTotal ?? 0,
-      returnedQuantity: line.returned_quantity ?? line.returnedQuantity ?? 0,
-    })),
-    pricing: o.pricing ?? {
-      subtotal: o.subtotal ?? 0,
-      productDiscount: o.product_discount ?? o.productDiscount ?? 0,
-      couponDiscount: o.coupon_discount ?? o.couponDiscount ?? 0,
-      couponCode: o.coupon_code ?? o.couponCode ?? null,
-      shipping: o.shipping_fee ?? o.shippingFee ?? 0,
-      codFee: o.cod_fee ?? o.codFee ?? 0,
-      total: o.total ?? 0,
-    },
-    paymentMethod: { id: paymentId, label: paymentLabel },
-    paymentMethodId: paymentId,
-    deliveryMethod: {
-      id: delivery.id,
-      label: delivery.label,
-      estimate: delivery.caption ?? "",
-    },
-    deliveryMethodId: deliveryId,
-    tracking: o.tracking ?? {},
-    invoice: o.invoice ?? {},
-    fulfillment: o.fulfillment ?? {},
-    timeline: o.timeline ?? [],
-    statusHistory: o.status_history ?? o.statusHistory ?? [],
-    returns: o.returns ?? [],
-    refund: o.refund ?? null,
-    cancellation: o.cancellation ?? null,
-    shipment: o.shipment ?? null,
-    notes: o.notes ?? { customer: "", internal: [] },
-    createdAt: o.created_at ?? o.createdAt ?? new Date().toISOString(),
-    updatedAt: o.updated_at ?? o.updatedAt ?? new Date().toISOString(),
-  };
-}
-
-function normReturn(r) {
-  if (!r) return r;
-  return {
-    ...r,
-    id:         r.id,
-    orderId:    r.order_id  ?? r.orderId  ?? "",
-    status:     r.status,
-    items:      r.items     ?? [],
-    createdAt:  r.created_at ?? r.createdAt ?? new Date().toISOString(),
-  };
-}
+/**
+ * Return records are normalised by the same canonical read model used for
+ * the `returns[]` embedded on an order, so a return looks identical
+ * whether it arrived from the returns endpoint or from the order payload.
+ */
+const normReturn = normaliseReturnRecord;
 
 // ===========================================================================
 // CUSTOMER
@@ -164,12 +76,25 @@ export async function apiPlaceOrder(body) {
   } catch (err) { return handleError(err); }
 }
 
-/** GET /orders?page=&pageSize= */
-export async function apiListOrders({ page = 1, pageSize = 20 } = {}) {
+/**
+ * GET /orders?page=&pageSize=&sort=
+ *
+ * Server-side paging and ordering — the customer's own orders only
+ * (ownership is enforced by the backend from the session, never by a
+ * client-supplied customer id). `sort` is allow-listed: newest | oldest.
+ */
+export async function apiListOrders({ page = 1, pageSize = 20, sort = "newest" } = {}) {
   try {
-    const data = await apiClient.get(`/orders?page=${page}&pageSize=${pageSize}`, { scope: "customer" });
+    const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize), sort });
+    const data = await apiClient.get(`/orders?${qs}`, { scope: "customer" });
     const orders = (data.orders ?? data.items ?? data ?? []).map(normOrder);
-    return { ok: true, orders, total: data.total ?? orders.length };
+    return {
+      ok: true,
+      orders,
+      total: data.total ?? orders.length,
+      page: data.page ?? page,
+      pageSize: data.page_size ?? data.pageSize ?? pageSize,
+    };
   } catch (err) { return handleError(err); }
 }
 
@@ -181,11 +106,19 @@ export async function apiGetOrder(orderId) {
   } catch (err) { return handleError(err); }
 }
 
-/** GET /orders/{orderId}/tracking */
+/**
+ * GET /orders/{orderId}/tracking
+ *
+ * Returns real, stored progress only: persisted status-history events plus
+ * whatever carrier / tracking number / estimated delivery an admin
+ * recorded at dispatch. No courier integration exists, so
+ * `carrierEventsAvailable` is always false and no shipment scans, transit
+ * locations or projected dates are ever produced.
+ */
 export async function apiGetTracking(orderId) {
   try {
     const data = await apiClient.get(`/orders/${orderId}/tracking`, { scope: "customer" });
-    return { ok: true, tracking: data };
+    return { ok: true, tracking: buildTrackingReadModel(data.tracking ?? data) };
   } catch (err) { return handleError(err); }
 }
 
@@ -241,7 +174,13 @@ export async function apiAdminListOrders({ status, customerId, q, page = 1, page
     if (q)          qs.set("q", q);
     const data = await apiClient.get(`/admin/orders?${qs}`, { scope: "admin" });
     const orders = (data.orders ?? data.items ?? data ?? []).map(normOrder);
-    return { ok: true, orders, total: data.total ?? orders.length };
+    return {
+      ok: true,
+      orders,
+      total: data.total ?? orders.length,
+      page: data.page ?? page,
+      pageSize: data.page_size ?? data.pageSize ?? pageSize,
+    };
   } catch (err) { return handleError(err); }
 }
 
@@ -253,11 +192,18 @@ export async function apiAdminGetOrder(id) {
   } catch (err) { return handleError(err); }
 }
 
-/** GET /admin/orders/{id}/invoice */
+/**
+ * GET /admin/orders/{id}/invoice
+ *
+ * Invoice METADATA only. The backend stores `invoice_number` /
+ * `invoice_issued_at` but no service ever generates an invoice document,
+ * so `documentAvailable` is false and `downloadUrl` is always null. The UI
+ * must not offer a download it cannot honour.
+ */
 export async function apiAdminGetInvoice(id) {
   try {
     const data = await apiClient.get(`/admin/orders/${id}/invoice`, { scope: "admin" });
-    return { ok: true, invoice: data };
+    return { ok: true, invoice: buildInvoiceReadModel(data.invoice ?? data) };
   } catch (err) { return handleError(err); }
 }
 
