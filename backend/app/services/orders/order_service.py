@@ -55,6 +55,7 @@ ADMIN_CANCELLABLE adds:
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -63,7 +64,13 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import BusinessLogicException, ForbiddenException, NotFoundException
+from app.core.exceptions import (
+    BusinessLogicException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
+from app.models.auth.user import UserModel
 from app.models.orders.order import OrderModel
 from app.models.orders.order_item import OrderItemModel
 from app.models.orders.order_status_history import OrderStatusHistoryModel
@@ -158,6 +165,97 @@ def _compute_cod_fee(payment_method: str) -> int:
     return COD_FEE if payment_method == "cod" else 0
 
 
+def _resolve_unit_price(product: Any) -> tuple[int, int]:
+    """
+    Resolve the authoritative (unit_price, original_price) for a product
+    from the catalog record — the same resolution CartService uses, so
+    order totals always match the price the customer was shown.
+    """
+    base_price = int(product.price or 0)
+    original_price = int(getattr(product, "original_price", None) or 0) or base_price
+    pricing = getattr(product, "pricing", None) or {}
+    if not pricing:
+        return base_price, original_price
+    selling = int(
+        pricing.get("sellingPrice")
+        or pricing.get("selling_price")
+        or original_price
+    )
+    disc_type = pricing.get("discountType") or pricing.get("discount_type") or "none"
+    disc_val = float(pricing.get("discountValue") or pricing.get("discount_value") or 0)
+    if disc_type == "percentage":
+        unit_price = max(0, round(selling - selling * disc_val / 100))
+    elif disc_type == "fixed":
+        unit_price = max(0, round(selling - disc_val))
+    else:
+        unit_price = selling
+    original_price = selling
+    return unit_price, original_price
+
+
+def _order_number_from_key(idempotency_key: str) -> str:
+    """
+    Derive the unique order_number from a client-supplied idempotency key.
+
+    The `orders_order.order_number` column is UNIQUE in the existing schema,
+    which is what makes order-creation idempotent server-side: a retried
+    checkout attempt (same key) resolves to the same order_number and is
+    returned instead of creating a duplicate order. No new column is needed.
+    """
+    digest = hashlib.sha1(idempotency_key.encode("utf-8")).hexdigest()[:6].upper()
+    return f"PF-ORD-{digest}"
+
+
+def _same_order_owner(order: OrderModel, customer_id: Optional[str], guest_email: str) -> bool:
+    """Ownership check used for idempotent replays of POST /orders."""
+    if order.customer_id is not None:
+        return order.customer_id == customer_id
+    # Guest order: same anonymous caller identified by the same email.
+    if customer_id is not None:
+        return False
+    return (order.guest_email or "").lower() == (guest_email or "").lower()
+
+
+def _customer_info_dict(order: OrderModel, user: Optional[UserModel]) -> Dict[str, Any]:
+    """
+    Build the assembled customer identity for an order response.
+
+    - Authenticated order: from the `users` row (authoritative).
+    - Guest order: from the guest fields captured at checkout.
+    """
+    if order.customer_id is not None and user is not None:
+        full_name = user.full_name or ""
+        parts = full_name.split(None, 1)
+        return {
+            "firstName": parts[0] if parts else "",
+            "lastName": parts[1] if len(parts) > 1 else "",
+            "fullName": full_name,
+            "email": user.email or "",
+            "phone": user.phone,
+        }
+    address = order.shipping_address or {}
+    full_name = address.get("fullName") or ""
+    parts = full_name.split(None, 1)
+    return {
+        "firstName": parts[0] if parts else "",
+        "lastName": parts[1] if len(parts) > 1 else "",
+        "fullName": full_name,
+        "email": order.guest_email or "",
+        "phone": order.guest_phone or address.get("phone"),
+    }
+
+
+async def _attach_customer_info(db: AsyncSession, order: OrderModel) -> OrderModel:
+    """Attach the transient `customer` projection used by OrderResponse."""
+    user: Optional[UserModel] = None
+    if order.customer_id:
+        stmt = select(UserModel).where(UserModel.id == order.customer_id)
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+    order.customer = _customer_info_dict(order, user)  # type: ignore[attr-defined]
+    return order
+
+
 # ── Order query helper ────────────────────────────────────────────────────────
 
 async def _load_order(db: AsyncSession, order_id: str) -> OrderModel:
@@ -245,50 +343,81 @@ class OrderService:
         req: PlaceOrderRequest,
         customer_id: Optional[str],
     ) -> OrderModel:
-        """POST /orders — create and persist a new order."""
+        """
+        POST /orders — create and persist a new order (canonical checkout).
+
+        Trust model (Phase 2):
+          - Prices are resolved from `catalog_product` — client prices/
+            totals/discounts are never trusted (they are not even accepted).
+          - Stock is validated and reserved inside this single DB
+            transaction: product rows are locked (SELECT ... FOR UPDATE)
+            before the stock check so concurrent checkouts cannot oversell.
+          - The coupon is revalidated server-side (active, dates, usage
+            limits, per-customer limit, eligibility, minimum order value)
+            and the discount is recomputed — never taken from the client.
+          - Payment method ≠ payment state:
+              * COD   → status=ORDER_CONFIRMED, payment_status=PENDING
+                        (cash is collected on delivery; no online session)
+              * online→ status=PENDING_PAYMENT, payment_status=PENDING
+                        (only server-side Razorpay verification/webhook can
+                        move this order to PAID / ORDER_CONFIRMED)
+          - Idempotency: a client-supplied `idempotencyKey` maps to the
+            unique `order_number`; a retried attempt returns the existing
+            order instead of creating a duplicate.
+        """
         from app.models.catalog.product import ProductModel
+        from app.models.commerce.coupon import CouponModel
+        from app.models.commerce.coupon_redemption import CouponRedemptionModel
 
         if not req.items:
             raise BusinessLogicException("Order must contain at least one item.")
 
-        # ── Resolve products & compute totals ─────────────────────────────────
-        product_ids = [item.product_id for item in req.items]
-        stmt = select(ProductModel).where(ProductModel.id.in_(product_ids))
-        result = await self.db.execute(stmt)
-        products: Dict[str, ProductModel] = {p.id: p for p in result.scalars().all()}
+        guest_email = (req.customer.email or "").strip().lower()
 
+        # ── Idempotency (server-enforced via unique order_number) ─────────────
+        order_number = _generate_order_number()
+        if req.idempotency_key:
+            order_number = _order_number_from_key(req.idempotency_key)
+            existing = await self._find_order_by_number(order_number)
+            if existing is not None:
+                if _same_order_owner(existing, customer_id, guest_email):
+                    # Same checkout attempt retried — return the original order.
+                    return await _attach_customer_info(self.db, existing)
+                raise ConflictException(
+                    "This checkout attempt was already used for a different order. "
+                    "Please start a new checkout."
+                )
+
+        # ── Load products with row locks (prevents overselling races) ─────────
+        product_ids = list({item.product_id for item in req.items})
+        stmt = select(ProductModel).where(ProductModel.id.in_(product_ids)).with_for_update()
+        result = await self.db.execute(stmt)
+        products: Dict[str, Any] = {p.id: p for p in result.scalars().all()}
+
+        # ── Validate lines & compute authoritative prices ─────────────────────
         order_items: List[OrderItemModel] = []
+        price_lines: List[Dict[str, Any]] = []
         subtotal = 0
         product_discount = 0
+        required_qty: Dict[str, int] = {}
 
         for line in req.items:
             product = products.get(line.product_id)
             if not product:
                 raise BusinessLogicException(f"Product '{line.product_id}' not found.")
-            if product.status != "PUBLISHED":
+            if product.status != "PUBLISHED" or not product.published:
                 raise BusinessLogicException(f"Product '{product.name}' is not available.")
 
-            # Resolve selling price
-            unit_price = int(product.price or 0)
-            original_price = unit_price
-            pricing = product.pricing or {}
-            if pricing:
-                selling = int(pricing.get("sellingPrice") or pricing.get("selling_price") or unit_price)
-                disc_type = pricing.get("discountType") or pricing.get("discount_type") or "none"
-                disc_val = float(pricing.get("discountValue") or pricing.get("discount_value") or 0)
-                if disc_type == "percentage":
-                    unit_price = max(0, round(selling - selling * disc_val / 100))
-                elif disc_type == "fixed":
-                    unit_price = max(0, round(selling - disc_val))
-                else:
-                    unit_price = selling
-                original_price = selling
-
+            unit_price, original_price = _resolve_unit_price(product)
             line_total = unit_price * line.quantity
             subtotal += line_total
             if original_price > unit_price:
                 product_discount += (original_price - unit_price) * line.quantity
+            required_qty[line.product_id] = required_qty.get(line.product_id, 0) + line.quantity
 
+            price_lines.append(
+                {"product_id": line.product_id, "quantity": line.quantity, "unit_price": unit_price}
+            )
             order_items.append(
                 OrderItemModel(
                     id=_new_uuid(),
@@ -305,50 +434,79 @@ class OrderService:
                 )
             )
 
-        # ── Coupon / discount ─────────────────────────────────────────────────
+        # ── Stock check (rows already locked above) ───────────────────────────
+        for pid, qty in required_qty.items():
+            product = products[pid]
+            available = int(product.stock or 0)
+            if product.availability == "out-of-stock" or available <= 0:
+                raise BusinessLogicException(f"'{product.name}' is currently out of stock.")
+            if qty > available:
+                raise BusinessLogicException(
+                    f"Insufficient stock for '{product.name}' — only {available} unit(s) available."
+                )
+
+        # ── Coupon revalidation (authoritative point) ─────────────────────────
         coupon_discount = 0
-        coupon_code = None
-        coupon_id = None
+        coupon_code: Optional[str] = None
+        coupon_id: Optional[str] = None
 
         if req.coupon_code:
-            from app.models.commerce.coupon import CouponModel
-            coupon_stmt = select(CouponModel).where(
-                CouponModel.code == req.coupon_code.upper()
+            coupon = await self._find_coupon(req.coupon_code)
+            coupon = await self._revalidate_coupon_for_order(
+                coupon=coupon,
+                subtotal=subtotal,
+                price_lines=price_lines,
+                customer_id=customer_id,
             )
-            coupon_result = await self.db.execute(coupon_stmt)
-            coupon = coupon_result.scalars().first()
-            if coupon and coupon.is_active:
-                if coupon.discount_type == "percentage":
-                    coupon_discount = round(subtotal * coupon.discount_value / 100)
-                elif coupon.discount_type == "fixed":
-                    coupon_discount = min(int(coupon.discount_value), subtotal)
-                coupon_code = coupon.code
-                coupon_id = coupon.id
-                # Increment usage count
-                coupon.usage_count = (coupon.usage_count or 0) + 1
+            coupon_discount = self._compute_coupon_discount(coupon, price_lines)
+            coupon_code = coupon.code
+            coupon_id = coupon.id
+            # Persisted usage increment (existing column) — happens atomically
+            # with the order inside this same transaction.
+            coupon.usage_count = (coupon.usage_count or 0) + 1
 
         discounted_subtotal = subtotal - coupon_discount
         shipping_fee = _compute_shipping(discounted_subtotal, req.delivery_method)
         cod_fee = _compute_cod_fee(req.payment_method)
         total = discounted_subtotal + shipping_fee + cod_fee
 
-        # ── Initial status ────────────────────────────────────────────────────
-        # COD → PENDING; online → PAID
-        payment_status = "PENDING" if req.payment_method == "cod" else "PAID"
+        # ── Reserve stock (rows are locked; decrement atomically) ─────────────
+        for pid, qty in required_qty.items():
+            product = products[pid]
+            product.stock = int(product.stock or 0) - qty
 
-        # Seed status history
-        now = _now_utc()
-        status_chain = [
-            ("PENDING_PAYMENT", "PAYMENT_CONFIRMED"),
-            ("PAYMENT_CONFIRMED", "ORDER_CONFIRMED"),
-        ]
+        # ── Canonical initial status ──────────────────────────────────────────
+        is_cod = req.payment_method == "cod"
+        status = "ORDER_CONFIRMED" if is_cod else "PENDING_PAYMENT"
+        payment_status = "PENDING"  # never PAID at creation — verification only
+
+        if is_cod:
+            timeline = [
+                _timeline_event("ORDER_CREATED", actor_id=customer_id),
+                _timeline_event(
+                    "ORDER_CONFIRMED",
+                    actor_id=customer_id,
+                    note="Cash on delivery — payment due on delivery.",
+                ),
+            ]
+            history_note = "COD order confirmed; payment due on delivery."
+        else:
+            timeline = [
+                _timeline_event("ORDER_CREATED", actor_id=customer_id),
+                _timeline_event(
+                    "PAYMENT_PENDING",
+                    actor_id=customer_id,
+                    note="Awaiting online payment verification.",
+                ),
+            ]
+            history_note = "Awaiting online payment verification."
 
         order = OrderModel(
             id=_new_uuid(),
-            order_number=_generate_order_number(),
+            order_number=order_number,
             customer_id=customer_id,
-            guest_email=req.customer.email if not customer_id else None,
-            guest_phone=req.customer.phone if not customer_id else None,
+            guest_email=None if customer_id else guest_email,
+            guest_phone=None if customer_id else req.customer.phone,
             shipping_address={
                 "fullName": req.address.full_name,
                 "phone": req.address.phone,
@@ -361,7 +519,7 @@ class OrderService:
             },
             delivery_method=req.delivery_method,
             payment_method=req.payment_method,
-            status="ORDER_CONFIRMED",
+            status=status,
             payment_status=payment_status,
             subtotal=subtotal,
             product_discount=product_discount,
@@ -373,11 +531,7 @@ class OrderService:
             coupon_id=coupon_id,
             customer_note=req.customer_note,
             inventory_reservation_id=req.inventory_reservation_id,
-            timeline=[
-                _timeline_event("ORDER_CREATED"),
-                _timeline_event("PAYMENT_CONFIRMED"),
-                _timeline_event("ORDER_CONFIRMED"),
-            ],
+            timeline=timeline,
             internal_notes=[],
         )
 
@@ -389,24 +543,133 @@ class OrderService:
             item.order_id = order.id
             self.db.add(item)
 
-        # Seed status history rows
-        for from_s, to_s in status_chain:
-            self.db.add(OrderStatusHistoryModel(
-                id=_new_uuid(),
-                order_id=order.id,
-                from_status=from_s,
-                to_status=to_s,
-            ))
-        # Final state
+        # Single, accurate status-history seed (no duplicate rows).
         self.db.add(OrderStatusHistoryModel(
             id=_new_uuid(),
             order_id=order.id,
-            from_status="PAYMENT_CONFIRMED",
-            to_status="ORDER_CONFIRMED",
+            from_status=None,
+            to_status=status,
+            actor_id=customer_id,
+            note=history_note,
         ))
 
+        # Coupon redemption record — persisted for authenticated customers.
+        # (The existing `commerce_coupon_redemption` table requires a user id,
+        # so guest redemptions cannot be recorded per-customer; global usage
+        # counting still applies. See implementation report.)
+        if coupon_id and customer_id:
+            self.db.add(CouponRedemptionModel(
+                id=_new_uuid(),
+                coupon_id=coupon_id,
+                customer_id=customer_id,
+                order_id=order.id,
+                coupon_code=coupon_code,
+                discount_amount=coupon_discount,
+            ))
+
         await self.db.flush()
-        return await _load_order(self.db, order.id)
+        order = await _load_order(self.db, order.id)
+        return await _attach_customer_info(self.db, order)
+
+    async def _find_order_by_number(self, order_number: str) -> Optional[OrderModel]:
+        stmt = select(OrderModel).where(OrderModel.order_number == order_number)
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
+
+    async def _find_coupon(self, code: str) -> Optional[Any]:
+        from app.models.commerce.coupon import CouponModel
+        stmt = select(CouponModel).where(CouponModel.code == (code or "").strip().upper())
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
+
+    async def _revalidate_coupon_for_order(
+        self,
+        coupon: Optional[Any],
+        subtotal: int,
+        price_lines: List[Dict[str, Any]],
+        customer_id: Optional[str],
+    ) -> Any:
+        """
+        Authoritative coupon revalidation at the order boundary.
+
+        Re-checks everything the client's earlier cart validation may have
+        missed or become stale: existence, active flag, date window, global
+        usage limit, per-customer usage limit (from persisted redemptions),
+        customer eligibility and minimum order value. Raises a user-facing
+        BusinessLogicException on any failure.
+        """
+        from app.models.commerce.coupon_redemption import CouponRedemptionModel
+
+        if coupon is None:
+            raise BusinessLogicException("This coupon code is invalid or does not exist.")
+
+        now = _now_utc()
+        if not coupon.is_active:
+            raise BusinessLogicException("This coupon is no longer active.")
+        if coupon.starts_at and coupon.starts_at > now:
+            raise BusinessLogicException("This coupon is not yet valid.")
+        if coupon.expires_at and coupon.expires_at < now:
+            raise BusinessLogicException("This coupon has expired.")
+        if coupon.usage_limit is not None and (coupon.usage_count or 0) >= coupon.usage_limit:
+            raise BusinessLogicException("This coupon has reached its usage limit.")
+
+        # Per-customer limit (authenticated customers only — the redemption
+        # table's customer_id FK requires a user row).
+        if coupon.per_customer_limit is not None and customer_id:
+            stmt = select(CouponRedemptionModel).where(
+                CouponRedemptionModel.coupon_id == coupon.id,
+                CouponRedemptionModel.customer_id == customer_id,
+            )
+            result = await self.db.execute(stmt)
+            uses = len(result.scalars().all())
+            if uses >= coupon.per_customer_limit:
+                raise BusinessLogicException(
+                    "You have already used this coupon the maximum number of times."
+                )
+
+        # Customer eligibility allow-list (a restricted coupon can never be
+        # used by a guest or by a customer outside the list).
+        if coupon.eligible_customer_ids:
+            if not customer_id or customer_id not in coupon.eligible_customer_ids:
+                raise BusinessLogicException("This coupon is not available for your account.")
+
+        if subtotal < (coupon.minimum_order_value or 0):
+            raise BusinessLogicException(
+                f"This coupon requires a minimum order value of "
+                f"₹{(coupon.minimum_order_value or 0):,}. Your subtotal is ₹{subtotal:,}."
+            )
+        return coupon
+
+    def _compute_coupon_discount(
+        self,
+        coupon: Any,
+        price_lines: List[Dict[str, Any]],
+    ) -> int:
+        """
+        Recompute the coupon discount server-side from authoritative line
+        prices. Mirrors CartService semantics, including product
+        eligibility/exclusion lists.
+        """
+        if coupon.discount_type == "free_shipping":
+            # Consistent with the cart totals engine: no cash discount.
+            return 0
+
+        subtotal = sum(line["unit_price"] * line["quantity"] for line in price_lines)
+        eligible_subtotal = subtotal
+        if coupon.eligible_product_ids or coupon.excluded_product_ids:
+            eligible_subtotal = 0
+            for line in price_lines:
+                if coupon.excluded_product_ids and line["product_id"] in coupon.excluded_product_ids:
+                    continue
+                if coupon.eligible_product_ids and line["product_id"] not in coupon.eligible_product_ids:
+                    continue
+                eligible_subtotal += line["unit_price"] * line["quantity"]
+
+        if coupon.discount_type == "percentage":
+            return round(eligible_subtotal * float(coupon.discount_value or 0) / 100)
+        if coupon.discount_type == "fixed":
+            return min(int(coupon.discount_value or 0), eligible_subtotal)
+        return 0
 
     # ── Customer: list own orders ─────────────────────────────────────────────
 
@@ -436,7 +699,18 @@ class OrderService:
         offset = (page - 1) * page_size
         paginated = base_stmt.offset(offset).limit(page_size)
         result = await self.db.execute(paginated)
-        orders = result.scalars().all()
+        orders = list(result.scalars().all())
+
+        # Batch-attach customer identity (one query, no N+1).
+        customer_ids = {o.customer_id for o in orders if o.customer_id}
+        users: Dict[str, UserModel] = {}
+        if customer_ids:
+            user_result = await self.db.execute(
+                select(UserModel).where(UserModel.id.in_(customer_ids))
+            )
+            users = {u.id: u for u in user_result.scalars().all()}
+        for o in orders:
+            o.customer = _customer_info_dict(o, users.get(o.customer_id))  # type: ignore[attr-defined]
 
         return {"orders": orders, "total": total}
 
@@ -447,7 +721,7 @@ class OrderService:
         order = await _load_order(self.db, order_id)
         if order.customer_id != customer_id:
             raise ForbiddenException("You do not have access to this order.")
-        return order
+        return await _attach_customer_info(self.db, order)
 
     # ── Customer: tracking ────────────────────────────────────────────────────
 
@@ -505,12 +779,58 @@ class OrderService:
                 f"Order cannot be cancelled in status '{order.status}'."
             )
 
+        await self._on_order_cancelled(order)
         _set_status(self.db, order, "CANCELLED", actor_id=customer_id, note=req.reason)
         order.cancelled_at = _now_utc()
         order.cancellation_reason = req.reason
         order.cancelled_by = customer_id
         await self.db.flush()
-        return await _load_order(self.db, order.id)
+        order = await _load_order(self.db, order.id)
+        return await _attach_customer_info(self.db, order)
+
+    async def _on_order_cancelled(self, order: OrderModel) -> None:
+        """
+        Post-cancellation consistency (single place for both customer and
+        admin cancellation paths):
+          1. Release the stock reservation for orders that were never paid
+             (payment_status PENDING/FAILED). Paid orders keep their stock
+             movement in the returns/refund workflow (Phase 3+).
+          2. Cancel any active payment session so a cancelled order can no
+             longer be charged through a stale Razorpay modal.
+        """
+        if order.payment_status in ("PENDING", "FAILED"):
+            await self._release_stock_reservation(order)
+        await self._cancel_active_payment_sessions(order)
+
+    async def _release_stock_reservation(self, order: OrderModel) -> None:
+        """Return reserved quantity to `catalog_product.stock` (row-locked)."""
+        from app.models.catalog.product import ProductModel
+
+        if not order.items:
+            return
+        product_ids = [item.product_id for item in order.items]
+        result = await self.db.execute(
+            select(ProductModel).where(ProductModel.id.in_(product_ids)).with_for_update()
+        )
+        by_id = {p.id: p for p in result.scalars().all()}
+        for item in order.items:
+            product = by_id.get(item.product_id)
+            if product is not None:
+                product.stock = int(product.stock or 0) + item.quantity
+
+    async def _cancel_active_payment_sessions(self, order: OrderModel) -> None:
+        from app.models.payments.payment_session import PaymentSessionModel
+
+        result = await self.db.execute(
+            select(PaymentSessionModel).where(
+                PaymentSessionModel.order_id == order.id,
+                PaymentSessionModel.status.in_(["CREATED", "PENDING"]),
+            )
+        )
+        for session in result.scalars().all():
+            session.status = "CANCELLED"
+            session.cancelled_at = _now_utc()
+            session.failure_reason = "Order was cancelled."
 
     # ── Customer: create return ───────────────────────────────────────────────
 
@@ -606,11 +926,27 @@ class OrderService:
 
     # ── Customer: claim guest orders ──────────────────────────────────────────
 
-    async def claim_guest_orders(self, email: str, customer_id: str) -> int:
-        """POST /orders/claim-guest — attach guest orders to an account."""
+    async def claim_guest_orders(self, account_email: str, customer_id: str) -> int:
+        """
+        POST /orders/claim-guest — attach guest orders to an account.
+
+        SECURITY (Phase 2): `account_email` MUST be the authenticated
+        caller's own verified account email (the router enforces this — a
+        client-supplied email that differs from the account email is
+        rejected with 403). Guest orders are matched case-insensitively on
+        the stored guest email. A caller can therefore only ever take
+        ownership of orders placed under their own account's email; guessing
+        an order ID or supplying someone else's email is not enough.
+        """
+        email = (account_email or "").strip().lower()
+        if not email:
+            raise BusinessLogicException(
+                "Your account has no email address, so guest orders cannot be claimed."
+            )
+
         stmt = select(OrderModel).where(
-            OrderModel.guest_email == email,
             OrderModel.customer_id.is_(None),
+            func.lower(OrderModel.guest_email) == email,
         )
         result = await self.db.execute(stmt)
         guest_orders = result.scalars().all()
@@ -618,6 +954,11 @@ class OrderService:
         for order in guest_orders:
             order.customer_id = customer_id
             order.guest_email = None  # claimed — no longer a guest order
+            timeline = list(order.timeline or [])
+            timeline.append(_timeline_event(
+                "ORDER_CLAIMED", actor_id=customer_id, note="Guest order attached to account."
+            ))
+            order.timeline = timeline
 
         await self.db.flush()
         return len(guest_orders)
@@ -821,6 +1162,7 @@ class OrderService:
             raise BusinessLogicException(
                 f"Order cannot be cancelled in status '{order.status}'."
             )
+        await self._on_order_cancelled(order)
         _set_status(self.db, order, "CANCELLED", actor_id=actor_id, note=req.reason)
         order.cancelled_at = _now_utc()
         order.cancellation_reason = req.reason

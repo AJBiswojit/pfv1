@@ -20,7 +20,8 @@ const CustomerInformation = forwardRef(function CustomerInformation(_props, ref)
   const checkout = useCheckout();
   const [errors, setErrors] = useState({});
 
-  const nameRef = useRef(null);
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
   const emailRef = useRef(null);
   const phoneRef = useRef(null);
 
@@ -34,11 +35,17 @@ const CustomerInformation = forwardRef(function CustomerInformation(_props, ref)
       const result = validateCustomer(checkout.customer);
       setErrors(result.errors);
       if (!result.ok) {
-        const firstInvalid = ["fullName", "email", "phone"].find(
+        const firstInvalid = ["firstName", "lastName", "email", "phone"].find(
           (field) => result.errors[field]
         );
         const target =
-          firstInvalid === "fullName" ? nameRef : firstInvalid === "email" ? emailRef : phoneRef;
+          firstInvalid === "firstName"
+            ? firstNameRef
+            : firstInvalid === "lastName"
+              ? lastNameRef
+              : firstInvalid === "email"
+                ? emailRef
+                : phoneRef;
         target.current?.focus();
       }
       return result.ok;
@@ -88,24 +95,45 @@ const CustomerInformation = forwardRef(function CustomerInformation(_props, ref)
       </p>
 
       <div className="grid gap-5">
-        <CheckoutField
-          id="checkout-full-name"
-          label="Full Name"
-          required
-          error={errors.fullName}
-        >
-          <input
-            ref={nameRef}
-            id="checkout-full-name"
-            type="text"
-            autoComplete="name"
-            value={checkout.customer.fullName}
-            onChange={(event) => setField("fullName", event.target.value)}
-            placeholder="e.g. Ananya Sharma"
-            aria-invalid={Boolean(errors.fullName)}
-            className={fieldInputClass(Boolean(errors.fullName))}
-          />
-        </CheckoutField>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <CheckoutField
+            id="checkout-first-name"
+            label="First Name"
+            required
+            error={errors.firstName}
+          >
+            <input
+              ref={firstNameRef}
+              id="checkout-first-name"
+              type="text"
+              autoComplete="given-name"
+              value={checkout.customer.firstName}
+              onChange={(event) => setField("firstName", event.target.value)}
+              placeholder="e.g. Ananya"
+              aria-invalid={Boolean(errors.firstName)}
+              className={fieldInputClass(Boolean(errors.firstName))}
+            />
+          </CheckoutField>
+
+          <CheckoutField
+            id="checkout-last-name"
+            label="Last Name"
+            required
+            error={errors.lastName}
+          >
+            <input
+              ref={lastNameRef}
+              id="checkout-last-name"
+              type="text"
+              autoComplete="family-name"
+              value={checkout.customer.lastName}
+              onChange={(event) => setField("lastName", event.target.value)}
+              placeholder="e.g. Sharma"
+              aria-invalid={Boolean(errors.lastName)}
+              className={fieldInputClass(Boolean(errors.lastName))}
+            />
+          </CheckoutField>
+        </div>
 
         <CheckoutField
           id="checkout-email"

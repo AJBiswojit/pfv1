@@ -29,21 +29,26 @@ class CreatePaymentSessionRequest(BaseModel):
     """
     POST /payments/session
 
-    `order_draft` carries the minimal order context needed to compute the
-    amount before the order is persisted. If `order_id` is supplied instead,
-    the amount is read from an already-placed order (retry flow).
+    Canonical lifecycle (Phase 2): the order is ALWAYS created first
+    (POST /orders → pending order), then the payment session is created
+    against that order. The charge amount is the order's authoritative
+    server-computed total — a client-supplied draft amount is NOT trusted
+    (the `order_draft` field is retained for backwards compatibility only
+    and is rejected by the service).
+
+    `order_id` is required.
     """
     order_id: Optional[str] = Field(
         None,
-        description="ID of an already-placed order (retry / resume flow)",
+        description="ID of the pending order created at checkout (required)",
     )
     order_draft: Optional[Dict[str, Any]] = Field(
         None,
-        description="Pre-order draft used to compute the amount before order placement",
+        description="Deprecated: pre-order drafts are no longer accepted. The order must exist first.",
     )
     payment_method: str = Field(
         ...,
-        description="upi | card | netbanking | cod",
+        description="upi | card | netbanking (cod is rejected — COD orders do not use payment sessions)",
         examples=["upi"],
     )
     # Optional scenario hint (kept for staging/test environments only)
@@ -57,6 +62,14 @@ class CreatePaymentSessionRequest(BaseModel):
         alias="idempotencyKey",
         description="Client-supplied key to prevent duplicate sessions",
     )
+    # Guest checkout: identifies the guest who owns the order (server
+    # compares it with the order's guest email — never trusted on its own).
+    guest_email: Optional[str] = Field(
+        None,
+        alias="guestEmail",
+        max_length=255,
+        description="Guest order owner email (required for guest-owned orders)",
+    )
 
     @field_validator("payment_method")
     @classmethod
@@ -65,6 +78,14 @@ class CreatePaymentSessionRequest(BaseModel):
         if v not in allowed:
             raise ValueError(f"payment_method must be one of {allowed}")
         return v
+
+    @field_validator("guest_email")
+    @classmethod
+    def normalize_guest_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        value = v.strip().lower()
+        return value or None
 
     model_config = {"populate_by_name": True}
 
@@ -75,10 +96,21 @@ class VerifyPaymentRequest(BaseModel):
 
     The frontend sends these three values after a successful Razorpay.open()
     callback so the backend can recompute and verify the HMAC-SHA256 signature.
+
+    The signature is the ONLY trust anchor — a client can never mark an
+    order PAID by sending a status flag. `guest_email` (guest checkout) is
+    checked against the order's own guest email so a caller cannot verify a
+    payment for an order they do not own.
     """
     razorpay_order_id: str = Field(..., alias="razorpayOrderId")
     razorpay_payment_id: str = Field(..., alias="razorpayPaymentId")
     razorpay_signature: str = Field(..., alias="razorpaySignature")
+    guest_email: Optional[str] = Field(
+        None,
+        alias="guestEmail",
+        max_length=255,
+        description="Guest order owner email (required for guest-owned orders)",
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -88,6 +120,12 @@ class CancelSessionRequest(BaseModel):
     POST /payments/session/{sessionId}/cancel
     """
     reason: Optional[str] = Field(None, description="Reason for cancellation")
+    guest_email: Optional[str] = Field(
+        None,
+        alias="guestEmail",
+        max_length=255,
+        description="Guest order owner email (required for guest-owned orders)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +197,7 @@ class VerifyPaymentResponse(BaseModel):
     message: str
     payment_status: Optional[str] = Field(None, alias="paymentStatus")
     order_id: Optional[str] = Field(None, alias="orderId")
+    order_status: Optional[str] = Field(None, alias="orderStatus")
 
     model_config = {"populate_by_name": True}
 

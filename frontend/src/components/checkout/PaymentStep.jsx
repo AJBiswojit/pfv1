@@ -1,7 +1,6 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  AlertCircle,
   Banknote,
   CreditCard,
   Landmark,
@@ -11,25 +10,10 @@ import {
 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useCheckout } from "../../context/CheckoutContext";
-import {
-  NET_BANKING_BANKS,
-  PAYMENT_METHODS,
-  UPI_APPS,
-} from "../../config/checkoutConfig";
+import { PAYMENT_METHODS } from "../../config/checkoutConfig";
 import { PAYMENT_STATUS } from "../../services/payment/paymentService";
-import {
-  formatCardNumber,
-  formatExpiry,
-  isValidUpiId,
-  validateCardForm,
-} from "../../utils/checkout";
 import { formatINR } from "../../utils/shopping";
-import {
-  buildOrderId,
-  nextOrderSequence,
-} from "../../utils/checkout";
 import { AtelierButton } from "../../design-system";
-import CheckoutField, { fieldInputClass } from "./CheckoutField";
 import { cn } from "../../utils/cn";
 
 const METHOD_ICONS = {
@@ -43,181 +27,30 @@ const METHOD_ICONS = {
 /* Method panels                                                       */
 /* ------------------------------------------------------------------ */
 
-function UpiPanel({ form, onChange, errors }) {
+/**
+ * Info panel for online methods (UPI / card / netbanking).
+ *
+ * Phase 2 (audit P1-28): the storefront does NOT collect card numbers,
+ * CVV, UPI IDs or bank credentials. When the customer pays, the order is
+ * created as pending and the Razorpay hosted checkout opens — all
+ * instruments are entered inside the gateway's secure window.
+ */
+function SecureCheckoutPanel({ method }) {
+  const copy = {
+    upi: "Complete your UPI payment in the Razorpay window — choose your UPI app or scan the QR shown there.",
+    card: "Enter your card details in the Razorpay window. Cards are processed by the payment gateway; nothing is stored on this site.",
+    netbanking: "Choose your bank inside the Razorpay window and complete your bank sign-in to approve the payment.",
+  };
   return (
-    <div className="space-y-5">
-      <CheckoutField
-        id="checkout-upi-id"
-        label="UPI ID"
-        required
-        error={errors.id}
-        hint="Format: yourname@bank"
-      >
-        <input
-          id="checkout-upi-id"
-          type="text"
-          autoComplete="off"
-          inputMode="email"
-          value={form.id}
-          onChange={(event) => onChange({ id: event.target.value })}
-          placeholder="name@upi"
-          aria-invalid={Boolean(errors.id)}
-          className={fieldInputClass(Boolean(errors.id))}
-        />
-      </CheckoutField>
-
-      <div>
-        <p className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
-          Or choose a UPI app
-        </p>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="UPI app">
-          {UPI_APPS.map((app) => {
-            const selected = form.app === app;
-            return (
-              <button
-                key={app}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => onChange({ app: selected ? "" : app })}
-                className={cn(
-                  "border px-4 py-2 font-ui text-[11px] uppercase tracking-[.12em] transition-colors",
-                  "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent",
-                  selected
-                    ? "border-ink bg-ink text-ivory"
-                    : "border-pearl bg-surface/40 text-graphite hover:border-ink"
-                )}
-              >
-                {app}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CardPanel({ form, onChange, errors, refs }) {
-  return (
-    <div className="space-y-5">
-      <CheckoutField
-        id="checkout-card-number"
-        label="Card Number"
-        required
-        error={errors.number}
-      >
-        <input
-          ref={refs.number}
-          id="checkout-card-number"
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          value={form.number}
-          onChange={(event) => onChange({ number: formatCardNumber(event.target.value) })}
-          placeholder="1234 5678 9012 3456"
-          aria-invalid={Boolean(errors.number)}
-          className={fieldInputClass(Boolean(errors.number))}
-        />
-      </CheckoutField>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <CheckoutField id="checkout-card-expiry" label="Expiry" required error={errors.expiry}>
-          <input
-            ref={refs.expiry}
-            id="checkout-card-expiry"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            value={form.expiry}
-            onChange={(event) => onChange({ expiry: formatExpiry(event.target.value) })}
-            placeholder="MM/YY"
-            aria-invalid={Boolean(errors.expiry)}
-            className={fieldInputClass(Boolean(errors.expiry))}
-          />
-        </CheckoutField>
-        <CheckoutField id="checkout-card-cvv" label="CVV" required error={errors.cvv}>
-          <input
-            ref={refs.cvv}
-            id="checkout-card-cvv"
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={4}
-            value={form.cvv}
-            onChange={(event) => onChange({ cvv: event.target.value.replace(/\D/g, "") })}
-            placeholder="•••"
-            aria-invalid={Boolean(errors.cvv)}
-            className={fieldInputClass(Boolean(errors.cvv))}
-          />
-        </CheckoutField>
-      </div>
-
-      <CheckoutField
-        id="checkout-card-name"
-        label="Cardholder Name"
-        required
-        error={errors.name}
-      >
-        <input
-          ref={refs.name}
-          id="checkout-card-name"
-          type="text"
-          autoComplete="off"
-          value={form.name}
-          onChange={(event) => onChange({ name: event.target.value })}
-          placeholder="Name as printed on the card"
-          aria-invalid={Boolean(errors.name)}
-          className={fieldInputClass(Boolean(errors.name))}
-        />
-      </CheckoutField>
-
-      <p className="flex items-center gap-2 border border-mist/80 bg-surface/30 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
+    <div className="border border-mist/80 bg-surface/30 p-5">
+      <p className="flex items-center gap-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
         <ShieldCheck size={14} className="shrink-0 text-accent" aria-hidden="true" />
-        Form values are validated for format and never stored,
-        logged or transmitted.
+        Secure Razorpay checkout
       </p>
-    </div>
-  );
-}
-
-function NetBankingPanel({ form, onChange, errors }) {
-  return (
-    <div>
-      <p className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
-        Choose your bank
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Bank">
-        {NET_BANKING_BANKS.map((bank) => {
-          const selected = form.bank === bank;
-          return (
-            <button
-              key={bank}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => onChange({ bank })}
-              className={cn(
-                "border px-4 py-3 text-left font-ui text-xs transition-colors",
-                "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent",
-                selected
-                  ? "border-ink bg-ink text-ivory"
-                  : "border-pearl bg-surface/40 text-graphite hover:border-ink"
-              )}
-            >
-              {bank}
-            </button>
-          );
-        })}
-      </div>
-      {errors.bank && (
-        <p role="alert" className="mt-3 font-ui text-[11px] text-accent">
-          {errors.bank}
-        </p>
-      )}
-      <p className="mt-5 border border-mist/80 bg-surface/30 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
-        You will be taken to your bank&rsquo;s sign-in to approve the payment —
-        handled by the backend payment session.
+      <p className="mt-2 font-ui text-xs leading-relaxed text-graphite">{copy[method.id]}</p>
+      <p className="mt-3 font-ui text-[11px] leading-relaxed text-taupe">
+        Your order is saved as pending first, then the secure payment window opens.
+        If you close it, nothing is charged — you can retry the same payment any time.
       </p>
     </div>
   );
@@ -240,7 +73,6 @@ function CodPanel() {
     </div>
   );
 }
-
 
 /* ------------------------------------------------------------------ */
 /* Payment states                                                      */
@@ -292,56 +124,19 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
   const checkout = useCheckout();
 
   const [methodError, setMethodError] = useState("");
-  const [forms, setForms] = useState({
-    upi: { id: "", app: "" },
-    card: { number: "", expiry: "", cvv: "", name: "" },
-    netbanking: { bank: "" },
-    cod: {},
-  });
-  const [errors, setErrors] = useState({});
 
-  const cardRefs = {
-    number: useRef(null),
-    expiry: useRef(null),
-    cvv: useRef(null),
-    name: useRef(null),
-  };
-
-  const updateForm = (method, fields) => {
-    setForms((current) => ({
-      ...current,
-      [method]: { ...current[method], ...fields },
-    }));
-    setErrors((current) => ({ ...current, [method]: {} }));
-  };
-
-  /** Validates the active method form and starts the backend payment session. */
+  /**
+   * Starts the canonical payment flow. For online methods the backend
+   * creates the pending order + Razorpay session and the hosted checkout
+   * collects the instrument — there is no instrument form to validate
+   * here, only that a method was chosen.
+   */
   const handlePay = () => {
     if (!checkout.paymentMethod) {
       setMethodError("Please choose a payment method first.");
       return false;
     }
     setMethodError("");
-
-    const method = checkout.paymentMethod;
-    let result = { ok: true, errors: {} };
-
-    if (method === "upi") {
-      const id = forms.upi.id.trim();
-      result = isValidUpiId(id)
-        ? { ok: true, errors: {} }
-        : { ok: false, errors: { id: "Please enter a valid UPI ID, like name@bank." } };
-    } else if (method === "card") {
-      result = validateCardForm(forms.card);
-    } else if (method === "netbanking") {
-      result = forms.netbanking.bank
-        ? { ok: true, errors: {} }
-        : { ok: false, errors: { bank: "Please choose a bank to continue." } };
-    }
-
-    setErrors((current) => ({ ...current, [method]: result.errors }));
-    if (!result.ok) return false;
-
     checkout.startPayment();
     return true;
   };
@@ -506,14 +301,10 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
           <p className="border border-dashed border-mist bg-surface/20 px-5 py-8 text-center font-ui text-[11px] uppercase tracking-[.18em] text-taupe">
             Choose a payment method to continue
           </p>
-        ) : selectedMethod.id === "upi" ? (
-          <UpiPanel form={forms.upi} onChange={(fields) => updateForm("upi", fields)} errors={errors.upi ?? {}} />
-        ) : selectedMethod.id === "card" ? (
-          <CardPanel form={forms.card} onChange={(fields) => updateForm("card", fields)} errors={errors.card ?? {}} refs={cardRefs} />
-        ) : selectedMethod.id === "netbanking" ? (
-          <NetBankingPanel form={forms.netbanking} onChange={(fields) => updateForm("netbanking", fields)} errors={errors.netbanking ?? {}} />
-        ) : (
+        ) : selectedMethod.id === "cod" ? (
           <CodPanel />
+        ) : (
+          <SecureCheckoutPanel method={selectedMethod} />
         )}
       </div>
 
@@ -543,7 +334,8 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
         </div>
         <p className="mt-4 flex items-center gap-2 font-ui text-[10px] text-taupe">
           <ShieldCheck size={12} className="text-accent" aria-hidden="true" />
-          Secured by the PRATIKSHYA FASHON payment layer — no card details leave this page.
+          Payments are processed securely by Razorpay — card, UPI and bank
+          details are entered in the gateway window, never on this site.
         </p>
       </div>
     </section>

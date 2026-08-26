@@ -29,10 +29,11 @@ function Meta({ label, children }) {
 /**
  * Order confirmation — /order-success.
  *
- * Shown only after a real (mock) order exists in the order state — the
- * route can never be fabricated by a direct visit. Guests see the same
- * confirmation with an invitation to create an account; signed-in
- * customers can continue to their order history.
+ * Shown only after a server-confirmed order exists in the order state —
+ * the route can never be fabricated by a direct visit. Guests see the same
+ * confirmation with an invitation to create an account (their guest orders
+ * are claimed via the verified-email claim flow); signed-in customers can
+ * continue to their order history.
  */
 export default function OrderSuccess() {
   const { user, isAuthenticated } = useAuth();
@@ -79,7 +80,7 @@ export default function OrderSuccess() {
     month: "long",
     year: "numeric",
   });
-  const firstName = order.customer.fullName.split(" ")[0] || "friend";
+  const firstName = (order.customer?.fullName ?? "").split(" ")[0] || "friend";
 
   return (
     <main>
@@ -260,9 +261,9 @@ export default function OrderSuccess() {
           </div>
 
           {/*
-            Guests keep this order in the current browser demo session. Creating
-            an account offers to bring it along — the account order history
-            picks it up from there.
+            Guests have a real order on the backend, identified by the email
+            they checked out with. Creating an account claims those orders
+            via the verified-email claim flow.
           */}
           {!isAuthenticated || !user ? (
             <div className="mt-8 border border-accent/25 bg-accent/5 p-6">
@@ -270,9 +271,9 @@ export default function OrderSuccess() {
                 Keep This Order
               </p>
               <p className="mt-2 max-w-xl font-ui text-xs leading-relaxed text-graphite">
-                Create an account to keep your orders organized. This order stays
-                available in this browser, and can be added to your account once
-                you have one.
+                Create an account to keep your orders organised. Your guest
+                orders are linked to your account using the email you checked
+                out with — they appear in your order history after sign up.
               </p>
               <AtelierButton
                 as={Link}
@@ -288,7 +289,9 @@ export default function OrderSuccess() {
 
           <p className="mt-10 flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.18em] text-taupe">
             <PackageCheck size={13} className="text-accent" aria-hidden="true" />
-            This is a demonstration order — no real transaction has taken place.
+            {order.paymentStatus === "PAID"
+              ? "Your payment was captured securely by Razorpay. If the charge differs from this total, contact support."
+              : "Cash on delivery — the total above (including the COD fee) is payable to the delivery partner."}
           </p>
         </motion.div>
       </AtelierSection>

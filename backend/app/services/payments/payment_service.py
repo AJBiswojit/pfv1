@@ -225,21 +225,45 @@ class PaymentService:
         customer_email: Optional[str] = None,
         customer_phone: Optional[str] = None,
         customer_name: Optional[str] = None,
+        owner_customer_id: Optional[str] = None,
+        owner_guest_email: Optional[str] = None,
     ) -> dict:
         """
-        POST /payments/session
+        POST /payments/session — canonical (Phase 2) flow.
 
-        For online methods (upi/card/netbanking):
-          1. Resolve the order amount (from DB order or draft).
-          2. Verify no active session already exists for this order.
-          3. Call Razorpay Create Order API.
-          4. Persist PaymentSessionModel.
-          5. Return Razorpay order details for the frontend SDK.
+        The order ALWAYS exists first (POST /orders created a pending
+        order). The charge amount is the order's authoritative,
+        server-computed `total` — client-supplied draft amounts are never
+        trusted.
 
-        For COD:
-          • Create a minimal local session (no Razorpay API call).
-          • Return a synthetic response telling the frontend to proceed.
+        Steps (upi/card/netbanking):
+          1. Require `order_id`; reject COD and draft-only requests.
+          2. Verify the caller owns the order (customer identity or the
+             order's own guest email).
+          3. Resume an existing active session for the order (retries must
+             not create duplicate sessions / Razorpay orders).
+          4. Call Razorpay Create Order API with the authoritative amount.
+          5. Persist PaymentSessionModel (unique idempotency key).
+          6. Return Razorpay order details (snake_case — the frontend API
+             layer normalises to camelCase).
         """
+        if order_draft is not None and not order_id:
+            raise BusinessLogicException(
+                "A payment session requires an existing order: create the order "
+                "first (POST /orders), then create the payment session with its "
+                "order id. Draft amounts are not trusted."
+            )
+        if not order_id:
+            raise BusinessLogicException(
+                "'order_id' is required — the order must be created before its payment session."
+            )
+        if payment_method == "cod":
+            raise BusinessLogicException(
+                "COD orders do not use a payment session — the order lifecycle "
+                "handles cash on delivery (order stays payment_status=PENDING "
+                "until delivery)."
+            )
+
         # ── Idempotency: return existing session if key matches ────────────────
         if idempotency_key:
             existing_stmt = select(PaymentSessionModel).where(
@@ -248,64 +272,47 @@ class PaymentService:
             existing_result = await self.db.execute(existing_stmt)
             existing = existing_result.scalars().first()
             if existing:
-                return self._build_session_response(existing)
+                return self._build_session_response(existing, prefill=None)
 
-        # ── Resolve amount ─────────────────────────────────────────────────────
-        amount_rupees: int = 0
-        resolved_order_id: Optional[str] = order_id
-        order: Optional[OrderModel] = None
+        # ── Load and guard the order ───────────────────────────────────────────
+        order = await self._load_order(order_id)
 
-        if order_id:
-            order = await self._load_order(order_id)
-
-            # Guard: don't create a session for an already-paid order
-            if order.payment_status in ("PAID", "AUTHORIZED"):
-                raise ConflictException(
-                    "This order has already been paid. "
-                    "No new payment session can be created."
-                )
-
-            # Guard: order must not be cancelled
-            if order.status == "CANCELLED":
-                raise BusinessLogicException(
-                    "Cannot create a payment session for a cancelled order."
-                )
-
-            amount_rupees = order.total
-            resolved_order_id = order.id
-
-        elif order_draft:
-            # Pre-order flow: amount is computed from the draft
-            amount_rupees = int(order_draft.get("total") or order_draft.get("amount") or 0)
-            if amount_rupees <= 0:
-                raise BusinessLogicException(
-                    "Order draft must include a positive 'total' amount."
-                )
-        else:
+        if order.status == "CANCELLED":
             raise BusinessLogicException(
-                "Either 'order_id' or 'order_draft' must be provided."
+                "Cannot create a payment session for a cancelled order."
+            )
+        if order.payment_status in ("PAID", "AUTHORIZED"):
+            raise ConflictException(
+                "This order has already been paid. No new payment session can be created."
             )
 
+        # Ownership — the caller must own this order (never trust the id alone).
+        await self._assert_order_access(order, owner_customer_id, owner_guest_email)
+
+        # ── Resume an active session instead of creating a duplicate ───────────
+        active_stmt = select(PaymentSessionModel).where(
+            PaymentSessionModel.order_id == order.id,
+            PaymentSessionModel.status.in_(["CREATED", "PENDING"]),
+        )
+        active_result = await self.db.execute(active_stmt)
+        active_session = active_result.scalars().first()
+        if active_session is not None:
+            return self._build_session_response(active_session, prefill=None)
+
+        # ── Authoritative amount from the order ────────────────────────────────
+        amount_rupees = int(order.total or 0)
         if amount_rupees <= 0:
             raise BusinessLogicException("Payment amount must be greater than zero.")
 
-        # ── COD: short-circuit — no Razorpay call ────────────────────────────
-        if payment_method == "cod":
-            return await self._create_cod_session(
-                order_id=resolved_order_id,
-                amount_rupees=amount_rupees,
-                idempotency_key=idempotency_key,
-            )
-
         # ── Online payment: call Razorpay Create Order API ────────────────────
         amount_paise = _to_paise(amount_rupees)
-        receipt = f"PF-{(resolved_order_id or _new_uuid())[:8].upper()}"
+        receipt = f"PF-{order.id[:8].upper()}"
 
         razorpay_order_data = await self._create_razorpay_order(
             amount_paise=amount_paise,
             receipt=receipt,
             notes={
-                "order_id": resolved_order_id or "",
+                "order_id": order.id,
                 "platform": "pratikshya_fashon",
             },
         )
@@ -315,7 +322,7 @@ class PaymentService:
         # ── Persist session ────────────────────────────────────────────────────
         session = PaymentSessionModel(
             id=_new_uuid(),
-            order_id=resolved_order_id,  # type: ignore[arg-type]
+            order_id=order.id,
             razorpay_order_id=razorpay_order_id,
             amount_paise=amount_paise,
             currency="INR",
@@ -348,32 +355,36 @@ class PaymentService:
             "prefill": prefill or None,
         }
 
-    async def _create_cod_session(
+    async def _assert_order_access(
         self,
-        order_id: Optional[str],
-        amount_rupees: int,
-        idempotency_key: Optional[str] = None,
-    ) -> dict:
-        """Create a COD payment session without calling Razorpay."""
-        session = PaymentSessionModel(
-            id=_new_uuid(),
-            order_id=order_id,  # type: ignore[arg-type]
-            amount_paise=_to_paise(amount_rupees),
-            currency="INR",
-            payment_method="cod",
-            status="CREATED",
-            idempotency_key=idempotency_key,
-        )
-        self.db.add(session)
-        await self.db.flush()
+        order: OrderModel,
+        owner_customer_id: Optional[str],
+        owner_guest_email: Optional[str],
+    ) -> None:
+        """
+        Payment-session access control (Phase 2 trust model).
 
-        return {
-            "ok": True,
-            "session_id": session.id,
-            "status": "CREATED",
-            "payment_method": "cod",
-            "message": "Cash on delivery — no online payment required.",
-        }
+        - Customer-owned order: only that customer (authenticated) may act.
+        - Guest-owned order: only a caller presenting the order's own guest
+          email may act (an authenticated user cannot act on a guest order
+          until they claim it via the verified-email claim flow).
+        """
+        if order.customer_id is not None:
+            if owner_customer_id and order.customer_id == owner_customer_id:
+                return
+            raise ForbiddenException(
+                "You do not have access to this order's payment session."
+            )
+        # Guest order
+        if owner_customer_id:
+            raise ForbiddenException(
+                "You do not have access to this guest order's payment session."
+            )
+        guest = (owner_guest_email or "").strip().lower()
+        if not guest or (order.guest_email or "").lower() != guest:
+            raise ForbiddenException(
+                "The provided guest email does not match this order."
+            )
 
     async def _create_razorpay_order(
         self,
@@ -409,9 +420,12 @@ class PaymentService:
 
         return razorpay_order
 
-    def _build_session_response(self, session: PaymentSessionModel) -> dict:
-        """Build a consistent response dict from an existing session."""
+    def _build_session_response(
+        self, session: PaymentSessionModel, prefill: Optional[dict] = None
+    ) -> dict:
+        """Build a consistent snake_case response dict from an existing session."""
         if session.payment_method == "cod":
+            # Legacy rows from the pre-Phase-2 flow only.
             return {
                 "ok": True,
                 "session_id": session.id,
@@ -428,14 +442,27 @@ class PaymentService:
             "razorpay_key_id": settings.RAZORPAY_KEY_ID,
             "amount_paise": session.amount_paise,
             "currency": session.currency,
-            "prefill": None,
+            "prefill": prefill,
         }
 
     # ── Get session ────────────────────────────────────────────────────────────
 
-    async def get_session(self, session_id: str) -> PaymentSessionModel:
-        """GET /payments/session/{sessionId}"""
-        return await self._load_session(session_id)
+    async def get_session(
+        self,
+        session_id: str,
+        owner_customer_id: Optional[str] = None,
+        owner_guest_email: Optional[str] = None,
+    ) -> PaymentSessionModel:
+        """
+        GET /payments/session/{sessionId}
+
+        Ownership is enforced: customer-owned orders require the owning
+        customer; guest-owned orders require the order's own guest email.
+        """
+        session = await self._load_session(session_id)
+        order = await self._load_order(session.order_id)
+        await self._assert_order_access(order, owner_customer_id, owner_guest_email)
+        return session
 
     # ── Cancel session ─────────────────────────────────────────────────────────
 
@@ -443,7 +470,8 @@ class PaymentService:
         self,
         session_id: str,
         reason: Optional[str] = None,
-        customer_id: Optional[str] = None,
+        owner_customer_id: Optional[str] = None,
+        owner_guest_email: Optional[str] = None,
     ) -> PaymentSessionModel:
         """
         POST /payments/session/{sessionId}/cancel
@@ -453,8 +481,8 @@ class PaymentService:
         cannot be cancelled programmatically — they simply expire (15 min TTL
         on Razorpay's side). We mark our session as CANCELLED locally.
 
-        If a customer_id is provided, we verify the session belongs to an
-        order owned by that customer before allowing the cancellation.
+        Ownership is REQUIRED (not optional): the caller must be the owning
+        customer, or match the order's guest email.
         """
         session = await self._load_session(session_id)
 
@@ -464,13 +492,8 @@ class PaymentService:
                 "Only CREATED or PENDING sessions can be cancelled."
             )
 
-        # Optional ownership check
-        if customer_id and session.order_id:
-            order = await self._load_order(session.order_id)
-            if order.customer_id != customer_id:
-                raise ForbiddenException(
-                    "You do not have permission to cancel this payment session."
-                )
+        order = await self._load_order(session.order_id)
+        await self._assert_order_access(order, owner_customer_id, owner_guest_email)
 
         session.status = "CANCELLED"
         session.cancelled_at = _now_utc()
@@ -486,6 +509,8 @@ class PaymentService:
         razorpay_order_id: str,
         razorpay_payment_id: str,
         razorpay_signature: str,
+        owner_customer_id: Optional[str] = None,
+        owner_guest_email: Optional[str] = None,
     ) -> dict:
         """
         POST /payments/verify
@@ -494,34 +519,51 @@ class PaymentService:
         with a successful payment.
 
         Steps:
-          1. Find the session by razorpay_order_id.
-          2. Guard: session must be CREATED or PENDING (not already PAID).
-          3. Verify HMAC-SHA256 signature — reject with 400 on mismatch.
-          4. Cross-check amount: fetch from Razorpay and compare with DB.
-          5. Update session → PAID, order.payment_status → PAID.
-          6. Update order timeline.
+          1. Find the session by razorpay_order_id and its order.
+          2. Ownership check (customer or matching guest email).
+          3. Guard: cancelled orders can no longer be paid.
+          4. Guard: session must be CREATED or PENDING (PAID → idempotent).
+          5. Verify HMAC-SHA256 signature — reject + mark FAILED on mismatch.
+          6. Cross-check amount against Razorpay when the provider is
+             reachable (signature is the primary trust anchor).
+          7. Session → PAID; order → PAID + PENDING_PAYMENT →
+             PAYMENT_CONFIRMED → ORDER_CONFIRMED (canonical confirmation).
 
         SECURITY NOTE:
           The HMAC verification is the authoritative trust boundary.
           We do NOT trust the frontend's claim that payment succeeded —
           only a valid HMAC signed with our key_secret is accepted.
+          A client can never mark an order PAID by sending a status flag.
         """
         session = await self._load_session_by_razorpay_order(razorpay_order_id)
+        order = await self._load_order(session.order_id)
+        await self._assert_order_access(order, owner_customer_id, owner_guest_email)
 
         # Guard: idempotent — already verified
         if session.status == "PAID":
-            order = await self._load_order(session.order_id)
+            await self._confirm_order_paid(order, note="verification replay")
             return {
                 "ok": True,
                 "message": "Payment already verified.",
                 "payment_status": order.payment_status,
                 "order_id": session.order_id,
+                "order_status": order.status,
             }
 
         if session.status not in ("CREATED", "PENDING"):
             raise BusinessLogicException(
                 f"Payment session is in status '{session.status}' — "
                 "verification is only valid for CREATED or PENDING sessions."
+            )
+
+        # Guard: a cancelled order must never be charged.
+        if order.status == "CANCELLED":
+            session.status = "FAILED"
+            session.failure_reason = "Order was cancelled before payment."
+            session.failure_code = "ORDER_CANCELLED"
+            await self.db.flush()
+            raise BusinessLogicException(
+                "This order has been cancelled and can no longer be paid."
             )
 
         # ── HMAC signature verification ────────────────────────────────────────
@@ -566,8 +608,9 @@ class PaymentService:
         except BusinessLogicException:
             raise
         except Exception:
-            # Razorpay fetch failed — proceed with signature verification alone
-            # (signature is the primary trust anchor; fetch is belt-and-suspenders)
+            # Razorpay fetch failed (e.g. provider not configured) — proceed
+            # with signature verification alone (signature is the primary
+            # trust anchor; the fetch is belt-and-suspenders).
             pass
 
         # ── All checks passed — mark PAID ─────────────────────────────────────
@@ -583,34 +626,61 @@ class PaymentService:
             session.id, razorpay_payment_id, session.order_id,
         )
 
-        # Update order payment status
-        if session.order_id:
-            order = await self._load_order(session.order_id)
-            order.payment_status = "PAID"
-
-            # Append to order timeline
-            timeline = list(order.timeline or [])
-            timeline.append({
-                "event": "PAYMENT_CAPTURED",
-                "at": now.isoformat(),
-                "note": f"razorpay_payment_id={razorpay_payment_id}",
-            })
-            order.timeline = timeline
-            await self.db.flush()
-
-            return {
-                "ok": True,
-                "message": "Payment verified and captured successfully.",
-                "payment_status": "PAID",
-                "order_id": order.id,
-            }
+        await self._confirm_order_paid(order, now=now, note=f"razorpay_payment_id={razorpay_payment_id}")
 
         return {
             "ok": True,
-            "message": "Payment verified successfully.",
+            "message": "Payment verified and captured successfully.",
             "payment_status": "PAID",
-            "order_id": None,
+            "order_id": order.id,
+            "order_status": order.status,
         }
+
+    async def _confirm_order_paid(
+        self,
+        order: OrderModel,
+        now: Optional[datetime] = None,
+        note: Optional[str] = None,
+    ) -> None:
+        """
+        Authoritative order confirmation after verified payment.
+
+        - payment_status → PAID (guarded, idempotent)
+        - PENDING_PAYMENT → PAYMENT_CONFIRMED → ORDER_CONFIRMED, each step
+          written to status history + timeline.
+        """
+        from app.models.orders.order_status_history import OrderStatusHistoryModel
+
+        now = now or _now_utc()
+        if order.payment_status not in ("PAID", "AUTHORIZED"):
+            order.payment_status = "PAID"
+
+        if order.status == "PENDING_PAYMENT":
+            for to_status in ("PAYMENT_CONFIRMED", "ORDER_CONFIRMED"):
+                from_status = order.status
+                order.status = to_status
+                self.db.add(OrderStatusHistoryModel(
+                    id=_new_uuid(),
+                    order_id=order.id,
+                    from_status=from_status,
+                    to_status=to_status,
+                    note=f"Payment verified — {note}" if note else "Payment verified.",
+                ))
+                timeline = list(order.timeline or [])
+                timeline.append({
+                    "event": f"STATUS_{to_status}",
+                    "at": now.isoformat(),
+                })
+                order.timeline = timeline
+
+        timeline = list(order.timeline or [])
+        timeline.append({
+            "event": "PAYMENT_CAPTURED",
+            "at": now.isoformat(),
+            "note": note,
+        })
+        order.timeline = timeline
+        await self.db.flush()
 
     # ── Webhook handler ────────────────────────────────────────────────────────
 
@@ -710,16 +780,11 @@ class PaymentService:
         if session.order_id:
             try:
                 order = await self._load_order(session.order_id)
-                if order.payment_status not in ("PAID", "AUTHORIZED"):
-                    order.payment_status = "PAID"
-                    timeline = list(order.timeline or [])
-                    timeline.append({
-                        "event": "PAYMENT_CAPTURED",
-                        "at": now.isoformat(),
-                        "note": f"webhook:payment.captured / razorpay_payment_id={razorpay_payment_id}",
-                    })
-                    order.timeline = timeline
-                    await self.db.flush()
+                await self._confirm_order_paid(
+                    order,
+                    now=now,
+                    note=f"webhook:payment.captured / razorpay_payment_id={razorpay_payment_id}",
+                )
             except NotFoundException:
                 pass  # Order removed — continue
 
@@ -797,15 +862,6 @@ class PaymentService:
             if session.order_id:
                 try:
                     order = await self._load_order(session.order_id)
-                    if order.payment_status not in ("PAID", "AUTHORIZED"):
-                        order.payment_status = "PAID"
-                        timeline = list(order.timeline or [])
-                        timeline.append({
-                            "event": "PAYMENT_CAPTURED",
-                            "at": _now_utc().isoformat(),
-                            "note": "webhook:order.paid",
-                        })
-                        order.timeline = timeline
-                        await self.db.flush()
+                    await self._confirm_order_paid(order, note="webhook:order.paid")
                 except NotFoundException:
                     pass

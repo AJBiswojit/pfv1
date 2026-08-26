@@ -65,11 +65,15 @@ router = APIRouter(prefix="/payments", tags=["Payments & Gateway"])
         "Creates a Razorpay order for online payments (UPI/card/netbanking) "
         "and returns the `razorpayOrderId` + `razorpayKeyId` needed to open "
         "the Razorpay checkout modal on the frontend.  \n\n"
-        "For **COD** orders, no Razorpay API call is made — a local session "
-        "is created and a confirmation message is returned.  \n\n"
-        "**Idempotency:** pass `idempotencyKey` to safely retry without creating "
-        "duplicate sessions.  \n\n"
-        "**Auth:** Customer session or guest (optional)."
+        "**Canonical flow (Phase 2):** the order is created first "
+        "(`POST /orders` → `PENDING_PAYMENT`), then this session. The charge "
+        "amount is the order's authoritative server-computed total — client "
+        "drafts are rejected. **COD** orders do not use payment sessions.  \n\n"
+        "**Ownership:** the caller must own the order (authenticated customer, "
+        "or the order's own guest email via `guestEmail`).  \n\n"
+        "**Idempotency:** pass `idempotencyKey` to safely retry; an existing "
+        "active session for the order is resumed instead of duplicated.  \n\n"
+        "**Auth:** Customer session or guest (guest email required for guest orders)."
     ),
 )
 async def create_payment_session(
@@ -78,13 +82,17 @@ async def create_payment_session(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns one of two response shapes depending on payment_method:
-      - Online: { ok, sessionId, razorpayOrderId, razorpayKeyId, amountPaise, currency, prefill }
-      - COD:    { ok, sessionId, paymentMethod: "cod", message }
+    Response shape (snake_case — the frontend API layer normalises):
+      { ok, session_id, status, razorpay_order_id, razorpay_key_id,
+        amount_paise, currency, prefill }
+
+    The order must already exist (pending order first). The amount is the
+    order's authoritative server-computed total. COD is rejected here.
     """
     service = PaymentService(db)
 
-    # Resolve customer context for prefill
+    # Prefill comes only from the authenticated identity — never from the
+    # request body (guest prefill is not trusted).
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     customer_phone: Optional[str] = None
@@ -102,10 +110,10 @@ async def create_payment_session(
         customer_email=customer_email,
         customer_phone=customer_phone,
         customer_name=customer_name,
+        owner_customer_id=current_user.id if current_user else None,
+        owner_guest_email=req.guest_email,
     )
 
-    # The service returns a plain dict — return it directly so both
-    # COD and online shapes pass through without a rigid response_model.
     return result
 
 
@@ -119,16 +127,23 @@ async def create_payment_session(
     summary="Get payment session status",
     description=(
         "Returns the current status of a payment session.  \n\n"
-        "Status lifecycle: `CREATED → PENDING → PAID | FAILED | CANCELLED | EXPIRED`"
+        "Status lifecycle: `CREATED → PENDING → PAID | FAILED | CANCELLED | EXPIRED`  \n\n"
+        "**Ownership:** the caller must own the session's order — authenticated "
+        "customer, or the order's guest email via the `guestEmail` query parameter."
     ),
 )
 async def get_payment_session(
     session_id: str,
+    guest_email: Optional[str] = Query(None, alias="guestEmail", max_length=255),
     current_user: Optional[UserModel] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = PaymentService(db)
-    session = await service.get_session(session_id)
+    session = await service.get_session(
+        session_id,
+        owner_customer_id=current_user.id if current_user else None,
+        owner_guest_email=guest_email,
+    )
 
     session_data = PaymentSessionData(
         id=session.id,
@@ -164,7 +179,8 @@ async def get_payment_session(
         "Cancels a payment session that is in `CREATED` or `PENDING` status.  \n\n"
         "Sessions in terminal states (`PAID`, `FAILED`, `CANCELLED`, `EXPIRED`) "
         "cannot be cancelled.  \n\n"
-        "**Auth:** Customer session (optional — if provided, ownership is verified)."
+        "**Ownership is required:** authenticated customer, or the order's "
+        "guest email via `guestEmail` in the request body."
     ),
 )
 async def cancel_payment_session(
@@ -174,12 +190,12 @@ async def cancel_payment_session(
     db: AsyncSession = Depends(get_db),
 ):
     service = PaymentService(db)
-    customer_id = current_user.id if current_user else None
 
     session = await service.cancel_session(
         session_id=session_id,
         reason=req.reason,
-        customer_id=customer_id,
+        owner_customer_id=current_user.id if current_user else None,
+        owner_guest_email=req.guest_email,
     )
 
     return CancelSessionResponse(
@@ -204,9 +220,13 @@ async def cancel_payment_session(
         "and compares it (constant-time) against the provided `razorpay_signature`.  \n\n"
         "Additionally fetches the payment from Razorpay to cross-check the amount "
         "matches the order total.  \n\n"
-        "On success: `order.payment_status` is set to `PAID`.  \n"
+        "On success: the session and order move to `PAID`, and the order "
+        "transitions `PENDING_PAYMENT → PAYMENT_CONFIRMED → ORDER_CONFIRMED`.  \n"
         "On failure: returns HTTP 422 and marks the session as `FAILED`.  \n\n"
-        "**Auth:** Customer session or guest (optional)."
+        "**Ownership:** the caller must own the order — authenticated customer, "
+        "or the order's guest email via `guestEmail`. A client can never mark "
+        "an order `PAID` without a valid signature + ownership.  \n\n"
+        "**Auth:** Customer session or guest (guest email required for guest orders)."
     ),
 )
 async def verify_payment(
@@ -219,6 +239,8 @@ async def verify_payment(
         razorpay_order_id=req.razorpay_order_id,
         razorpay_payment_id=req.razorpay_payment_id,
         razorpay_signature=req.razorpay_signature,
+        owner_customer_id=current_user.id if current_user else None,
+        owner_guest_email=req.guest_email,
     )
 
     return VerifyPaymentResponse(
@@ -226,6 +248,7 @@ async def verify_payment(
         message=result["message"],
         paymentStatus=result.get("payment_status"),
         orderId=result.get("order_id"),
+        orderStatus=result.get("order_status"),
     )
 
 

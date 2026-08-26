@@ -44,6 +44,7 @@ import {
   apiListOrders,
   apiGetOrder,
   apiPlaceOrder,
+  apiClaimGuestOrders,
   apiCancelOrder as apiCancelOrderCall,
   apiCreateReturn as apiCreateReturnCall,
   apiAdminListOrders,
@@ -187,26 +188,17 @@ export function OrderProvider({ children }) {
   // ---------------------------------------------------------------------------
 
   const createOrder = useCallback(async (snapshot) => {
-    // If authenticated, place via backend
-    if (user?.id && getAccessToken()) {
-      const result = await apiPlaceOrder(snapshot);
-      if (result.ok && result.order) {
-        setOrders((current) => [result.order, ...current]);
-        setCurrentOrderId(result.order.id);
-        return { ok: true, order: result.order, message: "Order placed." };
-      }
-      return { ok: false, order: null, message: result.error ?? "Order could not be placed." };
+    // Canonical (Phase 2): the backend is always the order authority —
+    // signed-in customers place their own orders, guests place claimable
+    // guest orders. No local/demo order is ever created from checkout.
+    const result = await apiPlaceOrder(snapshot);
+    if (result.ok && result.order) {
+      setOrders((current) => [result.order, ...current]);
+      setCurrentOrderId(result.order.id);
+      return { ok: true, order: result.order, message: "Order placed." };
     }
-
-    // Offline demo
-    const result = orderService.addOrder(ordersRef.current, snapshot);
-    if (!result.ok || !result.order) return { ok: false, order: null, message: result.message || "" };
-    ordersRef.current = result.orders;
-    setOrders(result.orders);
-    orderService.saveOrders(result.orders);
-    setCurrentOrderId(result.order.id);
-    return { ok: true, order: result.order, message: result.message };
-  }, [user?.id]);
+    return { ok: false, order: null, message: result.error ?? "Order could not be placed." };
+  }, []);
 
   const clearCurrentOrder = useCallback(() => setCurrentOrderId(null), []);
 
@@ -286,12 +278,19 @@ export function OrderProvider({ children }) {
     return { ok: true, record: advanced.record, message: "" };
   }, [customerId, applyResult]);
 
-  const claimGuestOrders = useCallback((id = customerId) => {
+  const claimGuestOrders = useCallback(async (id = customerId) => {
     if (!id) return { ok: false, claimed: 0 };
-    const result = orderService.claimGuestOrders(ordersRef.current, id);
-    if (result.claimed === 0) return { ok: false, claimed: 0 };
-    ordersRef.current = result.orders;
-    setOrders(result.orders);
+    // Server-authoritative (Phase 2): the backend derives the claim
+    // identity from the authenticated account's own email — no client
+    // email is sent, so one caller can never claim another person's
+    // guest orders.
+    const result = await apiClaimGuestOrders();
+    if (!result.ok) return { ok: false, claimed: 0, error: result.error };
+    // Refresh the server order list so claimed orders appear in history.
+    const list = await apiListOrders({ pageSize: 100 });
+    if (list.ok) {
+      setOrders(list.orders ?? []);
+    }
     return { ok: true, claimed: result.claimed };
   }, [customerId]);
 
