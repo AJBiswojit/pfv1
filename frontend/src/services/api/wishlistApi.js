@@ -9,9 +9,10 @@
  */
 import { apiClient, ApiError } from "./apiClient";
 
+/** Failures keep their HTTP status — a failed wishlist read is an error, never an empty list. */
 function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+  if (err instanceof ApiError) return { ok: false, error: err.message, status: err.status };
+  return { ok: false, error: "An unexpected error occurred.", status: 0 };
 }
 
 function normaliseWishlist(data) {

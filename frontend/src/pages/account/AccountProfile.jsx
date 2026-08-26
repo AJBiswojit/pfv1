@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Camera, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import AccountShell from "../../components/account/AccountShell";
 import { useAccount } from "../../context/AccountContext";
 import { AtelierButton, EditorialHeading } from "../../design-system";
@@ -58,28 +58,20 @@ export default function AccountProfile() {
     }
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setFeedback({ ok: false, message: "Please select a valid image file (JPEG, PNG, WebP)." });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      setFeedback({ ok: false, message: "Image size must be less than 2MB." });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData((prev) => ({ ...prev, avatar: reader.result }));
-    };
-    reader.readAsDataURL(file);
+  const handleAvatarChange = () => {
+    // Portrait uploads are not available: the backend profile column accepts
+    // at most a 1,000-character reference and no media-upload pipeline
+    // exists (S3/CDN is a future phase). Rather than pretend a 2MB upload
+    // persists, the field stays honestly unavailable.
+    setFeedback({
+      ok: false,
+      message: "Portrait uploads are not available yet. Your saved details will not change.",
+    });
   };
 
   const handleRemoveAvatar = () => {
+    // Clearing an existing portrait is supported — the empty value is sent
+    // to the backend with the next profile save.
     setFormData((prev) => ({ ...prev, avatar: null }));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -108,19 +100,29 @@ export default function AccountProfile() {
     }
 
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const result = updateProfile({
+    // The backend is the authority — the response decides the outcome and
+    // the canonical profile (409 duplicates, 422 validation, etc. surface).
+    const result = await updateProfile({
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       dateOfBirth: formData.dateOfBirth,
-      avatar: formData.avatar,
+      ...(formData.avatar === null && profile?.avatar ? { avatar: "" } : {}),
     });
 
     setIsSaving(false);
-    setFeedback({ ok: result.ok, message: result.message });
+    if (!result.ok) {
+      setFeedback({
+        ok: false,
+        message:
+          result.error ??
+          result.message ??
+          "Your profile could not be saved. Please try again.",
+      });
+      return;
+    }
+    setFeedback({ ok: true, message: "Your profile has been saved." });
   };
 
   const initials = [formData.firstName[0], formData.lastName[0]]
@@ -182,7 +184,9 @@ export default function AccountProfile() {
                 Profile Portrait
               </p>
               <p className="font-ui text-[11px] text-taupe leading-relaxed">
-                PNG, JPG or WebP (max 2MB). Used for order confirmations and atelier styling notes.
+                Portrait uploads are not available yet — the atelier&rsquo;s media
+                pipeline is being prepared. Any portrait already on file keeps
+                showing on your account.
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1">
                 <input
@@ -192,13 +196,8 @@ export default function AccountProfile() {
                   onChange={handleAvatarChange}
                   className="hidden"
                   id="avatar-upload"
+                  disabled
                 />
-                <label
-                  htmlFor="avatar-upload"
-                  className="cursor-pointer inline-flex items-center gap-2 border border-pearl bg-canvas px-4 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-ink hover:text-accent hover:border-accent transition-colors"
-                >
-                  <Camera size={13} aria-hidden="true" /> Upload Photo
-                </label>
 
                 {formData.avatar && (
                   <button
@@ -347,7 +346,8 @@ export default function AccountProfile() {
                 <input
                   type="text"
                   disabled
-                  value={profile?.memberSince || "2025"}
+                  value={profile?.memberSince || ""}
+                  placeholder="—"
                   className="w-full border border-mist bg-canvas-deep/50 px-4 py-3 font-ui text-sm text-taupe cursor-not-allowed"
                 />
               </div>

@@ -12,6 +12,7 @@ import { useCallback, useMemo } from "react";
 import { CartProvider, useCart } from "./CartContext";
 import { useWishlist, WishlistProvider } from "./WishlistContext";
 import { defaultSelection, requiresVariantChoice } from "../utils/shopping";
+import { moveLineToWishlist } from "../utils/shoppingMoves";
 
 /** Mounts the whole shopping state once, at the top of the application. */
 export function ShoppingProvider({ children }) {
@@ -27,21 +28,26 @@ export function useShopping() {
   const cart = useCart();
   const wishlist = useWishlist();
 
-  /** Cart → wishlist: the line leaves the bag, the product joins the edit once. */
+  /**
+   * Cart → wishlist. The wishlist add is awaited first; the cart line is
+   * removed only after that add succeeded (sequencing lives in
+   * `moveLineToWishlist` so it is unit-tested).
+   */
   const moveToWishlist = useCallback(
-    (item) => {
-      if (!item?.productId) return { ok: false, message: "" };
-      wishlist.add(item.productId);
-      cart.removeFromCart(item.id);
-      return { ok: true, message: "Moved to your wishlist." };
-    },
+    (item) => moveLineToWishlist({
+      item,
+      addToList: wishlist.add,
+      removeFromCart: cart.removeFromCart,
+    }),
     [cart, wishlist]
   );
 
   /**
    * Wishlist → cart. Pieces that need a deliberate size choice are sent to
    * their detail page instead of forcing the choice into a card; the piece
-   * stays in the wishlist unless the customer removes it themselves.
+   * stays in the wishlist unless the customer removes it themselves (the
+   * documented policy — the add must succeed first in any case, and it does:
+   * the bag add is the backend mutation itself).
    */
   const moveToCart = useCallback(
     (product) => {

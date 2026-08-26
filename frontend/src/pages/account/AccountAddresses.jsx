@@ -48,24 +48,26 @@ export default function AccountAddresses() {
     setModalOpen(true);
   };
 
-  const handleSave = (addressData) => {
-    if (editingAddress?.id) {
-      const res = updateAddress(editingAddress.id, addressData);
-      setFeedback({ ok: res.ok, message: res.message });
-    } else {
-      const res = addAddress(addressData);
-      setFeedback({ ok: res.ok, message: res.message });
-    }
-    setModalOpen(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (addressData) => {
+    setIsSaving(true);
+    // The backend mutation is awaited — its response decides the outcome.
+    const res = editingAddress?.id
+      ? await updateAddress(editingAddress.id, addressData)
+      : await addAddress(addressData);
+    setIsSaving(false);
+    setFeedback({ ok: res.ok, message: res.message });
+    if (res.ok) setModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    const res = deleteAddress(id);
+  const handleDelete = async (id) => {
+    const res = await deleteAddress(id);
     setFeedback({ ok: res.ok, message: res.message });
   };
 
-  const handleSetDefault = (id) => {
-    const res = setDefaultAddress(id);
+  const handleSetDefault = async (id) => {
+    const res = await setDefaultAddress(id);
     setFeedback({ ok: res.ok, message: res.message });
   };
 
@@ -237,6 +239,7 @@ export default function AccountAddresses() {
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
           initialAddress={editingAddress}
+          isSaving={isSaving}
         />
       </div>
     </AccountShell>

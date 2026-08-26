@@ -187,6 +187,28 @@ export async function apiResetPasswordCustomer({ userId, token, newPassword, con
   }
 }
 
+/**
+ * POST /auth/change-password (customer scope).
+ * The backend verifies the current password, revokes every session and
+ * blacklists the current access token — after success the customer must
+ * sign in again. Surface the backend's own rejection messages.
+ */
+export async function apiChangePasswordCustomer({ currentPassword, newPassword, confirmPassword }) {
+  if (newPassword !== confirmPassword) {
+    return { ok: false, error: "Passwords do not match." };
+  }
+  try {
+    const data = await apiClient.post("/auth/change-password", {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    }, { scope: "customer" });
+    return { ok: true, message: data.message ?? "Password updated successfully." };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Employee Auth
 // ---------------------------------------------------------------------------

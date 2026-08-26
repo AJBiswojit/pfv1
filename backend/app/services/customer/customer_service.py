@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.constants import REVENUE_ORDER_STATUSES
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.auth.session import UserSessionModel
 from app.models.auth.user import UserModel
 from app.models.customer.customer import CustomerProfileModel
 from app.models.customer.preferences import CustomerPreferencesModel
+from app.models.orders.order import OrderModel
 from app.schemas.customer.customer import (
     AdminCustomerResponse,
     PreferencesUpdate,
@@ -27,6 +29,38 @@ class CustomerService:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _order_aggregates_for(self, customer_ids: list) -> dict:
+        """
+        Grouped order aggregates for the given customer ids.
+
+        Semantics (mirrors the admin analytics overview):
+          - `order_count`    — every order the customer has placed, regardless
+                               of status (an honest count of placed orders).
+          - `lifetime_spend` — sum of `OrderModel.total` over
+                               REVENUE_ORDER_STATUSES only, so cancelled /
+                               refunded-wholesale orders do not inflate spend.
+
+        Returns {customer_id: (order_count, lifetime_spend)}; customers with
+        no orders are simply absent from the map.
+        """
+        if not customer_ids:
+            return {}
+        revenue_total = func.coalesce(
+            func.sum(
+                case(
+                    (OrderModel.status.in_(REVENUE_ORDER_STATUSES), OrderModel.total),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+        res = await self.db.execute(
+            select(OrderModel.customer_id, func.count(), revenue_total)
+            .where(OrderModel.customer_id.in_(customer_ids))
+            .group_by(OrderModel.customer_id)
+        )
+        return {row[0]: (int(row[1]), float(row[2] or 0)) for row in res.all()}
 
     async def _get_profile_for_user(self, user_id: str) -> Tuple[UserModel, CustomerProfileModel]:
         """Load UserModel + CustomerProfileModel together, raise 404 if not found."""
@@ -65,6 +99,10 @@ class CustomerService:
         """
         Return the full customer profile dict:
           { profile, addresses, preferences, security: { activeSessions } }
+
+        BACKEND_GAP: `current_session_id` is never supplied by the router
+        because the access token carries no session id claim — every
+        SessionSummary therefore reports is_current=False.
         """
         user, profile = await self._get_profile_for_user(user_id)
         prefs = await self._get_or_create_preferences(profile)
@@ -176,7 +214,13 @@ class CustomerService:
     # ------------------------------------------------------------------
 
     async def revoke_other_sessions(self, user_id: str, current_token_hash_prefix: Optional[str] = None) -> int:
-        """Revoke all sessions except the current one. Returns count revoked."""
+        """
+        Revoke all sessions except the current one. Returns count revoked.
+
+        BACKEND_GAP: `current_token_hash_prefix` is never supplied by the
+        router (the access token carries no session id claim), so this
+        revokes EVERY active session, including the caller's own.
+        """
         stmt = select(UserSessionModel).where(
             UserSessionModel.user_id == user_id,
             UserSessionModel.is_revoked == False,
@@ -259,9 +303,13 @@ class CustomerService:
         users_res = await self.db.execute(base_stmt)
         users = users_res.scalars().all()
 
+        # Real order aggregates (single grouped query for the whole page).
+        order_stats = await self._order_aggregates_for([u.id for u in users])
+
         result = []
         for u in users:
             cp = u.customer_profile
+            order_count, lifetime_spend = order_stats.get(u.id, (0, 0.0))
             result.append(
                 AdminCustomerResponse(
                     id=u.id,
@@ -273,8 +321,8 @@ class CustomerService:
                     loyalty_tier=cp.loyalty_tier if cp else "BRONZE",
                     loyalty_points=cp.loyalty_points if cp else 0,
                     created_at=u.created_at,
-                    order_count=0,       # TODO: join with orders
-                    lifetime_spend=0.0,  # TODO: join with orders
+                    order_count=order_count,
+                    lifetime_spend=lifetime_spend,
                     addresses=[],        # stripped for list view to keep payload small
                 )
             )
@@ -304,6 +352,9 @@ class CustomerService:
             AddressResponse.model_validate(addr)
             for addr in (cp.addresses if cp else [])
         ]
+        order_count, lifetime_spend = (await self._order_aggregates_for([user.id])).get(
+            user.id, (0, 0.0)
+        )
         return AdminCustomerResponse(
             id=user.id,
             first_name=cp.first_name if cp else None,
@@ -314,7 +365,7 @@ class CustomerService:
             loyalty_tier=cp.loyalty_tier if cp else "BRONZE",
             loyalty_points=cp.loyalty_points if cp else 0,
             created_at=user.created_at,
-            order_count=0,
-            lifetime_spend=0.0,
+            order_count=order_count,
+            lifetime_spend=lifetime_spend,
             addresses=addresses,
         )

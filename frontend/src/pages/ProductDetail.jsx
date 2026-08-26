@@ -6,9 +6,9 @@ import {
   apiGetProduct,
   apiGetRecommendations,
   apiAdminGetProduct,
-  apiAddRecentlyViewed,
 } from "../services/api/productsApi";
 import { getAccessToken } from "../services/api/apiClient";
+import useRecentlyViewed from "../hooks/useRecentlyViewed";
 import {
   AtelierButton,
   AtelierSection,
@@ -102,6 +102,7 @@ export default function ProductDetail() {
 
   const { user } = useAuth();
   const reveal = useReveal();
+  const { record: recordRecentlyViewed } = useRecentlyViewed();
 
   useEffect(() => {
     let cancelled = false;
@@ -156,9 +157,12 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (!product || isAtelierPreview) return undefined;
-    if (user?.id && getAccessToken("customer")) apiAddRecentlyViewed(product.id);
+    // Guests record locally (the backend has no guest history contract);
+    // authenticated views are recorded on the server by the hook, which
+    // then re-reads the canonical history.
+    recordRecentlyViewed(product.id);
     return undefined;
-  }, [product, isAtelierPreview, user?.id]);
+  }, [product, isAtelierPreview, recordRecentlyViewed]);
 
   if (status === "loading") {
     return (

@@ -2,13 +2,15 @@
  * PRATIKSHYA FASHON — Shopping utilities.
  *
  * The single home for cart-line identity, quantity/stock rules, storage
- * safety and every price calculation the bag performs. Components never do
- * this arithmetic themselves — the cart page, the mini-cart and the product
- * detail panel all read the same numbers from here.
+ * safety and the presentation-only price arithmetic used by the GUEST cart.
+ * Components never do this arithmetic themselves — the cart page, the
+ * mini-cart and the product detail panel all read the same numbers from
+ * here.
  *
- * Everything in this file is frontend demo logic over the mock catalogue.
- * Each function is the seam a real pricing, inventory or shipping service
- * would replace without touching the UI.
+ * For authenticated customers the backend owns pricing, totals and stock
+ * (`GET /cart`, `GET /cart/totals`); nothing in this file overrides the
+ * server. The guest calculations below are display-only client state,
+ * re-validated server-side at order placement.
  */
 
 import {
@@ -62,12 +64,39 @@ export const formatINR = (value) =>
 /* ------------------------------------------------------------------ */
 
 /**
- * Deterministic identity for a cart line: the product plus its selected
- * variant attributes. `Product-ID · Red · M` and `Product-ID · Red · L` are
+ * Deterministic identity for a client-side cart line: the product plus its
+ * selected variant attributes, colour and size compared case-insensitively
+ * (mirroring the server's line-merge semantics, which lower-cases both
+ * before hashing). `Product-ID · Red · M` and `Product-ID · Red · L` are
  * different lines; adding `Product-ID · Red · M` twice merges into one.
+ *
+ * This is the *guest* cart's client-side identity. Server cart lines keep
+ * the backend's own hashed id (`item.id` from the API response) — never a
+ * locally generated one. To find a line for a selection (either cart), use
+ * `findCartLine`, which matches on the (productId, colour, size) triple and
+ * therefore works for both identities.
  */
 export const cartLineId = (productId, selection = {}) =>
-  [productId, selection.color ?? "", selection.size ?? ""].join("::");
+  [productId, (selection.color ?? "").toLowerCase(), (selection.size ?? "").toLowerCase()].join("::");
+
+/**
+ * Finds the cart line holding a given product selection. Matching is on the
+ * (productId, colour, size) triple, case-insensitive — the same triple the
+ * backend uses as cart-line identity — so it resolves both guest lines and
+ * server lines (whose ids are backend-computed hashes).
+ */
+export const findCartLine = (lines, productId, selection = {}) => {
+  if (!Array.isArray(lines) || !productId) return undefined;
+  const color = (selection.color ?? null);
+  const size = (selection.size ?? null);
+  const same = (a, b) =>
+    (a ?? "") === "" && (b ?? "") === ""
+      ? true
+      : String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
+  return lines.find(
+    (line) => line.productId === productId && same(line.color, color) && same(line.size, size)
+  );
+};
 
 /* ------------------------------------------------------------------ */
 /* Quantity + mock stock                                               */
@@ -216,6 +245,7 @@ export default {
   writeStorage,
   formatINR,
   cartLineId,
+  findCartLine,
   getMaxQuantity,
   clampQuantity,
   requiresVariantChoice,

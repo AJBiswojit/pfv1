@@ -15,6 +15,7 @@ import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 import { useInventory } from "../../context/InventoryContext";
 import { getMaxQuantity } from "../../utils/shopping";
+import { formatDeliveryEstimate, getDeliveryEstimate } from "../../utils/checkout";
 import { cn } from "../../utils/cn";
 import QuantityStepper from "../cart/QuantityStepper";
 import { isVirtualTryOnEligibleProduct } from "../../services/aiMirror/aiMirrorEligibility";
@@ -69,6 +70,16 @@ function Feedback({ message, kind = "success", action = null }) {
   );
 }
 
+/**
+ * Pincode delivery check (PDP).
+ *
+ * Classification (Phase 4): there is NO backend serviceability endpoint,
+ * so this widget must not promise that a specific pincode is servable. It
+ * validates the pincode FORMAT and then shows the same deterministic
+ * standard-delivery estimate checkout uses (`getDeliveryEstimate`) — the
+ * dates and serviceability are confirmed at checkout, where the order is
+ * actually placed.
+ */
 function DeliveryCheck({ product }) {
   const [pincode, setPincode] = useState("");
   const [result, setResult] = useState("");
@@ -79,11 +90,12 @@ function DeliveryCheck({ product }) {
       setResult("Please enter a valid 6-digit pincode.");
       return;
     }
-    setResult(
-      product.availability === "made-to-order"
-        ? `Made-to-order delivery is available to ${pincode}.`
-        : `Delivery is available to ${pincode}.`
-    );
+    if (product.availability === "made-to-order") {
+      setResult("Made-to-order pieces are crafted for you — your delivery window is confirmed at checkout.");
+      return;
+    }
+    const estimate = formatDeliveryEstimate(getDeliveryEstimate("standard"));
+    setResult(`Estimated delivery ${estimate} — confirmed at checkout.`);
   };
 
   return (
@@ -200,9 +212,11 @@ export default function ProductPurchasePanel({ product }) {
     return true;
   };
 
-  const addToCart = () => {
+  const addToCart = async () => {
     if (!validate()) return;
-    const result = cart.addToCart(product, selection);
+    // Await the backend mutation — the message and outcome come from the
+    // server response, never a fabricated local success.
+    const result = await cart.addToCart(product, selection);
     setFeedback({
       message: result.message,
       kind: result.ok ? "success" : "error",
@@ -210,10 +224,12 @@ export default function ProductPurchasePanel({ product }) {
     });
   };
 
-  const buyNow = () => {
+  const buyNow = async () => {
     if (!validate()) return;
+    // Held-quantity lookup matches the backend's (productId, colour, size)
+    // line identity, so an already-bagged selection is recognised.
     const held = cart.getCartItemQuantity(product, selection);
-    const result = held > 0 ? { ok: true } : cart.addToCart(product, selection);
+    const result = held > 0 ? { ok: true } : await cart.addToCart(product, selection);
     if (!result.ok) {
       setFeedback({ message: result.message, kind: "error" });
       return;
@@ -221,11 +237,14 @@ export default function ProductPurchasePanel({ product }) {
     navigate("/checkout");
   };
 
-  const toggleWishlist = () => {
-    wishlist.toggle(product);
+  const toggleWishlist = async () => {
+    // The outcome (server-side for signed-in customers) decides the message.
+    const result = await wishlist.toggle(product);
     setFeedback({
-      message: isSaved ? "Removed from your wishlist." : "Saved to your wishlist.",
-      kind: "success",
+      message: result.ok
+        ? (isSaved ? "Removed from your wishlist." : "Saved to your wishlist.")
+        : (result.message || "Your wishlist could not be updated."),
+      kind: result.ok ? "success" : "error",
     });
   };
 
@@ -393,7 +412,7 @@ export default function ProductPurchasePanel({ product }) {
       <div className="mt-7 grid grid-cols-2 gap-3">
         <AtelierButton
           onClick={addToCart}
-          disabled={!purchasable || unavailable}
+          disabled={!purchasable || unavailable || cart.isSyncing}
           variant="primary"
           size="md"
           className="col-span-2 justify-center disabled:cursor-not-allowed disabled:bg-taupe"
@@ -412,7 +431,7 @@ export default function ProductPurchasePanel({ product }) {
         ) : null}
         <AtelierButton
           onClick={buyNow}
-          disabled={!purchasable || unavailable}
+          disabled={!purchasable || unavailable || cart.isSyncing}
           variant="outline"
           size="md"
           className="justify-center px-3 disabled:cursor-not-allowed disabled:opacity-40"
@@ -481,10 +500,10 @@ export default function ProductPurchasePanel({ product }) {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-mist bg-canvas/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur-md md:hidden">
-        <AtelierButton onClick={addToCart} disabled={unavailable} variant="primary" size="md" className="justify-center px-3 disabled:bg-taupe">
+        <AtelierButton onClick={addToCart} disabled={unavailable || cart.isSyncing} variant="primary" size="md" className="justify-center px-3 disabled:bg-taupe">
           Add to Cart
         </AtelierButton>
-        <AtelierButton onClick={buyNow} disabled={unavailable} variant="outline" size="md" className="justify-center bg-canvas px-3 disabled:opacity-40">
+        <AtelierButton onClick={buyNow} disabled={unavailable || cart.isSyncing} variant="outline" size="md" className="justify-center bg-canvas px-3 disabled:opacity-40">
           Buy Now
         </AtelierButton>
       </div>

@@ -229,9 +229,10 @@ async def remove_coupon(
         "Query params:  \n"
         "- `deliveryMethod`: `standard` (default) | `express`  \n"
         "- `paymentMethod`: `online` (default) | `cod`  \n\n"
-        "**Pricing constants (authoritative):**  \n"
-        "- Free shipping threshold: ₹5,000  \n"
+        "**Pricing constants (authoritative, shared with the order boundary):**  \n"
+        "- Free shipping threshold: ₹5,000 (standard only — express is never free)  \n"
         "- Standard shipping fee: ₹99  \n"
+        "- Express shipping fee: ₹199  \n"
         "- COD surcharge: ₹49"
     ),
 )

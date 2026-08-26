@@ -102,7 +102,7 @@ export default function AccountPreferences() {
           as="h2"
           size="subsection"
           eyebrow="Your style"
-          description="Optional notes the atelier can use to shape what you see next. Nothing here is guessed."
+          description="Optional notes the atelier can use to shape what you see next. Nothing here is guessed — and the notes stay on this device."
           spacing={{ eyebrow: "mb-3", title: "mb-3", description: "mb-0" }}
         >
           Style <span className="italic text-accent">preferences.</span>
@@ -140,7 +140,7 @@ export default function AccountPreferences() {
             </AtelierButton>
             {saved ? (
               <p role="status" className="font-ui text-xs text-cocoa">
-                Your style notes have been saved.
+                Your style notes have been saved to this device.
               </p>
             ) : null}
           </div>

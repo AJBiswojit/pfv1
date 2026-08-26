@@ -55,7 +55,9 @@ async def get_wishlist(
     summary="Add product to wishlist (idempotent)",
     description=(
         "Adds `productId` to the wishlist. "
-        "Calling this again for the same product is a no-op.  \n"
+        "Calling this again for the same product is a no-op.  \n\n"
+        "The product must exist and be storefront-visible (`PUBLISHED` and "
+        "published) — an unknown or unavailable product is a 404.  \n"
         "Returns the updated `{ ok: true, items, count }`."
     ),
 )
@@ -98,7 +100,8 @@ async def remove_from_wishlist(
     "/{product_id}/toggle",
     summary="Toggle product in wishlist",
     description=(
-        "Adds the product if it is not currently saved; removes it if it is.  \n"
+        "Adds the product if it is not currently saved (requiring it to exist "
+        "and be storefront-visible); removes it if it is.  \n"
         "Returns the updated `{ ok: true, items, count }`."
     ),
 )

@@ -1,6 +1,19 @@
 from enum import Enum
 
 
+# ── Revenue accounting ────────────────────────────────────────────────────────
+# Order statuses whose `total` counts towards revenue: everything except a
+# wholesale cancellation/refund. Single source of truth shared by the admin
+# analytics overview and the admin customer list/detail aggregates.
+REVENUE_ORDER_STATUSES: tuple = (
+    "PENDING_PAYMENT", "PAYMENT_CONFIRMED", "ORDER_CONFIRMED", "PROCESSING",
+    "ALLOCATED", "PICKING", "PACKED", "READY_TO_DISPATCH", "SHIPPED",
+    "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED", "PARTIALLY_RETURNED",
+    "RETURN_REQUESTED", "RETURNED",
+)
+
+
+
 class UserType(str, Enum):
     CUSTOMER = "customer"
     EMPLOYEE = "employee"

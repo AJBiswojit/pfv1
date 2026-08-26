@@ -620,7 +620,9 @@ export default function AccountDashboard() {
                 </p>
               </>
             ) : (
-              <p className="font-ui text-sm text-taupe">No saved address yet.</p>
+              /* Honest: no address is marked default on the account (the
+                 backend has no default until the customer sets one). */
+              <p className="font-ui text-sm text-taupe">No default address set.</p>
             )}
             <div className="mt-5">
               <AtelierButton as={Link} to="/account/addresses" variant="outline" size="chip">

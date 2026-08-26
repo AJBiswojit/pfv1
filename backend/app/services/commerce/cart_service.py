@@ -18,9 +18,10 @@ Restore rules (applied on every cart read):
   - Keep the coupon only if it still resolves to a live, valid offer;
     set coupon_lapsed = True otherwise.
 
-Pricing constants (from frontend src/utils/pricing.js — backend is authority):
+Pricing constants (backend is authority; cart and order boundary share them):
   FREE_SHIPPING_THRESHOLD = 5000
   FLAT_SHIPPING_FEE       = 99
+  EXPRESS_SHIPPING_FEE    = 199   (express is never free — order-boundary rule)
   COD_FEE                 = 49
 """
 
@@ -55,6 +56,7 @@ logger = get_logger(__name__)
 # ── Pricing constants ─────────────────────────────────────────────────────────
 FREE_SHIPPING_THRESHOLD = 5_000   # ₹5,000 — free standard shipping above this
 FLAT_SHIPPING_FEE = 99            # ₹99 flat standard shipping fee
+EXPRESS_SHIPPING_FEE = 199        # ₹199 express fee — never free (order boundary rule)
 COD_FEE = 49                      # ₹49 cash-on-delivery surcharge
 
 
@@ -287,10 +289,19 @@ class CartService:
                 offer_id = coupon.id
 
         discounted_subtotal = subtotal - coupon_discount
-        shipping = (
-            0 if discounted_subtotal >= FREE_SHIPPING_THRESHOLD or delivery_method == "free"
-            else FLAT_SHIPPING_FEE
-        )
+        # Shipping must mirror the order-boundary rule in
+        # services/orders/order_service._compute_shipping so the cart display
+        # and the placed order can never disagree: express carries a flat
+        # premium at every order value (never free); standard is complimentary
+        # at/above the free-shipping threshold and ₹99 below it.
+        if delivery_method == "express":
+            shipping = EXPRESS_SHIPPING_FEE
+        elif delivery_method == "free":
+            shipping = 0
+        else:
+            shipping = (
+                0 if discounted_subtotal >= FREE_SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE
+            )
         cod_fee = COD_FEE if payment_method == "cod" else 0
         total = max(0, discounted_subtotal + shipping + cod_fee)
         saved = product_discount + coupon_discount + (
