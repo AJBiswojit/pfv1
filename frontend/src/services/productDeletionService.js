@@ -33,9 +33,8 @@ import mediaRepository from "./media/mediaRepository.js";
 import { unassignMediaFromProduct } from "./media/mediaOwnershipService.js";
 import { MEDIA_SCOPES } from "../config/mediaTypes.js";
 import { resolvePrincipal } from "./workflow/productWorkflowCommands.js";
-import { ORDERS_STORAGE_KEY } from "./orders/orderService.js";
-import { INVENTORY_STORAGE_KEYS } from "./inventory/inventoryRepository.js";
-import { readStorage } from "../utils/shopping.js";
+import { loadOrders } from "./orders/orderService";
+import { loadInventory, loadMovements } from "./inventory/inventoryRepository";
 import {
   ACTIVITY_ACTIONS,
   describeActor,
@@ -84,7 +83,7 @@ const adminOnly = (principal) => {
 
 /** Orders that reference the product — read directly, without seeding demo data. */
 const orderReferences = (productId) => {
-  const orders = readStorage(ORDERS_STORAGE_KEY, null);
+  const orders = loadOrders();
   if (!Array.isArray(orders)) return [];
   const id = String(productId);
   return orders.filter((order) =>
@@ -94,8 +93,8 @@ const orderReferences = (productId) => {
 
 const inventoryReferences = (productId) => {
   const id = String(productId);
-  const rows = readStorage(INVENTORY_STORAGE_KEYS.INVENTORY, null);
-  const movements = readStorage(INVENTORY_STORAGE_KEYS.MOVEMENTS, null);
+  const rows = loadInventory();
+  const movements = loadMovements();
   return {
     records: Array.isArray(rows)
       ? rows.filter((row) => String(row?.productId ?? "") === id)

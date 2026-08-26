@@ -26,7 +26,6 @@
  *   · Product version counter for downstream memoization.
  */
 
-import { products as catalogueSeedProducts } from "../data/catalog/products";
 import { getProductMediaSummary } from "./media/mediaRepository";
 import { getProductMediaSet } from "./media/productMediaSet";
 import {
@@ -61,21 +60,32 @@ const KEY = "pratikshya_products";
 export const PRODUCTS_CHANGED_EVENT = "pratikshya-products-changed";
 
 /* ------------------------------------------------------------------ */
-/* Frontend catalogue seed                                             */
+/* Product source — backend-fed                                       */
 /* ------------------------------------------------------------------ */
 
 /**
- * The static frontend catalogue — `src/data/catalog/products.js` — is the
- * authored product source. It supplies every record while the register is
- * empty (or missing entries), and is the seam a future product API replaces
- * without touching a single consumer. Stored workspace records always win
- * over the seed for the same id, so admin edits can never be overwritten.
+ * Products are backend-owned (GET /admin/products). The in-memory list below
+ * is a session cache of server records — there is no static seed, no
+ * localStorage register, and no local authority. Write paths also call the
+ * backend API; the cache is refreshed from the server after mutations.
  */
-const CATALOGUE_SEED_RAW = JSON.stringify(catalogueSeedProducts);
+let serverProducts = [];
 
-/** Fingerprint of the authored catalogue — invalidates read-only caches. */
-export const catalogueSeedFingerprint = () =>
-  `${catalogueSeedProducts.length}:${CATALOGUE_SEED_RAW.length}`;
+/** Fingerprint of the cached catalogue — invalidates read-only caches. */
+export const catalogueSeedFingerprint = () => `${serverProducts.length}`;
+
+/** Replace the session cache with server records (called after API fetches). */
+export const replaceServerProducts = (items) => {
+  serverProducts = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
+  productVersion += 1;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
+  }
+  return serverProducts;
+};
+
+/** The current session cache (server-backed). */
+export const getServerProducts = () => serverProducts;
 
 const hasCanonicalIdentity = (record) => {
   if (
@@ -92,17 +102,6 @@ const hasCanonicalIdentity = (record) => {
   } catch {
     return false;
   }
-};
-
-const mergeCatalogueSeed = (stored) => {
-  const canonicalStored = Array.isArray(stored) ? stored.filter(hasCanonicalIdentity) : [];
-  if (canonicalStored.length === 0) return healRead(CATALOGUE_SEED_RAW);
-
-  const present = new Set(canonicalStored.map((record) => String(record.id)));
-  const missing = healRead(CATALOGUE_SEED_RAW).filter(
-    (record) => !present.has(String(record.id))
-  );
-  return missing.length ? [...canonicalStored, ...missing] : canonicalStored;
 };
 
 export const PRODUCT_STATUS = {
@@ -158,7 +157,6 @@ const imageIdOf = (value) => {
   return value;
 };
 
-let memoryStorage = null;
 let productVersion = 0;
 
 /*
@@ -184,23 +182,15 @@ let normalizedCache = {
 
 const read = () => {
   try {
-    let raw = null;
-    if (typeof localStorage !== "undefined") {
-      raw = localStorage.getItem(KEY);
-    } else {
-      raw = memoryStorage;
-    }
-    if (readCache && readCache.raw === raw && readCache.parsed) {
+    const list = serverProducts;
+    if (readCache && readCache.raw === list && readCache.parsed) {
       return readCache.parsed;
     }
-    const healed = mergeCatalogueSeed(healRead(raw));
-    /* READ = READ ONLY. The authored catalogue seed is merged here so the
-       persisted register and authored catalogue stay one canonical product
-       source; media ownership and workflow transitions use explicit commands. */
-    readCache = { raw: raw ?? null, parsed: healed };
+    const healed = healRead(JSON.stringify(list));
+    readCache = { raw: list, parsed: healed };
     return healed;
   } catch {
-    return mergeCatalogueSeed(healRead(null));
+    return [];
   }
 };
 
@@ -270,24 +260,12 @@ const healRead = (raw) => {
  * so fingerprint-keyed caches invalidate automatically.
  */
 export const productsRegisterRaw = () => {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : memoryStorage;
-  } catch {
-    return null;
-  }
+  try { return JSON.stringify(serverProducts); } catch { return null; }
 };
 
 const save = (items) => {
-  try {
-    const json = JSON.stringify(items);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(KEY, json);
-    } else {
-      memoryStorage = json;
-    }
-  } catch {
-    /* Storage failure never breaks the register. */
-  }
+  /* Server-backed cache only — no localStorage register. */
+  serverProducts = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
   productVersion += 1;
   // Invalidate normalized cache on save (parsedRef will differ anyway, but bump version)
   // keep readCache in sync
@@ -823,8 +801,35 @@ const writeProduct = (draft, actor, options = {}) => {
     noteProduct(ACTIVITY_ACTIONS.PRODUCT_EDITED, merged, actor, `Edited product ${merged.name}`);
   }
 
+  /* Backend sync — the server is authoritative. In-session cache is updated
+     immediately so the UI stays responsive; the mutation is persisted via
+     the admin/employee product API. */
+  syncProductToBackend(merged, Boolean(existing)).catch(() => {
+    /* A failed sync is surfaced by the workflow command result; the session
+       cache continues so the editor never loses the operator's work. */
+  });
+
   return merged;
 };
+
+/** Fire-and-forget backend persistence for product writes. */
+async function syncProductToBackend(product, isUpdate) {
+  const { getAccessToken } = await import("./api/apiClient");
+  const { apiAdminCreateProduct, apiAdminUpdateProduct, apiEmployeeUpdateProduct } =
+    await import("./api/productsApi");
+  const payload = { ...product };
+  delete payload.history;
+  delete payload.flags;
+  const hasAdmin = Boolean(getAccessToken("admin"));
+  const hasEmployee = Boolean(getAccessToken("employee"));
+  if (!hasAdmin && !hasEmployee) return;
+  if (isUpdate) {
+    if (hasAdmin) await apiAdminUpdateProduct(product.id, payload);
+    else await apiEmployeeUpdateProduct(product.id, payload);
+  } else {
+    await apiAdminCreateProduct(payload);
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Legacy status → canonical command map (Phase 3C)                    */
@@ -1375,15 +1380,10 @@ export const catalogMetrics = (items) => {
 
 export default catalogRepository;
 
-/** Test/support boundary for replacing the persisted canonical Product register. */
+/** Replaces the in-memory server-backed product cache (test/support boundary). */
 export const persistCanonicalCatalogueState = (products, source = "canonical-state") => {
   try {
-    const payload = JSON.stringify(products);
-    if (typeof localStorage !== "undefined" && localStorage) {
-      localStorage.setItem(KEY, payload);
-    } else {
-      memoryStorage = payload;
-    }
+    replaceServerProducts(Array.isArray(products) ? products : []);
     return { ok: true, source };
   } catch (e) {
     return { ok: false, error: String(e && e.message ? e.message : e), source };

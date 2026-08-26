@@ -27,26 +27,6 @@ import { cn } from "../../utils/cn";
 const SAMPLE_VIDEO =
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
 
-/** Maps a product or manifest keyword to a fallback image plate so demo uploads render cleanly. */
-const getDemoPlate = (productId, type, index = 0) => {
-  if (type === MEDIA_TYPES.VIDEO) {
-    return {
-      url: SAMPLE_VIDEO,
-      poster: getImage("saree-silk")?.src || "",
-    };
-  }
-  const product = productId ? catalogRepository.find(productId) : null;
-  if (product?.image) {
-    const src = typeof product.image === "object" ? product.image.src : getImage(product.image)?.src;
-    if (src) return { url: src, poster: "" };
-  }
-  const pool = ["saree-silk", "saree-traditional", "saree-banarasi", "fabric-silk", "lehenga-bridal", "women-bridal-wear"];
-  const pick = pool[index % pool.length];
-  return {
-    url: getImage(pick)?.src || "",
-    poster: "",
-  };
-};
 
 export default function MediaUploadForm({
   initialScope = MEDIA_SCOPES.PRODUCT,
@@ -203,71 +183,19 @@ export default function MediaUploadForm({
     event.preventDefault();
     if (!validateForm()) return;
 
-    // Simulation of demo upload phases
-    setUploadState("preparing");
-    setUploadProgress(15);
+    /* Media upload is backend-owned. The backend media service is not
+       available yet (the media tables do not carry business columns — see
+       INTEGRATION_AUDIT.md §7), so the upload is NOT simulated: the UI
+       shows an explicit error instead of creating fake records. */
+    setFormError("Media upload is not available yet: the backend media service has not been activated in this phase. File details were not stored and no placeholder media was created.");
+    setUploadState("idle");
+    setUploadProgress(0);
+    return;
 
-    await new Promise((r) => setTimeout(r, 450));
-    setUploadState("uploading");
-    setUploadProgress(50);
-
-    await new Promise((r) => setTimeout(r, 600));
-    setUploadProgress(90);
-
-    try {
-      const isProduct = scope === MEDIA_SCOPES.PRODUCT;
-
-      const drafts = queue.map((item, index) => {
-        const demoPlate = getDemoPlate(productId, item.type, index);
-
-        return {
-          type: item.type,
-          title: item.title.trim(),
-          alt: item.alt?.trim() || item.title.trim(),
-          caption: item.caption?.trim() || "",
-          role: isProduct ? item.role : null,
-          fileName: item.file.name,
-          fileSize: item.file.size,
-          mimeType: item.file.type || "",
-          demoPlaceholder: true,
-          // Assign demo URL so when approved it resolves into a valid storefront plate
-          url: demoPlate.url,
-          poster: demoPlate.poster || "",
-          thumbnail: demoPlate.poster || demoPlate.url,
-          sampleUrl: demoPlate.url,
-          samplePoster: demoPlate.poster,
-          sampleThumbnail: demoPlate.poster || demoPlate.url,
-          tags: isProduct ? ["product", "upload"] : ["marketing", "campaign"],
-          placement: isProduct ? null : placement,
-          campaign: isProduct ? null : campaign.trim() || null,
-          campaignStart: isProduct ? null : campaignStart || null,
-          campaignEnd: isProduct ? null : campaignEnd || null,
-        };
-      });
-
-      const context = isProduct
-        ? {
-            productId,
-            scope: MEDIA_SCOPES.PRODUCT,
-            status: isEmployeeSession ? MEDIA_STATUS.PENDING_REVIEW : MEDIA_STATUS.ACTIVE,
-          }
-        : {
-            placement,
-            scope: MEDIA_SCOPES.MARKETING,
-            campaign: campaign.trim() || null,
-            status: isEmployeeSession ? MEDIA_STATUS.PENDING_REVIEW : MEDIA_STATUS.ACTIVE,
-          };
-
-      const created = actions.upload(drafts, context);
-
-      setUploadedResults(created);
-      setUploadProgress(100);
-      setUploadState("completed");
-    } catch (err) {
-      console.error("Upload error:", err);
-      setUploadState("failed");
-      setFormError("An error occurred during demo upload. Please try again.");
-    }
+    /* Kept explicit: media upload requires the backend upload service
+       (blocker documented in INTEGRATION_AUDIT.md §7). */
+    setUploadState("idle");
+    setUploadProgress(0);
   };
 
   const handleResetForNext = () => {
@@ -539,7 +467,7 @@ export default function MediaUploadForm({
           <div className="flex items-center justify-between font-ui text-xs">
             <span className="flex items-center gap-2 font-medium text-ink">
               <Loader2 size={14} className="animate-spin text-accent" />
-              {uploadState === "preparing" ? "Preparing assets..." : "Uploading Demo Media..."}
+              {uploadState === "preparing" ? "Preparing assets..." : "Uploading media…"}
             </span>
             <span className="font-mono text-taupe">{uploadProgress}%</span>
           </div>

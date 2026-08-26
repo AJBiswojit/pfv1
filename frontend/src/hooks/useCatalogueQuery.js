@@ -1,11 +1,11 @@
 /**
- * PRATIKSHYA FASHON — Catalogue query state (Phase B wired).
+ * PRATIKSHYA FASHON — Catalogue query state (backend-authoritative).
  *
- * Strategy:
  *   - Reads filters / sort / search from the URL (unchanged behaviour).
- *   - Tries the backend GET /products or GET /search endpoint first.
- *   - Falls back to the local queryCatalogue() engine when the backend is
- *     not reachable, so the app still works in demo / offline mode.
+ *   - Queries GET /products (or GET /search when a search term is set)
+ *     through the API layer. There is NO local seed fallback: when the
+ *     backend fails the hook exposes `error` and the page renders a proper
+ *     error state with a retry action.
  *
  * URL structure is unchanged: shareable, bookmarkable, back-button safe.
  */
@@ -13,8 +13,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { filterFacets, defaultSort } from "../data/products/taxonomy";
-import { queryCatalogue, resolveCategoryFilter, resolveSort, SORT_ALIASES } from "../data/products/query";
-import { apiListProducts } from "./useProducts.apiHelper";
+import { resolveCategoryFilter, resolveSort, SORT_ALIASES } from "../data/products/query";
+import { apiListProducts, apiSearchProducts } from "./useProducts.apiHelper";
 
 export { SORT_ALIASES };
 
@@ -59,13 +59,11 @@ const writeFilters = (params, filters) => {
  * @param {object} options
  * @param {object}  options.scopeFilters  Filters locked by the route (e.g. category)
  * @param {boolean} options.searchFromUrl Read the search term from `?q=`
- * @param {*}       options.source        Passed to queryCatalogue (local fallback)
  * @param {number}  options.pageSize
  */
 export default function useCatalogueQuery({
   scopeFilters = {},
   searchFromUrl = false,
-  source = null,
   pageSize = PAGE_SIZE,
 } = {}) {
   const [params, setParams] = useSearchParams();
@@ -79,62 +77,59 @@ export default function useCatalogueQuery({
   // ---------------------------------------------------------------------------
   // Backend result state
   // ---------------------------------------------------------------------------
-  const [backendResults, setBackendResults] = useState(null); // null = not fetched yet
-  const [backendTotal,   setBackendTotal]   = useState(0);
-  const [backendFacets,  setBackendFacets]  = useState({});
-  const [isFetching,     setIsFetching]     = useState(false);
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [facets, setFacets] = useState({});
+  const [isFetching, setIsFetching] = useState(true);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
   const fetchKey = useRef(null);
 
   useEffect(() => {
-    // Build merged filter object (scope + active)
     const mergedFilters = { ...scopeFilters, ...filters };
-
-    const key = JSON.stringify({ mergedFilters, search, sort, pages, size });
-    if (fetchKey.current === key) return; // No change
+    const key = JSON.stringify({ mergedFilters, search, sort, pages, size, attempt });
+    if (fetchKey.current === key) return;
     fetchKey.current = key;
 
     setIsFetching(true);
-    apiListProducts({
+    setError(null);
+
+    const query = {
       ...mergedFilters,
       q:        search  || undefined,
       sort,
       page:     pages,
       pageSize: size,
-    }).then((result) => {
-      if (fetchKey.current !== key) return; // Stale
+    };
+
+    const request = search
+      ? apiSearchProducts(query)
+      : apiListProducts(query);
+
+    request.then((result) => {
+      if (fetchKey.current !== key) return;
       setIsFetching(false);
       if (result.ok) {
-        setBackendResults(result.items ?? []);
-        setBackendTotal(result.total ?? 0);
-        setBackendFacets(result.facets ?? {});
+        setItems(result.items ?? []);
+        setTotal(result.total ?? 0);
+        setFacets(result.facets ?? {});
+        setError(null);
       } else {
-        // Backend unavailable — fall back to local engine
-        setBackendResults(null);
+        setItems([]);
+        setTotal(0);
+        setFacets({});
+        setError(result.error ?? "Could not load the catalogue. Please try again.");
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(scopeFilters), JSON.stringify(filters), search, sort, pages, size]);
+  }, [JSON.stringify(scopeFilters), JSON.stringify(filters), search, sort, pages, size, attempt]);
 
   // ---------------------------------------------------------------------------
-  // Local fallback (always computed so it's immediately available)
+  // Results — backend only, no local fallback
   // ---------------------------------------------------------------------------
-  const localQuery = useMemo(
-    () => queryCatalogue({ source, scopeFilters, filters, search, sort }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [source, JSON.stringify(scopeFilters), JSON.stringify(filters), search, sort]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Resolved results (backend wins when available, local is fallback)
-  // ---------------------------------------------------------------------------
-  const results = backendResults !== null ? backendResults : localQuery.results;
-  const total   = backendResults !== null ? backendTotal   : localQuery.total;
-
-  const visible = useMemo(
-    () => (backendResults !== null ? results : results.slice(0, pages * size)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [results, pages, size, backendResults]
-  );
+  const scoped = items;
+  const results = items;
+  const visible = items;
 
   const hasMore = visible.length < total;
 
@@ -220,6 +215,8 @@ export default function useCatalogueQuery({
     }, { replace: true });
   }, [pages, setParams]);
 
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
+
   // ---------------------------------------------------------------------------
   // Active chips (unchanged)
   // ---------------------------------------------------------------------------
@@ -237,14 +234,14 @@ export default function useCatalogueQuery({
   return {
     /* state */
     filters, search, sort, activeChips, activeCount: activeChips.length,
-    isFetching,
+    isFetching, error, retry,
     /* results */
     results, visible, total,
-    scoped:     localQuery.scoped,
-    scopeTotal: localQuery.scopeTotal,
-    facets:     backendFacets,
+    scoped,
+    scopeTotal: total,
+    facets,
     hasMore,
-    remaining:  total - visible.length,
+    remaining: total - visible.length,
     /* actions */
     setFilter, toggleFilter, removeFilter, clearFilters, setSort, setSearch, loadMore,
   };

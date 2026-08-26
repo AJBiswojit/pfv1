@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { products } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 import mediaRepository from "../src/services/media/mediaRepository.js";
 import { resolveCategoryCover, resolveProductCover } from "../src/services/media/mediaResolver.js";

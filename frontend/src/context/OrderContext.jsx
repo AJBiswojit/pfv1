@@ -75,6 +75,7 @@ export function OrderProvider({ children }) {
   const [orders,         setOrders]         = useState(() => orderService.loadOrders());
   const [currentOrderId, setCurrentOrderId] = useState(() => orderService.loadCurrentOrderId());
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
 
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
@@ -82,23 +83,26 @@ export function OrderProvider({ children }) {
   useEffect(() => { orderService.saveOrders(orders); },         [orders]);
   useEffect(() => { orderService.saveCurrentOrderId(currentOrderId); }, [currentOrderId]);
 
-  // Fetch orders from backend when user authenticates
+  // Fetch orders from backend when user authenticates. The server is
+  // authoritative; the previous local mirror is only replaced by server data.
   useEffect(() => {
-    if (!user?.id || !getAccessToken()) return;
+    if (!user?.id || !getAccessToken()) {
+      setOrdersError(null);
+      return;
+    }
+    let cancelled = false;
     setIsLoadingOrders(true);
     apiListOrders({ pageSize: 100 }).then((result) => {
+      if (cancelled) return;
       setIsLoadingOrders(false);
-      if (result.ok && result.orders?.length) {
-        // Merge server orders into local state (server wins for same ID)
-        setOrders((local) => {
-          const merged = new Map(local.map((o) => [o.id, o]));
-          result.orders.forEach((o) => merged.set(o.id, o));
-          return [...merged.values()].sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        });
+      if (result.ok) {
+        setOrders(result.orders ?? []);
+        setOrdersError(null);
+      } else {
+        setOrdersError(result.error ?? "Could not load your orders.");
       }
     });
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   // ---------------------------------------------------------------------------
@@ -414,7 +418,7 @@ export function OrderProvider({ children }) {
   // ---------------------------------------------------------------------------
 
   const value = useMemo(() => ({
-    orders: customerOrders, allOrders: orders, currentOrder, guestOrderCount, isLoadingOrders,
+    orders: customerOrders, allOrders: orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError,
     getOrders, getAllOrders, getOrderById, getOrderByIdAdmin, getCustomerOrders,
     getTracking, getTrackingAdmin, getReturn,
     createOrder, placeOrder: createOrder, clearCurrentOrder,
@@ -426,7 +430,7 @@ export function OrderProvider({ children }) {
     approveReturn, rejectReturn, scheduleReturnPickup, receiveReturn, inspectReturn,
     initiateReturnRefund, completeReturnRefund,
   }), [
-    customerOrders, orders, currentOrder, guestOrderCount, isLoadingOrders,
+    customerOrders, orders, currentOrder, guestOrderCount, isLoadingOrders, ordersError,
     getOrders, getAllOrders, getOrderById, getOrderByIdAdmin, getCustomerOrders,
     getTracking, getTrackingAdmin, getReturn,
     createOrder, clearCurrentOrder, updateMockOrderStatus, updateMockReturnStatus,
@@ -442,7 +446,7 @@ export function OrderProvider({ children }) {
 }
 
 const inertOrders = {
-  orders: [], allOrders: [], currentOrder: null, guestOrderCount: 0, isLoadingOrders: false,
+  orders: [], allOrders: [], currentOrder: null, guestOrderCount: 0, isLoadingOrders: false, ordersError: null,
   getOrders: () => [], getAllOrders: () => [], getOrderById: () => null, getOrderByIdAdmin: () => null,
   getCustomerOrders: () => [], getTracking: () => null, getTrackingAdmin: () => null, getReturn: () => null,
   createOrder: () => ({ ok: false, order: null, message: "" }), placeOrder: () => ({ ok: false, order: null, message: "" }),

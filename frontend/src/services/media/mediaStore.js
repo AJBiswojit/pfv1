@@ -7,11 +7,14 @@
  * layer and the repository read media without importing each other.
  *
  * Corrupted storage is never allowed to crash the application: a broken
- * payload falls back to the seeded register, and unusable rows are dropped
+ * unusable rows are dropped
  * rather than rendered.
  *
- * DEMO / FRONTEND ONLY. A real media service replaces this file; the record
+ * SESSION MIRROR ONLY. A real media service replaces this file; the record
  * shape it returns is the contract the rest of the house is written against.
+ * There is no seed register and no localStorage authority (see
+ * INTEGRATION_AUDIT.md §7 — the backend media tables carry no business
+ * columns yet, so media is a documented blocker and is never faked).
  */
 
 import {
@@ -24,7 +27,6 @@ import {
   defaultRoleForType,
   isValidUsageRole,
 } from "../../config/mediaTypes";
-import { SEED_MEDIA } from "../../data/media/seedMedia";
 import { resolveMediaUrl } from "./mediaPaths";
 
 /** Namespaced, in line with every other PRATIKSHYA FASHON storage key. */
@@ -230,7 +232,15 @@ let memoryMedia = null;
  * Canonical catalogue media stays on each product record; Admin uploads enter
  * this register explicitly and are never synthesized from filenames.
  */
-const seeded = () => dedupeMedia(SEED_MEDIA.map(normaliseMedia).filter(Boolean));
+/**
+ * The media register starts EMPTY. The existing database schema has no
+ * media columns yet (see INTEGRATION_AUDIT.md §7), so there is no backend
+ * media source — and there must be no frontend seed acting as authoritative
+ * media either. Operator uploads enter this register only when a real media
+ * service exists; until then all media surfaces render empty/error states
+ * and product imagery comes from the product record itself.
+ */
+const seeded = () => [];
 
 /**
  * Reconcile persisted records with any authored register seed while preserving
@@ -247,60 +257,22 @@ const reconcileWithCanonical = (persisted) => {
  * mode / quota). The in-memory mirror still holds, so the session continues.
  */
 const persistMedia = (items) => {
-  try {
-    window.localStorage.setItem(MEDIA_STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    /* Non-fatal — the register stays in memory for this session. */
-  }
+  /* No localStorage register: media records are server-owned and the backend
+     media service does not exist yet. The in-memory mirror covers this
+     session only; nothing seeded or cached is treated as authoritative. */
+  memoryMedia = items;
 };
 
 /**
- * Every managed media record, normalised and de-duplicated. An empty or
- * unreadable register resolves to the authored seed. Persisted operator
- * records remain authoritative and any future seed records are added by ID.
+ * Every managed media record.
+ *
+ * The register is intentionally empty and in-memory only: backend media
+ * tables do not carry business columns yet, so no localStorage register,
+ * seed or cache acts as authoritative media. Product imagery comes from
+ * product records (image / additionalImages) until the real media service
+ * lands.
  */
-export const readMedia = () => {
-  if (typeof window === "undefined") {
-    if (!memoryMedia) memoryMedia = seeded();
-    return memoryMedia;
-  }
-  try {
-    /* Existing installations can hold the retired demo register. Remove it
-       once; subsequent operator uploads are retained after the marker exists. */
-    if (!window.localStorage.getItem(CANONICAL_MEDIA_STATE_KEY)) {
-      window.localStorage.removeItem(MEDIA_STORAGE_KEY);
-      window.localStorage.setItem(CANONICAL_MEDIA_STATE_KEY, "complete");
-    }
-    const stored = JSON.parse(window.localStorage.getItem(MEDIA_STORAGE_KEY));
-    if (!Array.isArray(stored)) {
-      const seededOnce = seeded();
-      memoryMedia = seededOnce;
-      persistMedia(seededOnce);
-      return memoryMedia;
-    }
-    const persisted = dedupeMedia(stored.map(normaliseMedia).filter(Boolean));
-    if (!persisted.length) {
-      const seededOnce = seeded();
-      memoryMedia = seededOnce;
-      persistMedia(seededOnce);
-      return memoryMedia;
-    }
-    const reconciled = reconcileWithCanonical(persisted);
-    /* Only write back when something was actually added (a stale snapshot
-       has been repaired). Once reconciled, the persisted copy matches the
-       canonical baseline and no further writes are needed. */
-    if (reconciled.length !== persisted.length) {
-      memoryMedia = reconciled;
-      persistMedia(reconciled);
-    } else {
-      memoryMedia = reconciled;
-    }
-    return memoryMedia;
-  } catch {
-    return memoryMedia || seeded();
-  }
-};
-
+export const readMedia = () => memoryMedia || [];
 /**
  * Persists the register and tells the application it changed.
  *
@@ -309,13 +281,10 @@ export const readMedia = () => {
  */
 export const writeMedia = (items) => {
   const clean = dedupeMedia((Array.isArray(items) ? items : []).map(normaliseMedia).filter(Boolean));
+  /* Memory-only: media is a server-owned entity; there is no authoritative
+     localStorage register. This session mirror exists for UI continuity. */
   memoryMedia = clean;
   if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(MEDIA_STORAGE_KEY, JSON.stringify(clean));
-    } catch {
-      /* Quota or private mode — the register stays in memory for this session. */
-    }
     window.dispatchEvent(new Event(MEDIA_CHANGED_EVENT));
   }
   return clean;

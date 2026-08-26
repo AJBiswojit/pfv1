@@ -1,38 +1,48 @@
 /**
- * PRATIKSHYA FASHON — Product register subscription (Phase B wired)
+ * PRATIKSHYA FASHON — Product register subscription (backend-driven).
  *
- * Reads from the backend when available, falls back to the local
- * catalogRepository (localStorage + seed) when offline/unauthenticated.
- *
- * useProducts — admin/employee list with live-update on local mutations
- * useProduct  — single product kept live
- * useActivityLog — shared activity diary
+ * Admin/employee product data is fetched from the backend
+ * (GET /admin/products, GET /admin/products/{id}) and cached in memory via
+ * catalogRepository. There is NO local seed and NO localStorage register:
+ * when the API fails, the error is surfaced and pages render error states.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import catalogRepository, { PRODUCTS_CHANGED_EVENT } from "../services/catalogRepository";
+import { useCallback, useEffect, useState } from "react";
+import catalogRepository, {
+  PRODUCTS_CHANGED_EVENT,
+  replaceServerProducts,
+} from "../services/catalogRepository";
 import { ACTIVITY_CHANGED_EVENT, loadActivity } from "../services/employees/activityService";
 import { apiAdminListProducts, apiAdminGetProduct } from "../services/api/productsApi";
 import { getAccessToken } from "../services/api/apiClient";
 
-/** Every product in the shared register — admin/employee workspace view.
- *  Fetches from backend when authenticated, syncs to local on mutations. */
+/** Every product in the shared register — admin/employee workspace view. */
 export const useProducts = () => {
   const read = useCallback(() => catalogRepository.all(), []);
   const [items, setItems] = useState(read);
-  const fetchedRef = useRef(false);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Initial fetch from backend
   useEffect(() => {
-    if (!getAccessToken() || fetchedRef.current) return;
-    fetchedRef.current = true;
-    apiAdminListProducts().then((result) => {
-      if (result.ok && result.items?.length) {
-        // The backend list is authoritative; we don't overwrite local products
-        // but we signal a refresh so the component re-reads catalogRepository
-        window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
+    let cancelled = false;
+    const admin = Boolean(getAccessToken("admin"));
+    const employee = Boolean(getAccessToken("employee"));
+    if (!admin && !employee) {
+      setError("Sign in to the admin or employee portal to manage products.");
+      return undefined;
+    }
+    setIsLoading(true);
+    apiAdminListProducts({ pageSize: 100 }).then((result) => {
+      if (cancelled) return;
+      setIsLoading(false);
+      if (result.ok) {
+        replaceServerProducts(result.items ?? []);
+        setError(null);
+      } else {
+        setError(result.error ?? "Could not load products from the server.");
       }
     });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -49,23 +59,27 @@ export const useProducts = () => {
   return items;
 };
 
-/** One product from the shared register, kept live.
- *  Tries the backend first when authenticated. */
+/** One product from the shared register — backend first, cache fallback. */
 export const useProduct = (productId) => {
   const read = useCallback(
     () => (productId ? catalogRepository.find(productId) : null),
     [productId]
   );
   const [product, setProduct] = useState(read);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!productId) return;
+    if (!productId) return undefined;
+    let cancelled = false;
 
-    // Try backend
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       apiAdminGetProduct(productId).then((result) => {
+        if (cancelled) return;
         if (result.ok && result.product) {
           setProduct(result.product);
+          setError(null);
+        } else {
+          setError(result.error ?? "Could not load this product from the server.");
         }
       });
     }
@@ -75,6 +89,7 @@ export const useProduct = (productId) => {
     window.addEventListener(PRODUCTS_CHANGED_EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {
+      cancelled = true;
       window.removeEventListener(PRODUCTS_CHANGED_EVENT, sync);
       window.removeEventListener("storage", sync);
     };

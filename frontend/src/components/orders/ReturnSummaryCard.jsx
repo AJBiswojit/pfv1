@@ -111,7 +111,7 @@ export default function ReturnSummaryCard({
         <div className="mt-6 border border-accent/25 bg-accent/5 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">
-              Refund · Demo Status
+              Refund · Backend Status
             </p>
             <p className="font-display text-xl font-light text-ink">
               {formatINR(record.refund.amount)}
@@ -119,7 +119,7 @@ export default function ReturnSummaryCard({
           </div>
           <p className="mt-2 font-ui text-xs text-graphite">{record.refund.method}</p>
           <p className="mt-1 font-ui text-[11px] text-taupe">
-            No real payment movement takes place at this stage of the project.
+            Refund state and amount come from the backend return/refund record.
           </p>
         </div>
       ) : (

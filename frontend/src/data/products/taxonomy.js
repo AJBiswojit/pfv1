@@ -1,53 +1,72 @@
 /**
- * PRATIKSHYA FASHON — Catalogue taxonomy facade (Phase 18).
+ * PRATIKSHYA FASHON — Catalogue taxonomy facade (backend-driven).
  *
- * Category, subcategory and collection truth now lives in the central
- * taxonomyRepository. This module keeps the existing storefront imports
- * working while ensuring shop filters, routes, offers and product pages all
- * resolve the same managed taxonomy.
+ * Category, subcategory and collection truth comes from the backend-fed
+ * catalog store (GET /categories, GET /collections). This module keeps the
+ * existing storefront imports working while exposing only *record* data from
+ * the API. Facet definitions, sort options, price bands and navigation
+ * scopes below are presentation configuration, not records.
  */
 
-import taxonomyRepository from "../../services/taxonomyRepository";
+import {
+  getCategories,
+  getCollections,
+  getCategoryById,
+  getCollectionById,
+} from "../../services/catalog/catalogStore";
 import { catalogueNavigationScopes, departmentNames } from "../catalog/taxonomy";
 
 const option = (id, label) => ({ id, label });
-const activeCategories = () => taxonomyRepository.activeCategories();
-const activeCollections = () => taxonomyRepository.activeCollections();
+const activeCategories = () => getCategories();
+const activeCollections = () => getCollections();
 
-export const categories = activeCategories().map((category) => ({
-  ...category,
-  label: category.name,
-}));
+/** Live category list (active, from backend). */
+export const categories = new Proxy([], {
+  get: (_, prop) => {
+    const list = activeCategories().map((category) => ({ ...category, label: category.name }));
+    if (prop === "length") return list.length;
+    if (typeof prop === "symbol") return list[prop];
+    if (prop in list) return list[prop];
+    const value = Reflect.get(list, prop);
+    return typeof value === "function" ? value.bind(list) : value;
+  },
+});
 
 export const categoryLabels = new Proxy({}, {
-  get: (_, key) => taxonomyRepository.getCategoryLabel(key),
-  ownKeys: () => taxonomyRepository.categories().map((entry) => entry.id),
+  get: (_, key) => getCategoryById(String(key))?.name ?? String(key),
+  ownKeys: () => activeCategories().map((entry) => entry.id),
   getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
 });
 
-export const getCategory = (id) => taxonomyRepository.findCategory(id);
+export const getCategory = (id) => getCategoryById(id);
+
+/** Live collection list (active, from backend). */
+export const collections = new Proxy([], {
+  get: (_, prop) => {
+    const list = activeCollections().map((collection) => ({ ...collection, label: collection.name }));
+    if (prop === "length") return list.length;
+    if (typeof prop === "symbol") return list[prop];
+    if (prop in list) return list[prop];
+    const value = Reflect.get(list, prop);
+    return typeof value === "function" ? value.bind(list) : value;
+  },
+});
+
+export const collectionLabels = new Proxy({}, {
+  get: (_, key) => getCollectionById(String(key))?.name ?? String(key),
+  ownKeys: () => activeCollections().map((entry) => entry.id),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
 
 /* ------------------------------------------------------------------ */
-/* Facet vocabularies                                                  */
+/* Facet vocabularies (populated from the live product snapshot via    */
+/* src/data/products/index.js exports)                                 */
 /* ------------------------------------------------------------------ */
 
 export const genders = [];
 export const fabrics = [];
 export const materials = [];
-
 export const occasions = [];
-
-export const collections = activeCollections().map((collection) => ({
-  ...collection,
-  label: collection.name,
-}));
-
-export const collectionLabels = new Proxy({}, {
-  get: (_, key) => taxonomyRepository.getCollectionLabel(key),
-  ownKeys: () => taxonomyRepository.collections().map((entry) => entry.id),
-  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
-});
-
 export const colorSwatches = {};
 export const colors = [];
 export const sizes = [];
@@ -113,10 +132,10 @@ const scope = (id, { title, eyebrow, description, image, filters = {}, breadcrum
 const categoryScope = (category) => scope(category.id, {
   title: category.name,
   eyebrow: category.eyebrow || "Category",
-    description: category.description,
-    image: category.image,
-    heroMediaId: category.bannerMediaId,
-    filters: { category: category.id },
+  description: category.description,
+  image: category.image,
+  heroMediaId: category.bannerMediaId ?? category.banner_media_id,
+  filters: { category: category.id },
 });
 
 const collectionScope = (collection) =>
@@ -125,38 +144,39 @@ const collectionScope = (collection) =>
     eyebrow: collection.eyebrow || "Collection",
     description: collection.description,
     image: collection.image,
-    heroMediaId: collection.heroMediaId,
-    thumbnailMediaId: collection.thumbnailMediaId,
+    heroMediaId: collection.heroMediaId ?? collection.hero_media_id,
+    thumbnailMediaId: collection.thumbnailMediaId ?? collection.thumbnail_media_id,
     filters: { collectionId: collection.id },
   });
 
-export const categoryRoutes = Object.fromEntries(
-  activeCategories().flatMap((category) => {
-    const entries = [[category.slug, categoryScope(category)]];
-    if (category.id !== category.slug) entries.push([category.id, categoryScope(category)]);
-    return entries;
-  })
-);
+/** Live route map (reads the current backend snapshot). */
+export const categoryRoutes = new Proxy({}, {
+  get: (_, key) => {
+    const category = getCategoryById(String(key));
+    return category ? categoryScope(category) : undefined;
+  },
+  has: (_, key) => Boolean(getCategoryById(String(key))),
+  ownKeys: () => activeCategories().flatMap((c) => [c.slug, c.id]).filter(Boolean),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
 
-export const collectionRoutes = Object.fromEntries(
-  activeCollections().flatMap((collection) => {
-    const entries = [[collection.slug, collectionScope(collection)]];
-    if (collection.id !== collection.slug) entries.push([collection.id, collectionScope(collection)]);
-    return entries;
-  })
-);
+export const collectionRoutes = new Proxy({}, {
+  get: (_, key) => {
+    const collection = getCollectionById(String(key));
+    return collection ? collectionScope(collection) : undefined;
+  },
+  has: (_, key) => Boolean(getCollectionById(String(key))),
+  ownKeys: () => activeCollections().flatMap((c) => [c.slug, c.id]).filter(Boolean),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
 
 /**
- * Every listing path the navigation knows. Department / category /
- * subcategory paths come from the department-based catalogue taxonomy
- * (`src/data/catalog/taxonomy.js`); collection paths and the legacy
- * jewellery aliases are kept so existing deep links still resolve.
+ * Navigation scopes: the managed collection paths come from the backend;
+ * legacy department/jewellery paths remain static presentation config.
  */
-const collectionFilter = (collection) => ({ collectionId: collection.id });
-
 const managedCollectionScopes = Object.fromEntries(
-  taxonomyRepository.activeCollections().flatMap((collection) => {
-    const scope = { filters: collectionFilter(collection) };
+  activeCollections().flatMap((collection) => {
+    const scope = { filters: { collectionId: collection.id } };
     const paths = new Set([`/collections/${collection.id}`]);
     if (collection.slug) paths.add(`/collections/${collection.slug}`);
     return [...paths].map((path) => [path, scope]);
@@ -165,20 +185,11 @@ const managedCollectionScopes = Object.fromEntries(
 
 export const navigationScopes = {
   ...catalogueNavigationScopes,
-
-  /**
-   * Collections is a merchandising context, not a department: the landing
-   * page shows the pieces the house has actually curated into an active
-   * collection (manual membership or a collection rule, both resolved by
-   * `taxonomyRepository`), never the whole catalogue.
-   */
   "/collections": { filters: { curated: true } },
   "/collections/cotton": { filters: { fabric: "Cotton" } },
   "/collections/linen": { filters: { fabric: "Linen" } },
   "/collections/chiffon": { filters: { fabric: "Chiffon" } },
   ...managedCollectionScopes,
-
-  /* Legacy jewellery paths — bridal finishing touches today. */
   "/jewellery": { filters: { department: "bridal", category: "finishing-touches" } },
   "/jewellery/bridal-bangles": { filters: { department: "bridal", category: "finishing-touches", subcategory: "bangles" } },
   "/jewellery/gold-finish-bangles": { filters: { department: "bridal", category: "finishing-touches", subcategory: "bangles", style: "gold-finish-bangles" } },
@@ -189,8 +200,6 @@ export const navigationScopes = {
   "/jewellery/rings": { filters: { department: "bridal", category: "finishing-touches", subcategory: "jewellery", style: "ring" } },
   "/jewellery/bridal-jewellery": { filters: { department: "bridal", category: "finishing-touches", subcategory: "jewellery", style: "bridal-jewellery" } },
   "/jewellery/sets-and-pairings": { filters: { department: "bridal", category: "finishing-touches", subcategory: "jewellery", style: "jewellery-set" } },
-
-  /* Legacy flat paths — mapped onto their catalogue equivalents. */
   "/women/cotton-sarees": { filters: { department: "women", category: "sarees", subcategory: "cotton" } },
   "/women/silk-sarees": { filters: { department: "women", category: "sarees", subcategory: "silk" } },
   "/women/banarasi-sarees": { filters: { department: "women", category: "sarees", subcategory: "banarasi" } },
@@ -214,18 +223,6 @@ export const navigationScopes = {
 export const hasNavigationScope = (pathname) =>
   Object.prototype.hasOwnProperty.call(navigationScopes, pathname);
 
-/**
- * Route → storefront context.
- *
- * The single place a listing pathname becomes the locked filters the generic
- * catalogue query runs with. Every entry above is a `{ filters }` record; a
- * bare filter map is still accepted so a hand-authored scope can never fall
- * back to "no filters at all" — an unscoped listing is the one failure mode
- * that silently shows the whole catalogue on a department page.
- *
- * @param {string} pathname
- * @returns {{ filters: object } | null}
- */
 export const resolveNavigationScope = (pathname) => {
   if (!hasNavigationScope(pathname)) return null;
   const entry = navigationScopes[pathname] ?? {};

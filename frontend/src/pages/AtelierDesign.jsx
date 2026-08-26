@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useCatalog } from "../hooks/useCatalog";
 import { MARKETING_PLACEMENTS } from "../config/mediaTypes";
 import { useMarketingMedia } from "../hooks/useMedia";
 import { resolveHeroImageIds } from "../services/media/mediaResolver";
@@ -20,6 +21,9 @@ import {
 } from "../design-system";
 
 export default function AtelierDesign() {
+  /* Re-render whenever the backend catalog snapshot arrives so every
+     backend-driven seam (product rails, category cards, offers) updates. */
+  useCatalog();
   /* The carousel reads the complete HOME_HERO placement through the existing
      repository hook. The resolver validates the canonical HERO role and owns
      deterministic slide order; this page never authors an image address. */

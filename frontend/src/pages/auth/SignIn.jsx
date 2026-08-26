@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Sparkles, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { AtelierButton, AtelierSection, Breadcrumb, Rule } from "../../design-system";
 import { useAuth } from "../../context/AuthContext";
-import { DEMO_CREDENTIALS } from "../../data/mockCustomers";
 import { sanitizeReturnUrl } from "../../utils/validation";
 
 /**
@@ -74,12 +73,6 @@ export default function SignIn() {
       setError(result.error || "That email or password doesn't match our records.");
       setIsSubmitting(false);
     }
-  };
-
-  const handleQuickFill = (cred) => {
-    setIdentifier(cred.email);
-    setPassword("Pass1234!");
-    setError("");
   };
 
   return (
@@ -229,36 +222,6 @@ export default function SignIn() {
                 </AtelierButton>
               </div>
             </form>
-
-            {/* Quick Demo Credentials Panel */}
-            <div className="mt-8 border-t border-mist/70 pt-6">
-              <div className="flex items-center gap-2 mb-3 text-brass">
-                <Sparkles size={14} aria-hidden="true" />
-                <p className="font-ui text-[10px] uppercase tracking-[.2em] font-medium">
-                  Client Demo Quick-Fill
-                </p>
-              </div>
-              <p className="font-ui text-[11px] text-taupe mb-3">
-                Click any demo profile to test the authentication and account journey instantly:
-              </p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {DEMO_CREDENTIALS.map((cred) => (
-                  <button
-                    key={cred.email}
-                    type="button"
-                    onClick={() => handleQuickFill(cred)}
-                    className="border border-pearl bg-canvas/70 px-3 py-2 text-left font-ui text-[11px] hover:border-ink hover:bg-canvas transition-colors"
-                  >
-                    <span className="font-medium text-ink block truncate">
-                      {cred.label.split(" ")[0]} {cred.label.split(" ")[1]}
-                    </span>
-                    <span className="text-taupe text-[10px] block truncate">
-                      {cred.email}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Guest / Create Account Footers */}
             <div className="mt-8 border-t border-mist/70 pt-6 text-center space-y-4">

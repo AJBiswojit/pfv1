@@ -75,21 +75,16 @@ export const PAYMENT_METHODS = [
     description: "All major Indian banks",
   },
   {
-    id: "qr",
-    label: "Sandbox QR",
-    description: "Scan to pay · Test environment",
-  },
-  {
     id: "cod",
     label: "Cash on Delivery",
     description: `Pay on arrival · ${`₹${COD_FEE.toLocaleString("en-IN")}`} fee`,
   },
 ];
 
-/** Demo UPI app choices — visual selection only. */
+/** UPI app choices — visual selection only. */
 export const UPI_APPS = ["Google Pay", "PhonePe", "Paytm", "BHIM"];
 
-/** Demo bank list for the net-banking selector. */
+/** Bank list for the net-banking selector. */
 export const NET_BANKING_BANKS = [
   "State Bank of India",
   "HDFC Bank",
@@ -99,23 +94,6 @@ export const NET_BANKING_BANKS = [
   "Punjab National Bank",
   "Bank of Baroda",
   "Canara Bank",
-];
-
-/* ------------------------------------------------------------------ */
-/* Demo payment scenarios                                              */
-/* ------------------------------------------------------------------ */
-
-/**
- * The deterministic test scenarios behind the clearly-labelled demo
- * payment controls. Each scenario resolves the mock payment session to a
- * different outcome so client demos can walk every state without a real
- * gateway.
- */
-export const DEMO_SCENARIOS = [
-  { id: "success", label: "Test Success" },
-  { id: "failure", label: "Test Failure" },
-  { id: "cancelled", label: "Test Cancellation" },
-  { id: "pending", label: "Test Pending" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -132,6 +110,5 @@ export default {
   PAYMENT_METHODS,
   UPI_APPS,
   NET_BANKING_BANKS,
-  DEMO_SCENARIOS,
   CHECKOUT_STEPS,
 };

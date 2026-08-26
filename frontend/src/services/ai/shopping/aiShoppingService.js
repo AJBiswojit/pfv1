@@ -31,7 +31,8 @@ import {
   AI_SHOPPING_GREETING,
   AI_SHOPPING_SUGGESTIONS as SUGGESTIONS,
 } from "./aiShoppingMockData.js";
-import { products as canonicalProducts } from "../../../data/catalog/products.js";
+import { getAllProducts } from "../../catalog/catalogStore";
+const canonicalProducts = getAllProducts();
 import { departments as canonicalDepartments } from "../../../data/catalog/taxonomy.js";
 
 /* ------------------------------------------------------------------ */

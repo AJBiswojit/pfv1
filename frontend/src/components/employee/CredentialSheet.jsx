@@ -33,7 +33,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
   const handlePrint = () => {
     const popup = window.open("", "pf-credential", "width=640,height=720");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>Demo credentials</title>
+    popup.document.write(`<!doctype html><html><head><title>Temporary credentials</title>
       <style>
         body { font-family: Georgia, serif; color: #2a2015; padding: 40px; }
         h1 { font-weight: 300; font-size: 28px; }
@@ -42,14 +42,14 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
         .value { font-family: sans-serif; font-size: 18px; }
         .note { margin-top: 32px; font-family: sans-serif; font-size: 12px; color: #777; }
       </style></head><body>
-      <p class="label">PRATIKSHYA FASHON · DEMO CREDENTIALS</p>
+      <p class="label">PRATIKSHYA FASHON · TEMPORARY CREDENTIALS</p>
       <h1>Employee created</h1>
       <div class="row"><div class="label">Name</div><div class="value">${employeeFullName(employee)}</div></div>
       <div class="row"><div class="label">Employee ID</div><div class="value">${employee.employeeId}</div></div>
       <div class="row"><div class="label">Temporary password</div><div class="value">${temporaryPassword}</div></div>
       <div class="row"><div class="label">Role</div><div class="value">${getRoleLabel(employee.role)}</div></div>
       <div class="row"><div class="label">Department</div><div class="value">${getDepartmentLabel(employee.department)}</div></div>
-      <p class="note">These are DEMO credentials for the client preview. They are not production secrets. The employee must change this password on first sign-in.</p>
+      <p class="note">These are temporary credentials issued by the backend. The employee must change this password on first sign-in.</p>
       </body></html>`);
     popup.document.close();
     popup.focus();
@@ -62,13 +62,13 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
       className="border border-ink bg-ink p-6 text-ivory sm:p-8"
       data-credential-sheet="true"
     >
-      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-gold">Demo credentials</p>
+      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-gold">Temporary credentials</p>
       <h2 className="mt-2 font-display text-3xl font-light tracking-tight">
         Employee <span className="italic text-gold">created.</span>
       </h2>
       <Rule width="w-10" tone="gold" className="my-4" />
       <p className="font-ui text-xs leading-relaxed text-ash">
-        Share these once, then put the sheet away. This is a frontend demo —
+        Share these once, then put the sheet away. The password change happens through the backend —
         not a production secret store.
       </p>
 
@@ -121,7 +121,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
 
       <div className="mt-8 flex flex-wrap gap-3">
         <AtelierButton variant="inverse" size="chip" onClick={handlePrint}>
-          <Printer size={12} aria-hidden="true" /> Print demo sheet
+          <Printer size={12} aria-hidden="true" /> Print credential sheet
         </AtelierButton>
         {onDone ? (
           <AtelierButton variant="outline" size="chip" onClick={onDone} className="border-ivory/30 text-ivory hover:bg-ivory hover:text-ink">

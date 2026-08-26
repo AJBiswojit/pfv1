@@ -4,9 +4,9 @@ import test, { beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { setupCanonicalState } from "./helpers/workflowTestState.js";
 
-import { INITIAL_ADMINS } from "../src/data/admin/adminAccounts.js";
-import { INITIAL_EMPLOYEES } from "../src/data/employees/mockEmployees.js";
-import { DEMO_EMPLOYEE_LOGINS } from "../src/data/employees/demoCredentials.js";
+
+
+
 import {
   ADMIN_PERMISSIONS,
   canManageEmployeeAccounts,
@@ -29,7 +29,7 @@ import {
   verifyCredentials,
 } from "../src/services/employees/employeeService.js";
 import { assignProductToEmployee } from "../src/services/productWorkflow.js";
-import { products as canonicalProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as canonicalProducts } from "../src/services/catalog/catalogStore.js";
 
 const memory = new Map();
 const events = new EventTarget();

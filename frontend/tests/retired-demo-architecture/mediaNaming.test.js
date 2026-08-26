@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { products } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 import { buildMediaGroups } from "../src/services/media/mediaGroups.js";
 import { getViewOrderScore, parseMediaFilename } from "../src/services/media/mediaNaming.js";

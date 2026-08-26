@@ -14,9 +14,6 @@
  */
 
 import { ADMIN_STATUS, canAdminSignIn, isAdminRole } from "../../config/adminAccess";
-import { INITIAL_ADMINS } from "../../data/admin/adminAccounts";
-import { DEMO_ADMIN_LOGINS } from "../../data/admin/demoAdminCredentials";
-import { mockCredentialFingerprint } from "../employees/employeePassword";
 import { readStorage, writeStorage } from "../../utils/shopping";
 import { ADMIN_STORAGE_KEYS } from "./storage";
 
@@ -41,13 +38,24 @@ export const toPublicAdmin = (raw) => {
 };
 
 export const loadAdmins = () => {
-  const stored = readStorage(ADMIN_STORAGE_KEYS.ADMINS, null);
-  const list = Array.isArray(stored) && stored.length > 0 ? stored : INITIAL_ADMINS;
-  const admins = list.map(toPublicAdmin).filter(Boolean);
-  if (!Array.isArray(stored) || stored.length === 0) {
-    writeStorage(ADMIN_STORAGE_KEYS.ADMINS, admins);
-  }
-  return admins;
+  /* Admin identities are backend-owned (POST /auth/admin/sign-in,
+     GET /auth/me). The only record surfaced here is the current JWT
+     session snapshot (used by the workflow UI to resolve the actor
+     principal); there is no local admin register and no demo accounts. */
+  try {
+    const stored = readStorage(ADMIN_STORAGE_KEYS.AUTH, null);
+    if (stored && typeof stored === "object" && stored.id) {
+      return [{
+        id: stored.id,
+        adminId: stored.adminId ?? stored.id,
+        name: stored.name ?? [stored.firstName, stored.lastName].filter(Boolean).join(" "),
+        email: stored.email ?? "",
+        role: stored.role ?? (stored.roles?.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : "ADMIN"),
+        status: stored.status ?? "ACTIVE",
+      }];
+    }
+  } catch { /* session missing */ }
+  return [];
 };
 
 export const saveAdmins = (admins) => {
@@ -57,29 +65,10 @@ export const saveAdmins = (admins) => {
   );
 };
 
-/** Isolated demo credential table, seeded once per browser. */
-export const loadAdminCredentials = () => {
-  const stored = readStorage(ADMIN_STORAGE_KEYS.CREDENTIALS, null);
-  if (stored && typeof stored === "object" && Object.keys(stored).length > 0) {
-    return stored;
-  }
-  const seeded = {};
-  DEMO_ADMIN_LOGINS.forEach((entry) => {
-    seeded[entry.adminId] = {
-      adminId: entry.adminId,
-      fingerprint: mockCredentialFingerprint(entry.adminId, entry.password),
-      updatedAt: new Date().toISOString(),
-    };
-  });
-  writeStorage(ADMIN_STORAGE_KEYS.CREDENTIALS, seeded);
-  return seeded;
-};
+/** Admin credentials are backend-owned; no local credential table. */
+export const loadAdminCredentials = () => ({});
 
-export const ensureAdminSeeded = () => {
-  const admins = loadAdmins();
-  loadAdminCredentials();
-  return admins;
-};
+export const ensureAdminSeeded = () => loadAdmins();
 
 /** Accepts either the admin ID or the admin email address. */
 export const findAdmin = (admins, identifier) => {
@@ -137,42 +126,22 @@ export const markAdminLastLogin = (adminId, at = new Date().toISOString()) => {
   return next;
 };
 
-export const verifyAdminCredentials = (identifier, password) => {
-  ensureAdminSeeded();
-  if (!String(identifier || "").trim() || !password) {
-    return { ok: false, error: "Enter your admin ID and password." };
-  }
-
-  const admin = findAdmin(loadAdmins(), identifier);
-  if (!admin) {
-    return { ok: false, error: "Admin ID or password is not correct." };
-  }
-  if (!canAdminSignIn(admin.status)) {
-    return {
-      ok: false,
-      error: "This administrator account cannot sign in. Please contact the account owner.",
-    };
-  }
-
-  const credentials = loadAdminCredentials();
-  const record = credentials[admin.adminId];
-  if (!record) {
-    return { ok: false, error: "This account has no credentials issued." };
-  }
-  if (record.fingerprint !== mockCredentialFingerprint(admin.adminId, password)) {
-    return { ok: false, error: "Admin ID or password is not correct." };
-  }
-  return { ok: true, admin, error: "" };
+/** Async — backend admin auth. Kept as the compatibility entry point for any
+ * legacy caller; the AdminAuthContext uses authApi directly. */
+export const verifyAdminCredentials = async (identifier, password) => {
+  const { apiSignInAdmin } = await import("../api/authApi");
+  const result = await apiSignInAdmin({ adminId: identifier, password });
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true, admin: result.admin, error: "" };
 };
 
 export const signInAdmin = async ({ adminId, password }) => {
-  await new Promise((resolve) => setTimeout(resolve, 320));
-  const result = verifyAdminCredentials(adminId, password);
+  const result = await verifyAdminCredentials(adminId, password);
   if (!result.ok) return { ok: false, admin: null, error: result.error };
-
-  const stamped = markAdminLastLogin(result.admin.adminId) ?? result.admin;
-  writeAdminSessionRecord(stamped.adminId);
-  return { ok: true, admin: stamped, error: "" };
+  try {
+    writeAdminSessionRecord(result.admin.adminId ?? result.admin.id);
+  } catch { /* non-fatal */ }
+  return { ok: true, admin: result.admin, error: "" };
 };
 
 export const signOutAdmin = () => {

@@ -11,7 +11,6 @@ import {
   ATTENDANCE_STORAGE_KEY,
 } from "../../config/attendanceConfig";
 import { EMPLOYEE_STORAGE_KEYS } from "../employees/storage";
-import { readStorage } from "../../utils/shopping";
 import { employeeFullName } from "../../utils/employee";
 import { todayKey } from "./dateUtils";
 import { makeId } from "./ids";
@@ -72,7 +71,8 @@ const dedupe = (list) => {
 };
 
 const migrateLegacyMap = (existing) => {
-  const legacy = readStorage(EMPLOYEE_STORAGE_KEYS.ATTENDANCE, null);
+  /* Attendance is backend-owned; no legacy localStorage migration. */
+  const legacy = null;
   if (!legacy || typeof legacy !== "object" || Array.isArray(legacy)) return existing;
   const today = todayKey();
   const known = new Set(existing.map((record) => `${record.employeeId}::${record.date}`));

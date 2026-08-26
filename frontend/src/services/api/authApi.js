@@ -95,11 +95,11 @@ function toAdminProfile(dto) {
   };
 }
 
-function storeTokensFromResponse(data) {
+function storeTokensFromResponse(data, scope = "customer") {
   setTokens({
     accessToken:  data.access_token,
     refreshToken: data.refresh_token,
-  });
+  }, scope);
 }
 
 function handleError(err) {
@@ -154,7 +154,7 @@ export async function apiSignOutCustomer() {
   try {
     await apiClient.post("/auth/customer/sign-out", {});
   } catch { /* best-effort */ }
-  clearTokens();
+  clearTokens("customer");
   return { ok: true };
 }
 
@@ -195,7 +195,7 @@ export async function apiSignInEmployee({ employeeId, password }) {
       password,
     }, { skipAuth: true });
 
-    storeTokensFromResponse(data);
+    storeTokensFromResponse(data, "employee");
     const profile = toEmployeeProfile(data.employee ?? data.user ?? {});
     // Merge force_password_change from top-level response
     profile.mustChangePassword = Boolean(data.mustChangePassword ?? data.force_password_change ?? profile.mustChangePassword);
@@ -225,7 +225,7 @@ export async function apiSignOutEmployee() {
   try {
     await apiClient.post("/auth/employee/sign-out", {});
   } catch { /* best-effort */ }
-  clearTokens();
+  clearTokens("employee");
   return { ok: true };
 }
 
@@ -240,7 +240,7 @@ export async function apiSignInAdmin({ adminId, password }) {
       password,
     }, { skipAuth: true });
 
-    storeTokensFromResponse(data);
+    storeTokensFromResponse(data, "admin");
     const profile = toAdminProfile(data.admin ?? data.user ?? {});
     return { ok: true, admin: profile };
   } catch (err) {
@@ -252,7 +252,7 @@ export async function apiSignOutAdmin() {
   try {
     await apiClient.post("/auth/admin/sign-out", {});
   } catch { /* best-effort */ }
-  clearTokens();
+  clearTokens("admin");
   return { ok: true };
 }
 

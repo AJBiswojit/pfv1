@@ -272,6 +272,11 @@ export const todayHouseSummary = (actor = null) => {
 };
 
 export const checkIn = ({ employeeId, actor, at = new Date().toISOString() } = {}) => {
+  /* Attendance is backend-owned. The backend exposes admin attendance
+     management; employee self check-in endpoints are a documented gap
+     (INTEGRATION_AUDIT.md §7). No local punch is recorded. */
+  void employeeId; void actor; void at;
+  return fail("Check-in is managed by the backend attendance service, which is not available in this phase. No local record was created.");
   if (!actorCanAct(actor)) return fail("You cannot check in from this account.");
   const employees = loadEmployees();
   const employee = getEmployee(employees, employeeId || actor.employeeId);
@@ -346,6 +351,8 @@ export const checkIn = ({ employeeId, actor, at = new Date().toISOString() } = {
 };
 
 export const checkOut = ({ employeeId, actor, at = new Date().toISOString() } = {}) => {
+  void employeeId; void actor; void at;
+  return fail("Check-out is managed by the backend attendance service, which is not available in this phase. No local record was created.");
   if (!actorCanAct(actor)) return fail("You cannot check out from this account.");
   const employees = loadEmployees();
   const employee = getEmployee(employees, employeeId || actor.employeeId);

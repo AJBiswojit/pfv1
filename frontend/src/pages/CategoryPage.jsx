@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useCatalog } from "../hooks/useCatalog";
 import {
   AtelierButton,
   AtelierSection,
@@ -31,6 +32,7 @@ import { cn } from "../utils/cn";
  * is complete and every link in the shell resolves.
  */
 export default function CategoryPage() {
+  useCatalog();
   const { pathname } = useLocation();
   const meta = getRouteMeta(pathname);
 

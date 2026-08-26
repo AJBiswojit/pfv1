@@ -1,4 +1,10 @@
-/** Deterministic isolation for tests that exercise the canonical product workflow. */
+/** Deterministic isolation for tests that exercise the canonical product workflow.
+ *
+ * The runtime product register is now backend-owned: there is no static
+ * catalogue seed. Tests that exercise workflow/command logic therefore build
+ * a small canonical fixture in the in-memory register (same canonical ID
+ * convention, no demo records, no localStorage).
+ */
 
 import catalogRepository, { persistCanonicalCatalogueState } from "../../src/services/catalogRepository.js";
 import mediaRepository from "../../src/services/media/mediaRepository.js";
@@ -7,8 +13,55 @@ import { loadActivity, saveActivity } from "../../src/services/employees/activit
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-// Each Node test worker captures the authored repository state before test mutation.
-const CANONICAL_PRODUCTS = clone(catalogRepository.all());
+/** Small canonical product fixture used by workflow tests. */
+const FIXTURE_PRODUCTS = [
+  {
+    id: "PF-W-SAR-COT-0001",
+    name: "Cotton Saree Fixture",
+    sku: "PF-W-SAR-COT-0001",
+    slug: "cotton-saree-fixture",
+    department: "women",
+    category: "sarees",
+    subcategory: "cotton",
+    gender: "Women",
+    fabric: "Cotton",
+    price: 2499,
+    originalPrice: 2999,
+    stock: 10,
+    availability: "in-stock",
+    colors: ["Ivory"],
+    sizes: ["Free Size"],
+    status: "DRAFT",
+    published: false,
+    variants: [],
+    badges: [],
+    media: { primary: "/images/products/.test/cotton-fixture.avif", gallery: [] },
+  },
+  {
+    id: "PF-W-LEH-BRI-0001",
+    name: "Bridal Lehenga Fixture",
+    sku: "PF-W-LEH-BRI-0001",
+    slug: "bridal-lehenga-fixture",
+    department: "women",
+    category: "lehengas",
+    subcategory: "bridal",
+    gender: "Women",
+    fabric: "Silk",
+    price: 45000,
+    originalPrice: 50000,
+    stock: 3,
+    availability: "low-stock",
+    colors: ["Red"],
+    sizes: ["S", "M", "L"],
+    status: "DRAFT",
+    published: false,
+    variants: [],
+    badges: [],
+  },
+];
+
+// Each Node test worker captures the in-memory fixture state before mutation.
+const CANONICAL_PRODUCTS = clone(FIXTURE_PRODUCTS);
 const CANONICAL_ACTIVITY = clone(loadActivity());
 
 export const setupCanonicalState = () => {

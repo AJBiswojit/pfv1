@@ -507,7 +507,7 @@ export default function AdminMediaLibrary() {
               <p className="font-ui text-sm text-taupe">
                 {media.length
                   ? "No media matches these filters."
-                  : "No product media yet. Product media will appear here once products are added."}
+                  : "No media records yet. The backend media service is not active in this phase (see INTEGRATION_AUDIT.md §7) — records will appear here once the media API is enabled, and product imagery currently comes from product records."}
               </p>
             </div>
           )}

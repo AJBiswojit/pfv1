@@ -1,8 +1,14 @@
 import { motion } from "framer-motion";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { recordRecentlyViewed } from "../services/customer/recentlyViewed";
+import {
+  apiGetProduct,
+  apiGetRecommendations,
+  apiAdminGetProduct,
+  apiAddRecentlyViewed,
+} from "../services/api/productsApi";
+import { getAccessToken } from "../services/api/apiClient";
 import {
   AtelierButton,
   AtelierSection,
@@ -11,29 +17,14 @@ import {
   EditorialHeading,
   MediaFrame,
   PageHeader,
+  ProductGridSkeleton,
   useReveal,
 } from "../design-system";
 import ProductDetailsAccordion from "../components/product/ProductDetailsAccordion";
 import ProductGallery from "../components/product/ProductGallery";
 import ProductPurchasePanel from "../components/product/ProductPurchasePanel";
 import ProductRecommendations from "../components/product/ProductRecommendations";
-import { getProductByIdentifier, toStorefrontProduct } from "../data/products";
-import { getProductRecommendations } from "../data/products/recommendations";
 import { imageRef } from "../data/mediaPlaceholder";
-import catalogRepository from "../services/catalogRepository";
-import taxonomyRepository from "../services/taxonomyRepository";
-
-/**
- * Admin/employee preview: `?preview=1` renders any workspace record —
- * draft, pending or archived — through this same customer design. No
- * second product-detail page exists.
- */
-const resolvePreviewProduct = (identifier) => {
-  const record =
-    catalogRepository.find(identifier) ?? catalogRepository.findBySlug(identifier);
-  if (!record) return null;
-  return toStorefrontProduct(record, 0);
-};
 
 function ProductNotFound() {
   return (
@@ -71,63 +62,145 @@ function ProductNotFound() {
   );
 }
 
+function ProductLoadError({ message, onRetry }) {
+  return (
+    <>
+      <PageHeader
+        eyebrow="The Collection"
+        title="We couldn't load this piece."
+        breadcrumb={[{ label: "Shop", to: "/shop" }, { label: "Piece Unavailable" }]}
+        size="subsection"
+      />
+      <AtelierSection rhythm="none" width="wide" className="pb-24 md:pb-36">
+        <EmptyState
+          eyebrow="Something Went Wrong"
+          title="The piece could not be fetched"
+          description={message}
+          className="mx-auto max-w-xl"
+          actions={
+            <>
+              <AtelierButton onClick={onRetry} variant="outline" size="md">Try again</AtelierButton>
+              <AtelierButton as={Link} to="/shop" variant="primary" size="md">Return to Shop</AtelierButton>
+            </>
+          }
+        />
+      </AtelierSection>
+    </>
+  );
+}
+
 export default function ProductDetail() {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get("preview") === "1";
-  const product = useMemo(
-    () => getProductByIdentifier(productId) ?? (isPreview ? resolvePreviewProduct(productId) : null),
-    [productId, isPreview]
-  );
+
+  const [product, setProduct] = useState(null);
+  const [recommendations, setRecommendations] = useState({ related: [], completeTheLook: [], recommended: [] });
+  const [status, setStatus] = useState("loading"); // loading | ready | error | notfound
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const { user } = useAuth();
   const reveal = useReveal();
-  const recommendations = useMemo(
-    () => (product ? getProductRecommendations(product) : null),
-    [product]
-  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    setError(null);
+
+    const load = async () => {
+      let result;
+      if (isPreview && getAccessToken("admin")) {
+        result = await apiAdminGetProduct(productId);
+      } else {
+        result = await apiGetProduct(productId);
+      }
+
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setStatus(result.status === 404 ? "notfound" : "error");
+        setError(result.error);
+        return;
+      }
+
+      setProduct(result.product);
+      setStatus("ready");
+
+      const recResult = await apiGetRecommendations(result.product.id, "related");
+      if (!cancelled && recResult.ok && recResult.items?.length) {
+        const items = recResult.items;
+        setRecommendations({
+          related: items.slice(0, 4),
+          completeTheLook: items.slice(4, 8),
+          recommended: items.slice(8, 12),
+        });
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [productId, isPreview, attempt]);
 
   /* A record that is not yet published is an atelier preview — visible by
      direct product id, honestly labelled, never offered for purchase. */
   const isAtelierPreview =
     isPreview || product?.status === "DRAFT" || product?.published === false;
 
-  const { user } = useAuth();
-
   useEffect(() => {
     if (!product) return undefined;
     const previousTitle = document.title;
     document.title = `${product.name} — PRATIKSHYA FASHON`;
-    return () => {
-      document.title = previousTitle;
-    };
+    return () => { document.title = previousTitle; };
   }, [product]);
 
   useEffect(() => {
     if (!product || isAtelierPreview) return undefined;
-    recordRecentlyViewed(product.id, user?.id ?? null);
+    if (user?.id && getAccessToken()) apiAddRecentlyViewed(product.id);
     return undefined;
   }, [product, isAtelierPreview, user?.id]);
 
-  if (!product) return <ProductNotFound />;
+  if (status === "loading") {
+    return (
+      <main className="pb-20 md:pb-0">
+        <AtelierSection rhythm="none" width="wide" className="pb-16 pt-28 sm:pt-32 md:pb-24">
+          <div className="grid gap-11 md:grid-cols-2 md:gap-7 lg:grid-cols-12 lg:gap-12 xl:gap-16">
+            <div className="min-w-0 lg:col-span-7"><ProductGridSkeleton count={2} /></div>
+            <div className="min-w-0 lg:col-span-5"><ProductGridSkeleton count={4} /></div>
+          </div>
+        </AtelierSection>
+      </main>
+    );
+  }
 
-  const category = taxonomyRepository.findCategory(product.category);
-  const categoryPath = `/category/${category?.slug || product.category}`;
+  if (status === "error") {
+    return <ProductLoadError message={error ?? "The catalogue is unreachable. Please try again."} onRetry={() => setAttempt((a) => a + 1)} />;
+  }
+
+  if (status === "notfound" || !product) return <ProductNotFound />;
+
+  const categoryPath = `/category/${product.slug || product.category}`;
   const subcategoryPath = `${categoryPath}?subcategory=${encodeURIComponent(product.subcategory)}`;
   const breadcrumbs = [
     { label: "Shop", to: "/shop" },
-    { label: category?.name || product.categoryLabel, to: categoryPath },
-    { label: product.subcategory, to: subcategoryPath },
+    { label: product.categoryLabel || product.category, to: categoryPath },
+    { label: product.subcategory || "Piece", to: subcategoryPath },
     { label: product.name },
   ];
 
-  /* The story line is assembled from whatever the record actually carries —
-     never from invented cloth or collection names. */
   const storyLine = (() => {
-    const home = product.collection || (category ? `the ${category.name} atelier` : "the atelier");
+    const home = product.collection || product.categoryLabel || "the atelier";
     const cloth = [product.fabric, product.material].filter(Boolean);
     const parts = [`From ${home}`];
     if (cloth.length) parts.push(`a study in ${cloth.join(" and ").toLowerCase()}`);
     return `${parts.join(", ")}.`;
   })();
+
+  const emptyRecommendation = () => ({
+    eyebrow: "More to Discover",
+    title: <>You may also <span className="italic text-accent">like</span></>,
+    description: "Similar pieces will appear here as more of the collection is catalogued.",
+  });
 
   return (
     <main className="pb-20 md:pb-0">
@@ -167,9 +240,9 @@ export default function ProductDetail() {
               The story is in the <span className="italic text-accent">making.</span>
             </EditorialHeading>
             <div className="mt-10 border-l border-gold pl-5">
-              <p className="font-display text-2xl text-ink">{product.rating.toFixed(1)}</p>
+              <p className="font-display text-2xl text-ink">{Number(product.rating ?? 0).toFixed(1)}</p>
               <p className="mt-1 font-ui text-[9px] uppercase tracking-[.17em] text-taupe">
-                From {product.reviewCount.toLocaleString("en-IN")} considered reviews
+                From {Number(product.reviewCount ?? 0).toLocaleString("en-IN")} considered reviews
               </p>
             </div>
           </motion.div>
@@ -186,6 +259,7 @@ export default function ProductDetail() {
         title={<>Related <span className="italic text-accent">pieces</span></>}
         description="Selected through shared cloth, craft, collection and occasion — never at random."
         products={recommendations.related}
+        empty={emptyRecommendation()}
       />
 
       <ProductRecommendations
@@ -195,6 +269,7 @@ export default function ProductDetail() {
         description="A composed edit of finishing pieces chosen to sit naturally beside this silhouette."
         products={recommendations.completeTheLook}
         tone="fade"
+        empty={emptyRecommendation()}
       />
 
       <ProductRecommendations
@@ -203,6 +278,7 @@ export default function ProductDetail() {
         title={<>You may also <span className="italic text-accent">like</span></>}
         description="Similar in occasion, palette and price — with no repetition from the edits above."
         products={recommendations.recommended}
+        empty={emptyRecommendation()}
       />
     </main>
   );

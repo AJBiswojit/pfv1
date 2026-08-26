@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { LoadingState } from "./design-system";
 import { routeManifest } from "./config/navigationConfig";
 import { hasNavigationScope } from "./data/products/taxonomy";
+import { hydrateCatalog, getCatalogState } from "./services/catalog/catalogStore";
 import { AuthProvider } from "./context/AuthContext";
 import { AccountProvider } from "./context/AccountContext";
 import { ShoppingProvider } from "./context/ShoppingContext";
@@ -150,9 +151,22 @@ function LegacyCollectionRedirect() {
   return <Navigate to={`/collections/${slug}`} replace />;
 }
 
+/**
+ * Hydrates the backend-fed catalog store once at startup. The store holds
+ * no seed data — if the backend is unreachable every catalogue surface
+ * renders its own loading / error / empty state.
+ */
+function CatalogBootstrap({ children }) {
+  useEffect(() => {
+    if (getCatalogState().status === "idle") hydrateCatalog();
+  }, []);
+  return children;
+}
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <CatalogBootstrap>
+      <BrowserRouter>
       <AuthProvider>
         <AccountProvider>
           <InventoryProvider>
@@ -377,6 +391,7 @@ export default function App() {
           </InventoryProvider>
         </AccountProvider>
       </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </CatalogBootstrap>
   );
 }

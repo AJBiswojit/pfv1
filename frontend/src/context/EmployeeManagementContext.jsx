@@ -41,6 +41,7 @@ import {
 } from "../services/employees/activityService";
 import {
   activateEmployee as activateRecord,
+  replaceServerEmployees,
   createEmployee as createRecord,
   deactivateEmployee as deactivateRecord,
   ensureSeeded,
@@ -64,21 +65,20 @@ export function EmployeeManagementProvider({ children }) {
   const [activity, setActivity] = useState(() => loadActivity());
   const [isWorking, setIsWorking] = useState(false);
 
-  // Sync employee list from backend on mount when admin is authenticated
+  // Sync employee list from backend. The server is authoritative — no seed.
   useEffect(() => {
-    if (!getAccessToken()) return;
+    if (!getAccessToken("admin") && !getAccessToken("employee")) return;
+    let cancelled = false;
     apiAdminListEmployees({ pageSize: 100 }).then((result) => {
-      if (result.ok && result.items?.length) {
-        // Merge server records into local state — server wins for same id
-        setEmployees((local) => {
-          const byId = new Map(local.map((e) => [e.id ?? e.employeeId, e]));
-          result.items.forEach((e) => byId.set(e.id ?? e.employeeId, e));
-          return [...byId.values()];
-        });
+      if (cancelled) return;
+      if (result.ok) {
+        replaceServerEmployees(result.items ?? []);
+        setEmployees(result.items ?? []);
       }
     });
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [admin?.id]);
+  }, [admin?.id, employeeActor?.id]);
 
   /*
    * Phase 13 — the product repository writes product events straight into

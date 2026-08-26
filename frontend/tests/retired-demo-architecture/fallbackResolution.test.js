@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { products as authoredProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 import taxonomyRepository from "../src/services/taxonomyRepository.js";
 import {
@@ -14,12 +14,12 @@ import {
 } from "../src/services/media/mediaResolver.js";
 import { getProductMediaSet } from "../src/services/media/productMediaSet.js";
 
-const storefrontProducts = authoredProducts.map(toStorefrontProduct);
+const storefrontProducts = __catalogue.map(toStorefrontProduct);
 
 test("every canonical category falls back to media from its own catalogue scope", () => {
   for (const category of taxonomyRepository.activeCategories()) {
     const cover = resolveCategoryCover(category);
-    const member = authoredProducts.find((product) => product.category === category.id);
+    const member = __catalogue.find((product) => product.category === category.id);
     assert.ok(member, `${category.id} has a canonical product`);
     assert.equal(cover.reason, FALLBACK_REASONS.STATIC_CATALOG);
     assert.equal(cover.src, member.media.primary);

@@ -20,7 +20,7 @@ import catalogRepository, {
   persistCanonicalCatalogueState,
 } from "../src/services/catalogRepository.js";
 import taxonomyRepository from "../src/services/taxonomyRepository.js";
-import { products as authoredProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { getLiveStorefrontProducts } from "../src/data/products/index.js";
 import { queryCatalogue } from "../src/data/products/query.js";
 import { resolveNavigationScope } from "../src/data/products/taxonomy.js";
@@ -74,7 +74,7 @@ test("collection membership is data-driven metadata on the canonical record", ()
   /* With no admin writes the register is the authored seed; membership must
      come from these records, not from any page or LocalStorage. */
   const records = catalogRepository.all();
-  assert.equal(records.length, authoredProducts.length);
+  assert.equal(records.length, __catalogue.length);
 
   const withFabric = records.filter((record) => record.fabric);
   const withCollections = records.filter((record) => Array.isArray(record.collections));
@@ -234,7 +234,7 @@ test("clearing persisted product state does not destroy canonical collection mem
      fabric / collections / isNew membership. */
   persistCanonicalCatalogueState(null, "storage-cleared");
   const rebuilt = catalogRepository.all();
-  assert.equal(rebuilt.length, authoredProducts.length, "the seed rebuilds the catalogue");
+  assert.equal(rebuilt.length, __catalogue.length, "the seed rebuilds the catalogue");
 
   const withFabric = rebuilt.filter((record) => record.fabric).length;
   const withCollections = rebuilt.filter((record) => Array.isArray(record.collections)).length;

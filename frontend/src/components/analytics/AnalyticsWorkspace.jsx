@@ -60,7 +60,7 @@ export default function AnalyticsWorkspace({
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="font-ui text-[11px] text-taupe">
-          Demo read-model · not audited financial reporting · not real-time warehouse BI
+          Read-model over live backend data · not audited financial reporting
         </p>
         <AtelierButton type="button" variant="outline" size="chip" onClick={exportView}>
           Export CSV
@@ -205,7 +205,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
           <AnalyticsTrendChart
             series={snapshot.sales.series}
             metric={trendMetric}
-            emptyDescription="Place or seed orders in this window to see the trend."
+            emptyDescription="Place orders in this window to see the trend."
           />
         </AdminPanel>
         <AdminPanel eyebrow="Taxonomy" title="Categories">

@@ -6,16 +6,17 @@
  * support are not working from a disconnected dataset.
  */
 
-import {
-  MOCK_APPOINTMENTS,
-  MOCK_FEEDBACK,
-  MOCK_FOLLOW_UPS,
-  MOCK_OFFERS,
-  MOCK_PERFORMANCE,
-  MOCK_SUPPORT_CASES,
-  MOCK_STYLING_REQUESTS,
-  MOCK_WALKIN_CUSTOMERS,
-} from "../../data/employees/operations";
+/* Floor operations are backend-owned. The mock constants below were removed;
+   each getter returns an explicit empty/backend-gap result instead of demo
+   records (INTEGRATION_AUDIT.md §7). */
+const MOCK_FOLLOW_UPS = [];
+const MOCK_OFFERS = [];
+const MOCK_PERFORMANCE = [];
+const MOCK_SUPPORT_CASES = [];
+const MOCK_STYLING_REQUESTS = [];
+const MOCK_WALKIN_CUSTOMERS = [];
+const MOCK_APPOINTMENTS = [];
+const MOCK_FEEDBACK = [];
 import { loadCustomerRegistry } from "../customer/customerRegistry";
 import { products } from "../../data/products";
 import { isAssistedOrder, loadOrders } from "../orders/orderService";
@@ -23,7 +24,6 @@ import offerRepository, {
   describeEligibility,
   formatOfferDiscount,
 } from "../offers/offerRepository";
-import { readStorage } from "../../utils/shopping";
 import { formatEmployeeDateTime, todayKey } from "../../utils/employee";
 import inventoryRepository from "../inventory/inventoryRepository";
 
@@ -251,7 +251,7 @@ export const attendanceFor = (employeeId) => {
 function requireCompatibility() {
   return {
     getTodayAttendance: (id) => {
-      const stored = readStorage("pratikshya_attendance", []);
+      const stored = []; // attendance is backend-owned
       const today = todayKey();
       const record = Array.isArray(stored)
         ? stored.find((entry) => entry.employeeId === id && entry.date === today)

@@ -4,7 +4,6 @@ import { AlertCircle, ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react"
 import { AtelierButton, Brand, Rule } from "../../design-system";
 import { ADMIN_BRAND, sanitizeAdminReturnUrl } from "../../config/adminNavigation";
 import { useAdminAuth } from "../../context/AdminAuthContext";
-import { DEMO_ADMIN_LOGINS } from "../../data/admin/demoAdminCredentials";
 
 /**
  * The Admin Portal entrance.
@@ -58,14 +57,6 @@ export default function AdminLogin() {
     }
     setError(result.error || "Admin ID or password is not correct.");
     setIsSubmitting(false);
-  };
-
-  const fillDemo = () => {
-    const demo = DEMO_ADMIN_LOGINS[0];
-    if (!demo) return;
-    setAdminId(demo.adminId);
-    setPassword(demo.password);
-    setError("");
   };
 
   return (
@@ -171,28 +162,6 @@ export default function AdminLogin() {
               )}
             </AtelierButton>
           </form>
-
-          <div className="mt-8 border-t border-mist/70 pt-6">
-            <div className="mb-3 flex items-center gap-2 text-brass">
-              <ShieldCheck size={14} aria-hidden="true" />
-              <p className="font-ui text-[10px] uppercase tracking-[.2em]">Demo credentials</p>
-            </div>
-            <p className="mb-3 font-ui text-[11px] leading-relaxed text-taupe">
-              Frontend mock authentication for the client preview only — not production
-              credentials. Admin ID <span className="text-ink">PF-ADM-00001</span> ·
-              password <span className="text-ink">PF@Admin2026</span>.
-            </p>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="w-full border border-accent/50 bg-canvas/70 px-3 py-2.5 text-left font-ui text-[11px] transition-colors hover:border-ink"
-            >
-              <span className="block font-medium text-ink">Kavya Menon · Super Admin</span>
-              <span className="block text-[10px] text-taupe">
-                PF-ADM-00001 · fill the form
-              </span>
-            </button>
-          </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-center">
             <Link

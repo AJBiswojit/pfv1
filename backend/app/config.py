@@ -1,7 +1,38 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import json
 import os
+
+
+def _split_csv(value: Union[str, List[str], None]) -> Optional[List[str]]:
+    """Accept both JSON-style lists and plain comma-separated strings.
+
+    pydantic-settings tries to JSON-decode complex types, so an env var like
+
+        ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+    fails with "Invalid JSON" by default. This helper turns such values into
+    a clean list (trimmed, empty entries dropped) and passes real lists through
+    unchanged, so `.env` files and process env work the same way.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        # JSON array string → parse; otherwise treat as comma-separated CSV.
+        stripped = value.strip()
+        if stripped.startswith("["):
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except (ValueError, TypeError):
+                pass
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return [str(value)]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -15,13 +46,12 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = True
     SECRET_KEY: str = "your-super-secret-key-change-in-production-min-32-chars"
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ]
+    # Raw env value: comma-separated or a JSON array. Parsed via `allowed_origins`
+    # so `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000` works.
+    ALLOWED_ORIGINS: str = (
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,"
+        "http://127.0.0.1:5173,http://127.0.0.1:3000"
+    )
 
     # --- Database ---
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pratikshya_fashon"
@@ -79,8 +109,8 @@ class Settings(BaseSettings):
     # --- File Upload Limits ---
     MAX_IMAGE_SIZE_MB: int = 10
     MAX_VIDEO_SIZE_MB: int = 100
-    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/webp"]
-    ALLOWED_VIDEO_TYPES: List[str] = ["video/mp4", "video/webm"]
+    ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp"
+    ALLOWED_VIDEO_TYPES: str = "video/mp4,video/webm"
 
     # --- Pagination ---
     DEFAULT_PAGE_SIZE: int = 20
@@ -110,6 +140,22 @@ class Settings(BaseSettings):
     ADMIN_SEED_EMAIL: Optional[str] = None
     ADMIN_SEED_PASSWORD: Optional[str] = None
     ADMIN_SEED_FULL_NAME: str = "Super Admin"
+
+    # ── Parsed list accessors ────────────────────────────────────────────────
+    # Keep the raw fields as strings so .env files can use simple CSV values;
+    # these properties are the typed accessors used by the rest of the app.
+
+    @property
+    def allowed_origins(self) -> List[str]:
+        return _split_csv(self.ALLOWED_ORIGINS) or []
+
+    @property
+    def allowed_image_types(self) -> List[str]:
+        return _split_csv(self.ALLOWED_IMAGE_TYPES) or []
+
+    @property
+    def allowed_video_types(self) -> List[str]:
+        return _split_csv(self.ALLOWED_VIDEO_TYPES) or []
 
     # ── Production safety guards ──────────────────────────────────────────────
 

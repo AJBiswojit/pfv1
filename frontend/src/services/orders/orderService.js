@@ -26,11 +26,16 @@ import {
   pickCarrier,
   refundMethodLabel,
 } from "../../utils/orders";
-import { readStorage, writeStorage } from "../../utils/shopping";
+/* Orders are backend-owned. The helpers below are a SESSION MIRROR:
+   in-memory only, never localStorage, never authoritative. */
+const orderMemory = new Map();
+const readStorage = (key, fallback) => (orderMemory.has(key) ? orderMemory.get(key) : fallback);
+const writeStorage = (key, value) => {
+  orderMemory.set(key, value);
+};
 import { EMPLOYEE_STORAGE_KEYS } from "../employees/storage";
 import { buildFulfillmentRecord, normaliseFulfillment, mapOrderStatusToFulfillmentStatus } from "./fulfillmentService";
 import { buildTimelineEvent, appendTimeline } from "./orderTimelineService";
-import { generateDemoOrders } from "./demoOrders";
 
 export const ORDERS_STORAGE_KEY = "pratikshya_orders";
 export const CURRENT_ORDER_KEY = "pratikshya_current_order";
@@ -142,22 +147,10 @@ export const isAssistedOrder = (order) =>
 /* ------------------------------------------------------------------ */
 
 export const loadOrders = () => {
+  /* Orders are backend-owned. The localStorage store is only a session
+     mirror of orders fetched from GET /orders — never seeded. */
   const stored = readStorage(ORDERS_STORAGE_KEY, null);
-  let orders = migrateAssistedOrders(normaliseOrders(stored));
-  if (orders.length === 0) {
-    // Seed demo orders only when browser has no orders — never overwrites real orders
-    try {
-      const demo = generateDemoOrders();
-      if (demo.length) {
-        writeStorage(ORDERS_STORAGE_KEY, demo);
-        orders = migrateAssistedOrders(normaliseOrders(demo));
-      }
-    } catch (e) {
-      // Seeding is best-effort, never breaks order loading
-      console.warn("Demo order seeding failed", e);
-    }
-  }
-  return orders;
+  return migrateAssistedOrders(normaliseOrders(stored));
 };
 
 export const saveOrders = (orders) => {

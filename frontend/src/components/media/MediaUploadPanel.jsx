@@ -126,8 +126,7 @@ export default function MediaUploadPanel({
         fileName: item.file.name,
         fileSize: item.file.size,
         mimeType: item.file.type || "",
-        source: "Demo upload",
-        demoPlaceholder: true,
+        source: "Upload queue",
       }))
     );
     clearQueue();
@@ -317,9 +316,9 @@ export default function MediaUploadPanel({
             </AtelierButton>
           </div>
           <p className="font-ui text-[11px] text-taupe">
-            Saved queue items keep their title, alt text and role. Because there is no upload
-            service in this phase, they are marked as demo placeholders and show house artwork
-            until a real address is added.
+            Saved queue items keep their title, alt text and role. Because the backend
+            media service is not active in this phase, files are not uploaded: a real
+            address/upload endpoint is required before these can be published.
           </p>
         </div>
       ) : null}
