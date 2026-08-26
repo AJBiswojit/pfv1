@@ -98,7 +98,9 @@ def _parse_env_file(path: Path) -> Dict[str, str]:
 
 def _redact(value: str) -> str:
     """Redact anything that looks like an embedded credential."""
-    return re.sub(r"(://[^:/@]+):([^@/]+)@", r"\1:***@", value)
+    value = re.sub(r"(://[^:/@]+):([^@/]+)@", r"\1:***@", value)
+    value = re.sub(r"(\bpassword\s*=\s*)[^\s;'\"&]+", r"\1***", value, flags=re.IGNORECASE)
+    return value
 
 
 def _build_dsn() -> Tuple[str, str]:
