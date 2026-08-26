@@ -161,10 +161,15 @@ const composeValidation = (errors) => ({
 /**
  * Customer information rules shared by guest and authenticated checkout.
  * Uses the Phase 7 validation primitives — one regex per rule, one voice.
+ *
+ * Canonical contract (Phase 2): the customer is captured as separate
+ * `firstName` and `lastName` fields — matching the backend DTO exactly.
+ * No full-name string is ever split or guessed.
  */
-export const validateCustomer = ({ fullName = "", email = "", phone = "" } = {}) =>
+export const validateCustomer = ({ firstName = "", lastName = "", email = "", phone = "" } = {}) =>
   composeValidation({
-    fullName: fullName.trim() ? "" : "Please enter your full name.",
+    firstName: firstName.trim() ? "" : "Please enter your first name.",
+    lastName: lastName.trim() ? "" : "Please enter your last name.",
     email: email.trim() ? (isValidEmail(email) ? "" : "Please enter a valid email address.") : "Please enter your email address.",
     phone: phone.trim() ? (isValidPhone(phone) ? "" : "Please enter a valid 10-digit mobile number.") : "Please enter your mobile number.",
   });
@@ -292,6 +297,80 @@ export const cartFingerprint = (items, couponCode = null) =>
     .join("|") + (couponCode ? `#${couponCode}` : "");
 
 /* ------------------------------------------------------------------ */
+/* Canonical order placement (Phase 2)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Generate a checkout attempt id (idempotency key) for the current
+ * checkout attempt. The backend maps this key to the UNIQUE
+ * `orders_order.order_number` — retrying the same attempt (same key)
+ * returns the same order instead of creating a duplicate.
+ */
+export const newAttemptId = () => {
+  try {
+    if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    // fall through to the timestamp-based id
+  }
+  return `att-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
+/**
+ * Build the canonical POST /orders request body from checkout state.
+ *
+ * Trust rules (Phase 2): only identity items are sent —
+ *   - items: productId / color / size / quantity (NO prices)
+ *   - customer: { firstName, lastName, email, phone }
+ *   - address: the checkout address (camelCase, as captured)
+ *   - deliveryMethod / paymentMethod / couponCode / customerNote
+ *   - idempotencyKey: the checkout attempt id
+ *
+ * No totals, discounts, unit prices or amounts are sent — the backend
+ * resolves prices from the catalogue, revalidates the coupon and computes
+ * every amount authoritatively.
+ */
+export const buildPlaceOrderRequest = ({
+  items = [],
+  customer,
+  address,
+  deliveryMethodId,
+  paymentMethodId,
+  couponCode = null,
+  customerNote = null,
+  idempotencyKey = null,
+}) => ({
+  items: items.map((item) => ({
+    productId: item.productId,
+    color: item.color ?? null,
+    size: item.size ?? null,
+    quantity: item.quantity,
+  })),
+  customer: {
+    firstName: (customer?.firstName ?? "").trim(),
+    lastName: (customer?.lastName ?? "").trim(),
+    email: (customer?.email ?? "").trim(),
+    phone: (customer?.phone ?? "").trim() || null,
+  },
+  address: {
+    fullName: address?.fullName ?? "",
+    phone: address?.phone ?? "",
+    addressLine: address?.addressLine ?? "",
+    landmark: address?.landmark ?? "",
+    city: address?.city ?? "",
+    state: address?.state ?? "",
+    pincode: address?.pincode ?? "",
+    type: address?.type ?? "Home",
+  },
+  deliveryMethod: deliveryMethodId,
+  paymentMethod: paymentMethodId,
+  couponCode: couponCode ?? null,
+  customerNote: customerNote ?? null,
+  idempotencyKey: idempotencyKey ?? null,
+});
+
+/* ------------------------------------------------------------------ */
 /* Order snapshot                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -408,6 +487,8 @@ export default {
   isValidUpiId,
   validateCardForm,
   cartFingerprint,
+  newAttemptId,
+  buildPlaceOrderRequest,
   buildOrderSnapshot,
   getPaymentMethodLabel,
   DELIVERY_METHODS,

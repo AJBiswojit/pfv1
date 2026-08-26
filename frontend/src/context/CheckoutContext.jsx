@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Checkout session state (Phase B wired).
+ * PRATIKSHYA FASHON — Checkout session state (Phase 2 — canonical flow).
  *
  * The single checkout session: customer, delivery address, delivery
  * method, payment method, current step and the in-flight payment. It
@@ -8,15 +8,27 @@
  *   AuthContext      → identity (prefill source)
  *   AccountContext   → saved addresses (source of truth for the address book)
  *   CartContext      → cart + coupon + pricing engine
- *   OrderContext     → order placement (calls /orders backend)
+ *   OrderContext     → order placement (calls /orders backend, guest or signed-in)
  *   paymentsApi      → real Razorpay session (POST /payments/session)
  *
- * For COD: the session is created immediately, no Razorpay modal is opened.
- * For online payments: Razorpay checkout.js is loaded and opened.
+ * Canonical lifecycle (Phase 2):
+ *   COD    → POST /orders confirms the order (payment PENDING until
+ *            delivery). No payment session, no Razorpay modal.
+ *   Online → POST /orders creates a PENDING_PAYMENT order →
+ *            POST /payments/session against that order (amount is the
+ *            order's server-computed total) → Razorpay modal →
+ *            POST /payments/verify (server-side HMAC) → confirmed.
  *
- * Pricing is always derived live from the Phase 6 engine — nothing is
- * copied into this context. Only safe checkout fields are persisted:
- * never card numbers, CVV or any payment credential.
+ * Idempotency: a per-attempt `attemptId` is generated client-side and
+ * sent as `idempotencyKey`; the backend enforces it through the unique
+ * order_number (safe retries return the same order). The attempt id
+ * rotates whenever the order payload can change (bag review, customer,
+ * address, delivery or payment method).
+ *
+ * Pricing is always derived live from the Phase 6 engine for display —
+ * the authoritative amounts are computed by the backend. Only safe
+ * checkout fields are persisted: never card numbers, CVV or any payment
+ * credential.
  */
 
 import {
@@ -54,11 +66,13 @@ import {
 import {
   buildOrderId,
   buildOrderSnapshot,
+  buildPlaceOrderRequest,
   calculateCheckoutTotals,
   cartFingerprint,
   formatDeliveryEstimate,
   getDeliveryEstimate,
   isCustomerComplete,
+  newAttemptId,
   nextOrderSequence,
   validateAddress,
 } from "../utils/checkout";
@@ -84,11 +98,16 @@ function loadRazorpayScript() {
 
 const CheckoutContext = createContext(null);
 
-const EMPTY_CUSTOMER = { fullName: "", email: "", phone: "" };
+/**
+ * Canonical customer shape (Phase 2): separate first/last name — matching
+ * the backend DTO exactly. No fullName string is kept or split anywhere.
+ */
+const EMPTY_CUSTOMER = { firstName: "", lastName: "", email: "", phone: "" };
 
 /** Customer fields prefilled from an authenticated profile. */
 const customerFromUser = (user) => ({
-  fullName: [user.firstName, user.lastName].filter(Boolean).join(" ").trim(),
+  firstName: user.firstName ?? "",
+  lastName: user.lastName ?? "",
   email: user.email ?? "",
   phone: user.phone ?? "",
 });
@@ -106,6 +125,8 @@ const freshState = ({ user, addresses = [] }) => {
     paymentMethod: null,
     stepIndex: 0,
     bagFingerprint: null,
+    /** Idempotency key for this checkout attempt (safe order retries). */
+    attemptId: newAttemptId(),
     paymentStatus: PAYMENT_STATUS.IDLE,
     paymentMessage: "",
     sessionId: null,
@@ -117,8 +138,13 @@ const freshState = ({ user, addresses = [] }) => {
  * Restores a safe subset of the last checkout session. Corrupt storage is
  * discarded, the step is pulled back when earlier steps are incomplete,
  * and an account-sourced address is re-resolved from the live address book.
+ *
+ * Idempotency: the stored attemptId is reused only when the bag is
+ * unchanged — if the bag fingerprint differs from the current bag, a fresh
+ * attempt id is generated so a stale key can never be replayed against a
+ * changed order.
  */
-const restoreCheckout = ({ user, addresses = [] }) => {
+const restoreCheckout = ({ user, addresses = [], cartItems = [], couponCode = null }) => {
   const stored = readStorage(CHECKOUT_STORAGE_KEY, null);
   if (!stored || typeof stored !== "object") return freshState({ user, addresses });
 
@@ -156,6 +182,20 @@ const restoreCheckout = ({ user, addresses = [] }) => {
   if (!isCustomerComplete(customer)) stepIndex = 0;
   else if (!address) stepIndex = Math.min(stepIndex, 1);
 
+  // Reuse the stored attempt id only for an unchanged bag.
+  let attemptId = base.attemptId;
+  const storedFingerprint = stored.bagFingerprint ?? null;
+  if (storedFingerprint) {
+    if (storedFingerprint === cartFingerprint(cartItems, couponCode)) {
+      attemptId =
+        typeof stored.attemptId === "string" && stored.attemptId
+          ? stored.attemptId
+          : newAttemptId();
+    } else {
+      attemptId = newAttemptId();
+    }
+  }
+
   return {
     ...base,
     customer,
@@ -168,6 +208,7 @@ const restoreCheckout = ({ user, addresses = [] }) => {
       ? stored.paymentMethod
       : null,
     stepIndex,
+    attemptId,
   };
 };
 
@@ -178,7 +219,12 @@ export function CheckoutProvider({ children }) {
   const orderApi = useOrder();
 
   const [state, setState] = useState(() =>
-    restoreCheckout({ user, addresses: account.addresses })
+    restoreCheckout({
+      user,
+      addresses: account.addresses,
+      cartItems: cart.items,
+      couponCode: cart.coupon?.code ?? null,
+    })
   );
 
   /* Latest-state refs so async payment resolution always reads fresh data. */
@@ -203,6 +249,8 @@ export function CheckoutProvider({ children }) {
       deliveryMethod: state.deliveryMethod,
       paymentMethod: state.paymentMethod,
       stepIndex: state.stepIndex,
+      bagFingerprint: state.bagFingerprint,
+      attemptId: state.attemptId,
       savedAt: Date.now(),
     });
   }, [
@@ -214,6 +262,8 @@ export function CheckoutProvider({ children }) {
     state.deliveryMethod,
     state.paymentMethod,
     state.stepIndex,
+    state.bagFingerprint,
+    state.attemptId,
   ]);
 
   /* ---------------------------------------------------------------- */
@@ -322,144 +372,205 @@ export function CheckoutProvider({ children }) {
   const paymentInProgress = state.paymentStatus === PAYMENT_STATUS.PENDING;
 
   /* ---------------------------------------------------------------- */
+  /* Idempotency — rotate the attempt id whenever the order payload     */
+  /* can change. The same key always maps to the same payload; a         */
+  /* changed payload gets a fresh key so a retry can never replay a       */
+  /* stale order. Retries (unchanged payload) keep the key.               */
+  /* ---------------------------------------------------------------- */
+  const liveBagFingerprint = cartFingerprint(cart.items, cart.coupon?.code ?? null);
+  const payloadInputs = useMemo(
+    () =>
+      JSON.stringify([
+        state.customer,
+        state.address,
+        state.deliveryMethod,
+        state.paymentMethod,
+        liveBagFingerprint,
+      ]),
+    [state.customer, state.address, state.deliveryMethod, state.paymentMethod, liveBagFingerprint]
+  );
+
+  const payloadMountedRef = useRef(false);
+  useEffect(() => {
+    if (!payloadMountedRef.current) {
+      payloadMountedRef.current = true;
+      return;
+    }
+    setState((s) => ({ ...s, attemptId: newAttemptId() }));
+  }, [payloadInputs]);
+
+  /* ---------------------------------------------------------------- */
   /* Payment resolution                                                */
   /* (legacy mock handler — kept for backward compat during staged     */
   /* rollout; the real flow goes through startPayment / Razorpay)      */
   /* ---------------------------------------------------------------- */
 
-  // retryPayment simply re-runs startPayment
+  /**
+   * Canonical payment start (Phase 2).
+   *
+   * COD    → POST /orders (order confirmed; payment PENDING until delivery).
+   * Online → POST /orders (PENDING_PAYMENT) → POST /payments/session
+   *          (against that order) → Razorpay modal → POST /payments/verify
+   *          (server-side HMAC) → order confirmed.
+   *
+   * Both guests and signed-in customers can complete checkout. The
+   * idempotency key (attemptId) makes retries safe: the same attempt
+   * returns the same order; a changed attempt creates a new one.
+   */
   const startPayment = useCallback(async () => {
     const current = stateRef.current;
-    if (!user?.id) {
-      setState((s) => ({
-        ...s,
-        paymentStatus: PAYMENT_STATUS.FAILURE,
-        paymentMessage: "Please sign in or create an account to complete your order.",
-      }));
-      return;
-    }
     if (current.paymentStatus === PAYMENT_STATUS.PENDING || paymentStartingRef.current) return;
     if (!current.paymentMethod || !current.address) return;
-    paymentStartingRef.current = true;
 
-    const totalAmount = calculateCheckoutTotals(
-      cartRef.current.totals,
-      current.deliveryMethod,
-      current.paymentMethod
-    ).total;
+    const cartNow = cartRef.current;
+    const isGuest = !user?.id;
+    const guestEmail = isGuest ? current.customer.email ?? null : null;
+
+    const payload = buildPlaceOrderRequest({
+      items: cartNow.items,
+      customer: current.customer,
+      address: current.address,
+      deliveryMethodId: current.deliveryMethod,
+      paymentMethodId: current.paymentMethod,
+      couponCode: cartNow.coupon?.code ?? null,
+      idempotencyKey: current.attemptId,
+    });
 
     // ----------------------------------------------------------------
-    // COD — no Razorpay, place order directly then show success
+    // COD — no Razorpay. The order is confirmed at placement and the
+    // payment stays PENDING until cash is collected on delivery.
     // ----------------------------------------------------------------
     if (current.paymentMethod === "cod") {
-      const cartNow = cartRef.current;
-      const placed = await orderApi.placeOrder({
-        items: cartNow.items.map((item) => ({
-          productId: item.productId,
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.product?.price ?? 0,
-        })),
-        customer: current.customer,
-        address: current.address,
-        deliveryMethod: current.deliveryMethod,
-        paymentMethod: "cod",
-        couponCode: cartNow.coupon?.code ?? null,
-      });
+      paymentStartingRef.current = true;
+      const placed = await orderApi.placeOrder(payload);
       paymentStartingRef.current = false;
       if (!placed?.ok) {
         setState((s) => ({
           ...s,
           paymentStatus: PAYMENT_STATUS.FAILURE,
-          paymentMessage: "Your order could not be placed. Please try again.",
+          paymentMessage: placed?.error || "Your order could not be placed. Please try again.",
         }));
         return;
       }
-      cartNow.clearCart();
+      await cartNow.clearCart();
       clearPersistedCheckout();
-      setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.SUCCESS, completedOrder: placed.order ?? null }));
-      return;
-    }
-
-    // ----------------------------------------------------------------
-    // ONLINE — create Razorpay session, open checkout modal
-    // ----------------------------------------------------------------
-    setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.PENDING, paymentMessage: "" }));
-
-    const sessionResult = await apiCreatePaymentSession({
-      paymentMethod: current.paymentMethod,
-      orderDraft: {
-        amount: totalAmount,
-        customer: current.customer,
-        address: current.address,
-        deliveryMethod: current.deliveryMethod,
-      },
-    });
-    paymentStartingRef.current = false;
-
-    if (!sessionResult.ok) {
       setState((s) => ({
         ...s,
-        paymentStatus: PAYMENT_STATUS.FAILURE,
-        paymentMessage: sessionResult.error || "Payment could not be initialised. Please try again.",
+        paymentStatus: PAYMENT_STATUS.SUCCESS,
+        completedOrder: placed.order ?? null,
+        sessionId: null,
       }));
       return;
     }
 
+    // ----------------------------------------------------------------
+    // ONLINE — canonical order-first flow
+    // ----------------------------------------------------------------
+    setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.PENDING, paymentMessage: "" }));
+    paymentStartingRef.current = true;
+
+    // 1. Create the pending order (server computes all amounts).
+    const placed = await orderApi.placeOrder(payload);
+    if (!placed?.ok) {
+      paymentStartingRef.current = false;
+      setState((s) => ({
+        ...s,
+        paymentStatus: PAYMENT_STATUS.FAILURE,
+        paymentMessage: placed?.error || "Your order could not be created. Please try again.",
+      }));
+      return;
+    }
+    const pendingOrder = placed.order;
+
+    // 2. Create the Razorpay session against that order.
+    const sessionResult = await apiCreatePaymentSession({
+      orderId: pendingOrder.id,
+      paymentMethod: current.paymentMethod,
+      idempotencyKey: current.attemptId,
+      guestEmail,
+    });
+    if (!sessionResult.ok) {
+      paymentStartingRef.current = false;
+      setState((s) => ({
+        ...s,
+        paymentStatus: PAYMENT_STATUS.FAILURE,
+        paymentMessage:
+          "Your order is saved as pending. " +
+          (sessionResult.error || "Payment could not be initialised.") +
+          " You can retry the payment without re-entering your details.",
+      }));
+      return;
+    }
+
+    paymentStartingRef.current = false;
     const sessionId = sessionResult.sessionId;
     setState((s) => ({ ...s, sessionId }));
 
-    // If Razorpay key is provided, open the checkout modal
+    // 3. Open the Razorpay hosted checkout (real instruments are collected
+    //    by the gateway — the storefront never sees or stores them).
     if (sessionResult.razorpayOrderId && sessionResult.razorpayKeyId) {
-      // Dynamically load Razorpay checkout.js if not already loaded
       await loadRazorpayScript();
 
+      if (typeof window.Razorpay === "undefined") {
+        // The gateway script could not be loaded (network/offline). The
+        // pending order remains payable — the customer can retry.
+        setState((s) => ({
+          ...s,
+          paymentStatus: PAYMENT_STATUS.FAILURE,
+          paymentMessage:
+            "The secure payment window could not be loaded. Check your " +
+            "connection and try again — your order is saved as pending and " +
+            "nothing has been charged.",
+        }));
+        return;
+      }
+
+      const prefill = sessionResult.prefill ?? {};
       const options = {
-        key:          sessionResult.razorpayKeyId,
-        amount:       sessionResult.amountPaise,
-        currency:     "INR",
-        order_id:     sessionResult.razorpayOrderId,
-        name:         "Pratikshya Fashon",
-        description:  "Order Payment",
+        key: sessionResult.razorpayKeyId,
+        amount: sessionResult.amountPaise,
+        currency: sessionResult.currency ?? "INR",
+        order_id: sessionResult.razorpayOrderId,
+        name: "Pratikshya Fashon",
+        description: "Order Payment",
         prefill: {
-          name:  current.customer.fullName,
-          email: current.customer.email,
-          contact: current.customer.phone,
+          name: prefill.name ?? `${current.customer.firstName} ${current.customer.lastName}`.trim(),
+          email: prefill.email ?? current.customer.email,
+          contact: prefill.contact ?? current.customer.phone,
         },
         handler: async (response) => {
-          // Verify the payment signature with the backend
+          // 4. Verify the signature server-side. The backend is the only
+          //    place where an order may become PAID.
           const verifyResult = await apiVerifyPayment({
-            razorpayOrderId:   response.razorpay_order_id,
+            razorpayOrderId: response.razorpay_order_id,
             razorpayPaymentId: response.razorpay_payment_id,
             razorpaySignature: response.razorpay_signature,
+            guestEmail,
           });
           if (verifyResult.ok) {
-            // Place the order now that payment is confirmed
-            const cartNow = cartRef.current;
-            const placed = await orderApi.placeOrder({
-              items: cartNow.items.map((item) => ({
-                productId: item.productId,
-                color: item.color,
-                size: item.size,
-                quantity: item.quantity,
-                price: item.product?.price ?? 0,
-              })),
-              customer: stateRef.current.customer,
-              address: stateRef.current.address,
-              deliveryMethod: stateRef.current.deliveryMethod,
-              paymentMethod: stateRef.current.paymentMethod,
-              couponCode: cartNow.coupon?.code ?? null,
-            });
-            if (placed?.ok) {
-              cartNow.clearCart();
-              clearPersistedCheckout();
-              setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.SUCCESS, completedOrder: placed.order ?? null }));
-            } else {
-              setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.FAILURE, paymentMessage: "Payment was received but the order could not be saved. Please contact support." }));
-            }
+            const completedOrder = {
+              ...pendingOrder,
+              status: verifyResult.orderStatus ?? pendingOrder.status,
+              paymentStatus: verifyResult.paymentStatus ?? "PAID",
+            };
+            await cartRef.current.clearCart();
+            clearPersistedCheckout();
+            setState((s) => ({
+              ...s,
+              paymentStatus: PAYMENT_STATUS.SUCCESS,
+              completedOrder,
+            }));
           } else {
-            setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.FAILURE, paymentMessage: "Payment verification failed. No charge has been made." }));
+            // Honest failure — we never claim payment success without
+            // server confirmation. The order stays pending (unpaid).
+            setState((s) => ({
+              ...s,
+              paymentStatus: PAYMENT_STATUS.FAILURE,
+              paymentMessage:
+                (verifyResult.error || "Payment verification failed.") +
+                " If an amount was deducted, it will be automatically refunded. " +
+                "Your order remains unpaid — you can retry the payment.",
+            }));
           }
         },
         modal: {
@@ -467,7 +578,9 @@ export function CheckoutProvider({ children }) {
             setState((s) => ({
               ...s,
               paymentStatus: PAYMENT_STATUS.CANCELLED,
-              paymentMessage: "The payment was cancelled. Nothing has been charged, and your collection remains in your bag.",
+              paymentMessage:
+                "The payment was cancelled. Nothing has been charged. " +
+                "Your order is saved as pending and can be paid or cancelled later.",
             }));
           },
         },
@@ -479,27 +592,39 @@ export function CheckoutProvider({ children }) {
       return;
     }
 
-    // Fallback: backend returned a session but no Razorpay data (shouldn't happen for online)
+    // Fallback: session created but no Razorpay data (shouldn't happen online)
     setState((s) => ({
       ...s,
       paymentStatus: PAYMENT_STATUS.FAILURE,
-      paymentMessage: "Payment gateway configuration error. Please try again or use COD.",
+      paymentMessage:
+        "Payment gateway configuration error. Your order is saved as pending — " +
+        "please try again or use cash on delivery.",
     }));
   }, [orderApi, user]);
+
+  /**
+   * Guest-ownership token for payment-session calls. Signed-in callers are
+   * matched by their session identity (null); guests present the order's
+   * own guest email, which the server compares with the stored value.
+   */
+  const currentGuestEmail = useCallback(
+    () => (user?.id ? null : stateRef.current.customer?.email ?? null),
+    [user]
+  );
 
   const cancelActivePayment = useCallback(async () => {
     const current = stateRef.current;
     if (current.paymentStatus !== PAYMENT_STATUS.PENDING || !current.sessionId) return;
-    // Tell the backend to cancel the session
+    // Tell the backend to cancel the session (ownership: user or guest email)
     if (current.sessionId) {
-      apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
+      apiCancelPaymentSession(current.sessionId, "Customer cancelled", currentGuestEmail()).catch(() => {});
     }
     setState((s) => ({
       ...s,
       paymentStatus: PAYMENT_STATUS.CANCELLED,
       paymentMessage: "The payment was cancelled. Nothing has been charged.",
     }));
-  }, []);
+  }, [currentGuestEmail]);
 
   const retryPayment = useCallback(() => {
     startPayment();
@@ -537,7 +662,7 @@ export function CheckoutProvider({ children }) {
     const current = stateRef.current;
     if (paymentStartingRef.current) return;
     if (current.paymentStatus === PAYMENT_STATUS.PENDING && current.sessionId) {
-      apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
+      apiCancelPaymentSession(current.sessionId, "Customer cancelled", currentGuestEmail()).catch(() => {});
       return;
     }
     setState((s) => {
@@ -553,13 +678,13 @@ export function CheckoutProvider({ children }) {
       }
       return { ...s, stepIndex: s.stepIndex - 1 };
     });
-  }, []);
+  }, [currentGuestEmail]);
 
   const goToStep = useCallback((index) => {
     const current = stateRef.current;
     if (paymentStartingRef.current) return;
     if (current.paymentStatus === PAYMENT_STATUS.PENDING && current.sessionId) {
-      apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
+      apiCancelPaymentSession(current.sessionId, "Customer cancelled", currentGuestEmail()).catch(() => {});
       return;
     }
     setState((s) => {
@@ -576,7 +701,7 @@ export function CheckoutProvider({ children }) {
       }
       return { ...s, stepIndex: index };
     });
-  }, []);
+  }, [currentGuestEmail]);
 
   /* ---------------------------------------------------------------- */
   /* Data actions                                                      */
@@ -723,6 +848,7 @@ export function useCheckout() {
       deliveryMethod: "standard",
       paymentMethod: null,
       stepIndex: 0,
+      attemptId: null,
       totals: { subtotal: 0, shipping: 0, codFee: 0, total: 0 },
       deliveryEstimate: "",
       updateCustomer: () => {},

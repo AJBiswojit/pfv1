@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import {
@@ -9,7 +9,6 @@ import {
 } from "../design-system";
 import { CHECKOUT_STEPS } from "../config/checkoutConfig";
 import { useCart } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
 import { useCheckout } from "../context/CheckoutContext";
 import { formatINR } from "../utils/shopping";
 import CheckoutShell from "../components/checkout/CheckoutShell";
@@ -22,18 +21,17 @@ import PaymentStep from "../components/checkout/PaymentStep";
 /**
  * Checkout — /checkout.
  *
- * The Phase 8 transaction journey: customer → delivery → review →
- * payment, orchestrated by the checkout context, priced by the Phase 6
- * engine, paid through the clearly-labelled demo payment layer. The bag
- * is the guard rail: an empty bag shows the atelier empty state instead
- * of a form, and the cart is only cleared after a successful payment.
+ * The transaction journey: customer → delivery → review → payment,
+ * orchestrated by the checkout context, priced for display by the Phase 6
+ * engine and authoritatively priced by the backend at order time. Online
+ * payment runs through the secure Razorpay hosted checkout; the cart is
+ * only cleared after the server confirms the payment. Guest checkout is
+ * supported (orders are claimable via the verified-email claim flow).
  */
 export default function Checkout() {
   const cart = useCart();
   const checkout = useCheckout();
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [showAuthGate, setShowAuthGate] = useState(false);
 
   const customerRef = useRef(null);
   const deliveryRef = useRef(null);
@@ -48,7 +46,8 @@ export default function Checkout() {
     };
   }, []);
 
-  /* A successful demo payment hands off to the order confirmation. */
+  /* A successfully confirmed order (server-verified) hands off to the
+     order confirmation page. */
   useEffect(() => {
     if (checkout.completedOrder) {
       navigate("/order-success", { replace: true });
@@ -87,10 +86,8 @@ export default function Checkout() {
 
   const handlePrimary = () => {
     if (isPaymentStep) {
-      if (!user?.id) {
-        setShowAuthGate(true);
-        return;
-      }
+      // Guest checkout is supported: the backend creates a claimable guest
+      // order, and the secure Razorpay window collects any instrument.
       paymentRef.current?.pay?.();
       return;
     }
@@ -136,21 +133,6 @@ export default function Checkout() {
 
   return (
     <>
-    {showAuthGate && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 px-5" role="dialog" aria-modal="true" aria-labelledby="order-auth-title">
-        <div className="w-full max-w-md border border-mist bg-surface p-8 shadow-xl sm:p-10">
-          <p className="font-ui text-[10px] uppercase tracking-[.28em] text-accent">Complete Your Order</p>
-          <h2 id="order-auth-title" className="mt-3 font-display text-3xl font-light text-ink">Your journey awaits.</h2>
-          <p className="mt-4 font-ui text-sm leading-relaxed text-taupe">Create your PRATIKSHYA account or sign in to securely complete your purchase.</p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <AtelierButton as={Link} to={`/signin?returnTo=${encodeURIComponent("/checkout")}`} variant="primary" size="md">Sign In</AtelierButton>
-            <AtelierButton as={Link} to={`/signup?returnTo=${encodeURIComponent("/checkout")}`} variant="secondary" size="md">Create Account</AtelierButton>
-          </div>
-          <p className="mt-5 font-ui text-xs text-taupe">Your bag will remain saved while you sign in.</p>
-          <button type="button" onClick={() => setShowAuthGate(false)} className="mt-5 font-ui text-[10px] uppercase tracking-[.18em] text-taupe underline">Continue browsing checkout</button>
-        </div>
-      </div>
-    )}
     <CheckoutShell
       stepIndex={stepIndex}
       onStepClick={checkout.goToStep}

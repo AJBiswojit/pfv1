@@ -5,37 +5,127 @@
  * Customer, Admin (fulfillment pipeline), Returns desk
  */
 import { apiClient, ApiError } from "./apiClient";
+import { getDeliveryMethod, PAYMENT_METHODS } from "../../config/checkoutConfig";
 
 function handleError(err) {
   if (err instanceof ApiError) return { ok: false, error: err.message };
   return { ok: false, error: "An unexpected error occurred." };
 }
 
+/**
+ * Normalise a backend order (snake_case OrderResponse) into the camelCase
+ * read model the UI consumes. Done here in the API layer — UI components
+ * never scatter field mapping.
+ *
+ * Synthesised sub-objects (Phase 2 — required by the order confirmation
+ * and account order views):
+ *   - customer: { firstName, lastName, fullName, email, phone }
+ *       from the server-assembled `customer` field (guest fallback:
+ *       shipping address + guest email)
+ *   - address:  from `shipping_address`
+ *   - pricing:  from the authoritative top-level totals
+ *   - items:    camelCase line items (lineId, name, image, lineTotal, …)
+ *   - paymentMethod / deliveryMethod: { id, label } objects
+ *
+ * All raw backend fields are preserved via spread so admin pages keep
+ * working unchanged.
+ */
 function normOrder(o) {
   if (!o) return o;
+
+  const address = o.shipping_address ?? o.shippingAddress ?? {};
+
+  const customer = o.customer
+    ? {
+        firstName: o.customer.firstName ?? "",
+        lastName: o.customer.lastName ?? "",
+        fullName: o.customer.fullName ?? [o.customer.firstName, o.customer.lastName].filter(Boolean).join(" ").trim(),
+        email: o.customer.email ?? o.guest_email ?? "",
+        phone: o.customer.phone ?? address.phone ?? null,
+      }
+    : {
+        firstName: (address.fullName || "").split(" ")[0] ?? "",
+        lastName: (address.fullName || "").split(" ").slice(1).join(" ") ?? "",
+        fullName: address.fullName ?? "",
+        email: o.guest_email ?? "",
+        phone: o.guest_phone ?? address.phone ?? null,
+      };
+
+  // Tolerate both backend strings and legacy local snapshots (objects).
+  const paymentId =
+    typeof o.payment_method === "string"
+      ? o.payment_method
+      : typeof o.paymentMethod === "string"
+        ? o.paymentMethod
+        : o.paymentMethod?.id ?? null;
+  const paymentLabel =
+    o.paymentMethod?.label ??
+    PAYMENT_METHODS.find((method) => method.id === paymentId)?.label ??
+    paymentId ?? "";
+
+  const deliveryId =
+    typeof o.delivery_method === "string"
+      ? o.delivery_method
+      : typeof o.deliveryMethod === "string"
+        ? o.deliveryMethod
+        : o.deliveryMethod?.id ?? "standard";
+  const delivery = getDeliveryMethod(deliveryId);
+
   return {
     ...o,
-    id:             o.id,
-    status:         o.status,
-    paymentStatus:  o.payment_status   ?? o.paymentStatus   ?? "PENDING",
-    channel:        o.channel          ?? "ONLINE",
-    source:         o.source           ?? "storefront",
-    customerId:     o.customer_id      ?? o.customerId      ?? null,
-    customer:       o.customer         ?? {},
-    items:          o.items            ?? [],
-    pricing:        o.pricing          ?? {},
-    tracking:       o.tracking         ?? {},
-    invoice:        o.invoice          ?? {},
-    fulfillment:    o.fulfillment       ?? {},
-    timeline:       o.timeline         ?? [],
-    statusHistory:  o.status_history   ?? o.statusHistory   ?? [],
-    returns:        o.returns          ?? [],
-    refund:         o.refund           ?? null,
-    cancellation:   o.cancellation     ?? null,
-    shipment:       o.shipment         ?? null,
-    notes:          o.notes            ?? { customer: "", internal: [] },
-    createdAt:      o.created_at       ?? o.createdAt       ?? new Date().toISOString(),
-    updatedAt:      o.updated_at       ?? o.updatedAt       ?? new Date().toISOString(),
+    id: o.id,
+    orderNumber: o.order_number ?? o.orderNumber ?? null,
+    status: o.status,
+    paymentStatus: o.payment_status ?? o.paymentStatus ?? "PENDING",
+    channel: o.channel ?? "ONLINE",
+    source: o.source ?? "storefront",
+    customerId: o.customer_id ?? o.customerId ?? null,
+    customer,
+    address,
+    items: (o.items ?? []).map((line) => ({
+      ...line,
+      lineId: line.id ?? line.lineId ?? null,
+      productId: line.product_id ?? line.productId ?? null,
+      name: line.product_name ?? line.name ?? "",
+      image: line.product_image ?? line.image ?? null,
+      sku: line.sku ?? null,
+      color: line.color ?? null,
+      size: line.size ?? null,
+      quantity: line.quantity ?? 1,
+      unitPrice: line.unit_price ?? line.unitPrice ?? 0,
+      originalPrice: line.original_price ?? line.originalPrice ?? 0,
+      lineTotal: line.line_total ?? line.lineTotal ?? 0,
+      returnedQuantity: line.returned_quantity ?? line.returnedQuantity ?? 0,
+    })),
+    pricing: o.pricing ?? {
+      subtotal: o.subtotal ?? 0,
+      productDiscount: o.product_discount ?? o.productDiscount ?? 0,
+      couponDiscount: o.coupon_discount ?? o.couponDiscount ?? 0,
+      couponCode: o.coupon_code ?? o.couponCode ?? null,
+      shipping: o.shipping_fee ?? o.shippingFee ?? 0,
+      codFee: o.cod_fee ?? o.codFee ?? 0,
+      total: o.total ?? 0,
+    },
+    paymentMethod: { id: paymentId, label: paymentLabel },
+    paymentMethodId: paymentId,
+    deliveryMethod: {
+      id: delivery.id,
+      label: delivery.label,
+      estimate: delivery.caption ?? "",
+    },
+    deliveryMethodId: deliveryId,
+    tracking: o.tracking ?? {},
+    invoice: o.invoice ?? {},
+    fulfillment: o.fulfillment ?? {},
+    timeline: o.timeline ?? [],
+    statusHistory: o.status_history ?? o.statusHistory ?? [],
+    returns: o.returns ?? [],
+    refund: o.refund ?? null,
+    cancellation: o.cancellation ?? null,
+    shipment: o.shipment ?? null,
+    notes: o.notes ?? { customer: "", internal: [] },
+    createdAt: o.created_at ?? o.createdAt ?? new Date().toISOString(),
+    updatedAt: o.updated_at ?? o.updatedAt ?? new Date().toISOString(),
   };
 }
 
@@ -55,7 +145,18 @@ function normReturn(r) {
 // CUSTOMER
 // ===========================================================================
 
-/** POST /orders  — place an order */
+/**
+ * POST /orders — place a canonical checkout order.
+ *
+ * `body` is the canonical request built by checkout (see
+ * `buildPlaceOrderRequest`): items (productId/color/size/quantity only),
+ * customer {firstName, lastName, email, phone}, address, deliveryMethod,
+ * paymentMethod, couponCode and idempotencyKey. No prices, totals or
+ * discounts are sent — the backend computes them authoritatively.
+ *
+ * Guests are supported: without a session token the backend creates a
+ * guest order claimable later via the verified-email claim flow.
+ */
 export async function apiPlaceOrder(body) {
   try {
     const data = await apiClient.post("/orders", body, { scope: "customer" });
@@ -112,11 +213,18 @@ export async function apiGetReturn(orderId, returnId) {
   } catch (err) { return handleError(err); }
 }
 
-/** POST /orders/claim-guest  body: { email } */
-export async function apiClaimGuestOrders(email) {
+/**
+ * POST /orders/claim-guest
+ *
+ * The backend derives the claim identity from the authenticated account's
+ * own email — the `email` argument is optional and, if supplied, must
+ * match it (otherwise the server rejects with 403). Prefer calling with no
+ * argument.
+ */
+export async function apiClaimGuestOrders(email = null) {
   try {
     const data = await apiClient.post("/orders/claim-guest", { email }, { scope: "customer" });
-    return { ok: true, claimed: data.claimed ?? 0 };
+    return { ok: true, claimed: data.claimed ?? 0, message: data.message ?? null };
   } catch (err) { return handleError(err); }
 }
 

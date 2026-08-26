@@ -51,6 +51,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import BusinessLogicException, ForbiddenException
 from app.dependencies import (
     get_current_admin,
     get_current_customer,
@@ -66,13 +67,13 @@ from app.schemas.orders.order import (
     ApplyStatusRequest,
     CancelOrderRequest,
     ClaimGuestOrdersRequest,
+    ClaimGuestOrdersResponse,
     CreateReturnRequest,
     DispatchRequest,
     ForceStatusRequest,
     FulfillmentAssignRequest,
     InspectReturnRequest,
     InvoiceResponse,
-    OkResponse,
     OrderListResponse,
     PickItemRequest,
     PlaceOrderRequest,
@@ -99,19 +100,23 @@ router = APIRouter(tags=["Orders"])
     "/orders",
     response_model=SingleOrderResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Place a new order",
+    summary="Place a new order (canonical checkout)",
     description=(
-        "Authorization: **Customer session or guest** (guest orders are claimable later).  \n\n"
-        "**Initial state:**  \n"
-        "- `status = ORDER_CONFIRMED`  \n"
-        "- `paymentStatus = PENDING` for COD, `PAID` otherwise  \n"
+        "Authorization: **Customer session or guest** (guest orders are claimable later "
+        "via the verified-email claim flow).  \n\n"
+        "**Initial state (payment method ≠ payment state):**  \n"
+        "- COD → `status = ORDER_CONFIRMED`, `paymentStatus = PENDING` "
+        "(cash collected on delivery; no online payment session)  \n"
+        "- UPI / card / netbanking → `status = PENDING_PAYMENT`, `paymentStatus = PENDING` "
+        "(only server-side Razorpay verification/webhook can mark it PAID)  \n"
         "- `statusHistory` seeded: `PENDING_PAYMENT → PAYMENT_CONFIRMED → ORDER_CONFIRMED`  \n"
         "- `timeline` seeded: `ORDER_CREATED`, `PAYMENT_CONFIRMED`, `ORDER_CONFIRMED`  \n\n"
-        "**Pricing (authoritative):**  \n"
-        "- Free shipping threshold: ₹5,000  \n"
-        "- Standard shipping: ₹99  \n"
-        "- Express shipping: ₹199 (never free)  \n"
-        "- COD surcharge: ₹49"
+        "**Pricing (authoritative, server-computed):**  \n"
+        "- Prices resolved from the catalogue — client totals/prices/discounts are not accepted  \n"
+        "- Free shipping threshold: ₹5,000 · Standard: ₹99 · Express: ₹199 (never free) · COD surcharge: ₹49  \n"
+        "- Coupon revalidated server-side (active / dates / usage limits / eligibility / minimum order)  \n\n"
+        "**Stock:** validated and reserved under row locks in this transaction.  \n\n"
+        "**Idempotency:** optional `idempotencyKey` — a retried attempt returns the same order."
     ),
 )
 async def place_order(
@@ -152,11 +157,16 @@ async def list_orders(
 
 @router.post(
     "/orders/claim-guest",
-    response_model=OkResponse,
+    response_model=ClaimGuestOrdersResponse,
     summary="Claim guest orders after sign-in",
     description=(
-        "Attaches any guest orders (placed without an account) to the "
-        "currently authenticated customer account, matched by email."
+        "Attaches guest orders (placed without an account) to the currently "
+        "authenticated customer account.  \\n\\n"
+        "**Security:** the claim identity is always derived from the "
+        "authenticated account's own email. If a different email is "
+        "supplied, the request is rejected (403) — a caller can never "
+        "reassign another person's guest orders by supplying their email.  \\n\\n"
+        "Idempotent: orders already claimed are not claimed again."
     ),
 )
 async def claim_guest_orders(
@@ -164,9 +174,26 @@ async def claim_guest_orders(
     current_user: UserModel = Depends(get_current_customer),
     db: AsyncSession = Depends(get_db),
 ):
+    account_email = (current_user.email or "").strip().lower()
+    if not account_email:
+        raise BusinessLogicException(
+            "Your account has no email address, so guest orders cannot be claimed."
+        )
+
+    # Never trust a caller-supplied email: it must equal the account's own email.
+    supplied = (req.email or "").strip().lower()
+    if supplied and supplied != account_email:
+        raise ForbiddenException(
+            "You can only claim guest orders for your own account email."
+        )
+
     service = OrderService(db)
-    claimed = await service.claim_guest_orders(req.email, current_user.id)
-    return OkResponse(message=f"{claimed} order(s) claimed successfully.")
+    claimed = await service.claim_guest_orders(account_email, current_user.id)
+    return ClaimGuestOrdersResponse(
+        ok=True,
+        message=f"{claimed} order(s) claimed successfully.",
+        claimed=claimed,
+    )
 
 
 # ===========================================================================

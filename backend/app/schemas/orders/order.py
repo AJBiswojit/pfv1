@@ -42,10 +42,14 @@ Covers all 24 ORDERS endpoints from API_CONTRACT.md:
     POST /admin/returns/{id}/refund/complete
 """
 
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Basic RFC-5322-ish email shape check (no external dependency required).
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
 # ── Shared address shape (matches customer address contract) ──────────────────
@@ -69,7 +73,7 @@ class PlaceOrderItem(BaseModel):
     product_id: str = Field(..., alias="productId")
     color: Optional[str] = None
     size: Optional[str] = None
-    quantity: int = Field(..., ge=1)
+    quantity: int = Field(..., ge=1, le=99)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -133,6 +137,10 @@ class OrderResponse(BaseModel):
     order_number: str
     customer_id: Optional[str] = None
     guest_email: Optional[str] = None
+    # Assembled customer identity (Phase 2: required by the order
+    # confirmation flow). Built server-side from the authenticated user
+    # (or guest fields) — never trusted from the client.
+    customer: Optional[Dict[str, Any]] = None
     status: str
     payment_status: str
     payment_method: str
@@ -199,25 +207,103 @@ class AdminOrderListResponse(BaseModel):
 # ── Place order ───────────────────────────────────────────────────────────────
 
 class CustomerSnapshot(BaseModel):
-    first_name: str = Field(..., alias="firstName")
-    last_name: str = Field(..., alias="lastName")
-    email: str
-    phone: Optional[str] = None
+    """
+    Customer snapshot for order placement.
+
+    Canonical contract (single mapping, no implicit guessing):
+      - The client MUST send `firstName` and `lastName` separately.
+        A single `fullName` string is NOT accepted — the backend does not
+        split/guess arbitrary name strings.
+      - `email` is required and shape-validated. For guest checkout it is
+        the identity used later for the (server-verified) order claim.
+    """
+    first_name: str = Field(..., alias="firstName", min_length=1, max_length=100)
+    last_name: str = Field(..., alias="lastName", min_length=1, max_length=100)
+    email: str = Field(..., min_length=3, max_length=255)
+    phone: Optional[str] = Field(None, max_length=30)
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def _names_must_not_be_blank(cls, v: str) -> str:
+        value = (v or "").strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def _email_shape(cls, v: str) -> str:
+        value = (v or "").strip().lower()
+        if not _EMAIL_RE.match(value):
+            raise ValueError("a valid email address is required")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_trim(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        value = v.strip()
+        return value or None
+
 
 class PlaceOrderRequest(BaseModel):
+    """
+    POST /orders — canonical checkout request.
+
+    Trust rules enforced at this boundary:
+      - No client-supplied totals/prices/discounts: the backend resolves
+        prices from `catalog_product`, revalidates the coupon and
+        recalculates subtotal/discount/shipping/COD fee/total.
+      - `paymentMethod` only states HOW the customer intends to pay.
+        It NEVER implies payment success — online orders start in
+        `PENDING_PAYMENT` / `payment_status = PENDING` and are only
+        confirmed by server-side payment verification.
+      - `idempotencyKey` (optional, client-generated per checkout attempt)
+        is enforced server-side through the unique `orders_order.order_number`
+        constraint: retries with the same key return the same order instead
+        of creating a duplicate.
+    """
     items: List[PlaceOrderItem]
     customer: CustomerSnapshot
     address: AddressSnapshot
     delivery_method: str = Field("standard", alias="deliveryMethod")
     payment_method: str = Field(..., alias="paymentMethod")
-    coupon_code: Optional[str] = Field(None, alias="couponCode")
+    coupon_code: Optional[str] = Field(None, alias="couponCode", max_length=50)
     customer_note: Optional[str] = Field(None, alias="customerNote")
     inventory_reservation_id: Optional[str] = Field(None, alias="inventoryReservationId")
+    idempotency_key: Optional[str] = Field(
+        None, alias="idempotencyKey", min_length=8, max_length=100,
+        description="Client-generated checkout attempt key (safe retries)",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("delivery_method")
+    @classmethod
+    def _delivery_method_allowed(cls, v: str) -> str:
+        allowed = {"standard", "express"}
+        if v not in allowed:
+            raise ValueError(f"delivery_method must be one of {sorted(allowed)}")
+        return v
+
+    @field_validator("payment_method")
+    @classmethod
+    def _payment_method_allowed(cls, v: str) -> str:
+        allowed = {"upi", "card", "netbanking", "cod"}
+        if v not in allowed:
+            raise ValueError(f"payment_method must be one of {sorted(allowed)}")
+        return v
+
+    @field_validator("coupon_code")
+    @classmethod
+    def _coupon_code_trim(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        value = v.strip().upper()
+        return value or None
 
 
 # ── Cancel order ──────────────────────────────────────────────────────────────
@@ -297,12 +383,26 @@ class ReturnListResponse(BaseModel):
 # ── Claim guest orders ────────────────────────────────────────────────────────
 
 class ClaimGuestOrdersRequest(BaseModel):
-    email: str
+    """
+    POST /orders/claim-guest
+
+    `email` is OPTIONAL and, when supplied, MUST equal the authenticated
+    user's own account email. The server always derives the claim identity
+    from the authenticated account — it never trusts an arbitrary email
+    to reassign another person's guest orders.
+    """
+    email: Optional[str] = None
 
 
 class OkResponse(BaseModel):
     ok: bool = True
     message: Optional[str] = None
+
+
+class ClaimGuestOrdersResponse(BaseModel):
+    ok: bool = True
+    message: Optional[str] = None
+    claimed: int = 0
 
 
 # ── Admin fulfillment requests ────────────────────────────────────────────────
