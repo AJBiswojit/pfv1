@@ -29,7 +29,7 @@ export async function apiCreatePaymentSession({ orderId, paymentMethod, orderDra
       payment_method:   paymentMethod,
       order_draft:      orderDraft ?? null,
       idempotency_key:  idempotencyKey ?? null,
-    });
+    }, { scope: "customer" });
     return { ok: true, ...data };
   } catch (err) {
     return handleError(err);
@@ -42,7 +42,7 @@ export async function apiCreatePaymentSession({ orderId, paymentMethod, orderDra
  */
 export async function apiGetPaymentSession(sessionId) {
   try {
-    const data = await apiClient.get(`/payments/session/${sessionId}`);
+    const data = await apiClient.get(`/payments/session/${sessionId}`, { scope: "customer" });
     return { ok: true, session: data.session ?? data };
   } catch (err) {
     return handleError(err);
@@ -54,7 +54,7 @@ export async function apiGetPaymentSession(sessionId) {
  */
 export async function apiCancelPaymentSession(sessionId, reason = "") {
   try {
-    const data = await apiClient.post(`/payments/session/${sessionId}/cancel`, { reason });
+    const data = await apiClient.post(`/payments/session/${sessionId}/cancel`, { reason }, { scope: "customer" });
     return { ok: true, ...data };
   } catch (err) {
     return handleError(err);
@@ -72,7 +72,7 @@ export async function apiVerifyPayment({ razorpayOrderId, razorpayPaymentId, raz
       razorpay_order_id:   razorpayOrderId,
       razorpay_payment_id: razorpayPaymentId,
       razorpay_signature:  razorpaySignature,
-    });
+    }, { scope: "customer" });
     return {
       ok:            data.ok ?? true,
       message:       data.message ?? "Payment verified.",
@@ -95,7 +95,7 @@ export async function apiValidateCoupon({ code, cartItems = [], customerId, cust
       cart_items:     cartItems,
       customer_id:    customerId   ?? null,
       customer_email: customerEmail ?? null,
-    }, { skipAuth: true });
+    }, { scope: "none" });
     return {
       ok:      data.ok ?? false,
       coupon:  data.coupon  ?? null,

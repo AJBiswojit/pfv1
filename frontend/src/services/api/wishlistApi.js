@@ -25,7 +25,7 @@ function normaliseWishlist(data) {
 /** GET /wishlist */
 export async function apiGetWishlist() {
   try {
-    const data = await apiClient.get("/wishlist");
+    const data = await apiClient.get("/wishlist", { scope: "customer" });
     return normaliseWishlist(data);
   } catch (err) {
     return handleError(err);
@@ -35,7 +35,7 @@ export async function apiGetWishlist() {
 /** POST /wishlist/{productId} — add product (idempotent) */
 export async function apiAddToWishlist(productId) {
   try {
-    const data = await apiClient.post(`/wishlist/${productId}`, {});
+    const data = await apiClient.post(`/wishlist/${productId}`, {}, { scope: "customer" });
     return normaliseWishlist(data);
   } catch (err) {
     return handleError(err);
@@ -45,7 +45,7 @@ export async function apiAddToWishlist(productId) {
 /** DELETE /wishlist/{productId} — remove product */
 export async function apiRemoveFromWishlist(productId) {
   try {
-    const data = await apiClient.delete(`/wishlist/${productId}`);
+    const data = await apiClient.delete(`/wishlist/${productId}`, { scope: "customer" });
     return normaliseWishlist(data);
   } catch (err) {
     return handleError(err);
@@ -55,7 +55,7 @@ export async function apiRemoveFromWishlist(productId) {
 /** POST /wishlist/{productId}/toggle — toggle saved state */
 export async function apiToggleWishlist(productId) {
   try {
-    const data = await apiClient.post(`/wishlist/${productId}/toggle`, {});
+    const data = await apiClient.post(`/wishlist/${productId}/toggle`, {}, { scope: "customer" });
     return normaliseWishlist(data);
   } catch (err) {
     return handleError(err);

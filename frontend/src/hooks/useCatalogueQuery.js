@@ -102,9 +102,11 @@ export default function useCatalogueQuery({
       pageSize: size,
     };
 
-    const request = search
-      ? apiSearchProducts(query)
-      : apiListProducts(query);
+    const request = query.collectionId
+      ? apiListProducts(query)
+      : search
+        ? apiSearchProducts(query)
+        : apiListProducts(query);
 
     request.then((result) => {
       if (fetchKey.current !== key) return;

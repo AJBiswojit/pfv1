@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_permission_for_user, require_super_admin_user
 from app.models.admin.setting import SettingModel
 from app.models.auth.user import UserModel
 
@@ -262,6 +262,7 @@ async def get_all_settings(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_permission_for_user(current_user, db, "settings.view")
     stmt = select(SettingModel)
     result = await db.execute(stmt)
     rows = {row.id: row.value for row in result.scalars().all()}
@@ -282,6 +283,7 @@ async def get_settings_section(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_permission_for_user(current_user, db, "settings.view")
     if section not in KNOWN_SECTIONS:
         return {"ok": False, "error": "Unknown settings section"}
 
@@ -307,6 +309,7 @@ async def update_settings_section(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_super_admin_user(current_user, db)
     if section not in KNOWN_SECTIONS:
         return {"ok": False, "error": "Unknown settings section"}
 
@@ -337,6 +340,7 @@ async def reset_settings_section(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_super_admin_user(current_user, db)
     if section not in KNOWN_SECTIONS:
         return {"ok": False, "error": "Unknown settings section"}
 
@@ -360,6 +364,7 @@ async def reset_all_settings(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_super_admin_user(current_user, db)
     stmt = select(SettingModel)
     result = await db.execute(stmt)
     rows = result.scalars().all()

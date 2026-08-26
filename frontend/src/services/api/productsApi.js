@@ -55,7 +55,7 @@ function normaliseProduct(p) {
     slug:             p.slug,
     sku:              p.sku ?? "",
     price:            p.price ?? p.selling_price ?? 0,
-    originalPrice:    p.original_price ?? p.mrp ?? p.compare_at_price ?? null,
+    originalPrice:    p.originalPrice ?? p.original_price ?? p.mrp ?? p.compare_at_price ?? null,
     compareAtPrice:   p.compare_at_price ?? p.compareAtPrice ?? null,
     currency:         p.currency ?? "INR",
     description:      p.description ?? "",
@@ -103,14 +103,41 @@ function normaliseList(data) {
 function buildParams(params) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null || value === "") continue;
     if (Array.isArray(value)) {
-      value.forEach((v) => qs.append(key, v));
+      value.filter((v) => v !== undefined && v !== null && v !== "").forEach((v) => qs.append(key, v));
     } else {
       qs.set(key, value);
     }
   }
   return qs.toString();
+}
+
+const asArray = (value) => {
+  if (value === undefined || value === null || value === "") return [];
+  return Array.isArray(value) ? value : [value];
+};
+
+// Department is not a backend column.  Only top-level department pages are
+// mapped to existing backend-supported category/gender filters.  Deeper routes
+// already supply category/subcategory filters and are left untouched.
+const DEPARTMENT_BACKEND_FILTERS = {
+  women:  { gender: "Women" },
+  men:    { category: "menswear" },
+  bridal: { category: "bridal-couture" },
+  kids:   { category: "kidswear" },
+};
+
+function normaliseStorefrontQuery(query = {}) {
+  const normalized = { ...query };
+  const department = String(normalized.department ?? "").toLowerCase();
+  delete normalized.department;
+
+  if (department && DEPARTMENT_BACKEND_FILTERS[department] && !normalized.category && !normalized.subcategory) {
+    Object.assign(normalized, DEPARTMENT_BACKEND_FILTERS[department]);
+  }
+
+  return normalized;
 }
 
 // ===========================================================================
@@ -122,26 +149,63 @@ function buildParams(params) {
  * Returns { items, total, facets, appliedFilters }
  */
 export async function apiListProducts(query = {}) {
+  if (query.collectionId) {
+    return apiListCollectionProducts(query.collectionId, query);
+  }
+
   try {
+    const q = normaliseStorefrontQuery(query);
     const qs = buildParams({
-      q:            query.q,
-      category:     query.category,
-      subcategory:  query.subcategory,
-      gender:       query.gender,
-      price:        query.price,
-      size:         query.size,
-      color:        query.color,
-      fabric:       query.fabric,
-      material:     query.material,
-      occasion:     query.occasion,
-      collection:   query.collection,
-      rating:       query.rating,
-      availability: query.availability,
-      sort:         query.sort ?? "recommended",
-      page:         query.page ?? 1,
-      pageSize:     query.pageSize ?? 20,
+      q:            q.q,
+      category:     q.category,
+      subcategory:  q.subcategory,
+      gender:       q.gender,
+      price:        q.price,
+      size:         q.size,
+      color:        q.color,
+      fabric:       q.fabric,
+      material:     q.material,
+      occasion:     q.occasion,
+      collection:   q.collection,
+      rating:       q.rating,
+      availability: q.availability,
+      sort:         q.sort ?? "recommended",
+      page:         q.page ?? 1,
+      pageSize:     q.pageSize ?? 20,
     });
-    const data = await apiClient.get(`/products${qs ? `?${qs}` : ""}`, { skipAuth: true });
+    const data = await apiClient.get(`/products${qs ? `?${qs}` : ""}`, { scope: "none" });
+    return { ok: true, ...normaliseList(data) };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/**
+ * GET /collections/{collectionId}/products
+ * Uses the backend collection membership resolver instead of sending a dropped
+ * collectionId to /products.
+ */
+export async function apiListCollectionProducts(collectionId, query = {}) {
+  try {
+    const q = normaliseStorefrontQuery({ ...query, collectionId: undefined });
+    const qs = buildParams({
+      q:            q.q,
+      category:     q.category,
+      subcategory:  q.subcategory,
+      gender:       q.gender,
+      price:        q.price,
+      size:         q.size,
+      color:        q.color,
+      fabric:       q.fabric,
+      material:     q.material,
+      occasion:     q.occasion,
+      rating:       q.rating,
+      availability: q.availability,
+      sort:         q.sort ?? "recommended",
+      page:         q.page ?? 1,
+      pageSize:     q.pageSize ?? 20,
+    });
+    const data = await apiClient.get(`/collections/${collectionId}/products${qs ? `?${qs}` : ""}`, { scope: "none" });
     return { ok: true, ...normaliseList(data) };
   } catch (err) {
     return handleError(err);
@@ -153,7 +217,7 @@ export async function apiListProducts(query = {}) {
  */
 export async function apiGetProduct(idOrSlug) {
   try {
-    const data = await apiClient.get(`/products/${idOrSlug}`, { skipAuth: true });
+    const data = await apiClient.get(`/products/${idOrSlug}`, { scope: "none" });
     const product = normaliseProduct(data.product ?? data);
     return { ok: true, product };
   } catch (err) {
@@ -166,7 +230,7 @@ export async function apiGetProduct(idOrSlug) {
  */
 export async function apiGetRecommendations(id, type = "related") {
   try {
-    const data = await apiClient.get(`/products/${id}/recommendations?type=${type}`, { skipAuth: true });
+    const data = await apiClient.get(`/products/${id}/recommendations?type=${type}`, { scope: "none" });
     const items = (data.items ?? data.recommendations ?? data ?? []).map(normaliseProduct);
     return { ok: true, items };
   } catch (err) {
@@ -179,7 +243,7 @@ export async function apiGetRecommendations(id, type = "related") {
  */
 export async function apiGetRecentlyViewed() {
   try {
-    const data = await apiClient.get("/products/recently-viewed");
+    const data = await apiClient.get("/products/recently-viewed", { scope: "customer" });
     const items = (data.items ?? data ?? []).map(normaliseProduct);
     return { ok: true, items };
   } catch (err) {
@@ -192,7 +256,7 @@ export async function apiGetRecentlyViewed() {
  */
 export async function apiAddRecentlyViewed(productId) {
   try {
-    await apiClient.post(`/products/recently-viewed?productId=${productId}`, {});
+    await apiClient.post(`/products/recently-viewed?productId=${productId}`, {}, { scope: "customer" });
     return { ok: true };
   } catch (err) {
     return handleError(err);
@@ -215,7 +279,7 @@ export async function apiAdminListProducts(query = {}) {
       q:                  query.q,
       sort:               query.sort ?? "newest",
     });
-    const data = await apiClient.get(`/admin/products${qs ? `?${qs}` : ""}`);
+    const data = await apiClient.get(`/admin/products${qs ? `?${qs}` : ""}`, { scope: "admin" });
     return { ok: true, ...normaliseList(data) };
   } catch (err) {
     return handleError(err);
@@ -227,7 +291,7 @@ export async function apiAdminListProducts(query = {}) {
  */
 export async function apiAdminCreateProduct(body) {
   try {
-    const data = await apiClient.post("/admin/products", body);
+    const data = await apiClient.post("/admin/products", body, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -239,7 +303,7 @@ export async function apiAdminCreateProduct(body) {
  */
 export async function apiAdminCreateDraft(body) {
   try {
-    const data = await apiClient.post("/admin/products/draft", body);
+    const data = await apiClient.post("/admin/products/draft", body, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -252,7 +316,7 @@ export async function apiAdminCreateDraft(body) {
 export async function apiAdminGetNextId(categoryId, preferredNumber) {
   try {
     const qs = buildParams({ category: categoryId, preferredNumber });
-    const data = await apiClient.get(`/admin/products/next-id?${qs}`);
+    const data = await apiClient.get(`/admin/products/next-id?${qs}`, { scope: "admin" });
     return { ok: true, nextId: data.nextId ?? data.next_id };
   } catch (err) {
     return handleError(err);
@@ -265,7 +329,7 @@ export async function apiAdminGetNextId(categoryId, preferredNumber) {
 export async function apiAdminCheckAvailability({ sku, slug } = {}) {
   try {
     const qs = buildParams({ sku, slug });
-    const data = await apiClient.get(`/admin/products/availability?${qs}`);
+    const data = await apiClient.get(`/admin/products/availability?${qs}`, { scope: "admin" });
     return { ok: true, ...data };
   } catch (err) {
     return handleError(err);
@@ -277,7 +341,7 @@ export async function apiAdminCheckAvailability({ sku, slug } = {}) {
  */
 export async function apiAdminProductMetrics() {
   try {
-    const data = await apiClient.get("/admin/products/metrics");
+    const data = await apiClient.get("/admin/products/metrics", { scope: "admin" });
     return { ok: true, metrics: data };
   } catch (err) {
     return handleError(err);
@@ -289,7 +353,7 @@ export async function apiAdminProductMetrics() {
  */
 export async function apiAdminGetProduct(id) {
   try {
-    const data = await apiClient.get(`/admin/products/${id}`);
+    const data = await apiClient.get(`/admin/products/${id}`, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -301,7 +365,7 @@ export async function apiAdminGetProduct(id) {
  */
 export async function apiAdminUpdateProduct(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/products/${id}`, body);
+    const data = await apiClient.patch(`/admin/products/${id}`, body, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -314,7 +378,7 @@ export async function apiAdminUpdateProduct(id, body) {
  */
 export async function apiAdminAssignEmployee(id, employeeId) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/assign`, { employeeId });
+    const data = await apiClient.post(`/admin/products/${id}/assign`, { employeeId }, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -324,7 +388,7 @@ export async function apiAdminAssignEmployee(id, employeeId) {
 /** POST /admin/products/{id}/approve */
 export async function apiAdminApproveProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/approve`, {});
+    const data = await apiClient.post(`/admin/products/${id}/approve`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -334,7 +398,7 @@ export async function apiAdminApproveProduct(id) {
 /** POST /admin/products/{id}/reject  body: { reason } */
 export async function apiAdminRejectProduct(id, reason) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/reject`, { reason });
+    const data = await apiClient.post(`/admin/products/${id}/reject`, { reason }, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -344,7 +408,7 @@ export async function apiAdminRejectProduct(id, reason) {
 /** POST /admin/products/{id}/publish */
 export async function apiAdminPublishProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/publish`, {});
+    const data = await apiClient.post(`/admin/products/${id}/publish`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -354,7 +418,7 @@ export async function apiAdminPublishProduct(id) {
 /** POST /admin/products/{id}/unpublish */
 export async function apiAdminUnpublishProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/unpublish`, {});
+    const data = await apiClient.post(`/admin/products/${id}/unpublish`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -364,7 +428,7 @@ export async function apiAdminUnpublishProduct(id) {
 /** POST /admin/products/{id}/archive */
 export async function apiAdminArchiveProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/archive`, {});
+    const data = await apiClient.post(`/admin/products/${id}/archive`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -374,7 +438,7 @@ export async function apiAdminArchiveProduct(id) {
 /** POST /admin/products/{id}/restore */
 export async function apiAdminRestoreProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/restore`, {});
+    const data = await apiClient.post(`/admin/products/${id}/restore`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -384,17 +448,17 @@ export async function apiAdminRestoreProduct(id) {
 /** GET /admin/products/{id}/publish-issues */
 export async function apiAdminGetPublishIssues(id) {
   try {
-    const data = await apiClient.get(`/admin/products/${id}/publish-issues`);
+    const data = await apiClient.get(`/admin/products/${id}/publish-issues`, { scope: "admin" });
     return { ok: true, issues: data.issues ?? [] };
   } catch (err) {
     return handleError(err);
   }
 }
 
-/** POST /admin/products/{id}/submit-review */
-export async function apiSubmitForReview(id) {
+/** POST /products/{id}/submit-review — employee/admin workflow only. */
+export async function apiSubmitForReview(id, { scope = "employee" } = {}) {
   try {
-    const data = await apiClient.post(`/products/${id}/submit-review`, {});
+    const data = await apiClient.post(`/products/${id}/submit-review`, {}, { scope });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -404,7 +468,7 @@ export async function apiSubmitForReview(id) {
 /** POST /admin/products/{id}/change-id  body: { newId } */
 export async function apiAdminChangeProductId(id, newId) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/change-id`, { newId });
+    const data = await apiClient.post(`/admin/products/${id}/change-id`, { newId }, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -414,7 +478,7 @@ export async function apiAdminChangeProductId(id, newId) {
 /** POST /admin/products/{id}/duplicate */
 export async function apiAdminDuplicateProduct(id) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/duplicate`, {});
+    const data = await apiClient.post(`/admin/products/${id}/duplicate`, {}, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -424,7 +488,7 @@ export async function apiAdminDuplicateProduct(id) {
 /** POST /admin/products/bulk  body: { productIds, updates } */
 export async function apiAdminBulkUpdate(productIds, updates) {
   try {
-    const data = await apiClient.post("/admin/products/bulk", { productIds, updates });
+    const data = await apiClient.post("/admin/products/bulk", { productIds, updates }, { scope: "admin" });
     return { ok: true, message: data.message ?? "Updated." };
   } catch (err) {
     return handleError(err);
@@ -434,7 +498,7 @@ export async function apiAdminBulkUpdate(productIds, updates) {
 /** POST /admin/products/{id}/review-flags/clear  body: { flags } */
 export async function apiAdminClearReviewFlags(id, flags) {
   try {
-    const data = await apiClient.post(`/admin/products/${id}/review-flags/clear`, { flags });
+    const data = await apiClient.post(`/admin/products/${id}/review-flags/clear`, { flags }, { scope: "admin" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -448,7 +512,7 @@ export async function apiAdminClearReviewFlags(id, flags) {
 /** GET /employee/products/{id} */
 export async function apiEmployeeGetProduct(id) {
   try {
-    const data = await apiClient.get(`/employee/products/${id}`);
+    const data = await apiClient.get(`/employee/products/${id}`, { scope: "employee" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);
@@ -458,7 +522,7 @@ export async function apiEmployeeGetProduct(id) {
 /** PATCH /employee/products/{id} (whitelisted fields only) */
 export async function apiEmployeeUpdateProduct(id, body) {
   try {
-    const data = await apiClient.patch(`/employee/products/${id}`, body);
+    const data = await apiClient.patch(`/employee/products/${id}`, body, { scope: "employee" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);

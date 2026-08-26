@@ -18,8 +18,10 @@ import { ADMIN_ROLES, hasAdminPermission } from "../config/adminAccess";
 import {
   apiSignInAdmin,
   apiSignOutAdmin,
+  apiRestoreAdminSession,
 } from "../services/api/authApi";
-import { readStorage, writeStorage } from "../utils/shopping";
+import { writeStorage } from "../utils/shopping";
+import { clearTokens, getAccessToken } from "../services/api/apiClient";
 
 const AdminAuthContext = createContext(null);
 
@@ -28,28 +30,16 @@ export const ADMIN_ACCESS_TOKEN_KEY  = "pf_admin_access_token";
 export const ADMIN_REFRESH_TOKEN_KEY = "pf_admin_refresh_token";
 
 // Token helpers specific to the admin surface
-export const getAdminAccessToken = () => {
-  try { return localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY); } catch { return null; }
-};
+export const getAdminAccessToken = () => getAccessToken("admin");
 
-const clearAdminTokens = () => {
-  try {
-    localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
-  } catch { /* ignore */ }
-};
+const clearAdminTokens = () => clearTokens("admin");
 
 // ---------------------------------------------------------------------------
 // Session restore
 // ---------------------------------------------------------------------------
 
-function restoreSession() {
-  if (!getAdminAccessToken()) return { admin: null, isAuthenticated: false };
-  const stored = readStorage(ADMIN_SESSION_KEY, null);
-  if (stored && typeof stored === "object" && stored.id) {
-    return { admin: stored, isAuthenticated: true };
-  }
-  return { admin: null, isAuthenticated: false };
+function hasStoredAdminToken() {
+  return Boolean(getAdminAccessToken());
 }
 
 // ---------------------------------------------------------------------------
@@ -57,11 +47,36 @@ function restoreSession() {
 // ---------------------------------------------------------------------------
 
 export function AdminAuthProvider({ children }) {
-  const [session, setSession] = useState(restoreSession);
-  const [isLoading, setIsLoading] = useState(false);
+  const [session, setSession] = useState({ admin: null, isAuthenticated: false });
+  const [isLoading, setIsLoading] = useState(hasStoredAdminToken);
 
   const admin           = session.admin;
   const isAuthenticated = Boolean(session.isAuthenticated && admin);
+
+  // Validate any stored admin token with the backend before marking the admin
+  // surface authenticated. Local snapshots are cache only, not authority.
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasStoredAdminToken()) {
+      setIsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    setIsLoading(true);
+    apiRestoreAdminSession().then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setSession({ admin: result.admin, isAuthenticated: true });
+      } else {
+        clearAdminTokens();
+        setSession({ admin: null, isAuthenticated: false });
+        try { window.localStorage.removeItem(ADMIN_SESSION_KEY); } catch { /* ignore */ }
+      }
+      setIsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
 
   // Persist admin profile snapshot
   useEffect(() => {
@@ -72,14 +87,12 @@ export function AdminAuthProvider({ children }) {
     }
   }, [admin]);
 
-  // Listen for global token expiry (from apiClient — fires on pf_access_token only;
-  // admin has its own token so we only clear if the token in storage is the admin one)
+  // Listen for scope-specific token expiry events from apiClient.
   useEffect(() => {
-    const handleExpiry = () => {
-      // Only clear the admin session if there's no admin token
-      if (!getAdminAccessToken()) {
-        setSession({ admin: null, isAuthenticated: false });
-      }
+    const handleExpiry = (event) => {
+      if (event?.detail?.scope !== "admin") return;
+      clearAdminTokens();
+      setSession({ admin: null, isAuthenticated: false });
     };
     window.addEventListener("pf:session-expired", handleExpiry);
     return () => window.removeEventListener("pf:session-expired", handleExpiry);
@@ -113,8 +126,17 @@ export function AdminAuthProvider({ children }) {
 
   // ── Refresh local session ─────────────────────────────────────────────────
 
-  const refreshSession = useCallback(() => {
-    const next = restoreSession();
+  const refreshSession = useCallback(async () => {
+    if (!hasStoredAdminToken()) {
+      const empty = { admin: null, isAuthenticated: false };
+      setSession(empty);
+      return empty;
+    }
+    const result = await apiRestoreAdminSession();
+    const next = result.ok
+      ? { admin: result.admin, isAuthenticated: true }
+      : { admin: null, isAuthenticated: false };
+    if (!result.ok) clearAdminTokens();
     setSession(next);
     return next;
   }, []);

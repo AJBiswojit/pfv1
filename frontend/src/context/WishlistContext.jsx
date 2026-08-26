@@ -41,7 +41,7 @@ const restoreGuestWishlist = () => {
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
-  const authenticated = Boolean(user?.id) && Boolean(getAccessToken());
+  const authenticated = Boolean(user?.id) && Boolean(getAccessToken("customer"));
   const [saved, setSaved] = useState(restoreGuestWishlist);
   const [error, setError] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);

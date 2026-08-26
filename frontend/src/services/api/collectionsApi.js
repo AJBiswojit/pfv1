@@ -38,7 +38,7 @@ export async function apiListCollections({ status = "ACTIVE", featured } = {}) {
   try {
     const qs = new URLSearchParams({ status });
     if (featured !== undefined) qs.set("featured", featured);
-    const data = await apiClient.get(`/collections?${qs}`, { skipAuth: true });
+    const data = await apiClient.get(`/collections?${qs}`, { scope: "none" });
     const items = (data.items ?? data.collections ?? data ?? []).map(normCollection);
     return { ok: true, items };
   } catch (err) { return handleError(err); }
@@ -46,7 +46,7 @@ export async function apiListCollections({ status = "ACTIVE", featured } = {}) {
 
 export async function apiGetCollection(idOrSlug) {
   try {
-    const data = await apiClient.get(`/collections/${idOrSlug}`, { skipAuth: true });
+    const data = await apiClient.get(`/collections/${idOrSlug}`, { scope: "none" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -58,7 +58,7 @@ export async function apiAdminListCollections({ status, featured, q } = {}) {
     if (status)   qs.set("status", status);
     if (featured !== undefined) qs.set("featured", featured);
     if (q)        qs.set("q", q);
-    const data = await apiClient.get(`/admin/collections?${qs}`);
+    const data = await apiClient.get(`/admin/collections?${qs}`, { scope: "admin" });
     const items = (data.items ?? data.collections ?? data ?? []).map(normCollection);
     return { ok: true, items };
   } catch (err) { return handleError(err); }
@@ -66,56 +66,56 @@ export async function apiAdminListCollections({ status, featured, q } = {}) {
 
 export async function apiAdminGetCollection(id) {
   try {
-    const data = await apiClient.get(`/admin/collections/${id}`);
+    const data = await apiClient.get(`/admin/collections/${id}`, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminCreateCollection(body) {
   try {
-    const data = await apiClient.post("/admin/collections", body);
+    const data = await apiClient.post("/admin/collections", body, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminUpdateCollection(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/collections/${id}`, body);
+    const data = await apiClient.patch(`/admin/collections/${id}`, body, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminActivateCollection(id) {
   try {
-    const data = await apiClient.post(`/admin/collections/${id}/activate`, {});
+    const data = await apiClient.post(`/admin/collections/${id}/activate`, {}, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminPauseCollection(id) {
   try {
-    const data = await apiClient.post(`/admin/collections/${id}/pause`, {});
+    const data = await apiClient.post(`/admin/collections/${id}/pause`, {}, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminArchiveCollection(id) {
   try {
-    const data = await apiClient.post(`/admin/collections/${id}/archive`, {});
+    const data = await apiClient.post(`/admin/collections/${id}/archive`, {}, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminRestoreCollection(id) {
   try {
-    const data = await apiClient.post(`/admin/collections/${id}/restore`, {});
+    const data = await apiClient.post(`/admin/collections/${id}/restore`, {}, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminAssignCollectionProducts(id, productIds) {
   try {
-    const data = await apiClient.put(`/admin/collections/${id}/products`, { productIds });
+    const data = await apiClient.put(`/admin/collections/${id}/products`, { productIds }, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
   } catch (err) { return handleError(err); }
 }

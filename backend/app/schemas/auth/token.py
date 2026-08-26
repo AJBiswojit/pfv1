@@ -15,6 +15,15 @@ class UserDTO(BaseModel):
     force_password_change: bool
     roles: List[str] = []
     permissions: List[str] = []
+    # Employee/admin profile aliases already present in existing models.
+    employee_code: Optional[str] = None
+    employeeCode: Optional[str] = None
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    department_id: Optional[str] = None
+    section_id: Optional[str] = None
+    admin_code: Optional[str] = None
+    adminId: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

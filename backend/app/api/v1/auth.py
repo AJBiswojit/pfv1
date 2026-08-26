@@ -45,6 +45,7 @@ from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.middleware import limiter
+from app.core.redis import get_redis
 from app.core.security import decode_token
 from app.dependencies import get_current_user, get_db
 from app.models.auth.user import UserModel
@@ -321,7 +322,9 @@ async def sign_up_admin(
     scheme, token_value = get_authorization_scheme_param(auth_header)
     if scheme.lower() == "bearer" and token_value:
         payload = decode_token(token_value)
-        if payload and payload.get("user_type") == "admin":
+        jti = payload.get("jti") if payload else None
+        revoked = bool(jti and await get_redis().exists(f"blacklist:access:{jti}"))
+        if payload and not revoked and payload.get("token_type") == "access" and payload.get("user_type") == "admin":
             stmt = sa_select(UserModel).where(UserModel.id == payload.get("sub"))
             res = await db.execute(stmt)
             candidate = res.scalars().first()
@@ -450,18 +453,7 @@ async def get_me(
 ):
     service = AuthService(db)
     roles, permissions = await service._get_user_roles_and_permissions(current_user.id)
-    return UserDTO(
-        id=current_user.id,
-        email=current_user.email,
-        phone=current_user.phone,
-        full_name=current_user.full_name,
-        user_type=current_user.user_type,
-        status=current_user.status,
-        is_verified=current_user.is_verified,
-        force_password_change=current_user.force_password_change,
-        roles=roles,
-        permissions=permissions,
-    )
+    return await service._build_user_dto(current_user, roles, permissions)
 
 
 # ===========================================================================

@@ -96,7 +96,7 @@ export function AccountProvider({ children }) {
     }
 
     // If we have a real JWT, fetch from backend
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       let cancelled = false;
       setIsLoading(true);
       apiGetMe().then((result) => {
@@ -137,7 +137,7 @@ export function AccountProvider({ children }) {
     setAccountData((current) => ({ ...current, profile: { ...current.profile, ...newProfile } }));
     if (updateUser) updateUser(newProfile);
 
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiUpdateProfile(newProfile);
       if (result.ok) {
         setAccountData((current) => ({ ...current, profile: result.profile }));
@@ -151,7 +151,7 @@ export function AccountProvider({ children }) {
   // ── Addresses ────────────────────────────────────────────────────────────
 
   const addAddress = useCallback(async (addressData) => {
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiAddAddress(addressData);
       if (result.ok) {
         // Refresh full profile to get updated address list with server-assigned ID
@@ -179,7 +179,7 @@ export function AccountProvider({ children }) {
   }, []);
 
   const updateAddress = useCallback(async (addressId, updatedFields) => {
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiUpdateAddress(addressId, updatedFields);
       if (result.ok) {
         const me = await apiGetMe();
@@ -202,7 +202,7 @@ export function AccountProvider({ children }) {
   }, []);
 
   const deleteAddress = useCallback(async (addressId) => {
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiDeleteAddress(addressId);
       if (result.ok) {
         setAccountData((current) => {
@@ -226,7 +226,7 @@ export function AccountProvider({ children }) {
   }, []);
 
   const setDefaultAddress = useCallback(async (addressId) => {
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiSetDefaultAddress(addressId);
       if (result.ok) {
         setAccountData((current) => ({
@@ -253,7 +253,7 @@ export function AccountProvider({ children }) {
       preferences: { ...current.preferences, ...newPreferences },
     }));
 
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiUpdatePreferences(newPreferences);
       if (result.ok) {
         setAccountData((current) => ({ ...current, preferences: result.preferences }));
@@ -266,7 +266,7 @@ export function AccountProvider({ children }) {
   // ── Security ─────────────────────────────────────────────────────────────
 
   const signOutOtherSessions = useCallback(async () => {
-    if (getAccessToken()) {
+    if (getAccessToken("customer")) {
       const result = await apiRevokeOtherSessions();
       if (result.ok) {
         setAccountData((current) => ({

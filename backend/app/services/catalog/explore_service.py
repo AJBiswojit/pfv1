@@ -30,6 +30,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.catalog.category import CategoryModel
 from app.models.catalog.product import ProductModel
 from app.schemas.catalog.explore import (
     EXPLORE_EDITORIAL_AFTER,
@@ -466,6 +467,17 @@ class ExploreService:
         )
         result = await self.db.execute(stmt)
         categories = [row[0] for row in result if row[0]]
+
+        category_rows = (await self.db.execute(select(CategoryModel))).scalars().all()
+        status_map = {}
+        for category in category_rows:
+            if category.id:
+                status_map[category.id] = category.status
+            if category.slug:
+                status_map[category.slug] = category.status
+            if category.name:
+                status_map[category.name] = category.status
+        categories = [cat for cat in categories if status_map.get(cat, "ACTIVE") == "ACTIVE"]
 
         return [
             CategoryCard(

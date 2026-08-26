@@ -67,7 +67,7 @@ export function EmployeeManagementProvider({ children }) {
 
   // Sync employee list from backend. The server is authoritative — no seed.
   useEffect(() => {
-    if (!getAccessToken("admin") && !getAccessToken("employee")) return;
+    if (!getAccessToken("admin")) return;
     let cancelled = false;
     apiAdminListEmployees({ pageSize: 100 }).then((result) => {
       if (cancelled) return;
@@ -153,7 +153,7 @@ export function EmployeeManagementProvider({ children }) {
     async (draft) => {
       setIsWorking(true);
       // Try backend first
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminCreateEmployee(draft);
         setIsWorking(false);
         if (result.ok) {
@@ -179,7 +179,7 @@ export function EmployeeManagementProvider({ children }) {
   const updateEmployee = useCallback(
     async (employeeId, patch) => {
       setIsWorking(true);
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminUpdateEmployee(employeeId, patch);
         setIsWorking(false);
         if (result.ok) {
@@ -265,7 +265,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const updateEmployeePermissions = useCallback(
     async (employeeId, permissions) => {
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminUpdateEmployeePermissions(employeeId, {
           permissionMode: "custom",
           permissions: Array.isArray(permissions) ? permissions : (permissions.permissions ?? []),
@@ -290,7 +290,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const suspendEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "SUSPENDED");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -312,7 +312,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const activateEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "ACTIVE");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -334,7 +334,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const deactivateEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "INACTIVE");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -357,7 +357,7 @@ export function EmployeeManagementProvider({ children }) {
   const resetEmployeePassword = useCallback(
     async (employeeId) => {
       setIsWorking(true);
-      if (getAccessToken()) {
+      if (getAccessToken("admin")) {
         const result = await apiAdminResetEmployeePassword(employeeId);
         setIsWorking(false);
         if (result.ok) {
