@@ -21,10 +21,10 @@ import {
   rankShoppingCandidates,
   resolveShoppingIntent,
 } from "../src/services/ai/shopping/aiShoppingService.js";
-import { products as canonicalProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 
-const CATALOGUE = canonicalProducts.map((product, index) => toStorefrontProduct(product, index));
+const CATALOGUE = getAllProducts().map((product, index) => toStorefrontProduct(product, index));
 const findProduct = (predicate) => {
   const product = CATALOGUE.find(predicate);
   assert.ok(product);
@@ -46,7 +46,7 @@ test("price extraction reads ceilings, floors, ranges and lakh/k shorthand", () 
 test("shopping vocabularies are nonempty canonical data projections", () => {
   [CATEGORY_KEYWORDS, FABRIC_KEYWORDS, COLOUR_KEYWORDS, OCCASION_KEYWORDS, COLLECTION_KEYWORDS]
     .forEach((groups) => assert.ok(groups.length > 0));
-  const categoryIds = new Set(canonicalProducts.map((product) => product.category));
+  const categoryIds = new Set(__catalogue.map((product) => product.category));
   assert.ok(CATEGORY_KEYWORDS.every((group) => categoryIds.has(group.id)));
 });
 
@@ -93,7 +93,7 @@ test("deterministic ordering returns the same Product IDs", () => {
   const first = rankShoppingCandidates(CATALOGUE, intent, {}, 4).map((entry) => entry.product.id);
   const second = rankShoppingCandidates(CATALOGUE, intent, {}, 4).map((entry) => entry.product.id);
   assert.deepEqual(first, second);
-  assert.ok(first.every((id) => canonicalProducts.some((product) => product.id === id)));
+  assert.ok(first.every((id) => __catalogue.some((product) => product.id === id)));
 });
 
 test("natural requests return only canonical catalogue recommendations", () => {
@@ -101,7 +101,7 @@ test("natural requests return only canonical catalogue recommendations", () => {
   assert.equal(response.type, "PRODUCT_RECOMMENDATIONS");
   assert.ok(response.products.length > 0);
   response.products.forEach(({ product, reason }) => {
-    assert.ok(canonicalProducts.some((entry) => entry.id === product.id));
+    assert.ok(__catalogue.some((entry) => entry.id === product.id));
     assert.equal(product.department, "men");
     assert.ok(reason.length > 0);
   });
@@ -153,7 +153,7 @@ test("pairing stays in the anchor's canonical department", () => {
 test("outfit building uses a canonical AI Mirror-eligible main piece", () => {
   const response = ask("Build me a wedding outfit");
   assert.equal(response.type, "OUTFIT_SUGGESTION");
-  assert.ok(canonicalProducts.some((product) => product.id === response.outfit.main.id));
+  assert.ok(__catalogue.some((product) => product.id === response.outfit.main.id));
 });
 
 test("cart and wishlist intents resolve against canonical Product IDs", () => {

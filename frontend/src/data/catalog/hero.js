@@ -1,79 +1,41 @@
 /**
- * PRATIKSHYA FASHON — canonical catalogue data.
+ * PRATIKSHYA FASHON — Homepage hero (backend-driven).
  *
- * Authored editorial slide copy and optional baseline imagery. Managed HOME_HERO placements are resolved through the shared marketing-media repository.
+ * Hero slides come from GET /home (assembled by the backend from managed
+ * marketing placements). There is no static slide registry: if the backend
+ * has not curated the home hero, the carousel renders its empty state.
  */
 
-/**
- * The landing slideshow, as structured data. The slideshow renders this
- * list — no image address is authored inside the JSX.
- */
-export const heroSlides = [
-  {
-  "id": "hero-001",
-  "image": "/images/hero/hero001.avif",
-  "eyebrow": "New Collection",
-  "title": "The Festive Edit",
-  "body": "Timeless silhouettes crafted for the celebrations that matter most.",
-  "cta": {
-    "label": "Explore Edit",
-    "href": "/collections/festive-edit"
+import { getHome } from "../../services/catalog/catalogStore";
+
+const readSlides = () => {
+  const home = getHome();
+  const slides = home?.heroSlides ?? home?.hero_slides ?? [];
+  return (Array.isArray(slides) ? slides : []).map((slide) => ({
+    id: slide.id,
+    image: slide.image ?? slide.mobileImage ?? "",
+    eyebrow: slide.eyebrow ?? "",
+    title: slide.title ?? "",
+    body: slide.subtitle ?? "",
+    cta: slide.cta
+      ? { label: slide.cta, href: slide.href ?? "/shop" }
+      : { label: slide.subtitle ? "Explore" : "", href: slide.href ?? "/shop" },
+    objectPosition: "50% center",
+    tone: slide.tone ?? "light",
+    mediaId: slide.mediaId ?? slide.media_id ?? null,
+  })).filter((slide) => slide.id && slide.image);
+};
+
+/** Live hero slide list — re-reads whenever the catalog store updates. */
+export const heroSlides = new Proxy([], {
+  get: (_, prop) => {
+    const list = readSlides();
+    if (prop === "length") return list.length;
+    if (typeof prop === "symbol") return list[prop];
+    if (prop in list) return list[prop];
+    const value = Reflect.get(list, prop);
+    return typeof value === "function" ? value.bind(list) : value;
   },
-  "objectPosition": "52% center",
-  "tone": "light"
-},
-  {
-  "id": "hero-002",
-  "image": "/images/hero/hero002.avif",
-  "eyebrow": "Bridal Couture",
-  "title": "Made for Your Moment",
-  "body": "Statement craftsmanship and heirloom detail for the day you'll always remember.",
-  "cta": {
-    "label": "Shop Lehengas",
-    "href": "/women/lehengas/bridal"
-  },
-  "objectPosition": "48% center",
-  "tone": "dark"
-},
-  {
-  "id": "hero-003",
-  "image": "/images/hero/hero003.avif",
-  "eyebrow": "Heritage Weaves",
-  "title": "The Art of the Saree",
-  "body": "Banarasi, Pato and silk — traditional craft, reimagined for today.",
-  "cta": {
-    "label": "Shop Sarees",
-    "href": "/women/sarees"
-  },
-  "objectPosition": "58% center",
-  "tone": "light"
-},
-  {
-  "id": "hero-004",
-  "image": "/images/hero/hero004.avif",
-  "eyebrow": "The Celebration Edit",
-  "title": "Dressed, Together",
-  "body": "Coordinated festive wardrobes for weddings, receptions and every gathering around them.",
-  "cta": {
-    "label": "Shop Bridal",
-    "href": "/bridal"
-  },
-  "objectPosition": "52% center",
-  "tone": "dark"
-},
-  {
-  "id": "hero-005",
-  "image": "/images/hero/hero005.avif",
-  "eyebrow": "New Arrivals",
-  "title": "Your Next Signature Look",
-  "body": "The latest pieces to arrive from the PRATIKSHYA atelier.",
-  "cta": {
-    "label": "Discover Now",
-    "href": "/collections/new-arrivals"
-  },
-  "objectPosition": "62% center",
-  "tone": "dark"
-},
-];
+});
 
 export default heroSlides;

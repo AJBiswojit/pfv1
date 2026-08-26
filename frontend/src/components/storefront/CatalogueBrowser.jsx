@@ -53,6 +53,9 @@ export default function CatalogueBrowser({
     scoped,
     hasMore,
     remaining,
+    isFetching,
+    error,
+    retry,
     toggleFilter,
     removeFilter,
     clearFilters,
@@ -118,8 +121,19 @@ export default function CatalogueBrowser({
 
         {/* Grid */}
         <div className="pt-6 md:pt-8">
-          {loading ? (
+          {loading || (isFetching && !error) ? (
             <ProductGridSkeleton count={8} />
+          ) : error ? (
+            <EmptyState
+              eyebrow="Catalogue Unavailable"
+              title="We couldn't load this edit"
+              description={error}
+              actions={
+                <AtelierButton variant="outline" size="md" onClick={retry}>
+                  Try again
+                </AtelierButton>
+              }
+            />
           ) : total === 0 ? (
             <EmptyState
               eyebrow="Nothing Matches"

@@ -279,10 +279,10 @@ export default function EmployeeMediaDashboard() {
               {query
                 ? `No submissions found matching "${query}".`
                 : tab === "PENDING"
-                  ? "No media currently pending review."
+                  ? "No media records yet — the backend media service is not active in this phase currently pending review."
                   : tab === "REJECTED"
                     ? "No rejected media submissions."
-                    : "No media assets found in this view."}
+                    : "No media records yet — the backend media service is not active in this phase assets found in this view."}
             </p>
             {canUpload ? (
               <div className="pt-2">

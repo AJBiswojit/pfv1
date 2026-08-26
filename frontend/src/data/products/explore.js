@@ -14,7 +14,7 @@
 import { getLiveStorefrontProducts } from "./index";
 import { queryCatalogue } from "./query";
 import { getProductCardMedia, getProductMediaSet } from "../../services/media/productMediaSet";
-import offerRepository from "../../services/offers/offerRepository";
+import { getOffers } from "../../services/catalog/catalogStore";
 
 /** Products revealed by one press of Load More on Explore. */
 export const EXPLORE_PAGE_SIZE = 20;
@@ -131,7 +131,8 @@ export const buildExploreStream = (products = []) => {
   return stream;
 };
 
-export const getExploreOffers = () => offerRepository.listCustomerVisible().slice(0, 4);
+/** Offers come from GET /explore/offers via the catalog store. */
+export const getExploreOffers = () => getOffers().slice(0, 4);
 
 export const inspectExploreMedia = (product) => {
   const set = getProductMediaSet(product);

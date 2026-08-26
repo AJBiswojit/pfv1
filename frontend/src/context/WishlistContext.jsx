@@ -1,16 +1,12 @@
 /**
- * PRATIKSHYA FASHON — Wishlist state (Phase B wired)
+ * PRATIKSHYA FASHON — Wishlist state (backend-authoritative).
  *
- * Strategy:
- *   - Guest (no token)  → pure localStorage wishlist (existing behaviour)
- *   - Authenticated     → sync every mutation to backend; localStorage is a
- *                         local echo so the header badge never lags
+ * Authenticated customers:   GET /wishlist, POST /wishlist/{id},
+ *                            DELETE /wishlist/{id}, POST /wishlist/{id}/toggle
+ * The server response is rendered as-is; failures surface as an error.
  *
- * Backend endpoints (all require customer JWT):
- *   GET    /wishlist
- *   POST   /wishlist/{productId}
- *   DELETE /wishlist/{productId}
- *   POST   /wishlist/{productId}/toggle
+ * Guests: a client-only wishlist in localStorage (explicitly temporary
+ * client state — the backend has no guest wishlist contract).
  */
 
 import {
@@ -21,7 +17,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getProductById } from "../data/products";
+import {
+  getProductById,
+  ensureProduct,
+  subscribeCatalog,
+} from "../services/catalog/catalogStore";
 import { readStorage, WISHLIST_STORAGE_KEY, writeStorage } from "../utils/shopping";
 import { useAuth } from "./AuthContext";
 import { getAccessToken } from "../services/api/apiClient";
@@ -34,115 +34,106 @@ import {
 
 const WishlistContext = createContext(null);
 
-/** Restores only ids that still exist in the catalogue (guest/fallback). */
-const restoreWishlist = () => {
+const restoreGuestWishlist = () => {
   const stored = readStorage(WISHLIST_STORAGE_KEY, []);
-  if (!Array.isArray(stored)) return new Set();
-  return new Set(stored.filter((id) => typeof id === "string" && getProductById(id)));
+  return new Set(Array.isArray(stored) ? stored.filter((id) => typeof id === "string") : []);
 };
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
-  const [saved, setSaved] = useState(restoreWishlist);
+  const authenticated = Boolean(user?.id) && Boolean(getAccessToken());
+  const [saved, setSaved] = useState(restoreGuestWishlist);
+  const [error, setError] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Persist to localStorage on every change (guest + authenticated echo)
   useEffect(() => {
-    writeStorage(WISHLIST_STORAGE_KEY, [...saved]);
-  }, [saved]);
+    if (!authenticated) writeStorage(WISHLIST_STORAGE_KEY, [...saved]);
+  }, [authenticated, saved]);
 
-  // When user authenticates, pull the server wishlist
   useEffect(() => {
-    if (!user?.id || !getAccessToken()) return;
+    if (!authenticated) {
+      setSaved(restoreGuestWishlist());
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    setIsSyncing(true);
     apiGetWishlist().then((result) => {
+      if (cancelled) return;
+      setIsSyncing(false);
       if (result.ok && Array.isArray(result.items)) {
-        // Server wins: replace local state with server state
         setSaved(new Set(result.items));
+        setError(null);
+      } else {
+        setError(result.error ?? "Could not load your wishlist.");
       }
     });
-  }, [user?.id]);
+    return () => { cancelled = true; };
+  }, [authenticated, user?.id]);
 
   const resolveId = (product) =>
     typeof product === "string" ? product : product?.id ?? null;
 
-  // ------------------------------------------------------------------
-  // Local-first optimistic helpers
-  // ------------------------------------------------------------------
+  const syncServer = useCallback(async (action, id) => {
+    setIsSyncing(true);
+    const result = await action(id);
+    setIsSyncing(false);
+    if (result.ok && Array.isArray(result.items)) {
+      setSaved(new Set(result.items));
+      setError(null);
+      return { ok: true };
+    }
+    setError(result.error ?? "Wishlist update failed.");
+    return { ok: false, message: result.error };
+  }, []);
 
   const add = useCallback((product) => {
     const id = resolveId(product);
-    if (!id) return;
-    setSaved((current) => {
-      if (current.has(id)) return current;
-      const next = new Set(current);
-      next.add(id);
-      return next;
-    });
-    // Backend sync (non-blocking)
-    if (user?.id && getAccessToken()) {
-      apiAddToWishlist(id).then((result) => {
-        if (result.ok && Array.isArray(result.items)) {
-          setSaved(new Set(result.items));
-        }
-      });
-    }
-  }, [user?.id]);
+    if (!id) return Promise.resolve({ ok: false, message: "" });
+    if (authenticated) return syncServer(apiAddToWishlist, id);
+    setSaved((current) => new Set(current).add(id));
+    return Promise.resolve({ ok: true });
+  }, [authenticated, syncServer]);
 
   const remove = useCallback((product) => {
     const id = resolveId(product);
-    if (!id) return;
+    if (!id) return Promise.resolve({ ok: false, message: "" });
+    if (authenticated) return syncServer(apiRemoveFromWishlist, id);
     setSaved((current) => {
-      if (!current.has(id)) return current;
       const next = new Set(current);
       next.delete(id);
       return next;
     });
-    // Backend sync (non-blocking)
-    if (user?.id && getAccessToken()) {
-      apiRemoveFromWishlist(id).then((result) => {
-        if (result.ok && Array.isArray(result.items)) {
-          setSaved(new Set(result.items));
-        }
-      });
-    }
-  }, [user?.id]);
+    return Promise.resolve({ ok: true });
+  }, [authenticated, syncServer]);
 
   const toggle = useCallback((product) => {
     const id = resolveId(product);
-    if (!id) return;
+    if (!id) return Promise.resolve({ ok: false, message: "" });
+    if (authenticated) return syncServer(apiToggleWishlist, id);
     setSaved((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-    // Backend sync (non-blocking)
-    if (user?.id && getAccessToken()) {
-      apiToggleWishlist(id).then((result) => {
-        if (result.ok && Array.isArray(result.items)) {
-          setSaved(new Set(result.items));
-        }
-      });
-    }
-  }, [user?.id]);
+    return Promise.resolve({ ok: true });
+  }, [authenticated, syncServer]);
 
-  /** The saved pieces, resolved from the catalogue. */
-  const products = useMemo(
-    () => [...saved].map((id) => getProductById(id)).filter(Boolean),
-    [saved]
-  );
+  const [catalogTick, setCatalogTick] = useState(0);
+  useEffect(() => subscribeCatalog(() => setCatalogTick((t) => t + 1)), []);
 
-  const value = useMemo(
-    () => ({
-      saved,
-      products,
-      count: saved.size,
-      isSaved: (product) => saved.has(resolveId(product)),
-      add,
-      remove,
-      toggle,
-    }),
-    [saved, products, add, remove, toggle]
-  );
+  const products = useMemo(() => {
+    const list = [...saved].map((id) => getProductById(id)).filter(Boolean);
+    [...saved].forEach((id) => { if (!getProductById(id)) ensureProduct(id); });
+    return list;
+  }, [saved, catalogTick]);
+
+  const value = useMemo(() => ({
+    saved, products, count: saved.size, isSyncing, error,
+    isSaved: (product) => saved.has(resolveId(product)),
+    add, remove, toggle,
+  }), [saved, products, isSyncing, error, add, remove, toggle]);
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }
@@ -153,10 +144,12 @@ export function useWishlist() {
       saved: new Set(),
       products: [],
       count: 0,
+      isSyncing: false,
+      error: null,
       isSaved: () => false,
-      add: () => {},
-      remove: () => {},
-      toggle: () => {},
+      add: () => Promise.resolve({ ok: false, message: "" }),
+      remove: () => Promise.resolve({ ok: false, message: "" }),
+      toggle: () => Promise.resolve({ ok: false, message: "" }),
     }
   );
 }

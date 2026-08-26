@@ -6,7 +6,7 @@ import { cn } from "../../utils/cn";
  *
  * A hairline − / value / + strip, shared by the product detail panel, the
  * cart page and the mini-cart so the quantity rule is enforced by one
- * component: never below the minimum, never above the mock stock.
+ * component: never below the minimum, never above the available stock.
  */
 export default function QuantityStepper({
   value,

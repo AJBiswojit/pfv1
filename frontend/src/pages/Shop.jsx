@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useCatalog } from "../hooks/useCatalog";
 import {
   AtelierButton,
   AtelierSection,
@@ -32,6 +33,7 @@ import { cn } from "../utils/cn";
 const SHORTCUT_ORDER = ["sarees", "lehengas", "the-bride", "finishing-touches", "ethnic-wear", "girls"];
 
 export default function Shop() {
+  useCatalog();
   const activeCategories = taxonomyRepository.activeCategories();
   const shortcuts = SHORTCUT_ORDER.map((id) => {
     const category = activeCategories.find((entry) => entry.id === id);

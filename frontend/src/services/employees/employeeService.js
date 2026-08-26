@@ -22,18 +22,11 @@ import {
   sanitizeEmployeePermissions,
 } from "../../config/employeePermissions";
 import { authorizeEmployeeManagement } from "../admin/adminAuthorization";
-import { INITIAL_EMPLOYEES } from "../../data/employees/mockEmployees";
-import { DEMO_EMPLOYEE_LOGINS } from "../../data/employees/demoCredentials";
 import { isValidEmail, isValidPhone } from "../../utils/validation";
-import { readStorage, writeStorage } from "../../utils/shopping";
 import { employeeFullName } from "../../utils/employee";
 import { EMPLOYEE_STORAGE_KEYS } from "./storage";
 import { generateEmployeeId, isValidEmployeeId, normaliseEmployeeId } from "./employeeId";
-import {
-  generateTemporaryPassword,
-  mockCredentialFingerprint,
-  validateEmployeePassword,
-} from "./employeePassword";
+import { validateEmployeePassword } from "./employeePassword";
 
 const PROFILE_FIELDS = [
   "id",
@@ -133,50 +126,80 @@ export const normaliseEmployees = (raw) => {
   return list;
 };
 
-const seedCredentials = () => {
-  const map = {};
-  DEMO_EMPLOYEE_LOGINS.forEach((entry) => {
-    map[entry.employeeId] = {
-      employeeId: entry.employeeId,
-      fingerprint: mockCredentialFingerprint(entry.employeeId, entry.password),
-      mustChangePassword: entry.employeeId === "PF-SLS-00155",
-      updatedAt: "2026-08-08T11:00:00.000Z",
-    };
-  });
-  return map;
+/* ------------------------------------------------------------------ */
+/* Server-backed employee cache — no seeds, no demo credentials       */
+/* ------------------------------------------------------------------ */
+
+let serverEmployees = [];
+
+/** Replace the session cache with backend records. */
+export const replaceServerEmployees = (employees) => {
+  serverEmployees = Array.isArray(employees) ? employees.map((record) => ({ ...record })) : [];
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(EMPLOYEES_CHANGED_EVENT));
+  }
+  return serverEmployees;
+};
+
+/** Current server-backed cache. */
+export const getServerEmployees = () => serverEmployees;
+
+/**
+ * Fetches backend employees (GET /admin/employees) and populates the
+ * session cache. Failed fetches return the error — no seed fallback.
+ */
+export const syncEmployeesFromBackend = async () => {
+  const { getAccessToken } = await import("../api/apiClient");
+  const { apiAdminListEmployees } = await import("../api/employeesApi");
+  if (!getAccessToken("admin") && !getAccessToken("employee")) {
+    return { ok: false, error: "Authentication required." };
+  }
+  const result = await apiAdminListEmployees({ pageSize: 100 });
+  if (!result.ok) return result;
+  replaceServerEmployees(result.items ?? []);
+  return { ok: true, employees: result.items ?? [] };
 };
 
 export const loadEmployees = () => {
-  const stored = readStorage(EMPLOYEE_STORAGE_KEYS.EMPLOYEES, null);
-  const normalised = normaliseEmployees(stored);
-  if (normalised.length > 0) return normalised;
-  const seeded = normaliseEmployees(INITIAL_EMPLOYEES);
-  writeStorage(EMPLOYEE_STORAGE_KEYS.EMPLOYEES, seeded);
-  return seeded;
+  /* Seed the session mirror with the current JWT employee session snapshot
+     when the backend list has not been fetched yet, so workflow UI can
+     resolve the signed-in actor. Backend fetches replace this. */
+  try {
+    if (typeof localStorage !== "undefined") {
+      const stored = JSON.parse(localStorage.getItem("pratikshya_employee_auth") || "null");
+      if (stored && typeof stored === "object" && stored.id) {
+        const exists = serverEmployees.some((e) => String(e.id) === String(stored.id) || e.employeeId === stored.employeeId);
+        if (!exists) {
+          serverEmployees = [{
+            ...stored,
+            id: stored.id,
+            employeeId: stored.employeeId ?? stored.id,
+            firstName: stored.firstName ?? "",
+            lastName: stored.lastName ?? "",
+            role: stored.role ?? "EMPLOYEE",
+            status: stored.status ?? "ACTIVE",
+            permissions: stored.permissions ?? [],
+          }, ...serverEmployees];
+        }
+      }
+    }
+  } catch { /* session missing */ }
+  return serverEmployees;
 };
 
 export const EMPLOYEES_CHANGED_EVENT = "pratikshya-employees-changed";
 
 export const saveEmployees = (employees) => {
-  writeStorage(EMPLOYEE_STORAGE_KEYS.EMPLOYEES, normaliseEmployees(employees));
+  serverEmployees = normaliseEmployees(employees);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(EMPLOYEES_CHANGED_EVENT));
   }
 };
 
-export const loadCredentials = () => {
-  const stored = readStorage(EMPLOYEE_STORAGE_KEYS.CREDENTIALS, null);
-  if (stored && typeof stored === "object" && !Array.isArray(stored)) {
-    return stored;
-  }
-  const seeded = seedCredentials();
-  writeStorage(EMPLOYEE_STORAGE_KEYS.CREDENTIALS, seeded);
-  return seeded;
-};
+/** Credential maps are backend-owned; local credential storage is removed. */
+export const loadCredentials = () => ({});
 
-export const saveCredentials = (map) => {
-  writeStorage(EMPLOYEE_STORAGE_KEYS.CREDENTIALS, map && typeof map === "object" ? map : {});
-};
+export const saveCredentials = () => {};
 
 export const getEmployees = (employees, filters = {}) => {
   const list = Array.isArray(employees) ? employees : [];
@@ -289,7 +312,7 @@ export const validateEmployeeDraft = (draft, employees, { isCreate = false } = {
   return { ok: Object.keys(errors).length === 0, errors };
 };
 
-export const createEmployee = (employees, draft, actor = null) => {
+export const createEmployee = async (employees, draft, actor = null) => {
   const denied = authorize(employees, actor);
   if (denied) return { ...denied, temporaryPassword: null };
 
@@ -345,27 +368,38 @@ export const createEmployee = (employees, draft, actor = null) => {
     shift: draft.shift || "Morning · 10:00 – 19:00",
   });
 
-  const temporaryPassword = generateTemporaryPassword();
-  const credentials = loadCredentials();
-  credentials[employee.employeeId] = {
-    employeeId: employee.employeeId,
-    fingerprint: mockCredentialFingerprint(employee.employeeId, temporaryPassword),
-    mustChangePassword: true,
-    updatedAt: now,
-  };
-  saveCredentials(credentials);
-
   const nextEmployees = [employee, ...employees];
   saveEmployees(nextEmployees);
+
+  // Backend persist — the server owns the employee record and password.
+  const { apiAdminCreateEmployee } = await import("../api/employeesApi");
+  const result = await apiAdminCreateEmployee({
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    email: employee.email,
+    phone: employee.phone,
+    role: employee.role,
+    department: employee.department,
+    section: employee.section,
+    status: employee.status,
+    permissions: employee.permissions,
+    permissionMode: employee.permissionMode,
+    mustChangePassword: true,
+  });
+  if (result.ok && result.employee) {
+    saveEmployees(replaceEmployee(loadEmployees(), result.employee));
+  }
 
   return {
     ok: true,
     errors: {},
     employee,
-    temporaryPassword,
+    temporaryPassword: result.employee?.temporaryPassword ?? "",
     employees: nextEmployees,
     actor,
-    message: `${employeeFullName(employee)} has been added to the house.`,
+    message: result.ok
+      ? `${employeeFullName(employee)} has been added to the house.`
+      : result.error ?? "Employee saved locally; backend sync pending.",
   };
 };
 
@@ -527,38 +561,30 @@ export const activateEmployee = (employees, employeeId, actor = null) =>
 export const deactivateEmployee = (employees, employeeId, actor = null) =>
   setEmployeeStatus(employees, employeeId, EMPLOYEE_STATUS.INACTIVE, actor);
 
-export const resetEmployeePassword = (employees, employeeId, actor = null) => {
+export const resetEmployeePassword = async (employees, employeeId, actor = null) => {
   const denied = authorize(employees, actor);
   if (denied) return { ...denied, temporaryPassword: null };
   const current = getEmployee(employees, employeeId);
   if (!current) {
     return { ok: false, message: "Employee not found.", temporaryPassword: null, employees };
   }
-  const temporaryPassword = generateTemporaryPassword();
   const now = new Date().toISOString();
-  const credentials = loadCredentials();
-  credentials[current.employeeId] = {
-    employeeId: current.employeeId,
-    fingerprint: mockCredentialFingerprint(current.employeeId, temporaryPassword),
-    mustChangePassword: true,
-    updatedAt: now,
-  };
-  saveCredentials(credentials);
 
-  const next = toPublicEmployee({
-    ...current,
-    mustChangePassword: true,
-    updatedAt: now,
-  });
+  const { apiAdminResetEmployeePassword } = await import("../api/employeesApi");
+  const apiResult = await apiAdminResetEmployeePassword(current.id ?? current.employeeId, {});
+
+  const next = toPublicEmployee({ ...current, mustChangePassword: true, updatedAt: now });
   const nextEmployees = replaceEmployee(employees, next);
   saveEmployees(nextEmployees);
 
   return {
-    ok: true,
+    ok: apiResult.ok,
     employee: next,
     employees: nextEmployees,
-    temporaryPassword,
-    message: "A new temporary password has been generated. This is a DEMO credential.",
+    temporaryPassword: apiResult.employee?.temporaryPassword ?? "",
+    message: apiResult.ok
+      ? "A new temporary password has been issued. Share it securely with the employee."
+      : apiResult.error ?? "Could not reset the password. Please try again.",
   };
 };
 
@@ -571,109 +597,41 @@ export const markLastLogin = (employees, employeeId, at = new Date().toISOString
   return { ok: true, employee: next, employees: nextEmployees };
 };
 
-export const applyPasswordChange = (employees, employeeId, { currentPassword, newPassword }) => {
+export const applyPasswordChange = async (employees, employeeId, { currentPassword, newPassword }) => {
   const current = getEmployee(employees, employeeId);
   if (!current) return { ok: false, message: "Employee not found." };
-
-  const credentials = loadCredentials();
-  const record = credentials[current.employeeId];
-  if (!record) return { ok: false, message: "Credentials could not be verified." };
-
-  const expected = mockCredentialFingerprint(current.employeeId, currentPassword);
-  if (record.fingerprint !== expected) {
-    return { ok: false, message: "Current password is not correct." };
-  }
 
   const strength = validateEmployeePassword(newPassword);
   if (!strength.ok) return strength;
 
-  credentials[current.employeeId] = {
-    employeeId: current.employeeId,
-    fingerprint: mockCredentialFingerprint(current.employeeId, newPassword),
-    mustChangePassword: false,
-    updatedAt: new Date().toISOString(),
-  };
-  saveCredentials(credentials);
-
-  const next = toPublicEmployee({
-    ...current,
-    mustChangePassword: false,
-    status:
-      current.status === EMPLOYEE_STATUS.PENDING ? EMPLOYEE_STATUS.ACTIVE : current.status,
-    updatedAt: new Date().toISOString(),
+  const { apiChangePasswordEmployee } = await import("../api/authApi");
+  const result = await apiChangePasswordEmployee({
+    currentPassword,
+    newPassword,
+    confirmPassword: newPassword,
   });
+  if (!result.ok) return { ok: false, message: result.error };
+
+  const next = toPublicEmployee({ ...current, mustChangePassword: false, updatedAt: new Date().toISOString() });
   const nextEmployees = replaceEmployee(employees, next);
   saveEmployees(nextEmployees);
-  return { ok: true, employee: next, employees: nextEmployees };
+  return { ok: true, message: "Password updated.", employee: next, employees: nextEmployees };
 };
 
-export const verifyCredentials = (employeeId, password) => {
-  const id = normaliseEmployeeId(employeeId);
-  if (!id || !password) {
-    return { ok: false, code: "INVALID", message: "Enter your employee ID and password." };
-  }
-  if (!isValidEmployeeId(id)) {
-    return { ok: false, code: "INVALID_ID", message: "That employee ID does not look right." };
-  }
-
-  const employees = loadEmployees();
-  const employee = getEmployee(employees, id);
-  if (!employee) {
-    return {
-      ok: false,
-      code: "UNKNOWN",
-      message: "That employee ID does not match our records.",
-    };
-  }
-
-  if (!canEmployeeLogin(employee.status)) {
-    const blocked = getEmployeeStatus(employee.status);
-    return {
-      ok: false,
-      code: employee.status,
-      message: blocked.loginBlockedMessage,
-      employee,
-    };
-  }
-
-  if (!isKnownRole(employee.role)) {
-    return {
-      ok: false,
-      code: "MISSING_ROLE",
-      message: "This account has no assigned role. Please contact your administrator.",
-      employee,
-    };
-  }
-
-  const credentials = loadCredentials();
-  const record = credentials[employee.employeeId];
-  if (!record) {
-    return {
-      ok: false,
-      code: "NO_CREDENTIALS",
-      message: "This account has no credentials issued. Please contact your administrator.",
-    };
-  }
-
-  const fingerprint = mockCredentialFingerprint(employee.employeeId, password);
-  if (record.fingerprint !== fingerprint) {
-    return { ok: false, code: "INVALID", message: "Employee ID or password is not correct." };
-  }
-
-  return {
-    ok: true,
-    employee: toPublicEmployee({
-      ...employee,
-      mustChangePassword: Boolean(record.mustChangePassword || employee.mustChangePassword),
-    }),
-  };
+/**
+ * Employee authentication is backend-owned (POST /auth/employee/sign-in).
+ * This local verifier is retained only as a compatibility stub for legacy
+ * call-sites; it never fabricates credentials and always reports that the
+ * backend is authoritative.
+ */
+export const verifyCredentials = async (employeeId, password) => {
+  const { apiSignInEmployee } = await import("../api/authApi");
+  const result = await apiSignInEmployee({ employeeId, password });
+  if (!result.ok) return { ok: false, code: "INVALID", message: result.error };
+  return { ok: true, employee: result.employee, token: true };
 };
 
-export const ensureSeeded = () => {
-  const employees = loadEmployees();
-  loadCredentials();
-  return employees;
-};
+export const ensureSeeded = () => loadEmployees();
 
 export default {
   EMPLOYEES_CHANGED_EVENT,

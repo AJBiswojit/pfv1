@@ -221,7 +221,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
       <InventoryNav portal={portal} />
 
       <p className="mb-4 border-l-2 border-brass bg-surface/50 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
-        Frontend demo inventory. Local browser writes are not concurrency-safe; production will replace this repository with transactional backend operations.
+        Inventory is backend-owned. The backend inventory service is not available in this phase (see INTEGRATION_AUDIT.md §7) — no local stock records are shown or written.
       </p>
 
       <section aria-label="Inventory metrics" className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

@@ -1,4 +1,5 @@
 import { AtelierSection, body, display, eyebrow } from "../design-system";
+import { useCatalog } from "../hooks/useCatalog";
 import ExploreBrowser from "../components/explore/ExploreBrowser";
 import ExploreOfferStrip from "../components/explore/ExploreOfferStrip";
 import { getExploreOffers } from "../data/products/explore";
@@ -12,6 +13,7 @@ import { cn } from "../utils/cn";
  * one card; gallery views never become products.
  */
 export default function Explore() {
+  useCatalog();
   const offers = getExploreOffers();
 
   return (

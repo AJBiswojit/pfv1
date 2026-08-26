@@ -6,7 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { products as authoredProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { departments } from "../src/data/catalog/taxonomy.js";
 import catalogRepository from "../src/services/catalogRepository.js";
 import { commands } from "../src/services/workflow/productWorkflowCommands.js";
@@ -35,7 +35,7 @@ afterEach(setupCanonicalState);
 
 test("the department is discovered from the one authored catalogue", () => {
   assert.ok(department);
-  const expectedIds = authoredProducts
+  const expectedIds = __catalogue
     .filter((product) => product.department === departmentId)
     .map((product) => product.id)
     .sort();

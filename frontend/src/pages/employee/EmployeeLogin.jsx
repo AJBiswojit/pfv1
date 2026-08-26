@@ -4,7 +4,6 @@ import { AlertCircle, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import { AtelierButton, Brand, Rule } from "../../design-system";
 import { EMPLOYEE_BRAND, sanitizeEmployeeReturnUrl } from "../../config/employeeNavigation";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
-import { DEMO_EMPLOYEE_LOGINS } from "../../data/employees/demoCredentials";
 import { cn } from "../../utils/cn";
 
 export default function EmployeeLogin() {
@@ -154,32 +153,6 @@ export default function EmployeeLogin() {
               )}
             </AtelierButton>
           </form>
-
-          <div className="mt-8 border-t border-mist/70 pt-6">
-            <div className="mb-3 flex items-center gap-2 text-brass">
-              <Sparkles size={14} aria-hidden="true" />
-              <p className="font-ui text-[10px] uppercase tracking-[.2em]">Demo credentials</p>
-            </div>
-            <p className="mb-3 font-ui text-[11px] text-taupe">
-              Frontend mock authentication only. Example: PF-SLS-00124 / PF@7Kx92. Click a desk to fill.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {DEMO_EMPLOYEE_LOGINS.map((entry) => (
-                <button
-                  key={entry.employeeId}
-                  type="button"
-                  onClick={() => fill(entry)}
-                  className={cn(
-                    "border bg-canvas/70 px-3 py-2 text-left font-ui text-[11px] transition-colors hover:border-ink",
-                    entry.highlight ? "border-accent/50" : "border-pearl"
-                  )}
-                >
-                  <span className="block truncate font-medium text-ink">{entry.label}</span>
-                  <span className="block text-[10px] text-taupe">{entry.employeeId}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           <p className="mt-8 text-center font-ui text-[11px] text-taupe">
             Need an account? Contact your administrator.

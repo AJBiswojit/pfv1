@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { products as catalogueProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 import catalogRepository from "../src/services/catalogRepository.js";
 import marketingPlacementRepository, {
@@ -71,7 +71,7 @@ test.afterEach(clearStorage);
 const SAREE_A = "PF-W-SAR-BAN-0001";
 const SAREE_B = "PF-W-SAR-COT-0001";
 const SAREE_C = "PF-W-SAR-SIL-0001";
-const KIDS_A = catalogueProducts.find((product) => product.department === "kids")?.id;
+const KIDS_A = __catalogue.find((product) => product.department === "kids")?.id;
 assert.ok(KIDS_A, "the canonical catalogue must provide a Kids Product for placement coverage");
 
 /* ------------------------------------------------------------------ */
@@ -181,7 +181,7 @@ test("assignments survive a re-read and unknown placements are refused", () => {
 /* ------------------------------------------------------------------ */
 
 test("resolver returns assigned products from the supplied catalogue in placement order", () => {
-  const live = catalogueProducts.filter((product) => [SAREE_A, SAREE_B, SAREE_C].includes(product.id));
+  const live = __catalogue.filter((product) => [SAREE_A, SAREE_B, SAREE_C].includes(product.id));
 
   marketingPlacementRepository.setPlacementProductIds(MARKETING_PLACEMENTS.SAREE_SECTION, [
     SAREE_C,
@@ -209,7 +209,7 @@ test("resolver returns assigned products from the supplied catalogue in placemen
 test("entries resolve the canonical product primary image and route", () => {
   /* The storefront passes live catalogue rows (published products shaped by
      `toStorefrontProduct`); the entries resolver uses exactly those. */
-  const live = catalogueProducts
+  const live = __catalogue
     .filter((product) => [SAREE_A, SAREE_B].includes(product.id))
     .map((product, index) => toStorefrontProduct(product, index));
   marketingPlacementRepository.setPlacementProductIds(MARKETING_PLACEMENTS.SAREE_SECTION, [SAREE_A]);
@@ -222,7 +222,7 @@ test("entries resolve the canonical product primary image and route", () => {
   assert.ok(entries[0].image.src.includes(`/${SAREE_A}/primary.avif`));
 
   /* The entry's image is the authored primary — no duplicate URL is created. */
-  const authored = catalogueProducts.find((product) => product.id === SAREE_A);
+  const authored = __catalogue.find((product) => product.id === SAREE_A);
   assert.equal(entries[0].image.src, authored.media.primary);
 
   /* Product media folders exist on disk — nothing is re-uploaded or copied. */
@@ -232,7 +232,7 @@ test("entries resolve the canonical product primary image and route", () => {
 });
 
 test("an empty placement resolves to nothing", () => {
-  const live = catalogueProducts.slice(0, 5);
+  const live = __catalogue.slice(0, 5);
   assert.deepEqual(resolvePlacementProducts(MARKETING_PLACEMENTS.SAREE_SECTION, live), []);
   assert.deepEqual(resolvePlacementEntries(MARKETING_PLACEMENTS.SAREE_SECTION, live), []);
   assert.equal(hasPlacementAssignments(MARKETING_PLACEMENTS.SAREE_SECTION), false);
@@ -243,7 +243,7 @@ test("an empty placement resolves to nothing", () => {
 /* ------------------------------------------------------------------ */
 
 test("search covers name, id, sku, department, category and subcategory", () => {
-  const all = catalogueProducts;
+  const all = __catalogue;
   const byName = filterCatalogProducts(all, { query: "Crimson" });
   const byId = filterCatalogProducts(all, { query: "PF-W-SAR" });
   const bySku = filterCatalogProducts(all, { query: "PFS-W-SAR-COT" });
@@ -277,7 +277,7 @@ test("search covers name, id, sku, department, category and subcategory", () => 
 });
 
 test("department / category / subcategory filters derive from taxonomy and narrow correctly", () => {
-  const all = catalogueProducts;
+  const all = __catalogue;
 
   const departments = departmentOptions();
   assert.deepEqual(
@@ -319,7 +319,7 @@ test("department / category / subcategory filters derive from taxonomy and narro
 });
 
 test("combined search + filters intersect, and the full catalogue is always reachable", () => {
-  const all = catalogueProducts;
+  const all = __catalogue;
 
   const combined = filterCatalogProducts(all, {
     department: "women",

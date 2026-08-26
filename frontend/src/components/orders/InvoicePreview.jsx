@@ -10,7 +10,7 @@ import { formatPhone } from "../../utils/validation";
 /**
  * The invoice preview.
  *
- * A frontend document, clearly marked as a demonstration invoice: there is
+ * A frontend-rendered invoice document from the backend order record; it is
  * no invoicing service, no tax engine and no PDF pipeline at this stage.
  * "Download" hands the page to the browser's own print-to-PDF, which needs
  * nothing installed and no new dependency.
@@ -101,7 +101,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
         {/* ------------------------- Toolbar ------------------------- */}
         <div className="flex items-center justify-between gap-4 border-b border-mist/80 px-6 py-4 print:hidden">
           <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">
-            Invoice Preview · Demo Document
+            Invoice Preview
           </p>
           <div className="flex items-center gap-3">
             <AtelierButton
@@ -302,7 +302,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
           <Rule width="w-full" tone="accent" className="my-8" />
 
           <p className="font-ui text-[10px] uppercase leading-relaxed tracking-[.16em] text-taupe">
-            Demonstration invoice — issued by the PRATIKSHYA FASHON frontend for
+            Invoice preview — generated from the PRATIKSHYA FASHON order record for
             client preview. Not a tax invoice and not a record of any real
             transaction.
           </p>

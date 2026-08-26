@@ -24,12 +24,10 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
-import { INITIAL_DEMO_CUSTOMERS } from "../data/mockCustomers";
-import { readStorage, writeStorage } from "../utils/shopping";
-import {
-  loadCustomerRegistry,
-  saveCustomerRegistry,
-} from "../services/customer/customerRegistry";
+/* Account data is backend-owned; the cache below is a memory-only session mirror. */
+const accountCache = new Map();
+const readStorage = (key, fallback) => (accountCache.has(key) ? accountCache.get(key) : fallback);
+const writeStorage = (key, value) => { accountCache.set(key, value); };
 import {
   apiGetMe,
   apiUpdateProfile,
@@ -62,6 +60,7 @@ const loadLocalAccountData = (customer) => {
   if (!customer?.id) {
     return { profile: null, addresses: [], preferences: DEFAULT_PREFERENCES, security: { activeSessions: [] } };
   }
+  /* Session mirror only — a cache of backend data, never seed/demo records. */
   const stored = readStorage(`${ACCOUNT_STORAGE_PREFIX}${customer.id}`, null);
   if (stored && typeof stored === "object") {
     return {
@@ -71,25 +70,11 @@ const loadLocalAccountData = (customer) => {
       security:    stored.security    || { activeSessions: [] },
     };
   }
-  const demoRecord = INITIAL_DEMO_CUSTOMERS.find((c) => c.id === customer.id);
-  if (demoRecord) {
-    return {
-      profile: {
-        id: demoRecord.id, firstName: demoRecord.firstName, lastName: demoRecord.lastName,
-        email: demoRecord.email, phone: demoRecord.phone,
-        dateOfBirth: demoRecord.dateOfBirth || "", avatar: demoRecord.avatar || null,
-        memberSince: demoRecord.memberSince || "2025", createdAt: demoRecord.createdAt,
-      },
-      addresses:   demoRecord.addresses   || [],
-      preferences: demoRecord.preferences || DEFAULT_PREFERENCES,
-      security:    demoRecord.security    || { activeSessions: [] },
-    };
-  }
   return {
     profile:     customer,
     addresses:   [],
     preferences: DEFAULT_PREFERENCES,
-    security: { activeSessions: [{ id: "sess-cur", device: "Current Browser & Device", location: "India", lastActive: "Active now", isCurrent: true }] },
+    security: { activeSessions: [] },
   };
 };
 
@@ -101,6 +86,7 @@ export function AccountProvider({ children }) {
   const { user, updateUser } = useAuth();
   const [accountData, setAccountData] = useState(() => loadLocalAccountData(user));
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // When the authenticated user changes, fetch fresh data from the backend
   useEffect(() => {
@@ -111,8 +97,10 @@ export function AccountProvider({ children }) {
 
     // If we have a real JWT, fetch from backend
     if (getAccessToken()) {
+      let cancelled = false;
       setIsLoading(true);
       apiGetMe().then((result) => {
+        if (cancelled) return;
         setIsLoading(false);
         if (result.ok) {
           setAccountData({
@@ -121,14 +109,18 @@ export function AccountProvider({ children }) {
             preferences: result.preferences,
             security:    result.security,
           });
+          setLoadError(null);
         } else {
-          // Backend unreachable — use localStorage fallback
-          setAccountData(loadLocalAccountData(user));
+          // Show the cached mirror (real backend data from this session) plus
+          // the error so the failure is never silent.
+          setLoadError(result.error ?? "Could not load your account.");
         }
       });
-    } else {
-      setAccountData(loadLocalAccountData(user));
+      return () => { cancelled = true; };
     }
+    setAccountData(loadLocalAccountData(user));
+    setLoadError(null);
+    return undefined;
   }, [user?.id]);
 
   // Keep localStorage in sync so offline / demo mode keeps working
@@ -136,25 +128,6 @@ export function AccountProvider({ children }) {
     if (!user?.id) return;
     writeStorage(`${ACCOUNT_STORAGE_PREFIX}${user.id}`, accountData);
 
-    const registry = loadCustomerRegistry();
-    if (Array.isArray(registry)) {
-      const updatedRegistry = registry.map((c) =>
-        c.id === user.id
-          ? {
-              ...c,
-              firstName:   accountData.profile?.firstName   || c.firstName,
-              lastName:    accountData.profile?.lastName    || c.lastName,
-              email:       accountData.profile?.email       || c.email,
-              phone:       accountData.profile?.phone       || c.phone,
-              dateOfBirth: accountData.profile?.dateOfBirth || c.dateOfBirth,
-              avatar:      accountData.profile?.avatar      || c.avatar,
-              addresses:   accountData.addresses,
-              preferences: accountData.preferences,
-            }
-          : c
-      );
-      saveCustomerRegistry(updatedRegistry);
-    }
   }, [user?.id, accountData]);
 
   // ── Profile ──────────────────────────────────────────────────────────────
@@ -172,7 +145,7 @@ export function AccountProvider({ children }) {
       }
       return result;
     }
-    return { ok: true, message: "Profile updated (offline)." };
+    return { ok: false, message: "You must be signed in to update your profile." };
   }, [updateUser]);
 
   // ── Addresses ────────────────────────────────────────────────────────────
@@ -202,7 +175,7 @@ export function AccountProvider({ children }) {
         : [...currentList];
       return { ...current, addresses: [...updatedList, newAddress] };
     });
-    return { ok: true, addressId: id, message: "Address added (offline)." };
+    return { ok: false, addressId: null, message: "You must be signed in to add an address." };
   }, []);
 
   const updateAddress = useCallback(async (addressId, updatedFields) => {
@@ -225,7 +198,7 @@ export function AccountProvider({ children }) {
       });
       return { ...current, addresses: nextList };
     });
-    return { ok: true, message: "Address updated (offline)." };
+    return { ok: false, message: "You must be signed in to update an address." };
   }, []);
 
   const deleteAddress = useCallback(async (addressId) => {
@@ -249,7 +222,7 @@ export function AccountProvider({ children }) {
       if (wasDefault && remaining.length > 0) remaining[0] = { ...remaining[0], isDefault: true };
       return { ...current, addresses: remaining };
     });
-    return { ok: true, message: "Address removed (offline)." };
+    return { ok: false, message: "You must be signed in to remove an address." };
   }, []);
 
   const setDefaultAddress = useCallback(async (addressId) => {
@@ -269,7 +242,7 @@ export function AccountProvider({ children }) {
       ...current,
       addresses: current.addresses.map((a) => ({ ...a, isDefault: a.id === addressId })),
     }));
-    return { ok: true, message: "Default address updated (offline)." };
+    return { ok: false, message: "You must be signed in to change your default address." };
   }, []);
 
   // ── Preferences ──────────────────────────────────────────────────────────
@@ -287,7 +260,7 @@ export function AccountProvider({ children }) {
       }
       return result;
     }
-    return { ok: true, message: "Preferences saved (offline)." };
+    return { ok: false, message: "You must be signed in to save preferences." };
   }, []);
 
   // ── Security ─────────────────────────────────────────────────────────────
@@ -309,7 +282,7 @@ export function AccountProvider({ children }) {
       ...current,
       security: { activeSessions: (current.security?.activeSessions || []).filter((s) => s.isCurrent) },
     }));
-    return { ok: true, message: "Signed out of all other devices (offline)." };
+    return { ok: false, message: "You must be signed in to manage your sessions." };
   }, []);
 
   // ── Derived ──────────────────────────────────────────────────────────────
@@ -326,6 +299,7 @@ export function AccountProvider({ children }) {
     preferences:        accountData.preferences,
     security:           accountData.security,
     isLoading,
+    loadError,
     updateProfile,
     addAddress,
     updateAddress,
@@ -333,7 +307,7 @@ export function AccountProvider({ children }) {
     setDefaultAddress,
     updatePreferences,
     signOutOtherSessions,
-  }), [accountData, defaultAddress, isLoading, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions]);
+  }), [accountData, defaultAddress, isLoading, loadError, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -345,6 +319,7 @@ export function useAccount() {
       profile: null, addresses: [], defaultAddress: null,
       preferences: DEFAULT_PREFERENCES, security: { activeSessions: [] },
       isLoading: false,
+      loadError: null,
       updateProfile:        () => ({ ok: false, message: "" }),
       addAddress:           () => ({ ok: false, addressId: null, message: "" }),
       updateAddress:        () => ({ ok: false, message: "" }),

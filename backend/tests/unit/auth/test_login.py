@@ -21,7 +21,10 @@ class TestAuthSecurity(unittest.TestCase):
         payload = decode_token(token)
         self.assertIsNotNone(payload)
         self.assertEqual(payload.get("sub"), user_id)
-        self.assertEqual(payload.get("type"), "admin")
+        # security.py emits `user_type` (not `type`) — the contract used by
+        # dependencies.get_current_user_claims and the auth service.
+        self.assertEqual(payload.get("user_type"), "admin")
+        self.assertEqual(payload.get("token_type"), "access")
         self.assertIn("SUPER_ADMIN", payload.get("roles", []))
 
 

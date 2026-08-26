@@ -24,6 +24,7 @@
  */
 
 import { Link, useLocation, useParams } from "react-router-dom";
+import { useCatalog } from "../hooks/useCatalog";
 import { AtelierButton, AtelierSection } from "../design-system";
 import CatalogueBrowser from "../components/storefront/CatalogueBrowser";
 import CatalogueHeader from "../components/storefront/CatalogueHeader";
@@ -41,6 +42,7 @@ import { getRouteMeta } from "../config/navigationConfig";
 import NotFound from "./NotFound";
 
 export default function CatalogueListing({ variant }) {
+  useCatalog();
   const params = useParams();
   const { pathname } = useLocation();
 

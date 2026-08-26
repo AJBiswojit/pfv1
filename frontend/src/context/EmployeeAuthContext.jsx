@@ -109,15 +109,9 @@ export function EmployeeAuthProvider({ children }) {
 
     if (!result.ok) return result;
 
-    // Move tokens to employee-specific keys (apiSignInEmployee stored them in shared keys)
-    try {
-      const accessToken  = localStorage.getItem("pf_access_token");
-      const refreshToken = localStorage.getItem("pf_refresh_token");
-      if (accessToken)  localStorage.setItem(EMPLOYEE_ACCESS_TOKEN_KEY,  accessToken);
-      if (refreshToken) localStorage.setItem(EMPLOYEE_REFRESH_TOKEN_KEY, refreshToken);
-      // Don't remove shared keys here — customer session may coexist
-    } catch { /* ignore */ }
-
+    // apiSignInEmployee already persisted the JWT under the employee-scoped
+    // keys (apiClient derives the scope from the request path), so customer
+    // and admin sessions are never clobbered.
     setSession({ employee: result.employee, isAuthenticated: true });
     return result;
   }, []);

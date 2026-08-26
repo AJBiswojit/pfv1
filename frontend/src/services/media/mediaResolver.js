@@ -24,7 +24,7 @@ import {
   getPlacement,
 } from "../../config/mediaTypes";
 import { imageRef } from "../../data/mediaPlaceholder";
-import { products as catalogueSeedProducts } from "../../data/catalog/products";
+import { getAllProducts as catalogStoreProducts } from "../catalog/catalogStore";
 import { departments as catalogueDepartments } from "../../data/catalog/taxonomy";
 import { collectionPlates as catalogueCollectionPlates } from "../../data/catalog/collections";
 import { getLiveStorefrontProducts, productHref } from "../../data/products";
@@ -811,7 +811,7 @@ export const resolveCategoryCover = (category, usedIds = null) => {
 
   /* Authored catalogue plate — a member product's own primary photography
      from the static frontend catalogue. */
-  const staticMember = (catalogueSeedProducts ?? []).find(
+  const staticMember = (catalogStoreProducts() ?? []).find(
     (product) => product.category === category.id && product.media?.primary
   );
   if (staticMember) {
@@ -936,7 +936,7 @@ export const resolveThemeImage = (theme, usedIds = null) => {
       FALLBACK_REASONS.STATIC_CATALOG
     );
   }
-  const staticMember = (catalogueSeedProducts ?? []).find(
+  const staticMember = (catalogStoreProducts() ?? []).find(
     (product) => product.category === config.categoryId && product.media?.primary
   );
   if (staticMember) {

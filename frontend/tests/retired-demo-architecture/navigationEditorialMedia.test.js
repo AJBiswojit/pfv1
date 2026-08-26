@@ -22,7 +22,7 @@ import catalogRepository from "../src/services/catalogRepository.js";
 import { commands } from "../src/services/workflow/productWorkflowCommands.js";
 import { primaryNavigation } from "../src/config/navigationConfig.js";
 import { departments } from "../src/data/catalog/taxonomy.js";
-import { products as authoredCatalogue } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { getLiveStorefrontProducts } from "../src/data/products/index.js";
 import taxonomyRepository from "../src/services/taxonomyRepository.js";
 import mediaRepository from "../src/services/media/mediaRepository.js";

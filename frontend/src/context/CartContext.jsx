@@ -1,19 +1,21 @@
 /**
- * PRATIKSHYA FASHON — The bag (Phase B wired)
+ * PRATIKSHYA FASHON — The bag (backend-authoritative).
  *
- * Strategy:
- *   - Guest (no token)  → pure localStorage cart (existing behaviour)
- *   - Authenticated     → sync every mutation to backend; localStorage is a
- *                         local echo so the UI never waits for a network round-trip
+ * Authenticated customers: the backend owns cart state, quantities, pricing,
+ * coupon application and stock validation. Every mutation goes through
+ *    GET    /cart
+ *    POST   /cart/items
+ *    PATCH  /cart/items/{lineId}
+ *    DELETE /cart/items/{lineId}
+ *    DELETE /cart
+ *    POST   /cart/coupon
+ *    DELETE /cart/coupon
+ * and the UI renders the server response. API failures surface as errors —
+ * never demo products, never local stock decisions.
  *
- * Backend endpoints (all require customer JWT):
- *   GET    /cart
- *   POST   /cart/items
- *   PATCH  /cart/items/{lineId}
- *   DELETE /cart/items/{lineId}
- *   DELETE /cart
- *   POST   /cart/coupon
- *   DELETE /cart/coupon
+ * Guests (the backend has no guest cart contract): a small client-only cart
+ * lives in localStorage. It is explicitly temporary client state, validated
+ * server-side at checkout.
  */
 
 import {
@@ -24,10 +26,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getProductById } from "../data/products";
-import { getCoupon, validateCoupon } from "../data/shopping/coupons";
 import { useAuth } from "./AuthContext";
 import { getAccessToken } from "../services/api/apiClient";
+import { apiValidateOfferCode } from "../services/api/offersApi";
 import {
   apiGetCart,
   apiAddCartItem,
@@ -37,9 +38,11 @@ import {
   apiApplyCoupon,
   apiRemoveCoupon,
 } from "../services/api/cartApi";
-import inventoryRepository, { INVENTORY_CHANGED_EVENT } from "../services/inventory/inventoryRepository";
-import { PRODUCTS_CHANGED_EVENT } from "../services/catalogRepository";
-import { OFFERS_CHANGED_EVENT } from "../services/offers/offerRepository";
+import {
+  getProductById,
+  ensureProduct,
+} from "../services/catalog/catalogStore";
+import { subscribeCatalog } from "../services/catalog/catalogStore";
 import {
   calculateCartTotals,
   cartLineId,
@@ -51,286 +54,320 @@ import {
 
 const CartContext = createContext(null);
 
-const maximumFor = (product, selection = {}) => {
-  const availability = inventoryRepository.getCustomerAvailability(product, selection);
-  if (availability.tracked) return availability.available;
-  return availability.status === "UNAVAILABLE" ? 0 : getMaxQuantity(product);
-};
-
-const clampFor = (product, selection, quantity) => {
-  const maximum = maximumFor(product, selection);
-  if (maximum <= 0) return 0;
-  return Math.min(maximum, Math.max(1, Math.floor(Number(quantity) || 1)));
-};
+/** UI-only quantity ceiling for the guest cart (config, not authoritative stock). */
+const guestMaximumFor = (product) => getMaxQuantity(product);
 
 // ---------------------------------------------------------------------------
-// Restore cart from localStorage (guest or fallback)
+// Guest cart (client-only)
 // ---------------------------------------------------------------------------
-const restoreCart = () => {
+
+const restoreGuestCart = () => {
   const stored = readStorage(CART_STORAGE_KEY, null);
   const rawLines = Array.isArray(stored?.lines) ? stored.lines : [];
   const byId = new Map();
   rawLines.forEach((line) => {
-    if (!line || typeof line !== "object") return;
-    const product = getProductById(line.productId);
-    if (!product) return;
-    const color = typeof line.color === "string" ? line.color : null;
-    const size  = typeof line.size  === "string" ? line.size  : null;
-    const id = cartLineId(product.id, { color, size });
-    const quantity = clampFor(product, { color, size }, (byId.get(id)?.quantity ?? 0) + (Number(line.quantity) || 0));
-    if (quantity < 1) return;
-    byId.set(id, { id, productId: product.id, color, size, quantity, addedAt: Number(line.addedAt) || Date.now() });
+    if (!line || typeof line !== "object" || !line.productId) return;
+    const id = cartLineId(line.productId, {
+      color: typeof line.color === "string" ? line.color : null,
+      size:  typeof line.size  === "string" ? line.size  : null,
+    });
+    const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
+    byId.set(id, {
+      id, productId: line.productId,
+      color: typeof line.color === "string" ? line.color : null,
+      size: typeof line.size === "string" ? line.size : null,
+      quantity,
+      addedAt: Number(line.addedAt) || Date.now(),
+    });
   });
-  const couponCode = typeof stored?.coupon === "string" ? stored.coupon : null;
   return {
-    lines:      [...byId.values()],
-    couponCode: couponCode && getCoupon(couponCode) ? couponCode : null,
+    lines: [...byId.values()],
+    couponCode: typeof stored?.coupon === "string" ? stored.coupon : null,
+    totals: null, // guest totals are display-only, recomputed client-side
   };
 };
 
+const persistGuestCart = (state) => {
+  writeStorage(CART_STORAGE_KEY, { lines: state.lines, coupon: state.couponCode });
+};
+
 // ---------------------------------------------------------------------------
-// Convert server cart response to frontend lines format
+// Server cart → frontend state
 // ---------------------------------------------------------------------------
+
 function serverCartToState(serverCart) {
   if (!serverCart) return null;
-  const lines = (serverCart.lines ?? serverCart.items ?? []).map((item) => ({
-    id:        item.id,
-    productId: item.product_id ?? item.productId,
-    color:     item.color ?? null,
-    size:      item.size  ?? null,
-    quantity:  item.quantity,
-    addedAt:   item.added_at ?? item.addedAt ?? Date.now(),
-  })).filter((l) => l.productId);
-
   return {
-    lines,
+    lines: (serverCart.lines ?? serverCart.items ?? []).map((item) => ({
+      id:        item.id,
+      productId: item.product_id ?? item.productId,
+      color:     item.color ?? null,
+      size:      item.size  ?? null,
+      quantity:  item.quantity,
+      addedAt:   item.added_at ?? item.addedAt ?? Date.now(),
+    })).filter((l) => l.productId),
     couponCode: serverCart.couponCode ?? serverCart.coupon?.code ?? null,
+    totals:     serverCart.totals ?? null,
   };
 }
 
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
+
 export function CartProvider({ children }) {
   const { user } = useAuth();
-  const [{ lines, couponCode }, setState] = useState(restoreCart);
+  const authenticated = Boolean(user?.id) && Boolean(getAccessToken());
+
+  const [lines, setLines] = useState(() => restoreGuestCart().lines);
+  const [couponCode, setCouponCode] = useState(() => restoreGuestCart().couponCode);
+  const [serverTotals, setServerTotals] = useState(null);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
-  const [inventoryRevision, setInventoryRevision] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Invalidate on external changes
+  // Guest persistence
   useEffect(() => {
-    const refresh = () => setInventoryRevision((v) => v + 1);
-    window.addEventListener(INVENTORY_CHANGED_EVENT, refresh);
-    window.addEventListener(PRODUCTS_CHANGED_EVENT, refresh);
-    window.addEventListener(OFFERS_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener(INVENTORY_CHANGED_EVENT, refresh);
-      window.removeEventListener(PRODUCTS_CHANGED_EVENT, refresh);
-      window.removeEventListener(OFFERS_CHANGED_EVENT, refresh);
-    };
-  }, []);
+    if (!authenticated) persistGuestCart({ lines, couponCode });
+  }, [authenticated, lines, couponCode]);
 
-  // Persist to localStorage
+  // When the user authenticates, the server cart is authoritative
   useEffect(() => {
-    writeStorage(CART_STORAGE_KEY, { lines, coupon: couponCode });
-  }, [lines, couponCode]);
-
-  // When user authenticates, pull the server cart
-  useEffect(() => {
-    if (!user?.id || !getAccessToken()) return;
+    if (!authenticated) {
+      const guest = restoreGuestCart();
+      setLines(guest.lines);
+      setCouponCode(guest.couponCode);
+      setServerTotals(null);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
     setIsSyncing(true);
     apiGetCart().then((result) => {
+      if (cancelled) return;
       setIsSyncing(false);
       if (result.ok && result.cart) {
         const serverState = serverCartToState(result.cart);
-        if (serverState) setState(serverState);
+        if (serverState) {
+          setLines(serverState.lines);
+          setCouponCode(serverState.couponCode);
+          setServerTotals(serverState.totals);
+          setError(null);
+        }
+      } else {
+        setError(result.error ?? "Could not load your bag.");
       }
     });
-  }, [user?.id]);
+    return () => { cancelled = true; };
+  }, [authenticated, user?.id]);
+
+  // Re-resolve guest lines when the catalog snapshot arrives
+  const [catalogTick, setCatalogTick] = useState(0);
+  useEffect(() => subscribeCatalog(() => setCatalogTick((t) => t + 1)), []);
 
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
-  const items = useMemo(
-    () =>
-      lines.map((line) => {
-        const product = getProductById(line.productId);
-        if (!product) return null;
-        return { ...line, product, maximum: maximumFor(product, line), lineTotal: product.price * line.quantity };
-      }).filter(Boolean),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lines, inventoryRevision]
-  );
 
-  const coupon = useMemo(() => (couponCode ? getCoupon(couponCode) : null), [couponCode]);
-
-  const couponState = useMemo(() => {
-    if (!coupon) return { active: false, lapsed: false };
-    const result = validateCoupon(coupon.code, items, { customerId: user?.id, customerEmail: user?.email });
-    return { active: result.ok, lapsed: !result.ok };
-  }, [coupon, items, user?.id, user?.email]);
-
-  const totals = useMemo(
-    () => calculateCartTotals(items, couponState.active ? coupon : null),
-    [items, coupon, couponState]
-  );
-
-  const count = useMemo(
-    () => items.reduce((total, item) => total + item.quantity, 0),
-    [items]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Actions — optimistic local update + background sync
-  // ---------------------------------------------------------------------------
-
-  const addToCart = useCallback(
-    async (product, selection = {}) => {
-      if (!product?.id || !getProductById(product.id)) {
-        return { ok: false, message: "This piece is currently unavailable." };
-      }
-      const maximum = maximumFor(product, selection);
-      if (maximum === 0) return { ok: false, message: "This piece is currently unavailable." };
-
-      const requested = Math.max(1, Math.floor(Number(selection.quantity) || 1));
-      const id        = cartLineId(product.id, selection);
-      const existing  = lines.find((line) => line.id === id);
-      const held      = existing?.quantity ?? 0;
-
-      if (held >= maximum) {
-        return { ok: false, message: "Your bag already holds the maximum quantity currently available." };
-      }
-
-      const quantity = Math.min(maximum, held + requested);
-      const capped   = quantity < held + requested;
-
-      // Optimistic local update
-      setState((current) => {
-        const line = current.lines.find((e) => e.id === id);
-        if (line) {
-          return { ...current, lines: current.lines.map((e) => e.id === id ? { ...e, quantity } : e) };
-        }
-        return {
-          ...current,
-          lines: [...current.lines, { id, productId: product.id, color: selection.color ?? null, size: selection.size ?? null, quantity, addedAt: Date.now() }],
-        };
-      });
-
-      // Backend sync (non-blocking)
-      if (user?.id && getAccessToken()) {
-        apiAddCartItem({ productId: product.id, color: selection.color, size: selection.size, quantity }).then((result) => {
-          if (result.ok && result.cart) {
-            const serverState = serverCartToState(result.cart);
-            if (serverState) setState(serverState);
-          }
-        });
-      }
-
-      return capped
-        ? { ok: true, message: "The requested quantity exceeds current availability — your bag was adjusted." }
-        : { ok: true, message: "Added to your collection." };
-    },
-    [lines, user?.id]
-  );
-
-  const removeFromCart = useCallback((lineId) => {
-    setState((current) => ({ ...current, lines: current.lines.filter((line) => line.id !== lineId) }));
-    if (user?.id && getAccessToken()) {
-      apiRemoveCartItem(lineId).then((result) => {
-        if (result.ok && result.cart) {
-          const serverState = serverCartToState(result.cart);
-          if (serverState) setState(serverState);
-        }
-      });
-    }
-  }, [user?.id]);
-
-  const updateCartQuantity = useCallback((lineId, quantity) => {
-    setState((current) => {
-      if (Number(quantity) < 1) {
-        return { ...current, lines: current.lines.filter((line) => line.id !== lineId) };
-      }
-      return {
-        ...current,
-        lines: current.lines.map((line) => {
-          if (line.id !== lineId) return line;
-          const product = getProductById(line.productId);
-          const next    = product ? clampFor(product, line, quantity) : 0;
-          return next > 0 ? { ...line, quantity: next } : line;
-        }),
-      };
+  const items = useMemo(() => {
+    const resolved = lines.map((line) => {
+      const product = getProductById(line.productId);
+      return product ? { ...line, product } : null;
+    }).filter(Boolean);
+    // Fetch missing product details (deep links) in the background
+    lines.forEach((line) => {
+      if (!getProductById(line.productId)) ensureProduct(line.productId);
     });
+    return resolved;
+  }, [lines, catalogTick]);
 
-    if (user?.id && getAccessToken()) {
-      apiUpdateCartItem(lineId, Number(quantity)).then((result) => {
-        if (result.ok && result.cart) {
-          const serverState = serverCartToState(result.cart);
-          if (serverState) setState(serverState);
-        }
-      });
+  const totals = useMemo(() => {
+    if (authenticated) {
+      return serverTotals ?? { subtotal: 0, shipping: 0, codFee: 0, total: 0, saved: 0 };
     }
-  }, [user?.id]);
+    return calculateCartTotals(items, couponCode ? { code: couponCode } : null);
+  }, [authenticated, serverTotals, items, couponCode]);
 
-  const clearCart = useCallback(() => {
-    setState({ lines: [], couponCode: null });
-    if (user?.id && getAccessToken()) {
-      apiClearCart();
+  const count = useMemo(() => lines.reduce((total, line) => total + line.quantity, 0), [lines]);
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
+  const addToCart = useCallback(async (product, selection = {}) => {
+    const productId = typeof product === "string" ? product : product?.id;
+    if (!productId) return { ok: false, message: "This piece is currently unavailable." };
+
+    const requested = Math.max(1, Math.floor(Number(selection.quantity) || 1));
+    const id = cartLineId(productId, selection);
+    const existing = lines.find((line) => line.id === id);
+    const quantity = (existing?.quantity ?? 0) + requested;
+
+    if (authenticated) {
+      setIsSyncing(true);
+      const result = await apiAddCartItem({ productId, color: selection.color, size: selection.size, quantity });
+      setIsSyncing(false);
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      const serverState = serverCartToState(result.cart);
+      if (serverState) {
+        setLines(serverState.lines);
+        setCouponCode(serverState.couponCode);
+        setServerTotals(serverState.totals);
+      }
+      setError(null);
+      return { ok: true, message: "Added to your collection." };
     }
-  }, [user?.id]);
+
+    // Guest — client-only cart (stock validated server-side at checkout)
+    const target = getProductById(productId) ?? product;
+    const maximum = target ? guestMaximumFor(target) : 99;
+    const capped = quantity > maximum;
+    const nextQuantity = capped ? maximum : quantity;
+    if (nextQuantity < 1) return { ok: false, message: "This piece is currently unavailable." };
+
+    setLines((current) => {
+      const line = current.find((e) => e.id === id);
+      if (line) return current.map((e) => e.id === id ? { ...e, quantity: nextQuantity } : e);
+      return [...current, { id, productId, color: selection.color ?? null, size: selection.size ?? null, quantity: nextQuantity, addedAt: Date.now() }];
+    });
+    return capped
+      ? { ok: true, message: "The requested quantity exceeds the per-piece limit — your bag was adjusted." }
+      : { ok: true, message: "Added to your collection." };
+  }, [authenticated, lines]);
+
+  const removeFromCart = useCallback(async (lineId) => {
+    if (authenticated) {
+      setIsSyncing(true);
+      const result = await apiRemoveCartItem(lineId);
+      setIsSyncing(false);
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      const serverState = serverCartToState(result.cart);
+      if (serverState) {
+        setLines(serverState.lines);
+        setCouponCode(serverState.couponCode);
+        setServerTotals(serverState.totals);
+      }
+      setError(null);
+      return { ok: true };
+    }
+    setLines((current) => current.filter((line) => line.id !== lineId));
+    return { ok: true };
+  }, [authenticated]);
+
+  const updateCartQuantity = useCallback(async (lineId, quantity) => {
+    if (authenticated) {
+      setIsSyncing(true);
+      const result = await apiUpdateCartItem(lineId, Number(quantity));
+      setIsSyncing(false);
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      const serverState = serverCartToState(result.cart);
+      if (serverState) {
+        setLines(serverState.lines);
+        setCouponCode(serverState.couponCode);
+        setServerTotals(serverState.totals);
+      }
+      setError(null);
+      return { ok: true };
+    }
+    setLines((current) => {
+      if (Number(quantity) < 1) return current.filter((line) => line.id !== lineId);
+      const line = current.find((entry) => entry.id === lineId);
+      if (!line) return current;
+      const product = getProductById(line.productId);
+      const maximum = product ? guestMaximumFor(product) : 99;
+      const next = Math.min(maximum, Math.max(1, Math.floor(Number(quantity) || 1)));
+      return current.map((entry) => entry.id === lineId ? { ...entry, quantity: next } : entry);
+    });
+    return { ok: true };
+  }, [authenticated]);
+
+  const clearCart = useCallback(async () => {
+    if (authenticated) {
+      setIsSyncing(true);
+      const result = await apiClearCart();
+      setIsSyncing(false);
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      setLines([]);
+      setCouponCode(null);
+      setServerTotals(null);
+      setError(null);
+      return { ok: true };
+    }
+    setLines([]);
+    setCouponCode(null);
+    return { ok: true };
+  }, [authenticated]);
 
   const getCartItemQuantity = useCallback((product, selection = null) => {
     const productId = typeof product === "string" ? product : product?.id;
     if (!productId) return 0;
     if (selection) {
       const id = cartLineId(productId, selection);
-      return items.find((item) => item.id === id)?.quantity ?? 0;
+      return lines.find((item) => item.id === id)?.quantity ?? 0;
     }
-    return items.filter((item) => item.productId === productId).reduce((total, item) => total + item.quantity, 0);
-  }, [items]);
+    return lines.filter((item) => item.productId === productId).reduce((total, item) => total + item.quantity, 0);
+  }, [lines]);
 
-  const applyCoupon = useCallback(
-    async (code) => {
-      // Always validate locally first (instant feedback)
-      const result = validateCoupon(code, items, {
-        appliedCode: couponCode, customerId: user?.id, customerEmail: user?.email,
-      });
-      if (!result.ok) return result;
-
-      setState((current) => ({ ...current, couponCode: result.coupon.code }));
-
-      // Sync to backend
-      if (user?.id && getAccessToken()) {
-        const apiResult = await apiApplyCoupon(code);
-        if (!apiResult.ok) {
-          setState((current) => ({ ...current, couponCode: null }));
-          return { ok: false, error: apiResult.error };
+  const applyCoupon = useCallback(async (code) => {
+    if (!code || typeof code !== "string") {
+      return { ok: false, message: "Enter a coupon code." };
+    }
+    if (authenticated) {
+      setIsSyncing(true);
+      const result = await apiApplyCoupon(code);
+      setIsSyncing(false);
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      const cart = await apiGetCart();
+      if (cart.ok && cart.cart) {
+        const serverState = serverCartToState(cart.cart);
+        if (serverState) {
+          setLines(serverState.lines);
+          setCouponCode(serverState.couponCode);
+          setServerTotals(serverState.totals);
         }
-        return { ok: true, coupon: result.coupon, message: apiResult.message ?? `${result.coupon.code} is now part of your order.` };
       }
+      setError(null);
+      return { ok: true, coupon: result.coupon, message: result.message ?? `${code} is now part of your order.` };
+    }
 
-      return { ok: true, coupon: result.coupon, message: `${result.coupon.code} is now part of your order.` };
-    },
-    [items, couponCode, user?.id, user?.email]
-  );
+    // Guest — validate against the backend, keep only a valid code client-side
+    const result = await apiValidateOfferCode({ code });
+    if (!result.ok) return { ok: false, message: result.error };
+    setCouponCode(code);
+    return { ok: true, coupon: result.offer, message: result.message || `${code} is now part of your order.` };
+  }, [authenticated]);
 
-  const removeCoupon = useCallback(() => {
-    setState((current) => ({ ...current, couponCode: null }));
-    if (user?.id && getAccessToken()) apiRemoveCoupon();
-  }, [user?.id]);
+  const removeCoupon = useCallback(async () => {
+    if (authenticated) {
+      const result = await apiRemoveCoupon();
+      if (!result.ok) { setError(result.error); return { ok: false, message: result.error }; }
+      setCouponCode(null);
+      const cart = await apiGetCart();
+      if (cart.ok && cart.cart) {
+        const serverState = serverCartToState(cart.cart);
+        if (serverState) setServerTotals(serverState.totals);
+      }
+      return { ok: true };
+    }
+    setCouponCode(null);
+    return { ok: true };
+  }, [authenticated]);
 
   const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   // ---------------------------------------------------------------------------
   const value = useMemo(() => ({
-    items, count, totals, coupon,
-    couponLapsed: couponState.lapsed,
-    isSyncing,
+    items, count, totals, coupon: couponCode ? { code: couponCode } : null,
+    couponCode,
+    couponLapsed: false,
+    isSyncing, error,
     addToCart, removeFromCart, updateCartQuantity, clearCart,
     getCartItemQuantity, applyCoupon, removeCoupon,
     isDrawerOpen, openDrawer, closeDrawer,
-  }), [items, count, totals, coupon, couponState, isSyncing, addToCart, removeFromCart, updateCartQuantity, clearCart, getCartItemQuantity, applyCoupon, removeCoupon, isDrawerOpen, openDrawer, closeDrawer]);
+  }), [items, count, totals, couponCode, isSyncing, error, addToCart, removeFromCart,
+      updateCartQuantity, clearCart, getCartItemQuantity, applyCoupon, removeCoupon,
+      isDrawerOpen, openDrawer, closeDrawer]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -338,14 +375,14 @@ export function CartProvider({ children }) {
 export function useCart() {
   return useContext(CartContext) ?? {
     items: [], count: 0, totals: calculateCartTotals([]), coupon: null,
-    couponLapsed: false, isSyncing: false,
+    couponCode: null, couponLapsed: false, isSyncing: false, error: null,
     addToCart:           () => ({ ok: false, message: "" }),
-    removeFromCart:      () => {},
-    updateCartQuantity:  () => {},
-    clearCart:           () => {},
+    removeFromCart:      () => ({ ok: false, message: "" }),
+    updateCartQuantity:  () => ({ ok: false, message: "" }),
+    clearCart:           () => ({ ok: false, message: "" }),
     getCartItemQuantity: () => 0,
     applyCoupon:         () => ({ ok: false, message: "" }),
-    removeCoupon:        () => {},
+    removeCoupon:        () => ({ ok: false, message: "" }),
     isDrawerOpen: false, openDrawer: () => {}, closeDrawer: () => {},
   };
 }

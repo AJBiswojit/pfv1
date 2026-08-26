@@ -25,8 +25,8 @@ import { cn } from "../../utils/cn";
  * Only product IDs are returned — the catalogue remains the single source of
  * truth for the product's name, taxonomy and media.
  *
- *   · Source of truth: `catalogRepository` (through `useProducts`), seeded by
- *     `src/data/catalog/products.js`. No separate marketing product list is
+ *   · Source of truth: `catalogRepository` (through `useProducts`), served by the backend through
+ *     the backend catalog store. No separate marketing product list is
  *     ever created — every department comes from this one door.
  *   · Search covers name, id, SKU, department, category and subcategory.
  *   · Department / category / subcategory filters derive from

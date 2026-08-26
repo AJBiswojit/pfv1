@@ -3,12 +3,10 @@ import { Link } from "react-router-dom";
 import {
   AlertCircle,
   Banknote,
-  Copy,
   CreditCard,
   Landmark,
   QrCode,
   RotateCcw,
-  ScanLine,
   ShieldCheck,
 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
@@ -30,11 +28,6 @@ import {
   buildOrderId,
   nextOrderSequence,
 } from "../../utils/checkout";
-import {
-  buildSandboxQrPayload,
-  generateSandboxQrSvg,
-  serialiseSandboxQrPayload,
-} from "../../utils/sandboxQr";
 import { AtelierButton } from "../../design-system";
 import CheckoutField, { fieldInputClass } from "./CheckoutField";
 import { cn } from "../../utils/cn";
@@ -43,7 +36,6 @@ const METHOD_ICONS = {
   upi: QrCode,
   card: CreditCard,
   netbanking: Landmark,
-  qr: ScanLine,
   cod: Banknote,
 };
 
@@ -59,7 +51,7 @@ function UpiPanel({ form, onChange, errors }) {
         label="UPI ID"
         required
         error={errors.id}
-        hint="Format: yourname@bank — demo only, nothing is charged."
+        hint="Format: yourname@bank"
       >
         <input
           id="checkout-upi-id"
@@ -182,7 +174,7 @@ function CardPanel({ form, onChange, errors, refs }) {
 
       <p className="flex items-center gap-2 border border-mist/80 bg-surface/30 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
         <ShieldCheck size={14} className="shrink-0 text-accent" aria-hidden="true" />
-        Demo form only — card details are validated for format and never stored,
+        Form values are validated for format and never stored,
         logged or transmitted.
       </p>
     </div>
@@ -225,7 +217,7 @@ function NetBankingPanel({ form, onChange, errors }) {
       )}
       <p className="mt-5 border border-mist/80 bg-surface/30 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
         You will be taken to your bank&rsquo;s sign-in to approve the payment —
-        simulated here for the demonstration.
+        handled by the backend payment session.
       </p>
     </div>
   );
@@ -249,174 +241,6 @@ function CodPanel() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Sandbox QR panel                                                    */
-/* ------------------------------------------------------------------ */
-
-/** Computes the upcoming order id deterministically from the current year
- *  and the document's order sequence. Used to label the QR before the
- *  order has been persisted into order state. The id mirrors `buildOrderId`
- *  / `nextOrderSequence` from `utils/checkout.js`, kept consistent on
- *  purpose. */
-function SandboxQrPanel({ onSimulate, paymentStatus, totals, sessionId }) {
-  const [svgMarkup, setSvgMarkup] = useState(null);
-  const [generationError, setGenerationError] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  // The displayed order id reflects the upcoming reservation that the
-  // payment service is going to bind to this session.
-  const upcomingReference = useMemo(() => {
-    const year = new Date().getFullYear();
-    return buildOrderId(year, nextOrderSequence());
-  }, []);
-
-  const payload = useMemo(
-    () =>
-      buildSandboxQrPayload({
-        reference: upcomingReference,
-        session: sessionId,
-        amount: totals?.total ?? 0,
-        payment: "qr",
-      }),
-    [upcomingReference, sessionId, totals?.total]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    setGenerationError(false);
-    generateSandboxQrSvg(payload, { width: 240 })
-      .then((svg) => {
-        if (cancelled) return;
-        setSvgMarkup(svg);
-        if (!svg) setGenerationError(true);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setGenerationError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [payload]);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard?.writeText(serialiseSandboxQrPayload(payload));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard may not be available — stay silent.
-    }
-  };
-
-  const amount = totals?.total ?? 0;
-  const amountLabel = formatINR(amount);
-
-  return (
-    <div className="border border-mist/80 bg-surface/30 p-5 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.22em] text-accent">
-          <ScanLine size={12} aria-hidden="true" /> Sandbox QR Payment
-        </p>
-        <p className="font-ui text-[10px] uppercase tracking-[.22em] text-taupe">
-          Test Mode · No Real Charge
-        </p>
-      </div>
-
-      <div className="mt-6 grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
-        <div className="flex flex-col items-center">
-          <div
-            className="border border-pearl bg-canvas p-4"
-            style={{ minWidth: 248 }}
-            aria-live="polite"
-          >
-            {svgMarkup ? (
-              <div
-                role="img"
-                aria-label={`Sandbox QR code for ${upcomingReference}`}
-                className="h-56 w-56 max-w-full [&_svg]:h-full [&_svg]:w-full"
-                dangerouslySetInnerHTML={{ __html: svgMarkup }}
-              />
-            ) : generationError ? (
-              <p className="grid h-56 w-56 place-items-center font-ui text-[10px] uppercase tracking-[.18em] text-taupe">
-                QR Generation Error
-              </p>
-            ) : (
-              <div
-                role="status"
-                aria-label="Generating sandbox QR code"
-                className="grid h-56 w-56 animate-pulse place-items-center bg-surface text-center font-ui text-[9px] uppercase tracking-[.22em] text-taupe"
-              >
-                Generating QR…
-              </div>
-            )}
-          </div>
-          <p className="mt-3 font-ui text-[10px] uppercase tracking-[.22em] text-taupe">
-            Scan to Pay
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-              Order Total
-            </p>
-            <p className="mt-1 font-display text-3xl font-light tracking-tight text-ink">
-              {amountLabel}
-            </p>
-          </div>
-
-          <div>
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-              Payment Method
-            </p>
-            <p className="mt-1 font-ui text-sm text-ink">Sandbox QR Payment</p>
-          </div>
-
-          <div>
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-              Sandbox Reference
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <p className="font-mono text-sm text-ink">{upcomingReference}</p>
-              <button
-                type="button"
-                onClick={handleCopy}
-                aria-label={copied ? "Payload copied" : "Copy QR payload"}
-                className="inline-flex items-center gap-1 border border-pearl px-2 py-1 font-ui text-[10px] uppercase tracking-[.16em] text-taupe hover:border-ink hover:text-ink"
-              >
-                <Copy size={11} aria-hidden="true" />
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            {sessionId ? (
-              <p className="mt-1 font-mono text-[10px] text-taupe">
-                Session · {sessionId}
-              </p>
-            ) : null}
-          </div>
-
-          <AtelierButton
-            type="button"
-            variant="primary"
-            size="md"
-            onClick={onSimulate}
-            disabled={paymentStatus === PAYMENT_STATUS.PENDING}
-          >
-            Simulate Payment
-          </AtelierButton>
-
-          <p className="flex items-center gap-2 font-ui text-[10px] leading-relaxed text-taupe">
-            <ShieldCheck size={12} className="shrink-0 text-accent" aria-hidden="true" />
-            The QR encodes safe sandbox fields only — order id, amount,
-            currency and a session reference. No card data, OTP, banking
-            credentials or PII is ever embedded.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Payment states                                                      */
@@ -491,7 +315,7 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
     setErrors((current) => ({ ...current, [method]: {} }));
   };
 
-  /** Validates the active method form and starts the demo payment. */
+  /** Validates the active method form and starts the backend payment session. */
   const handlePay = () => {
     if (!checkout.paymentMethod) {
       setMethodError("Please choose a payment method first.");
@@ -688,55 +512,9 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
           <CardPanel form={forms.card} onChange={(fields) => updateForm("card", fields)} errors={errors.card ?? {}} refs={cardRefs} />
         ) : selectedMethod.id === "netbanking" ? (
           <NetBankingPanel form={forms.netbanking} onChange={(fields) => updateForm("netbanking", fields)} errors={errors.netbanking ?? {}} />
-        ) : selectedMethod.id === "qr" ? (
-          <SandboxQrPanel
-            totals={checkout.totals}
-            sessionId={checkout.sessionId ?? null}
-            paymentStatus={checkout.paymentStatus}
-            onSimulate={() => handlePay()}
-          />
         ) : (
           <CodPanel />
         )}
-      </div>
-
-      {/* --------------------------- Demo controls --------------------------- */}
-      <div className="mt-10 border border-mist/80 bg-surface/20 p-5">
-        <p className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.22em] text-accent">
-          <AlertCircle size={12} aria-hidden="true" /> Demo / Sandbox Payment
-        </p>
-        <p className="mt-2 font-ui text-[11px] leading-relaxed text-taupe">
-          This is a simulated payment experience for demonstration only — no real
-          transaction occurs. Choose the outcome the next attempt should resolve to.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Demo payment scenario">
-          {[
-            { id: "success", label: "Test Success" },
-            { id: "failure", label: "Test Failure" },
-            { id: "cancelled", label: "Test Cancellation" },
-            { id: "pending", label: "Test Pending" },
-          ].map((scenario) => {
-            const selected = checkout.demoScenario === scenario.id;
-            return (
-              <button
-                key={scenario.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => checkout.setDemoScenario(scenario.id)}
-                className={cn(
-                  "border px-3 py-1.5 font-ui text-[9px] uppercase tracking-[.14em] transition-colors",
-                  "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent",
-                  selected
-                    ? "border-accent bg-accent text-white"
-                    : "border-pearl bg-canvas text-taupe hover:border-accent"
-                )}
-              >
-                {scenario.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* ------------------------------ Pay CTA ------------------------------ */}
@@ -765,7 +543,7 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
         </div>
         <p className="mt-4 flex items-center gap-2 font-ui text-[10px] text-taupe">
           <ShieldCheck size={12} className="text-accent" aria-hidden="true" />
-          Secured by the PRATIKSHYA FASHON demo payment layer — no card details leave this page.
+          Secured by the PRATIKSHYA FASHON payment layer — no card details leave this page.
         </p>
       </div>
     </section>

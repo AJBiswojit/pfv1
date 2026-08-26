@@ -64,25 +64,23 @@ export const TRANSFER_STATES = {
 };
 
 const DEFAULT_THRESHOLD = 5;
+
+/* Inventory is backend-owned (documented blocker, INTEGRATION_AUDIT.md §7).
+   The module below is a SESSION MIRROR only: everything in memory, no
+   localStorage registers, no seed locations/products/movements. It never
+   acts as the authoritative stock ledger — customer/checkout stock decisions
+   come from the backend cart/orders endpoints. */
 const memory = new Map();
 
 const readJson = (key, fallback) => {
-  try {
-    if (typeof window === "undefined") return memory.has(key) ? memory.get(key) : fallback;
-    const raw = window.localStorage.getItem(key);
-    return raw === null ? fallback : JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
+  /* Memory-only session mirror (server data would replace this when the
+     inventory API lands). No localStorage authority. */
+  return memory.has(key) ? memory.get(key) : fallback;
 };
 
 const writeJson = (key, value) => {
-  try {
-    if (typeof window === "undefined") memory.set(key, value);
-    else window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* Demo persistence is an enhancement; stock operations still return. */
-  }
+  memory.set(key, value);
+  /* no localStorage write */
 };
 
 const announce = () => {
@@ -178,24 +176,7 @@ const normaliseRecord = (raw) => {
 const recordId = (productId, variantId, locationId) =>
   `inv::${productId}::${variantId || "base"}::${locationId}`;
 
-const SEED_LOCATIONS = [
-  {
-    id: "loc-main-store",
-    name: "Main Store",
-    type: LOCATION_TYPES.STORE,
-    address: "Central shopping mall · Main retail floor",
-    area: "Customer-facing departments",
-    status: LOCATION_STATUS.ACTIVE,
-  },
-  {
-    id: "loc-main-warehouse",
-    name: "Main Warehouse",
-    type: LOCATION_TYPES.WAREHOUSE,
-    address: "Service wing · Receiving entrance",
-    area: "Bulk storage & dispatch",
-    status: LOCATION_STATUS.ACTIVE,
-  },
-];
+const SEED_LOCATIONS = [];
 
 const findProductLike = (products, text) =>
   products.find((product) => product.name.toLowerCase().includes(text.toLowerCase())) ?? null;

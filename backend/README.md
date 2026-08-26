@@ -31,23 +31,41 @@ app/
 └── workers/         # Celery background task workers
 ```
 
-## Quick Start
+## Quick Start — local development (no Docker required)
 
-1. Copy `.env.example` to `.env`:
+The normal development target is a plain Python virtual environment plus
+your existing PostgreSQL server. Docker Compose remains available for the
+future production/deployment phase but is **not** required to develop.
+
+1. Copy `.env.example` to `.env` and set `DATABASE_URL` to your existing
+   PostgreSQL server:
    ```bash
    cp .env.example .env
+   # DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/pratikshya_fashon
    ```
 
-2. Start services with Docker Compose:
+2. Create a virtual environment and install dependencies:
    ```bash
-   docker-compose up --build
+   python -m venv .venv
+   source .venv/bin/activate      # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
    ```
 
-3. Access Interactive API Documentation:
+3. Start the API (no Redis, no Celery, no Docker needed):
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+4. Access Interactive API Documentation:
    - Swagger UI: `http://localhost:8000/docs`
    - ReDoc: `http://localhost:8000/redoc`
+   - Health check: `http://localhost:8000/health`
 
-4. Run Database Migrations:
-   ```bash
-   alembic upgrade head
-   ```
+5. The existing server database schema is authoritative — do **not** run
+   `alembic upgrade head` against a live schema unless explicitly required
+   and verified. Redis-backed caching runs through an in-process LRU shim in
+   development; Celery configuration is left untouched for a later phase.
+
+6. CORS: `ALLOWED_ORIGINS` accepts a plain comma-separated list or a JSON
+   array (both parse identically). Add your frontend dev origin
+   (Vite defaults to `http://localhost:5173`) and restart the server.

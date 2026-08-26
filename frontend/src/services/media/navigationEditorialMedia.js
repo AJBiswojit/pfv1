@@ -57,7 +57,7 @@ import {
   MARKETING_PLACEMENT_OPTIONS,
   PLACEMENT_MODES,
 } from "../../config/mediaTypes";
-import { products as authoredCatalogue } from "../../data/catalog/products";
+import { getAllProducts as catalogStoreProducts } from "../catalog/catalogStore";
 import { departments as canonicalDepartments } from "../../data/catalog/taxonomy";
 import { getLiveStorefrontProducts } from "../../data/products";
 import { getCatalogFingerprint } from "../catalogRepository";
@@ -306,7 +306,7 @@ const fromPublishedProductMedia = (departmentId, liveProducts) => {
 
 /** Rung 3 — the department's own authored canonical catalogue plate. */
 const fromAuthoredCatalogue = (departmentId) => {
-  for (const product of rankEditorialCandidates(authoredCatalogue, departmentId)) {
+  for (const product of rankEditorialCandidates(catalogStoreProducts(), departmentId)) {
     const src = srcOf(product?.media?.primary);
     if (src) return src;
   }

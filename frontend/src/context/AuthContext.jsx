@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handleExpiry = () => {
       setUser(null);
-      clearTokens();
+      clearTokens("customer");
     };
     window.addEventListener("pf:session-expired", handleExpiry);
     return () => window.removeEventListener("pf:session-expired", handleExpiry);

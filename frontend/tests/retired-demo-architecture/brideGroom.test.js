@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { products as authoredProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct, productHref } from "../src/data/products/index.js";
 import {
   isBrideWeddingProduct,
@@ -11,7 +11,7 @@ import {
   selectBrideGroomLooks,
 } from "../src/services/media/mediaResolver.js";
 
-const publishedCatalogue = authoredProducts.map((product, index) =>
+const publishedCatalogue = __catalogue.map((product, index) =>
   toStorefrontProduct({ ...product, status: "PUBLISHED", published: true }, index)
 );
 

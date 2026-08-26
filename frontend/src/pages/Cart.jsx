@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { useStorefrontProducts } from "../hooks/useCatalog";
 import { Link } from "react-router-dom";
 import {
   AtelierButton,
@@ -25,6 +26,7 @@ import { formatINR } from "../utils/shopping";
  * sticky checkout bar keeps the way forward in reach.
  */
 export default function Cart() {
+  const catalogue = useStorefrontProducts();
   const cart = useCart();
   const isEmpty = cart.items.length === 0;
 

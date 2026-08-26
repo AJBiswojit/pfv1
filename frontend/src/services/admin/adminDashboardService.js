@@ -1,147 +1,127 @@
 /**
- * PRATIKSHYA FASHON — Admin dashboard reads.
+ * PRATIKSHYA FASHON — Admin dashboard reads (backend-driven).
  *
- * Presentation-ready business figures assembled from centralised mock data
- * and from the systems that already exist:
- *
- *   employees → EmployeeManagementContext (Phase 10 state, passed in)
- *   orders    → OrderContext / orderService (Phase 9 state, passed in)
- *   business  → src/data/admin/dashboardData.js (mock, static)
- *
- * Nothing here randomises on render, and nothing here writes. Employee and
- * order data are passed in by the caller so the Admin Portal never opens a
- * second, disconnected source of truth.
+ * Business figures come from the backend analytics/orders endpoints:
+ *   GET /analytics/overview | /sales | /products | /customers | /orders
+ *   GET /admin/orders
+ *   GET /admin/employees
+ * There are no static demo figures: if a fetch fails the caller shows
+ * loading/error/empty states.
  */
 
 import {
-  BUSINESS_METRICS,
-  DEMO_RECENT_ORDERS,
-  DEPARTMENT_PERFORMANCE,
-  METRIC_TRENDS,
-  SALES_BY_CATEGORY,
-  SALES_SERIES,
-  TOP_DEPARTMENTS,
-} from "../../data/admin/dashboardData";
+  apiAnalyticsOverview,
+  apiAnalyticsSales,
+  apiAnalyticsTopProducts,
+  apiAnalyticsOrders,
+} from "../api/adminApi";
+import { apiAdminListOrders } from "../api/ordersApi";
+import { apiAdminListEmployees } from "../api/employeesApi";
 import { EMPLOYEE_STATUS } from "../../config/employeeStatus";
-import { ANALYTICS_PRESETS } from "../analytics/dateRange";
-import { getAnalyticsSnapshot, loadCustomerRegistry } from "../analytics/analyticsService";
-import { getReturnMetrics } from "../orders/returnService";
 
-/* ------------------------------------------------------------------ */
-/* Headline metrics                                                    */
-/* ------------------------------------------------------------------ */
+const zeroMetrics = () => ({
+  todaysSales: 0,
+  totalOrders: 0,
+  customers: 0,
+  pendingOrders: 0,
+  returns: 0,
+  employeesPresent: 0,
+  totalEmployees: 0,
+  lowStockCount: 0,
+  productCount: 0,
+  avgOrderValue: 0,
+  revenue: 0,
+});
 
-/**
- * The nine dashboard tiles. `employeesPresent` prefers the live employee
- * register when one is supplied, so a newly created colleague is reflected
- * immediately.
- */
-export const getBusinessMetrics = (employees = [], attendanceSummary = null, orders = []) => {
-  const activeEmployees = employees.filter(
-    (person) => person.status === EMPLOYEE_STATUS.ACTIVE
-  ).length;
+/** Headline metrics from GET /analytics/overview (+ employee directory). */
+export async function loadBusinessMetrics() {
+  const [overview, employeesResult] = await Promise.all([
+    apiAnalyticsOverview(),
+    apiAdminListEmployees({ pageSize: 100 }),
+  ]);
+  if (!overview.ok) {
+    return { ok: false, error: overview.error, metrics: zeroMetrics() };
+  }
+  const metrics = { ...zeroMetrics(), ...overview.metrics };
+  if (employeesResult.ok) {
+    metrics.totalEmployees = (employeesResult.items ?? []).length;
+    metrics.employeesPresent = (employeesResult.items ?? []).filter(
+      (person) => person.status === EMPLOYEE_STATUS.ACTIVE
+    ).length;
+  }
+  return { ok: true, metrics };
+}
 
-  const today = getAnalyticsSnapshot({
-    orders,
-    period: { preset: ANALYTICS_PRESETS.TODAY },
-  });
-  const month = getAnalyticsSnapshot({
-    orders,
-    period: { preset: ANALYTICS_PRESETS.THIS_MONTH },
-  });
-  const openReturns = getReturnMetrics(
-    (orders || []).flatMap((order) => order.returns || [])
-  );
-
-  return {
-    ...BUSINESS_METRICS,
-    todaysSales: today.overview.revenue.current,
-    totalOrders: month.overview.orders.current,
-    customers: loadCustomerRegistry().length || month.overview.customers.current,
-    pendingOrders: (orders || []).filter((order) =>
-      ["PENDING_PAYMENT", "PLACED", "PAYMENT_CONFIRMED", "ORDER_CONFIRMED", "CONFIRMED", "PROCESSING"].includes(
-        order.status
-      )
-    ).length,
-    returns: openReturns.pendingReview || month.overview.returns.current,
-    employeesPresent:
-      attendanceSummary?.presentToday ?? activeEmployees ?? BUSINESS_METRICS.employeesPresent,
-  };
-};
-
-export const getMetricTrends = () => METRIC_TRENDS;
-
-/* ------------------------------------------------------------------ */
-/* Sales overview                                                      */
-/* ------------------------------------------------------------------ */
-
-export const getSalesSeries = () => SALES_SERIES;
-
-export const getSalesByCategory = () => SALES_BY_CATEGORY;
-
-export const getSalesSummary = () => {
-  const total = SALES_SERIES.reduce((sum, point) => sum + point.sales, 0);
-  const orders = SALES_SERIES.reduce((sum, point) => sum + point.orders, 0);
-  const peak = SALES_SERIES.reduce(
-    (best, point) => (point.sales > best.sales ? point : best),
-    SALES_SERIES[0]
-  );
-  return {
-    total,
-    orders,
-    average: Math.round(total / (SALES_SERIES.length || 1)),
-    averageTicket: orders ? Math.round(total / orders) : 0,
-    peak,
-  };
-};
-
-/* ------------------------------------------------------------------ */
-/* Departments                                                         */
-/* ------------------------------------------------------------------ */
-
-export const getDepartmentPerformance = () =>
-  DEPARTMENT_PERFORMANCE.map((department) => ({
-    ...department,
-    achievement: department.target
-      ? Math.round((department.sales / department.target) * 100)
-      : 0,
+/** Sales series from GET /analytics/sales. */
+export async function loadSalesSeries(days = 30) {
+  const result = await apiAnalyticsSales({ days });
+  if (!result.ok) return { ok: false, error: result.error, series: [] };
+  const series = result.series.map((point) => ({
+    date: point.date,
+    sales: point.revenue,
+    orders: point.orders,
   }));
+  return { ok: true, series };
+}
 
-export const getTopDepartments = () => TOP_DEPARTMENTS;
+/** Category breakdown, derived from top products. */
+export async function loadSalesByCategory() {
+  const result = await apiAnalyticsTopProducts({ limit: 100 });
+  if (!result.ok) return { ok: false, error: result.error, categories: [] };
+  const map = new Map();
+  result.items.forEach((item) => {
+    const key = item.productId?.split("-")[0] || "Other";
+    map.set(key, (map.get(key) ?? 0) + item.revenue);
+  });
+  return {
+    ok: true,
+    categories: [...map.entries()].map(([name, revenue]) => ({ name, revenue })),
+  };
+}
+
+/** Order-status breakdown from GET /analytics/orders. */
+export async function loadOrderStatusBreakdown() {
+  const result = await apiAnalyticsOrders();
+  if (!result.ok) return { ok: false, error: result.error, items: [] };
+  return { ok: true, items: result.items };
+}
+
+/** Recent orders from GET /admin/orders (server data only, no demo rows). */
+export async function loadRecentOrders(limit = 5) {
+  const result = await apiAdminListOrders({ pageSize: limit });
+  if (!result.ok) return { ok: false, error: result.error, orders: [] };
+  const orders = (result.orders ?? []).map((order) => ({
+    id: order.id,
+    customer: order.customer?.fullName || order.shippingAddress?.fullName || "Guest",
+    items: (order.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0),
+    amount: Number(order.total ?? order.pricing?.total ?? 0),
+    status: order.status,
+    placedAt: order.createdAt,
+    isDemo: false,
+  }));
+  return { ok: true, orders };
+}
 
 /* ------------------------------------------------------------------ */
-/* Orders                                                              */
+/* Legacy sync-read exports (kept for compatibility; return empty).     */
+/* The dashboard page now uses the async `load*` functions above.       */
 /* ------------------------------------------------------------------ */
 
-/**
- * Flattens real customer orders into the admin row shape. When the browser
- * has no orders yet, a clearly-labelled demo set is returned instead so the
- * panel is never empty in a fresh preview.
- */
-export const getRecentOrders = (orders = [], limit = 5) => {
-  const rows = (Array.isArray(orders) ? orders : [])
-    .slice(0, limit)
-    .map((order) => ({
-      id: order.id,
-      customer: order.customer?.fullName || "Guest",
-      items: Array.isArray(order.items)
-        ? order.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
-        : 0,
-      amount: Number(order.pricing?.total) || 0,
-      status: order.status,
-      placedAt: order.createdAt,
-      isDemo: false,
-    }));
-
-  if (rows.length > 0) return rows;
-
-  return DEMO_RECENT_ORDERS.slice(0, limit).map((order) => ({ ...order, isDemo: true }));
-};
-
-/* People administration is an Employee Portal concern — the Admin
-   dashboard no longer surfaces employee-management widgets. */
+export const getBusinessMetrics = () => zeroMetrics();
+export const getMetricTrends = () => ({ todaysSales: "", totalOrders: "", customers: "", pendingOrders: "", returns: "", employeesPresent: "" });
+export const getSalesSeries = () => [];
+export const getSalesByCategory = () => [];
+export const getSalesSummary = () => ({ total: 0, orders: 0, average: 0, averageTicket: 0, peak: null });
+export const getDepartmentPerformance = () => [];
+export const getTopDepartments = () => [];
+export const getRecentOrders = () => [];
 
 export default {
+  loadBusinessMetrics,
+  loadSalesSeries,
+  loadSalesByCategory,
+  loadOrderStatusBreakdown,
+  loadRecentOrders,
   getBusinessMetrics,
   getMetricTrends,
   getSalesSeries,

@@ -96,15 +96,9 @@ export function AdminAuthProvider({ children }) {
 
     if (!result.ok) return result;
 
-    // Move tokens to admin-specific keys (apiSignInAdmin stored them in the shared keys)
-    try {
-      const accessToken  = localStorage.getItem("pf_access_token");
-      const refreshToken = localStorage.getItem("pf_refresh_token");
-      if (accessToken)  localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY,  accessToken);
-      if (refreshToken) localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, refreshToken);
-      // Don't remove shared keys here — customer session can coexist
-    } catch { /* ignore */ }
-
+    // apiSignInAdmin now persists the JWT under the admin-scoped keys directly
+    // (apiClient derives the token scope from the request path), so customer
+    // and employee sessions are never clobbered.
     setSession({ admin: result.admin, isAuthenticated: true });
     return result;
   }, []);

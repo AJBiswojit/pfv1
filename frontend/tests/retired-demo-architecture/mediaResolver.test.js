@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { products as authoredProducts } from "../src/data/catalog/products.js";
+import { getAllProducts as getAllProducts } from "../src/services/catalog/catalogStore.js";
 import { toStorefrontProduct } from "../src/data/products/index.js";
 import taxonomyRepository from "../src/services/taxonomyRepository.js";
 import {
@@ -13,11 +13,11 @@ import {
   resolveProductCover,
 } from "../src/services/media/mediaResolver.js";
 
-const products = authoredProducts.map(toStorefrontProduct);
+const products = __catalogue.map(toStorefrontProduct);
 
 test("category covers remain isolated to their canonical taxonomy scope", () => {
   for (const category of taxonomyRepository.activeCategories()) {
-    const member = authoredProducts.find((product) => product.category === category.id);
+    const member = __catalogue.find((product) => product.category === category.id);
     const cover = resolveCategoryCover(category);
     assert.ok(member, `${category.id} has an authored product`);
     assert.equal(cover.src, member.media.primary);

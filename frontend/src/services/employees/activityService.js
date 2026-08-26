@@ -7,8 +7,10 @@
  * Passwords are never written here.
  */
 
-import { INITIAL_ACTIVITY } from "../../data/employees/operations";
-import { readStorage, writeStorage } from "../../utils/shopping";
+/* Activity diary is backend-owned (GET /audit/logs). Session mirror only. */
+const activityMemory = new Map();
+const readStorage = (key, fallback) => (activityMemory.has(key) ? activityMemory.get(key) : fallback);
+const writeStorage = (key, value) => { activityMemory.set(key, value); };
 import { employeeFullName } from "../../utils/employee";
 import { EMPLOYEE_STORAGE_KEYS } from "./storage";
 
@@ -273,10 +275,10 @@ export const loadActivity = () => {
     return memoryActivity;
   }
   if (memoryActivity) return memoryActivity;
-  const seeded = INITIAL_ACTIVITY.map(normaliseEntry).filter(Boolean);
-  memoryActivity = seeded;
-  writeStorage(EMPLOYEE_STORAGE_KEYS.ACTIVITY, seeded);
-  return seeded;
+  /* The diary starts empty — activity is backend-owned (GET /audit/logs,
+     GET /admin/activity). No seeded house diary. */
+  memoryActivity = [];
+  return memoryActivity;
 };
 
 export const saveActivity = (entries) => {

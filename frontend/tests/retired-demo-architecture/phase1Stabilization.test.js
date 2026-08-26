@@ -19,7 +19,7 @@ import {
   saveCustomerRegistry,
   findCustomer,
 } from "../src/services/customer/customerRegistry.js";
-import { INITIAL_DEMO_CUSTOMERS } from "../src/data/mockCustomers.js";
+
 import {
   ORDERS_STORAGE_KEY,
   LEGACY_ASSISTED_ORDERS_KEY,

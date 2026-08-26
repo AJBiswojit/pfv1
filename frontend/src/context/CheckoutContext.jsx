@@ -34,14 +34,18 @@ import { useCart } from "./CartContext";
 import { useOrder } from "./OrderContext";
 import {
   CHECKOUT_STEPS,
-  DEMO_SCENARIOS,
   PAYMENT_METHODS,
   getDeliveryMethod,
 } from "../config/checkoutConfig";
-import {
-  PAYMENT_STATUS,
-  getPaymentService,
-} from "../services/payment/paymentService";
+
+/** Payment lifecycle states (client mirror of the backend session states). */
+const PAYMENT_STATUS = {
+  IDLE: "IDLE",
+  PENDING: "PENDING",
+  SUCCESS: "SUCCESS",
+  FAILURE: "FAILURE",
+  CANCELLED: "CANCELLED",
+};
 import {
   apiCreatePaymentSession,
   apiVerifyPayment,
@@ -59,7 +63,6 @@ import {
   validateAddress,
 } from "../utils/checkout";
 import { readStorage, writeStorage } from "../utils/shopping";
-import inventoryRepository from "../services/inventory/inventoryRepository";
 
 export const CHECKOUT_STORAGE_KEY = "pratikshya_checkout";
 
@@ -106,7 +109,6 @@ const freshState = ({ user, addresses = [] }) => {
     paymentStatus: PAYMENT_STATUS.IDLE,
     paymentMessage: "",
     sessionId: null,
-    demoScenario: "success",
     completedOrder: null,
   };
 };
@@ -166,9 +168,6 @@ const restoreCheckout = ({ user, addresses = [] }) => {
       ? stored.paymentMethod
       : null,
     stepIndex,
-    demoScenario: DEMO_SCENARIOS.some((scenario) => scenario.id === stored.demoScenario)
-      ? stored.demoScenario
-      : "success",
   };
 };
 
@@ -188,15 +187,6 @@ export function CheckoutProvider({ children }) {
   stateRef.current = state;
   cartRef.current = cart;
 
-  /**
-   * The demo scenario, mirrored synchronously: a customer can tap a test
-   * scenario and Pay within the same tick, and the payment must use the
-   * scenario they just chose — never the one render caught up with.
-   */
-  const demoScenarioRef = useRef(state.demoScenario);
-  /* Reservation identity is kept outside payment state so an asynchronous
-     sandbox result can always settle exactly the stock it held. */
-  const activeReservationRef = useRef(null);
   const paymentStartingRef = useRef(false);
 
   /* ---------------------------------------------------------------- */
@@ -213,7 +203,6 @@ export function CheckoutProvider({ children }) {
       deliveryMethod: state.deliveryMethod,
       paymentMethod: state.paymentMethod,
       stepIndex: state.stepIndex,
-      demoScenario: state.demoScenario,
       savedAt: Date.now(),
     });
   }, [
@@ -225,7 +214,6 @@ export function CheckoutProvider({ children }) {
     state.deliveryMethod,
     state.paymentMethod,
     state.stepIndex,
-    state.demoScenario,
   ]);
 
   /* ---------------------------------------------------------------- */
@@ -350,24 +338,9 @@ export function CheckoutProvider({ children }) {
       }));
       return;
     }
-    if (current.paymentStatus === PAYMENT_STATUS.PENDING || activeReservationRef.current || paymentStartingRef.current) return;
+    if (current.paymentStatus === PAYMENT_STATUS.PENDING || paymentStartingRef.current) return;
     if (!current.paymentMethod || !current.address) return;
     paymentStartingRef.current = true;
-
-    // Reserve inventory before touching payment
-    const reservation = inventoryRepository.reserveCart(cartRef.current.items, {
-      reference: `CHECKOUT-${Date.now().toString(36).toUpperCase()}`,
-    });
-    if (!reservation.ok) {
-      paymentStartingRef.current = false;
-      setState((s) => ({
-        ...s,
-        paymentStatus: PAYMENT_STATUS.FAILURE,
-        paymentMessage: reservation.error || "Stock changed while you were checking out. Please adjust your bag.",
-      }));
-      return;
-    }
-    activeReservationRef.current = reservation.reservationId;
 
     const totalAmount = calculateCheckoutTotals(
       cartRef.current.totals,
@@ -393,12 +366,9 @@ export function CheckoutProvider({ children }) {
         deliveryMethod: current.deliveryMethod,
         paymentMethod: "cod",
         couponCode: cartNow.coupon?.code ?? null,
-        inventoryReservationId: reservation.reservationId,
       });
       paymentStartingRef.current = false;
       if (!placed?.ok) {
-        inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "COD-ORDER-FAIL" });
-        activeReservationRef.current = null;
         setState((s) => ({
           ...s,
           paymentStatus: PAYMENT_STATUS.FAILURE,
@@ -406,9 +376,6 @@ export function CheckoutProvider({ children }) {
         }));
         return;
       }
-      // Confirm inventory sale
-      inventoryRepository.confirmReservationSale(activeReservationRef.current, { reference: placed.order?.id });
-      activeReservationRef.current = null;
       cartNow.clearCart();
       clearPersistedCheckout();
       setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.SUCCESS, completedOrder: placed.order ?? null }));
@@ -432,8 +399,6 @@ export function CheckoutProvider({ children }) {
     paymentStartingRef.current = false;
 
     if (!sessionResult.ok) {
-      inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "SESSION-FAIL" });
-      activeReservationRef.current = null;
       setState((s) => ({
         ...s,
         paymentStatus: PAYMENT_STATUS.FAILURE,
@@ -485,29 +450,20 @@ export function CheckoutProvider({ children }) {
               deliveryMethod: stateRef.current.deliveryMethod,
               paymentMethod: stateRef.current.paymentMethod,
               couponCode: cartNow.coupon?.code ?? null,
-              inventoryReservationId: activeReservationRef.current,
             });
             if (placed?.ok) {
-              inventoryRepository.confirmReservationSale(activeReservationRef.current, { reference: placed.order?.id });
-              activeReservationRef.current = null;
               cartNow.clearCart();
               clearPersistedCheckout();
               setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.SUCCESS, completedOrder: placed.order ?? null }));
             } else {
-              inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "POST-VERIFY-FAIL" });
-              activeReservationRef.current = null;
               setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.FAILURE, paymentMessage: "Payment was received but the order could not be saved. Please contact support." }));
             }
           } else {
-            inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "VERIFY-FAIL" });
-            activeReservationRef.current = null;
             setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.FAILURE, paymentMessage: "Payment verification failed. No charge has been made." }));
           }
         },
         modal: {
           ondismiss: () => {
-            inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "RAZORPAY-DISMISSED" });
-            activeReservationRef.current = null;
             setState((s) => ({
               ...s,
               paymentStatus: PAYMENT_STATUS.CANCELLED,
@@ -524,8 +480,6 @@ export function CheckoutProvider({ children }) {
     }
 
     // Fallback: backend returned a session but no Razorpay data (shouldn't happen for online)
-    inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "NO-RZP-DATA" });
-    activeReservationRef.current = null;
     setState((s) => ({
       ...s,
       paymentStatus: PAYMENT_STATUS.FAILURE,
@@ -540,8 +494,6 @@ export function CheckoutProvider({ children }) {
     if (current.sessionId) {
       apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
     }
-    inventoryRepository.releaseReservation(activeReservationRef.current, { reference: "CANCEL-ACTIVE" });
-    activeReservationRef.current = null;
     setState((s) => ({
       ...s,
       paymentStatus: PAYMENT_STATUS.CANCELLED,
@@ -585,7 +537,7 @@ export function CheckoutProvider({ children }) {
     const current = stateRef.current;
     if (paymentStartingRef.current) return;
     if (current.paymentStatus === PAYMENT_STATUS.PENDING && current.sessionId) {
-      getPaymentService().cancelPayment(current.sessionId);
+      apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
       return;
     }
     setState((s) => {
@@ -607,7 +559,7 @@ export function CheckoutProvider({ children }) {
     const current = stateRef.current;
     if (paymentStartingRef.current) return;
     if (current.paymentStatus === PAYMENT_STATUS.PENDING && current.sessionId) {
-      getPaymentService().cancelPayment(current.sessionId);
+      apiCancelPaymentSession(current.sessionId, "Customer cancelled").catch(() => {});
       return;
     }
     setState((s) => {
@@ -692,12 +644,6 @@ export function CheckoutProvider({ children }) {
     }));
   }, []);
 
-  const setDemoScenario = useCallback((id) => {
-    const next = DEMO_SCENARIOS.some((scenario) => scenario.id === id) ? id : "success";
-    demoScenarioRef.current = next;
-    setState((s) => ({ ...s, demoScenario: next }));
-  }, []);
-
   const resetCheckout = useCallback(() => {
     clearPersistedCheckout();
     setState(freshState({ user, addresses: account.addresses }));
@@ -720,7 +666,6 @@ export function CheckoutProvider({ children }) {
       setGuestAddress,
       setDeliveryMethod,
       setPaymentMethod,
-      setDemoScenario,
       nextStep,
       backStep,
       goToStep,
@@ -744,7 +689,6 @@ export function CheckoutProvider({ children }) {
       setGuestAddress,
       setDeliveryMethod,
       setPaymentMethod,
-      setDemoScenario,
       nextStep,
       backStep,
       goToStep,
