@@ -14,7 +14,7 @@ import CatalogueBrowser from "../components/storefront/CatalogueBrowser";
 import CategoryShortcuts from "../components/storefront/CategoryShortcuts";
 import { collectionRoutes } from "../data/products/taxonomy";
 import taxonomyRepository from "../services/taxonomyRepository";
-import { categoryHref, collectionHref } from "../services/taxonomyRouting";
+import { categoryHref, resolveCollectionRoute } from "../services/taxonomyRouting";
 import { categoryCounts, products } from "../data/products";
 import { resolveCategoryCover, resolveCollectionCover } from "../services/media/mediaResolver";
 import { cn } from "../utils/cn";
@@ -50,9 +50,17 @@ export default function Shop() {
     };
   }).filter(Boolean);
 
-  const featured = collectionRoutes.featured;
-  const featuredImage = resolveCollectionCover(featured);
-  const featuredHref = collectionHref(taxonomyRepository.findCollection("featured")) ?? "/collections/featured";
+  /*
+   * The featured edit is a backend record, not a page constant: it exists
+   * only while GET /collections carries a routable ACTIVE "featured"
+   * collection. Before hydration — and whenever the backend has no such
+   * collection — the lookup is legitimately empty, so the edit is omitted
+   * rather than rendered from an invented title, href or plate.
+   */
+  const featuredRoute = resolveCollectionRoute("featured");
+  const featured = featuredRoute ? collectionRoutes[featuredRoute.collection.slug] ?? null : null;
+  const featuredImage = featured ? resolveCollectionCover(featured) : null;
+  const featuredHref = featuredRoute?.href ?? null;
   const featuredCount = products.filter((product) => product.isFeatured).length;
 
   return (
@@ -71,38 +79,40 @@ export default function Shop() {
         size="section"
       />
 
-      {/* Featured edit */}
-      <AtelierSection rhythm="none" width="wide" className="pb-20 md:pb-28">
-        <Link to={featuredHref} className="group grid gap-8 md:grid-cols-12 md:items-center">
-          <MediaFrame
-            image={featuredImage}
-            alt={featured.title}
-            aspect="panorama"
-            zoom="soft"
-            surface
-            overlay="inkLeft"
-            className="md:col-span-7"
-          />
+      {/* Featured edit — rendered only when the backend carries the collection */}
+      {featured && featuredHref ? (
+        <AtelierSection rhythm="none" width="wide" className="pb-20 md:pb-28">
+          <Link to={featuredHref} className="group grid gap-8 md:grid-cols-12 md:items-center">
+            <MediaFrame
+              image={featuredImage}
+              alt={featured.title}
+              aspect="panorama"
+              zoom="soft"
+              surface
+              overlay="inkLeft"
+              className="md:col-span-7"
+            />
 
-          <div className="md:col-span-5">
-            <EditorialHeading
-              as="h2"
-              size="subsection"
-              eyebrow={featured.eyebrow}
-              description={featured.description}
-              descriptionClassName={cn(body.editorial, "text-graphite max-w-md")}
-              rule
-              spacing={{ eyebrow: "mb-4", title: "mb-5", rule: "mb-6" }}
-            >
-              {featured.title}
-            </EditorialHeading>
+            <div className="md:col-span-5">
+              <EditorialHeading
+                as="h2"
+                size="subsection"
+                eyebrow={featured.eyebrow}
+                description={featured.description}
+                descriptionClassName={cn(body.editorial, "text-graphite max-w-md")}
+                rule
+                spacing={{ eyebrow: "mb-4", title: "mb-5", rule: "mb-6" }}
+              >
+                {featured.title}
+              </EditorialHeading>
 
-            <p className={cn(eyebrow.label, "text-brass mt-8 group-hover:text-accent transition-colors")}>
-              {`View all ${featuredCount} pieces →`}
-            </p>
-          </div>
-        </Link>
-      </AtelierSection>
+              <p className={cn(eyebrow.label, "text-brass mt-8 group-hover:text-accent transition-colors")}>
+                {`View all ${featuredCount} pieces →`}
+              </p>
+            </div>
+          </Link>
+        </AtelierSection>
+      ) : null}
 
       {/* Category shortcuts */}
       <AtelierSection tone="fade" rhythm="compact" width="wide">
