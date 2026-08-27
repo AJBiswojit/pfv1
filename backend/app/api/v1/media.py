@@ -51,6 +51,7 @@ from app.core.exceptions import (
     NotFoundException,
 )
 from app.core.logging import get_logger
+from app.config import settings
 from app.dependencies import (
     get_current_admin,
     get_db,
@@ -58,6 +59,10 @@ from app.dependencies import (
 )
 from app.models.auth.user import UserModel
 from app.models.catalog.product import ProductModel
+from app.models.media.media_asset import MediaAssetModel
+from app.models.media.product_media import ProductMediaModel
+from app.storage import get_storage_provider
+from sqlalchemy import update
 from app.schemas.media.media import (
     MediaObjectMetaResponse,
     MediaObjectResponse,
@@ -371,6 +376,47 @@ async def upload_product_media_object(
         raise _invalid_key(str(exc)) from exc
 
     return {"ok": True, "object": stored, "status": 201}
+
+
+@router.post("/register", status_code=201, summary="Register an uploaded object as a media asset")
+async def register_media_object(
+    object_key: str = Form(...), product_id: Optional[str] = Form(None), role: str = Form("gallery"),
+    sort_order: int = Form(0), is_primary: bool = Form(False), title: Optional[str] = Form(None),
+    alt_text: Optional[str] = Form(None), db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """Create the durable row only after verifying the real object exists."""
+    await require_admin_permission(current_user, db, "media.upload")
+    media = _get_media_service(db); key = _safe_key(media, object_key)
+    try: meta = await run_in_threadpool(media.object_metadata, key)
+    except ObjectNotFoundError as exc: raise NotFoundException("Media object not found.") from exc
+    row = (await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))).scalars().first()
+    if row is None:
+        row = MediaAssetModel(object_key=key, storage_provider=settings.storage_provider_name,
+            media_type="image", mime_type=meta.content_type, original_filename=key.rsplit("/",1)[-1],
+            file_size=meta.size, checksum_sha256=meta.checksum_sha256, status="uploaded", scope="product",
+            uploaded_by=current_user.id, title=title, alt_text=alt_text)
+        db.add(row); await db.flush()
+    if product_id:
+        product = (await db.execute(select(ProductModel).where(ProductModel.id == product_id))).scalars().first()
+        if product is None: raise NotFoundException("Product not found.")
+        if is_primary:
+            await db.execute(update(ProductMediaModel).where(ProductMediaModel.product_id == product_id).values(is_primary=False))
+        mapping = (await db.execute(select(ProductMediaModel).where(ProductMediaModel.product_id == product_id, ProductMediaModel.media_id == row.id))).scalars().first()
+        if mapping is None:
+            mapping = ProductMediaModel(product_id=product_id, media_id=row.id, role=role, sort_order=sort_order, is_primary=is_primary, assigned_by=current_user.id)
+            db.add(mapping)
+        else: mapping.role, mapping.sort_order, mapping.is_primary = role, sort_order, is_primary
+        await db.commit()
+    else: await db.commit()
+    return {"ok": True, "media": {"id": row.id, "objectKey": row.object_key, "url": media.object_url(row.object_key), "mimeType": row.mime_type}, "assigned": bool(product_id)}
+
+
+@router.get("/assets", summary="List registered media assets")
+async def list_media_assets(db: AsyncSession = Depends(get_db), current_user: UserModel = Depends(get_current_admin)):
+    await require_admin_permission(current_user, db, "media.upload")
+    rows = (await db.execute(select(MediaAssetModel).order_by(MediaAssetModel.created_at.desc()))).scalars().all()
+    return {"ok": True, "items": [{"id": r.id, "objectKey": r.object_key, "url": MediaService(db).object_url(r.object_key), "status": r.status, "mimeType": r.mime_type} for r in rows]}
 
 
 @router.delete(
