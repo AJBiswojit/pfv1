@@ -26,8 +26,7 @@ import {
   runAction,
 } from "../../services/admin/productAdminService";
 import { formatAdminError } from "../../services/admin/adminError";
-import { nextCanonicalProductId } from "../../config/productIdPrefixes";
-import { apiAdminGetPublishIssues } from "../../services/api/productsApi";
+import { apiAdminGetNextId, apiAdminGetPublishIssues } from "../../services/api/productsApi";
 import {
   archiveProduct,
   createProduct,
@@ -174,12 +173,20 @@ export default function ProductEditor({
   exitTo = "/admin/products",
 }) {
   const navigate = useNavigate();
-  const savedProduct = productId ? catalogRepository.find(productId) : null;
 
-  const [draft, setDraft] = useState(() =>
-    savedProduct ? draftFromProduct(savedProduct) : emptyDraft()
-  );
-  const [baseline, setBaseline] = useState(() => JSON.stringify(draft));
+  /*
+   * The server is the source of truth for an existing record. A hard
+   * navigation straight to `/admin/products/{id}/edit` used to resolve the
+   * record from the in-memory session cache, so a cold cache rendered
+   * "Product unavailable" even though the server had the row (PF3-N05).
+   * The editor now fetches the authoritative record on mount and only treats
+   * a record as missing after the server answered.
+   */
+  const [loadState, setLoadState] = useState(productId ? "loading" : "ready");
+  const [loadError, setLoadError] = useState(null);
+
+  const [draft, setDraft] = useState(() => emptyDraft());
+  const [baseline, setBaseline] = useState(() => JSON.stringify(emptyDraft()));
   const [section, setSection] = useState("basics");
   const [feedback, setFeedback] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -191,6 +198,32 @@ export default function ProductEditor({
   const patch = useCallback((partial) => {
     setDraft((current) => ({ ...current, ...partial }));
   }, []);
+
+  /* --- server load (authoritative record on mount) ------------------- */
+
+  useEffect(() => {
+    if (!productId) {
+      setLoadState("ready");
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadState("loading");
+    fetchAdminProduct(productId).then((result) => {
+      if (cancelled) return;
+      if (result.ok && result.product) {
+        const nextDraft = draftFromProduct(result.product);
+        setDraft(nextDraft);
+        setBaseline(JSON.stringify(nextDraft));
+        setLoadState("ready");
+      } else {
+        setLoadError(result.error ?? "That product could not be found on the server.");
+        setLoadState("error");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   /* --- unsaved changes -------------------------------------------- */
 
@@ -237,9 +270,8 @@ export default function ProductEditor({
 
   const publishIssues = useMemo(() => {
     if (isNew) return ["Save the product first, then add a cover image."];
-    const issues = getPublishIssues({ ...savedProduct, ...draft, id: draft.id });
-    return issues;
-  }, [draft, isNew, savedProduct]);
+    return getPublishIssues(draft);
+  }, [draft, isNew]);
 
   /*
    * Phase 5: for admins the AUTHORITATIVE gate is the server's
@@ -353,12 +385,20 @@ export default function ProductEditor({
       try {
         let id = draft.id;
         if (!draft.exists && !id) {
-          id = nextCanonicalProductId(
-            catalogRepository.all(),
-            draft.department,
-            draft.category,
-            draft.subcategory
-          );
+          // Server-authoritative product id: ask the backend, never derive one
+          // from the local session cache or a static taxonomy snapshot.
+          const nextId = await apiAdminGetNextId(draft.category);
+          if (!nextId.ok) {
+            setFeedback({
+              kind: "error",
+              message:
+                formatAdminError(nextId, { entity: "product", action: "allocated an ID for" }) ||
+                nextId.error ||
+                "The server could not allocate a Product ID.",
+            });
+            return null;
+          }
+          id = nextId.nextId;
         }
         const result = await persistAdminProduct({ ...payload, id: id ?? undefined }, { isNew: !draft.exists });
         if (!result.ok) {
@@ -578,11 +618,22 @@ export default function ProductEditor({
   const prevSection = currentSectionIndex > 0 ? SECTIONS[currentSectionIndex - 1] : null;
   const nextSection = currentSectionIndex < SECTIONS.length - 1 ? SECTIONS[currentSectionIndex + 1] : null;
 
-  if (productId && !savedProduct) {
+  if (productId && loadState === "loading") {
+    return (
+      <div className="border border-mist/80 bg-canvas p-8 text-center">
+        <p className="font-display text-2xl font-light text-ink">Loading product…</p>
+        <p className="mt-2 font-ui text-sm text-taupe">Fetching the authoritative record from the server.</p>
+      </div>
+    );
+  }
+
+  if (productId && loadState === "error") {
     return (
       <div className="border border-mist/80 bg-canvas p-8 text-center">
         <p className="font-display text-2xl font-light text-ink">Product unavailable</p>
-        <p className="mt-2 font-ui text-sm text-taupe">That product could not be found in the catalogue.</p>
+        <p className="mt-2 font-ui text-sm text-taupe">
+          {loadError || "That product could not be found on the server."}
+        </p>
         <AtelierButton size="chip" className="mt-5" onClick={() => navigate(exitTo)}>
           Back to products
         </AtelierButton>

@@ -367,7 +367,8 @@ async def admin_create_draft(
     description=(
         "Source: `nextStableProductId()`.  \n"
         "Query: `category={categoryId}&preferredNumber={n}` (optional).  \n"
-        "Never random; scans the register and picks the lowest free integer."
+        "Never random; scans the register and picks the lowest free integer.  \n"
+        "Canonical form: `PF-{CATEGORY_CODE}-{NNNN}` (four-digit serial)."
     ),
 )
 async def admin_get_next_id(

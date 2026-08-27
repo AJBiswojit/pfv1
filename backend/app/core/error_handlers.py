@@ -8,6 +8,32 @@ from app.core.logging import get_logger
 
 logger = get_logger("app.error_handlers")
 
+
+def _json_safe(value):
+    """Coerce a value to JSON-serialisable primitives.
+
+    `RequestValidationError.errors()` embeds live exception objects inside
+    ``ctx.error`` whenever a validator raises (e.g. the ``ValueError`` raised
+    by a lifecycle-key blocker or an id regex validator). Handing those
+    objects straight to ``JSONResponse`` makes the 422 handler itself raise
+    ``TypeError``, which ``ServerErrorMiddleware`` then turns into a 500.
+    Walking the payload here keeps every field-level detail (``loc``, ``msg``,
+    ``type``, ``input``, ``ctx``, ``url``) while reducing non-primitives to
+    their string form so the envelope is always renderable.
+    """
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_json_safe(item) for item in value]
+    # Everything else — ValueError, enum members, arbitrary objects — becomes
+    # its readable representation so the field-level detail is never lost.
+    return str(value)
+
+
 _HTTP_STATUS_CODES = {
     400: "BAD_REQUEST",
     401: "UNAUTHORIZED",
@@ -58,9 +84,10 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        details = _json_safe(exc.errors())
         logger.warning(
             "Validation error path=%s errors=%s",
-            request.url.path, exc.errors(),
+            request.url.path, details,
         )
         return JSONResponse(
             status_code=422,
@@ -69,7 +96,7 @@ def register_error_handlers(app: FastAPI) -> None:
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "Invalid request payload or parameters",
-                    "details": exc.errors(),
+                    "details": details,
                 },
             },
         )
