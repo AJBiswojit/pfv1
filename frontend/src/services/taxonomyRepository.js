@@ -18,8 +18,11 @@ import {
   refreshCatalog,
 } from "./catalog/catalogStore";
 import {
+  apiAdminGetCategory,
+  apiAdminListSubcategories,
   apiAdminCreateCategory,
   apiAdminUpdateCategory,
+  apiAdminActivateCategory,
   apiAdminArchiveCategory,
   apiAdminRestoreCategory,
   apiAdminCreateSubcategory,
@@ -67,7 +70,7 @@ const asCategory = (record) => ({
   description: record.description ?? "",
   image: record.image ?? null,
   bannerMediaId: record.bannerMediaId ?? record.banner_media_id ?? null,
-  status: record.status ?? TAXONOMY_STATUS.ACTIVE,
+  status: record.status ?? null,
   sortOrder: Number(record.sortOrder ?? 0),
   featured: Boolean(record.featured ?? record.is_featured),
   seoTitle: record.seoTitle ?? record.name,
@@ -83,7 +86,7 @@ const asSubcategory = (record) => ({
   slug: record.slug ?? record.id,
   description: record.description ?? "",
   image: record.image ?? null,
-  status: record.status ?? TAXONOMY_STATUS.ACTIVE,
+  status: record.status ?? null,
   sortOrder: Number(record.sortOrder ?? 0),
 });
 
@@ -163,28 +166,67 @@ export const taxonomyRepository = {
   },
   getCollectionLabel: (idOrSlugOrName) => taxonomyRepository.findCollection(idOrSlugOrName)?.name || String(idOrSlugOrName || ""),
 
+  /**
+   * ── Admin reads: server-resolved, ANY lifecycle status ──────────────────
+   *
+   * `findCategory` above is a SYNC lookup into the storefront catalog
+   * snapshot, which is hydrated from GET /categories?status=ACTIVE — it can
+   * only ever see ACTIVE rows. Admin desks (detail + edit) must not use it
+   * as their source of truth: a DRAFT or ARCHIVED category is simply absent
+   * there, which is what produced the false "Category not found".
+   *
+   * These loaders go to the admin endpoints instead and return the server
+   * record verbatim (including its real status), or an explicit failure
+   * with the HTTP status so screens can distinguish 404 from a network
+   * error. They never fabricate a record.
+   */
+  loadCategory: async (idOrSlug) => {
+    if (!idOrSlug) return { ok: false, error: "No category id was provided.", status: 0, data: null };
+    const result = await apiAdminGetCategory(idOrSlug);
+    if (!result.ok) return result;
+    return { ok: true, category: asCategory(result.category) };
+  },
+  loadSubcategories: async (categoryId) => {
+    if (!categoryId) return { ok: false, error: "No category id was provided.", status: 0, data: null };
+    const result = await apiAdminListSubcategories(categoryId);
+    if (!result.ok) return result;
+    return {
+      ok: true,
+      items: (result.items ?? [])
+        .map((entry) => asSubcategory({ ...entry, categoryId: entry.categoryId ?? categoryId }))
+        .sort(byOrder),
+    };
+  },
+
   // ── Mutations: backend-owned, fire the API and refresh the store ──────────
   createCategory: async (draft, _actor = null) => {
     const result = await apiAdminCreateCategory({ ...draft, slug: draft.slug || slugify(draft.name) });
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, category: result.category };
   },
   updateCategory: async (id, patch, _actor = null) => {
     const result = await apiAdminUpdateCategory(id, patch);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
+    await refreshCatalog();
+    return { ok: true, category: result.category };
+  },
+  /** DRAFT → ACTIVE, through the server's lifecycle endpoint only. */
+  activateCategory: async (id, _actor = null) => {
+    const result = await apiAdminActivateCategory(id);
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, category: result.category };
   },
   archiveCategory: async (id, _actor = null) => {
     const result = await apiAdminArchiveCategory(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
   restoreCategory: async (id, _actor = null) => {
     const result = await apiAdminRestoreCategory(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
