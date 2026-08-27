@@ -14,8 +14,10 @@
  *     `MEDIA_URL_PREFIX`) and is overridable by configuration, so a CDN or a
  *     separate API origin is an env change, not a rewrite.
  *   · `mediaApi` makes real HTTP calls for object storage (status, resolve,
- *     metadata, upload, delete) and returns an explicit BACKEND_GAP for the
- *     media register, which still has no database columns.
+ *     metadata, upload, delete). Since Phase 7 the media register is ALSO
+ *     real (MediaAsset/ProductMedia rows exposed by the backend); the only
+ *     remaining explicit BACKEND_GAP is the MARKETING assignment family,
+ *     which has no backend API by design.
  *   · No media bytes or authoritative media metadata are written to
  *     localStorage / sessionStorage.
  */
@@ -41,8 +43,9 @@ import {
   resolveMediaUrl,
 } from "../src/services/media/mediaPaths.js";
 import {
-  MEDIA_UPLOAD_BLOCKER,
+  MARKETING_MEDIA_BLOCKER,
   apiDeleteMediaObject,
+  apiListMarketingMedia,
   apiGetMediaObjectMeta,
   apiGetMediaStorageStatus,
   apiGetProductMediaSet,
@@ -352,16 +355,27 @@ test("upload failures surface the server message, never a fake success", async (
   assert.match(result.error, /media\.upload/);
 });
 
-test("the media register is still an explicit BACKEND_GAP, not a stub success", async () => {
-  const calls = mockFetch({ ok: true });
-  for (const call of [apiListMedia]) {
+test("the media register is now real HTTP; only marketing remains a BACKEND_GAP", async () => {
+  // Phase 7 deliberately supersedes the Phase 6 blocker: the register is a
+  // real endpoint family. `apiListMedia` must make a real request now.
+  const calls = mockFetch({ ok: true, items: [] });
+  const listed = await apiListMedia();
+  assert.equal(calls.length, 1, "the register is live — it must call the server");
+  assert.match(String(calls[0].url), /\/media\/assets$/);
+  assert.equal(listed.ok, true);
+  assert.deepEqual(listed.items, []);
+
+  // The marketing family stays an honest gap — no request, explicit code.
+  calls.length = 0;
+  for (const call of [apiListMarketingMedia]) {
     const result = await call();
     assert.equal(result.ok, false);
     assert.equal(result.code, "BACKEND_GAP");
-    assert.match(result.error, /no business columns/);
+    assert.match(result.error, /marketing/i);
   }
-  assert.equal(calls.length, 0, "a blocked call must not make a request");
-  assert.match(MEDIA_UPLOAD_BLOCKER, /media tables carry no business columns/);
+  assert.equal(calls.length, 0, "a blocked MARKETING call must not make a request");
+  assert.match(MARKETING_MEDIA_BLOCKER, /marketing/i);
+  assert.match(MARKETING_MEDIA_BLOCKER, /Product-media registration is live/);
 });
 
 // ===========================================================================
@@ -416,10 +430,13 @@ test("media bytes and media metadata are never written to browser storage", () =
   assert.ok(!/localStorage\.setItem\([^)]*(media|image|object|upload)/i.test(client));
 });
 
-test("the admin upload form reports the real blocker instead of faking success", () => {
+test("the admin upload form drives the real product pipeline and keeps marketing honest", () => {
   const form = src("src/components/media/MediaUploadForm.jsx");
-  assert.ok(form.includes("MEDIA_UPLOAD_BLOCKER"));
-  assert.ok(!/setUploadState\("completed"\)/.test(form));
+  // Marketing scope still states the real backend gap instead of succeeding.
+  assert.ok(form.includes("MARKETING_MEDIA_BLOCKER"));
+  // Product scope is the real Phase 7 pipeline, not a simulation.
+  assert.ok(form.includes("uploadAndRegisterProductImages"));
+  assert.ok(form.includes("syncProductMediaFromServer"));
   // No browser-only persistence of the upload either.
   assert.ok(!/localStorage\.setItem/.test(form));
 });

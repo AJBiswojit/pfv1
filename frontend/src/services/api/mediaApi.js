@@ -1,9 +1,8 @@
 /**
- * PRATIKSHYA FASHON — Media API (Phase 6).
+ * PRATIKSHYA FASHON — Media API (Phases 6 + 7).
  *
- * Phase 6 activated the OBJECT STORAGE half of the media domain. The backend
- * now serves and stores real objects behind the storage abstraction
- * (`backend/app/storage`), so these functions make real HTTP calls:
+ * Phase 6 activated OBJECT STORAGE; Phase 7 completed the RECORD half.
+ * Everything below makes real HTTP calls against the backend contract:
  *
  *   GET    /media/storage/status                    apiGetMediaStorageStatus
  *   POST   /media/references/resolve                apiResolveMediaReferences
@@ -11,21 +10,28 @@
  *   GET    /media/object-meta/{key}                 apiGetMediaObjectMeta
  *   POST   /media/objects                           apiUploadMediaObject
  *   POST   /media/products/{id}/objects             apiUploadProductMediaObject
- *   DELETE /media/objects/{key}                     apiDeleteMediaObject
+ *   POST   /media/register                          apiRegisterMediaObject
+ *   GET    /media/assets                            apiListMediaAssets
  *   GET    /media/products/{id}/media-set           apiGetProductMediaSet
+ *   DELETE /media/objects/{key}                     apiDeleteMediaObject
  *
- * The MEDIA REGISTER half is still a genuine blocker, and it is not faked:
- * `media_media_asset`, `media_product_media`, `media_marketing_media` and
- * `media_media_review` declare a table name and NO business columns, so no
- * media record can be created, listed, mapped or reviewed without a schema
- * change — which this phase is forbidden from making. Those functions return
- * a precise, user-visible explanation instead of an optimistic success.
+ * The product-media lifecycle is REAL and complete:
+ *   upload → object key → registration (MediaAsset row) → product
+ *   assignment (ProductMedia row) → product save → publish → storefront.
  *
- * See PHASE_6_IMPLEMENTATION_REPORT.md §13 and §19.
+ * MARKETING media remains a separate explicit assignment with its own
+ * review path — registering product media never promotes it to marketing.
  */
 
-import { apiClient } from "./apiClient";
+import { apiClient, ApiError } from "./apiClient";
 import { MEDIA_URL_PREFIX, mediaOrigin, mediaObjectUrl } from "../media/mediaPaths";
+
+const handleError = (fallback) => (error) => {
+  if (error instanceof ApiError) {
+    return { ok: false, error: error.message, status: error.status, data: error.data ?? null };
+  }
+  return { ok: false, error: fallback, status: 0, data: null };
+};
 
 // ---------------------------------------------------------------------------
 // Object storage — REAL
@@ -166,38 +172,123 @@ export const encodeMediaKey = (objectKey) =>
     .join("/");
 
 // ---------------------------------------------------------------------------
-// Media register — still BLOCKED, and honestly reported
+// Media register (Phase 7) — REAL durable records
 // ---------------------------------------------------------------------------
 
-const REGISTER_BLOCKER =
-  "Media records are not available yet: the backend media tables " +
-  "(media_media_asset, media_product_media, media_marketing_media, " +
-  "media_media_review) declare no business columns in the existing schema, " +
-  "and this phase may not add columns or migrations. Object storage itself " +
-  "is live — see PHASE_6_IMPLEMENTATION_REPORT.md §19.";
-
-function registerUnavailable() {
-  return { ok: false, error: REGISTER_BLOCKER, code: "BACKEND_GAP" };
+/**
+ * Register an uploaded object as a durable MediaAsset, optionally assigning
+ * it to a product in the same call.
+ *
+ * The backend verifies the object actually exists in the configured store,
+ * records provider metadata (mime, size, SHA-256) on `media_media_asset`,
+ * and — when `productId` is passed — writes the `media_product_media`
+ * association. Idempotent by object key: re-registering updates the
+ * association's role / sort order / primary flag in place and never
+ * duplicates the asset row.
+ *
+ * A failed registration returns `{ ok: false, error, status }` with the
+ * server's own message — the caller must surface it and must NOT invent a
+ * media id.
+ */
+export async function apiRegisterMediaObject(
+  objectKey,
+  { productId = null, role = "gallery", sortOrder = 0, isPrimary = false, title = null, altText = null, scope = "admin" } = {}
+) {
+  const key = String(objectKey || "").trim();
+  if (!key) return { ok: false, error: "No media object key supplied.", status: 0 };
+  const form = new FormData();
+  form.append("object_key", key);
+  if (productId) form.append("product_id", String(productId));
+  if (role) form.append("role", String(role));
+  form.append("sort_order", String(Number(sortOrder) || 0));
+  if (isPrimary) form.append("is_primary", "true");
+  if (title) form.append("title", String(title));
+  if (altText) form.append("alt_text", String(altText));
+  try {
+    const data = await apiClient.upload("/media/register", form, { scope });
+    return {
+      ok: true,
+      media: data?.media ?? null,
+      assigned: Boolean(data?.assigned),
+      assignment: data?.assignment ?? null,
+    };
+  } catch (error) {
+    return handleError("Media registration failed.")(error);
+  }
 }
 
-export async function apiListMedia()          { return registerUnavailable(); }
-export async function apiGetMedia()           { return registerUnavailable(); }
-export async function apiCreateMedia()        { return registerUnavailable(); }
-export async function apiUpdateMedia()        { return registerUnavailable(); }
-export async function apiListProductMedia()   { return registerUnavailable(); }
-export async function apiAssignMediaToProduct() { return registerUnavailable(); }
-export async function apiListMarketingMedia() { return registerUnavailable(); }
-export async function apiListMediaReviews()   { return registerUnavailable(); }
-export async function apiApproveMedia()       { return registerUnavailable(); }
-export async function apiRejectMedia()        { return registerUnavailable(); }
+/** The durable registered asset library (admin). */
+export async function apiListMediaAssets({ scope = "admin" } = {}) {
+  try {
+    const data = await apiClient.get("/media/assets", { scope });
+    return { ok: true, items: data?.items ?? [] };
+  } catch (error) {
+    return handleError("The media asset library could not be loaded.")(error);
+  }
+}
 
-/** The upload blocker, stated precisely for the admin UI. */
-export const MEDIA_UPLOAD_BLOCKER =
-  "Object storage is live, but an upload cannot be registered as media yet: " +
-  "the media tables carry no business columns, so no media record can be " +
-  "created. The file was not stored and no placeholder media was created. " +
-  "To attach an image to a product, set the product's image reference to an " +
-  "existing media URL.";
+/* ------------------------------------------------------------------------ */
+/* Compatibility aliases — the old register-facing names now do real work.   */
+/* ------------------------------------------------------------------------ */
+
+/** List registered media assets (admin library). */
+export const apiListMedia = () => apiListMediaAssets();
+
+/** Register a previously uploaded object (no product assignment). */
+export const apiCreateMedia = (draft = {}) => apiRegisterMediaObject(draft.objectKey || draft.key, draft);
+
+/**
+ * Assign an already-registered media asset to a product — the register
+ * endpoint updates the existing association in place (role / order /
+ * primary), so it doubles as the product-assignment verb.
+ */
+export const apiAssignMediaToProduct = (mediaOrKey, productId, options = {}) =>
+  apiRegisterMediaObject(mediaOrKey?.objectKey || mediaOrKey?.key || mediaOrKey, {
+    ...options,
+    productId,
+  });
+
+/**
+ * The product's registered media associations, server-ordered primary-first.
+ * Shape: [{ mediaId, objectKey, url, role, sortOrder, isPrimary, mimeType, … }]
+ */
+export async function apiListProductMedia(productId, { scope = "none" } = {}) {
+  const result = await apiGetProductMediaSet(productId);
+  if (!result.ok) return result;
+  const data = result.data ?? {};
+  return {
+    ok: true,
+    items: data.mediaItems ?? [],
+    mediaRecordsAvailable: Boolean(data.mediaRecordsAvailable),
+    primary: data.primary ?? null,
+    gallery: data.gallery ?? [],
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Marketing media — STILL a separate, honest backend gap.                   */
+/* Registering PRODUCT media is live; converting it to marketing placements   */
+/* is a distinct explicit assignment the backend does not expose yet.         */
+/* ------------------------------------------------------------------------ */
+
+const MARKETING_REGISTER_BLOCKER =
+  "Product-media registration is live (Phase 7), but marketing placements " +
+  "are a separate explicit assignment the backend does not expose yet — " +
+  "(media_marketing_media / media_media_review have no API). A product " +
+  "upload is never silently promoted to a marketing slot; choose Product " +
+  "Media scope to register media against a product.";
+
+function marketingUnavailable() {
+  return { ok: false, error: MARKETING_REGISTER_BLOCKER, code: "BACKEND_GAP" };
+}
+
+export async function apiListMarketingMedia() { return marketingUnavailable(); }
+export async function apiListMediaReviews()   { return marketingUnavailable(); }
+export async function apiApproveMedia()       { return marketingUnavailable(); }
+export async function apiRejectMedia()        { return marketingUnavailable(); }
+
+/** The marketing assignment blocker, stated precisely for the admin UI. */
+export const MARKETING_MEDIA_BLOCKER = MARKETING_REGISTER_BLOCKER;
 
 export default {
   apiMediaObjectUrl,
@@ -208,7 +299,10 @@ export default {
   apiGetProductMediaSet,
   apiUploadMediaObject,
   apiUploadProductMediaObject,
+  apiRegisterMediaObject,
+  apiListMediaAssets,
+  apiListProductMedia,
   apiDeleteMediaObject,
   encodeMediaKey,
-  MEDIA_UPLOAD_BLOCKER,
+  MARKETING_MEDIA_BLOCKER,
 };

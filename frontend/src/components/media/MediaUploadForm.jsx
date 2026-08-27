@@ -21,7 +21,12 @@ import useMediaActions from "../../hooks/useMediaActions";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import catalogRepository from "../../services/catalogRepository";
-import { MEDIA_UPLOAD_BLOCKER } from "../../services/api/mediaApi";
+import { MARKETING_MEDIA_BLOCKER } from "../../services/api/mediaApi";
+import {
+  PRODUCT_MEDIA_STAGES,
+  syncProductMediaFromServer,
+  uploadAndRegisterProductImages,
+} from "../../services/media/productMediaService";
 import { getImage } from "../../data/mediaPlaceholder";
 import { cn } from "../../utils/cn";
 
@@ -184,21 +189,90 @@ export default function MediaUploadForm({
     event.preventDefault();
     if (!validateForm()) return;
 
-    /* BACKEND_GAP — stated precisely, never simulated.
+    /* Marketing placements stay an honest gap: the backend exposes no
+       marketing assignment API, so the blocker is stated verbatim and
+       NOTHING is written anywhere (server or browser). */
+    if (scope === MEDIA_SCOPES.MARKETING) {
+      setFormError(MARKETING_MEDIA_BLOCKER);
+      return;
+    }
 
-       Phase 6 made the OBJECT STORE live (POST /media/objects stores real
-       bytes and returns a canonical media URL). What is still missing is the
-       MEDIA REGISTER this form exists to write: `media_media_asset` and
-       `media_product_media` declare a table name and no business columns,
-       so there is nowhere to persist a title, scope, role, product mapping
-       or review state. Registering an upload would mean inventing schema,
-       which this phase is forbidden from doing.
+    /* Product media — the real Phase 7 pipeline. Every queue item moves
+       through server-confirmed stages only (uploading → uploaded →
+       registering → assigned/failed); failures surface the server's own
+       message and no media id is ever invented client-side. */
+    const activeItems = queueRef.current;
+    const progressFor = (index, stage, total) => {
+      const fraction =
+        stage === PRODUCT_MEDIA_STAGES.ASSIGNED || stage === PRODUCT_MEDIA_STAGES.FAILED
+          ? 1
+          : stage === PRODUCT_MEDIA_STAGES.UPLOADED
+            ? 0.5
+            : 0.15;
+      return Math.round(((index + fraction) / Math.max(total, 1)) * 100);
+    };
 
-       So the form reports the exact blocker instead of faking a success,
-       and nothing is written to browser storage either. */
-    setFormError(MEDIA_UPLOAD_BLOCKER);
-    setUploadState("idle");
+    setUploadState("uploading");
     setUploadProgress(0);
+    setFormError(null);
+
+    const result = await uploadAndRegisterProductImages(
+      productId,
+      activeItems.map((item) => ({ file: item.file, role: item.role, title: item.title })),
+      {
+        scope: "admin",
+        firstIsPrimary: true,
+        onStage: (file, stage, payload = {}) =>
+          setQueue((prev) =>
+            prev.map((entry) =>
+              entry.file === file
+                ? {
+                    ...entry,
+                    stage,
+                    stageMessage:
+                      stage === PRODUCT_MEDIA_STAGES.FAILED ? payload?.error || "Server rejected the request." : null,
+                    mediaId: payload?.media?.id ?? entry.mediaId ?? null,
+                    url: payload?.media?.url ?? payload?.url ?? entry.url ?? null,
+                  }
+                : entry,
+            ),
+          ),
+      },
+    );
+
+    if (!result.ok) {
+      setUploadState("idle");
+      setUploadProgress(0);
+      setFormError(
+        result.error ||
+          "The upload could not be completed. No media id was minted client-side — retry after fixing the cause.",
+      );
+      return;
+    }
+
+    /* Persist the registered order/primary onto the product record itself,
+       then re-read the product from the server so the success view reflects
+       server truth. A sync failure is reported alongside — registration is
+       already durable, so this is a follow-up save, not a rollback. */
+    setUploadState("saving");
+    const sync = await syncProductMediaFromServer(productId, { scope: "admin" });
+
+    setUploadedResults(
+      result.results.map((entry, index) => ({
+        type: activeItems[index]?.type ?? MEDIA_TYPES.IMAGE,
+        fileName: entry.fileName,
+        mediaId: entry.media?.id ?? null,
+        url: entry.media?.url ?? null,
+        objectKey: entry.objectKey ?? null,
+      })),
+    );
+    setUploadProgress(100);
+    setFormError(
+      sync.ok
+        ? null
+        : `Media is registered and assigned, but saving the product's media fields failed: ${sync.error}`,
+    );
+    setUploadState("completed");
   };
 
   const handleResetForNext = () => {
@@ -216,7 +290,6 @@ export default function MediaUploadForm({
 
   // Success view
   if (uploadState === "completed") {
-    const isEmployee = isEmployeeSession;
     const count = uploadedResults.length;
     const imgCount = uploadedResults.filter((r) => r.type === MEDIA_TYPES.IMAGE).length;
     const vidCount = uploadedResults.filter((r) => r.type === MEDIA_TYPES.VIDEO).length;
@@ -231,30 +304,39 @@ export default function MediaUploadForm({
 
         <div className="space-y-2">
           <span className="font-ui text-[10px] uppercase tracking-[.24em] text-emerald-800 font-semibold">
-            {isEmployee ? "Submitted for Review" : "Upload Complete"}
+            Registered &amp; Assigned
           </span>
           <h2 className="font-display text-2xl font-normal text-ink">
             Media uploaded successfully.
           </h2>
           <p className="font-ui text-sm text-taupe max-w-md mx-auto">
             <strong className="text-ink font-semibold">{count} media {count === 1 ? "asset" : "assets"}</strong> ({imgCount} {imgCount === 1 ? "image" : "images"}
-            {vidCount > 0 ? `, ${vidCount} ${vidCount === 1 ? "video" : "videos"}` : ""}) {isEmployee ? "submitted to the review queue" : "added to the media register"}
-            {selectedProduct ? ` for "${selectedProduct.name}"` : ""}.
+            {vidCount > 0 ? `, ${vidCount} ${vidCount === 1 ? "video" : "videos"}` : ""}) registered in the durable media registry and assigned
+            {selectedProduct ? ` to "${selectedProduct.name}"` : " to the selected product"} — confirmed by the server.
           </p>
         </div>
 
         <div className="rounded border border-mist/80 bg-surface/50 p-4 text-left font-ui text-xs space-y-2">
           <div className="flex items-center justify-between text-taupe border-b border-mist/60 pb-2">
-            <span>Workflow Status</span>
-            <span className="font-medium text-ink">
-              {isEmployee ? "Pending Review" : "Active"}
-            </span>
+            <span>Persistence Status</span>
+            <span className="font-medium text-ink">Registered in the media registry</span>
           </div>
-          <p className="text-taupe text-[11px] leading-relaxed">
-            {isEmployee
-              ? "Your upload is now in the management review queue. Once approved by a manager or administrator, the assets will become visible on customer-facing product pages."
-              : "Media assets are now active in the central repository and attached to the selected product / placement."}
-          </p>
+          {uploadedResults.some((r) => r.mediaId) ? (
+            <p className="font-mono text-[10px] text-taupe break-all">
+              Media ids (server-issued):{" "}
+              {uploadedResults.filter((r) => r.mediaId).map((r) => `#${String(r.mediaId).slice(0, 8)}`).join(", ")}
+            </p>
+          ) : null}
+          {formError ? (
+            <p className="text-[11px] leading-relaxed text-accent">
+              {formError}
+            </p>
+          ) : (
+            <p className="text-taupe text-[11px] leading-relaxed">
+              The product's media fields were re-read from the server after saving — what you see is
+              the durable record, visible on the product page once the product is published.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -290,7 +372,10 @@ export default function MediaUploadForm({
               {UPLOAD_NOTICE}
             </p>
             <p className="font-ui text-xs leading-relaxed text-amber-900/80">
-              {UPLOAD_NOTICE_COPY} Assets are processed locally in demo mode and logged in the house activity journal.
+              {UPLOAD_NOTICE_COPY}
+              {scope === MEDIA_SCOPES.MARKETING
+                ? " Marketing placements remain a separate explicit assignment with no backend API yet — submitting in this scope reports the gap instead of persisting anything."
+                : ""}
             </p>
           </div>
         </div>
@@ -470,7 +555,11 @@ export default function MediaUploadForm({
           <div className="flex items-center justify-between font-ui text-xs">
             <span className="flex items-center gap-2 font-medium text-ink">
               <Loader2 size={14} className="animate-spin text-accent" />
-              {uploadState === "preparing" ? "Preparing assets..." : "Uploading media…"}
+              {uploadState === "preparing"
+                ? "Preparing assets..."
+                : uploadState === "saving"
+                  ? "Saving the product's media fields…"
+                  : "Uploading & registering media…"}
             </span>
             <span className="font-mono text-taupe">{uploadProgress}%</span>
           </div>
@@ -481,7 +570,8 @@ export default function MediaUploadForm({
             />
           </div>
           <p className="font-ui text-[10px] text-taupe">
-            Validating headers, generating preview metadata, and recording provenance...
+            Storing the file, registering the asset and assigning it to the product — each file's
+            stage above reflects a server response.
           </p>
         </div>
       ) : null}
@@ -521,10 +611,10 @@ export default function MediaUploadForm({
                 <Loader2 size={13} className="animate-spin" />
                 Uploading...
               </span>
-            ) : isEmployeeSession ? (
-              "Submit for Review"
+            ) : scope === MEDIA_SCOPES.MARKETING ? (
+              "Assign Marketing Media"
             ) : (
-              "Upload Media"
+              "Upload & Register Media"
             )}
           </AtelierButton>
         </div>

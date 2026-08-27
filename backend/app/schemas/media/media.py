@@ -118,8 +118,43 @@ class MediaReferenceResolveResponse(BaseModel):
     total: int = 0
 
 
+class RegisteredProductMediaItem(BaseModel):
+    """
+    One durable product ↔ media association (Phase 7 read model).
+
+    The `url` is the canonical media URL built from the registered object's
+    key through the configured storage provider — it is what a storefront or
+    an admin surface renders for a NEW product-media association.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    assignment_id: str = Field("", alias="assignmentId")
+    media_id: str = Field("", alias="mediaId")
+    object_key: str = Field("", alias="objectKey")
+    url: str = ""
+    mime_type: str = Field("", alias="mimeType")
+    media_type: str = Field("image", alias="mediaType")
+    title: Optional[str] = None
+    alt_text: Optional[str] = Field(None, alias="altText")
+    file_size: int = Field(0, alias="fileSize")
+    status: str = ""
+    role: str = "gallery"
+    sort_order: int = Field(0, alias="sortOrder")
+    is_primary: bool = Field(False, alias="isPrimary")
+    assigned_by: Optional[str] = Field(None, alias="assignedBy")
+
+
 class ProductMediaSetResponse(BaseModel):
-    """Resolved media set built from existing `catalog_product` columns."""
+    """
+    Resolved media set for a product.
+
+    `primary` / `hover` / `gallery` keep resolving the product's own legacy
+    authored columns (dual-read compatibility for the pre-Phase-7 catalogue),
+    while `mediaItems` reports the durable registered associations
+    (Phase 7 source of truth for NEW product media). `mediaRecordsAvailable`
+    tells the caller which half answers this product.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -131,5 +166,7 @@ class ProductMediaSetResponse(BaseModel):
     primary_media_id: Optional[str] = Field(None, alias="primaryMediaId")
     media_ids: List[str] = Field([], alias="mediaIds")
     gallery_media_ids: List[str] = Field([], alias="galleryMediaIds")
+    media_items: List[RegisteredProductMediaItem] = Field([], alias="mediaItems")
+    primary_media_url: Optional[str] = Field(None, alias="primaryMediaUrl")
     media_records_available: bool = Field(False, alias="mediaRecordsAvailable")
     note: str = ""

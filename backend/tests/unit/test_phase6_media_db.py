@@ -347,11 +347,15 @@ class ProductMediaSetRouteTests(MediaDatabaseTestCase):
         # so the storefront keeps rendering instead of breaking.
         self.assertIn(f"/images/products/{PRODUCT_ID}/01.avif", body["gallery"])
         self.assertNotIn(CANONICAL_URL, body["gallery"], "the cover is not repeated")
-        # Media-id columns are reported but explicitly not resolved.
+        # Media-id columns are reported but explicitly not resolved. This
+        # product has NO Phase 7 registered rows, so the endpoint keeps its
+        # dual-read posture: mediaRecordsAvailable stays False and the note
+        # says the legacy columns are what answered. (Phase 7 products WITH
+        # registered rows are covered by test_phase7_media_lifecycle.py.)
         self.assertEqual(body["primaryMediaId"], "pm-1")
         self.assertEqual(body["mediaIds"], ["pm-1"])
         self.assertFalse(body["mediaRecordsAvailable"])
-        self.assertIn("no business columns", body["note"])
+        self.assertIn("No registered media records", body["note"])
 
     def test_unknown_product_returns_404(self):
         response = self.client.get("/api/v1/media/products/NOT-A-PRODUCT/media-set")

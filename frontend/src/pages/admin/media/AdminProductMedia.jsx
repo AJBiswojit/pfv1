@@ -1,311 +1,172 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, Film, Image as ImageIcon, Star } from "lucide-react";
+import { Film, Image as ImageIcon, Star } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import AdminMetricCard from "../../../components/admin/AdminMetricCard";
-import MediaThumb from "../../../components/media/MediaThumb";
-import MediaVideo from "../../../components/media/MediaVideo";
-import MediaUploadPanel from "../../../components/media/MediaUploadPanel";
-import StatusBadge from "../../../components/employee/StatusBadge";
-import { AtelierButton } from "../../../design-system";
-import {
-  MEDIA_TYPES,
-  PRODUCT_MEDIA_ROLES,
-  getMediaStatusLabel,
-  getMediaStatusTone,
-  getProductRoleLabel,
-  rolesForType,
-} from "../../../config/mediaTypes";
-import { useMediaLibrary, useProductMedia } from "../../../hooks/useMedia";
-import useMediaActions from "../../../hooks/useMediaActions";
-import catalogRepository from "../../../services/catalogRepository";
+import { getRegisteredProductMedia } from "../../../services/media/productMediaService";
+import ProductMediaManager from "../../../components/media/ProductMediaManager";
+import { resolveMediaUrl } from "../../../services/media/mediaPaths";
+import { useProduct } from "../../../hooks/useProducts";
+import { fetchAdminProduct } from "../../../services/admin/productAdminService";
 import ProductLifecycleActions from "../../../components/admin/ProductLifecycleActions";
+import { useEffect } from "react";
 
 /**
- * PRATIKSHYA FASHON — Product media manager.
+ * PRATIKSHYA FASHON — Product media manager (Phase 7, server-backed).
  *
- * One product's plates and film, in the order a customer will meet them.
- * The cover is named, the sequence can be moved a step at a time, roles are
- * editable inline, and unassigned library media can be pulled in without
- * leaving the page.
+ * ONE product's media, exactly as the SERVER knows it:
+ *
+ *   · the REGISTERED panel lists the durable `media_product_media`
+ *     associations (Phase 7 source of truth for new media) — upload /
+ *     register / assign / cover / order all run the real backend lifecycle
+ *     via ProductMediaManager, and the list is re-read from the server
+ *     after every mutation (never a local echo);
+ *   · the LEGACY panel shows the product's own authored image columns,
+ *     read-only — the compatibility surface the 238 existing catalogue
+ *     assets keep flowing through.
+ *
+ * Nothing on this page presents browser-local state as persisted media.
  */
 
-const field =
-  "w-full border border-mist bg-canvas px-2.5 py-1.5 font-ui text-[12px] text-ink outline-none focus:border-accent";
-
-export default function AdminProductMedia() {
+const AdminProductMedia = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [productVersion, setProductVersion] = useState(0);
   // eslint-disable-next-line no-unused-vars
   const _refreshKey = productVersion; /* re-find the record after lifecycle actions */
-  const product = catalogRepository.find(productId);
-  const { items, summary } = useProductMedia(productId);
-  const library = useMediaLibrary();
-  const actions = useMediaActions();
+  const product = useProduct(productId);
+  const [serverMedia, setServerMedia] = useState(null);
+  const [serverMediaError, setServerMediaError] = useState(null);
 
-  const [uploading, setUploading] = useState(false);
-  const [previewId, setPreviewId] = useState(null);
-  const [pull, setPull] = useState("");
-
-  const unassigned = library.filter((item) => item.scope === "UNASSIGNED");
-  const preview = items.find((item) => item.id === previewId) ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminProduct(productId).then(() => {
+      if (!cancelled) setProductVersion((value) => value + 1);
+    });
+    getRegisteredProductMedia(productId).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setServerMedia(result.items ?? []);
+        setServerMediaError(null);
+      } else {
+        setServerMediaError(result.error ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   if (!product) {
     return (
       <AdminPage eyebrow="Business / Media" title="Product unavailable">
         <p className="font-ui text-sm text-taupe">That product could not be found.</p>
-        <AtelierButton as={Link} to="/admin/products" size="chip" variant="outline" className="mt-5">
+        <Link
+          to="/admin/products"
+          className="mt-5 inline-block border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+        >
           Back to the catalog
-        </AtelierButton>
+        </Link>
       </AdminPage>
     );
   }
+
+  const registered = serverMedia ?? [];
+  const registeredImages = registered.filter((item) => item.mediaType !== "video").length;
+  const registeredVideos = registered.filter((item) => item.mediaType === "video").length;
+  const hasCover =
+    registered.some((item) => item.isPrimary) ||
+    Boolean(product.image && String(product.image).trim());
+  const legacyImages = [product.image, ...(product.additionalImages ?? [])].filter(Boolean);
 
   return (
     <AdminPage
       eyebrow="Business / Media"
       title={`${product.name} — media`}
-      description={`${product.sku ?? product.id} · arrange the plates and film shown on the product page. The cover is the single image every card, listing and search result uses.`}
+      description={`${product.sku ?? product.id} · registered media is served from the backend media store at its canonical /media/objects/… URL. The cover is the image every card, listing and storefront page uses.`}
       actions={
-        <>
-          <AtelierButton as={Link} to={`/admin/products/${productId}`} size="chip" variant="outline">
-            Product record
-          </AtelierButton>
-          <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline">
-            Library
-          </AtelierButton>
-          {actions.access.canUpload ? (
-            <AtelierButton size="chip" onClick={() => setUploading((open) => !open)}>
-              {uploading ? "Close upload" : "Add media"}
-            </AtelierButton>
-          ) : null}
-        </>
+        <Link
+          to={`/admin/products/${productId}`}
+          className="border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink"
+        >
+          Product record
+        </Link>
       }
     >
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <AdminMetricCard label="Total media" value={summary.total} hint="Images and film" />
-        <AdminMetricCard label="Images" value={summary.images} icon={ImageIcon} hint="Still plates" />
-        <AdminMetricCard label="Videos" value={summary.videos} icon={Film} hint="Optional" />
+        <AdminMetricCard
+          label="Registered media"
+          value={String(registered.length)}
+          hint="Durable server associations"
+        />
+        <AdminMetricCard label="Images" value={String(registeredImages)} icon={ImageIcon} hint="Still plates" />
+        <AdminMetricCard label="Videos" value={String(registeredVideos)} icon={Film} hint="Optional" />
         <AdminMetricCard
           label="Cover"
-          value={summary.hasCover ? "Set" : "Missing"}
+          value={hasCover ? "Set" : "Missing"}
           icon={Star}
-          tone={summary.needsCover ? "alert" : "default"}
-          hint={summary.needsCover ? "Needs cover" : "Used on every card"}
+          tone={hasCover ? "default" : "alert"}
+          hint={hasCover ? "Ready for the storefront" : "Publish gate requires a cover"}
         />
       </div>
 
-      {summary.needsCover ? (
-        <div className="mb-6 border border-accent/40 bg-accent/[0.05] px-4 py-3">
-          <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Needs cover</p>
-          <p className="mt-1 font-ui text-[12px] text-taupe">
-            This product has media but no cover image. Until one is chosen, its cards fall back to
-            the catalogue plate.
-          </p>
-        </div>
-      ) : null}
-
-      {uploading && actions.access.canUpload ? (
-        <AdminPanel eyebrow="Demo upload" title="Add media to this product" className="mb-6">
-          <MediaUploadPanel
-            showRole
-            onSubmit={(drafts) => {
-              actions.upload(drafts, { productId, scope: "PRODUCT" });
-              setUploading(false);
-            }}
-          />
-        </AdminPanel>
+      {serverMediaError ? (
+        <p className="mb-6 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-[12px] text-accent" role="alert">
+          The server's registered-media read model could not be loaded: {serverMediaError}
+        </p>
       ) : null}
 
       <AdminPanel
-        eyebrow="Arrangement"
-        title="Media on this product"
-        action={
-          unassigned.length && actions.access.canAssign ? (
-            <div className="flex items-center gap-2">
-              <label className="sr-only" htmlFor="pull-media">
-                Attach media from the library
-              </label>
-              <select
-                id="pull-media"
-                value={pull}
-                onChange={(event) => setPull(event.target.value)}
-                className={field}
-              >
-                <option value="">Attach from library…</option>
-                {unassigned.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-              <AtelierButton
-                size="chip"
-                variant="outline"
-                disabled={!pull}
-                onClick={() => {
-                  actions.assignToProduct(pull, productId);
-                  setPull("");
-                }}
-              >
-                Attach
-              </AtelierButton>
-            </div>
-          ) : null
-        }
+        eyebrow="Registered media"
+        title="Lifecycle: upload → register → assign → save"
+        className="mb-6"
       >
-        {items.length ? (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((item, index) => (
-              <li key={item.id} className="border border-mist/80 bg-canvas">
-                <div className="relative">
-                  <MediaThumb media={item} />
-                  <span className="absolute right-2 top-2 bg-ink/80 px-2 py-1 font-ui text-[9px] uppercase tracking-[.14em] text-ivory">
-                    {index + 1}
-                  </span>
-                </div>
+        <ProductMediaManager
+          productId={productId}
+          scope="admin"
+          onChange={() => setProductVersion((value) => value + 1)}
+        />
+      </AdminPanel>
 
-                <div className="space-y-3 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to={`/admin/media/${item.id}`}
-                      className="min-w-0 font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
-                    >
-                      <span className="line-clamp-2">{item.title}</span>
-                    </Link>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        aria-label={`Move ${item.title} earlier`}
-                        disabled={
-                          index === 0 ||
-                          !actions.access.canEdit ||
-                          item.role === PRODUCT_MEDIA_ROLES.COVER ||
-                          items[index - 1]?.role === PRODUCT_MEDIA_ROLES.COVER
-                        }
-                        onClick={() => actions.move(productId, item.id, "up")}
-                        className="border border-mist p-1.5 text-cocoa transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
-                      >
-                        <ArrowUp size={13} strokeWidth={1.5} aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Move ${item.title} later`}
-                        disabled={
-                          index === items.length - 1 ||
-                          !actions.access.canEdit ||
-                          item.role === PRODUCT_MEDIA_ROLES.COVER
-                        }
-                        onClick={() => actions.move(productId, item.id, "down")}
-                        className="border border-mist p-1.5 text-cocoa transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
-                      >
-                        <ArrowDown size={13} strokeWidth={1.5} aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    <StatusBadge
-                      label={getMediaStatusLabel(item.status)}
-                      tone={getMediaStatusTone(item.status)}
-                    />
-                    <StatusBadge
-                      label={getProductRoleLabel(item.role)}
-                      tone={item.role === PRODUCT_MEDIA_ROLES.COVER ? "accent" : "quiet"}
-                    />
-                  </div>
-
-                  <label className="block">
-                    <span className="sr-only">Role for {item.title}</span>
-                    <select
-                      value={item.role ?? ""}
-                      disabled={!actions.access.canEdit}
-                      onChange={(event) =>
-                        event.target.value === PRODUCT_MEDIA_ROLES.COVER
-                          ? actions.setCover(productId, item.id)
-                          : actions.edit(item.id, { role: event.target.value })
-                      }
-                      className={field}
-                    >
-                      {rolesForType(item.type).map((role) => (
-                        <option key={role.id} value={role.id}>
-                          {role.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {item.type === MEDIA_TYPES.IMAGE &&
-                    item.role !== PRODUCT_MEDIA_ROLES.COVER &&
-                    actions.access.canEdit ? (
-                      <AtelierButton
-                        size="chip"
-                        variant="outline"
-                        onClick={() => actions.setCover(productId, item.id)}
-                      >
-                        Set cover
-                      </AtelierButton>
-                    ) : null}
-                    <AtelierButton
-                      size="chip"
-                      variant="outline"
-                      onClick={() => setPreviewId(previewId === item.id ? null : item.id)}
-                    >
-                      {previewId === item.id ? "Close" : "Preview"}
-                    </AtelierButton>
-                    <AtelierButton as={Link} to={`/admin/media/${item.id}`} size="chip" variant="outline">
-                      Edit
-                    </AtelierButton>
-                    {actions.access.canDelete ? (
-                      <AtelierButton size="chip" variant="outline" onClick={() => actions.remove(item.id)}>
-                        Remove
-                      </AtelierButton>
-                    ) : null}
-                  </div>
-                </div>
+      {legacyImages.length ? (
+        <AdminPanel
+          eyebrow="Legacy authored references"
+          title="Product's own image columns"
+          className="mb-6"
+        >
+          <p className="mb-4 font-ui text-[12px] leading-relaxed text-taupe">
+            These are the authored references stored on the product record itself (the
+            compatibility surface the pre-Phase-7 catalogue uses). They are shown read-only;
+            new imagery should be registered above. When a product has registered associations,
+            the server read model serves those first.
+          </p>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            {legacyImages.map((reference, index) => (
+              <li key={`${reference}-${index}`} className="border border-mist/80 bg-canvas">
+                <img
+                  src={resolveMediaUrl(reference)}
+                  alt={`${product.name} reference ${index + 1}`}
+                  className="h-32 w-full object-cover"
+                  loading="lazy"
+                />
+                <p className="truncate px-2 py-1.5 font-ui text-[10px] text-taupe" title={reference}>
+                  {reference}
+                </p>
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="border border-mist/80 bg-surface/30 px-5 py-14 text-center">
-            <p className="font-display text-lg font-light text-ink">No product media yet</p>
-            <p className="mt-2 font-ui text-sm text-taupe">
-              Product media will appear here once media is uploaded and assigned to this product.
-            </p>
-          </div>
-        )}
-      </AdminPanel>
-
-      {/* Preview ------------------------------------------------- */}
-      {preview ? (
-        <AdminPanel eyebrow="Preview" title={preview.title} className="mt-6">
-          <div className="mx-auto max-w-md">
-            {preview.type === MEDIA_TYPES.VIDEO ? (
-              <div className="aspect-[4/5]">
-                <MediaVideo
-                  src={preview.url}
-                  poster={preview.poster}
-                  title={preview.title}
-                  objectFit="contain"
-                />
-              </div>
-            ) : (
-              <MediaThumb media={preview} />
-            )}
-            <p className="mt-3 font-ui text-[12px] text-taupe">{preview.alt}</p>
-          </div>
         </AdminPanel>
       ) : null}
 
-      {/* Lifecycle — archive / restore / safe permanent delete ---- */}
+      {/* Lifecycle — archive / restore stays untouched -------------------- */}
       <ProductLifecycleActions
         product={product}
-        onChanged={() => setProductVersion((v) => v + 1)}
+        onChanged={() => setProductVersion((value) => value + 1)}
         onDeleted={() => navigate("/admin/media")}
       />
     </AdminPage>
   );
-}
+};
+
+export default AdminProductMedia;

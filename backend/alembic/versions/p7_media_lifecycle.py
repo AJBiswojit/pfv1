@@ -3,7 +3,10 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "p7_media_lifecycle"
-down_revision = "m001schema"
+# Linearised after the Phase 7 migration added a second head under
+# m001schema (a2b3c4d5e6f7 already hung there). Chain: … → m001schema →
+# a2b3c4d5e6f7 (admin settings) → p7_media_lifecycle.
+down_revision = "a2b3c4d5e6f7"
 branch_labels = None
 depends_on = None
 

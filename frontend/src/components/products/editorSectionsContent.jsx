@@ -16,6 +16,7 @@ import {
 import { useProductMedia } from "../../hooks/useMedia";
 import { imageRef } from "../../data/mediaPlaceholder";
 import { resolveMediaUrl } from "../../services/media/mediaPaths";
+import ProductMediaManager from "../media/ProductMediaManager";
 import {
   Field,
   KeyValueEditor,
@@ -269,7 +270,37 @@ export function SectionMedia({ draft, patch, portal }) {
         </div>
       </div>
 
-      {isSaved ? (
+      {/* Real upload → register → assign → save lifecycle (Phase 7).
+          A saved product gets the server-backed manager: files go to object
+          storage, register as durable assets, attach to this product and the
+          product is re-read from the server — never a browser-local echo. */}
+      {isSaved && portal === "admin" ? (
+        <div className="border border-mist/80 bg-surface/40 p-5 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-ui text-sm leading-relaxed text-ink">
+              Upload new imagery, choose the cover and arrange the gallery. Everything below is
+              confirmed by the server before it is shown as media.
+            </p>
+            <Link
+              to={mediaHref}
+              className="inline-flex items-center gap-2 border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+            >
+              <Star size={12} aria-hidden="true" /> Open full Media Manager <ExternalLink size={11} aria-hidden="true" />
+            </Link>
+          </div>
+          <ProductMediaManager
+            productId={draft.id}
+            scope="admin"
+            onChange={(serverProduct) => {
+              if (!serverProduct) return;
+              patch({
+                image: serverProduct.image ?? "",
+                additionalImages: serverProduct.additionalImages ?? [],
+              });
+            }}
+          />
+        </div>
+      ) : isSaved ? (
         <div className="border border-mist/80 bg-surface/40 p-5">
           <p className="font-ui text-sm leading-relaxed text-ink">
             Manage the complete gallery, reorder images, upload lookbook photos and add videos
@@ -284,7 +315,8 @@ export function SectionMedia({ draft, patch, portal }) {
         </div>
       ) : (
         <div className="border border-mist/80 bg-canvas p-4 text-taupe font-ui text-xs">
-          Tip: Save this product as a draft to upload multi-angle photos and videos via the Media Manager.
+          Tip: Save this product as a draft first — then this section can upload real images,
+          register them as durable media assets and assign them to the product.
         </div>
       )}
     </div>
