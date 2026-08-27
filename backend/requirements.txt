@@ -71,7 +71,14 @@ orjson==3.10.3
 pendulum==3.0.0
 
 # --- Testing only (not used by the application at runtime) ---
-# tests/unit/test_phase6_media_db.py runs the real ORM models against a local
-# SQLite file because no PostgreSQL server is available in CI/sandbox
-# environments. The production database remains PostgreSQL.
+# tests/unit/test_phase6_media_db.py and test_phase7_media_lifecycle.py run the
+# real ORM models against a local SQLite file so the API/ORM behaviour suites
+# pass with no server installed. The production database remains PostgreSQL.
+#
+# The PostgreSQL-backed checks — tests/unit/test_media_schema_integrity.py,
+# scripts/verify_media_schema.py and scripts/media_lifecycle_pg_e2e.py — need a
+# real server plus psycopg2 (already listed above). They read DATABASE_URL,
+# require it to point at a loopback host and at the disposable
+# `pratikshya_local` database, create their own throwaway database beside it,
+# and drop it again. With no local server they SKIP rather than fail.
 aiosqlite==0.22.1
