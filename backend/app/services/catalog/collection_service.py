@@ -48,7 +48,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import invalidate_response_cache
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import BusinessLogicException, ConflictException, NotFoundException
 from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
 from app.schemas.catalog.collection import (
@@ -344,6 +344,8 @@ class CollectionService:
         slug = req.slug or _slugify(req.name)
         await self._assert_slug_unique(slug)
 
+        type_val = req.type.value if hasattr(req.type, "value") else str(req.type)
+
         col = CollectionModel(
             name=req.name,
             slug=slug,
@@ -352,7 +354,7 @@ class CollectionService:
             image=req.image or "",
             hero_media_id=req.hero_media_id,
             thumbnail_media_id=req.thumbnail_media_id,
-            type=req.type,
+            type=type_val,
             featured=req.featured,
             sort_order=req.sort_order,
             start_date=req.start_date,
@@ -395,11 +397,18 @@ class CollectionService:
         if req.thumbnail_media_id is not None:
             col.thumbnail_media_id = req.thumbnail_media_id
         if req.type is not None:
-            col.type = req.type
+            col.type = req.type.value if hasattr(req.type, "value") else str(req.type)
         if req.featured is not None:
             col.featured = req.featured
         if req.sort_order is not None:
             col.sort_order = req.sort_order
+
+        # Validate effective dates
+        eff_start = req.start_date if req.start_date is not None else col.start_date
+        eff_end = req.end_date if req.end_date is not None else col.end_date
+        if eff_start is not None and eff_end is not None and eff_end < eff_start:
+            raise BusinessLogicException("endDate must be greater than or equal to startDate")
+
         if req.start_date is not None:
             col.start_date = req.start_date
         if req.end_date is not None:

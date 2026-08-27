@@ -35,17 +35,7 @@
  *   PATCH /employee/products/{id}
  */
 
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  // Carry the HTTP status + parsed body through so admin screens can map
-  // 401/403/404/409/422/5xx to distinct, honest copy instead of a generic
-  // “could not be saved”. `data.errors` (422 envelopes) is preserved.
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message, status: err.status, data: err.data ?? null };
-  }
-  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 /**
  * Map a repository product record onto the ADMIN write contract

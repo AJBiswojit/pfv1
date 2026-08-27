@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Archive, Eye, Pencil, Plus, Search } from "lucide-react";
+import { Archive, Eye, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import AdminMetricCard from "../../../components/admin/AdminMetricCard";
@@ -43,17 +43,17 @@ export default function AdminCollections() {
   const collections = rows ?? [];
   const filtered = collections.filter((collection) => [collection.name, collection.slug, collection.description, collection.type].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
 
-  const archive = async (collection) => {
+  const archiveOrRestore = async (collection) => {
     if (busyId) return;
     setBusyId(collection.id);
-    // Awaited server archive (SUPER_ADMIN-gated at the backend; a 403 from
-    // a non-super admin surfaces with the server's own copy, never a
-    // silent local flip).
-    const result = await taxonomyRepository.archiveCollection(collection.id, actor);
+    const wasArchived = (collection.displayStatus ?? collection.status) === COLLECTION_STATUS.ARCHIVED;
+    const result = wasArchived
+      ? await taxonomyRepository.restoreCollection(collection.id, actor)
+      : await taxonomyRepository.archiveCollection(collection.id, actor);
     setNotice(
       result.ok
-        ? `${collection.name} archived on the server. Products remain unchanged.`
-        : formatAdminError(result, { entity: `collection ${collection.name ?? collection.id}`, action: "archived" })
+        ? `${collection.name} ${wasArchived ? "restored to DRAFT" : "archived"} on the server. Products remain unchanged.`
+        : formatAdminError(result, { entity: `collection ${collection.name ?? collection.id}`, action: wasArchived ? "restored" : "archived" })
     );
     setBusyId(null);
     if (result.ok) await load();
@@ -93,7 +93,7 @@ export default function AdminCollections() {
         <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[900px] text-left">
             <thead><tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">{["Collection", "Type", "Products", "Status", "Start", "End", "Featured", "Actions"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
-            <tbody>{filtered.map((collection) => <tr key={collection.id} className="border-b border-mist/60 font-ui text-sm"><td className="px-3 py-4"><Link to={`/admin/collections/${collection.id}`} className="font-medium text-ink hover:text-accent">{collection.name}</Link><span className="block text-[11px] text-taupe">/{collection.slug}</span></td><td className="px-3 py-4">{collection.type}</td><td className="px-3 py-4">{Number.isFinite(Number(collection.resolvedProductCount)) ? collection.resolvedProductCount : counts.byCollection[collection.id] || 0}</td><td className="px-3 py-4"><StatusBadge label={collection.displayStatus} tone={tone[collection.displayStatus] || "quiet"} /></td><td className="px-3 py-4">{collection.startDate || "—"}</td><td className="px-3 py-4">{collection.endDate || "—"}</td><td className="px-3 py-4">{collection.featured ? "Yes" : "No"}</td><td className="px-3 py-4"><div className="flex items-center gap-2.5 text-taupe"><Link to={`/admin/collections/${collection.id}`} title="View"><Eye size={15} /></Link><Link to={`/admin/collections/${collection.id}/edit`} title="Edit"><Pencil size={15} /></Link>{collection.displayStatus !== COLLECTION_STATUS.ARCHIVED ? <button type="button" disabled={busyId === collection.id} onClick={() => archive(collection)} title="Archive" className="hover:text-accent"><Archive size={15} /></button> : null}</div></td></tr>)}</tbody>
+            <tbody>{filtered.map((collection) => <tr key={collection.id} className="border-b border-mist/60 font-ui text-sm"><td className="px-3 py-4"><Link to={`/admin/collections/${collection.id}`} className="font-medium text-ink hover:text-accent">{collection.name}</Link><span className="block text-[11px] text-taupe">/{collection.slug}</span></td><td className="px-3 py-4">{collection.type}</td><td className="px-3 py-4">{Number.isFinite(Number(collection.resolvedProductCount)) ? collection.resolvedProductCount : counts.byCollection[collection.id] || 0}</td><td className="px-3 py-4"><StatusBadge label={collection.displayStatus} tone={tone[collection.displayStatus] || "quiet"} /></td><td className="px-3 py-4">{collection.startDate || "—"}</td><td className="px-3 py-4">{collection.endDate || "—"}</td><td className="px-3 py-4">{collection.featured ? "Yes" : "No"}</td><td className="px-3 py-4"><div className="flex items-center gap-2.5 text-taupe"><Link to={`/admin/collections/${collection.id}`} title="View"><Eye size={15} /></Link><Link to={`/admin/collections/${collection.id}/edit`} title="Edit"><Pencil size={15} /></Link>{(collection.displayStatus ?? collection.status) !== COLLECTION_STATUS.ARCHIVED ? <button type="button" disabled={busyId === collection.id} onClick={() => archiveOrRestore(collection)} title="Archive" className="hover:text-accent"><Archive size={15} /></button> : <button type="button" disabled={busyId === collection.id} onClick={() => archiveOrRestore(collection)} title="Restore" className="hover:text-accent"><RotateCcw size={15} /></button>}</div></td></tr>)}</tbody>
           </table>
         </div>
         <div className="space-y-3 lg:hidden">

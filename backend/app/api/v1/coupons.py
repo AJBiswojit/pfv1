@@ -249,7 +249,7 @@ async def validate_offer(
     coupon = result.scalars().first()
 
     if not coupon:
-        return {"ok": False, "error": f"No coupon found with code '{code}'."}
+        raise NotFoundException(message=f"No coupon found with code '{code}'.")
 
     # Compute cart subtotal from items if provided
     cart_subtotal = sum(
@@ -259,7 +259,7 @@ async def validate_offer(
 
     error = _validate_coupon_logic(coupon, cart_subtotal=cart_subtotal)
     if error:
-        return {"ok": False, "error": error}
+        raise BusinessLogicException(message=error)
 
     # Compute discount amount
     discount = 0

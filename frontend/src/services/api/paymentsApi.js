@@ -18,12 +18,7 @@
  *   The server matches it against the order's own guest email; a mismatch
  *   is rejected. Signed-in callers are matched by their session identity.
  */
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 /**
  * Normalise a backend payment session (snake_case) to the camelCase

@@ -9,12 +9,7 @@
  *   GET /analytics/overview | /sales | /products | /customers | /orders | /inventory-summary
  */
 
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 // ---------------------------------------------------------------------------
 // Roles / permissions (RBAC)

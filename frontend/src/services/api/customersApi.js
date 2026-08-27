@@ -17,13 +17,7 @@
  *   GET    /admin/customers/{customerId}
  */
 
-import { apiClient, ApiError } from "./apiClient";
-
-/** Failures keep their HTTP status so account pages can branch on 401/403/409/422. */
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message, status: err.status };
-  return { ok: false, error: "An unexpected error occurred.", status: 0 };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 // ---------------------------------------------------------------------------
 // Normalisation helpers

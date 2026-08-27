@@ -5,17 +5,7 @@
  * All endpoints require Customer JWT.
  * Guest carts remain localStorage-only — this module is only called when authenticated.
  */
-import { apiClient, ApiError } from "./apiClient";
-
-/**
- * Failures keep their HTTP status so callers can distinguish 401/403/404/409/
- * 422/500/network (status 0). A failure is never converted into an empty
- * successful cart.
- */
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message, status: err.status };
-  return { ok: false, error: "An unexpected error occurred.", status: 0 };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 /**
  * Normalise server cart → frontend shape

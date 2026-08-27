@@ -293,7 +293,7 @@ async def get_settings_section(
 ):
     await require_permission_for_user(current_user, db, "settings.view")
     if section not in KNOWN_SECTIONS:
-        return {"ok": False, "error": "Unknown settings section"}
+        raise NotFoundException(message=f"Unknown settings section '{section}'.")
 
     stmt = select(SettingModel).where(SettingModel.id == section)
     result = await db.execute(stmt)
@@ -319,7 +319,7 @@ async def update_settings_section(
 ):
     await require_super_admin_user(current_user, db)
     if section not in KNOWN_SECTIONS:
-        return {"ok": False, "error": "Unknown settings section"}
+        raise NotFoundException(message=f"Unknown settings section '{section}'.")
 
     stmt = select(SettingModel).where(SettingModel.id == section)
     result = await db.execute(stmt)
@@ -350,7 +350,7 @@ async def reset_settings_section(
 ):
     await require_super_admin_user(current_user, db)
     if section not in KNOWN_SECTIONS:
-        return {"ok": False, "error": "Unknown settings section"}
+        raise NotFoundException(message=f"Unknown settings section '{section}'.")
 
     stmt = select(SettingModel).where(SettingModel.id == section)
     result = await db.execute(stmt)

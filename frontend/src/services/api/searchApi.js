@@ -2,12 +2,7 @@
  * PRATIKSHYA FASHON — Search & Explore API
  * Maps to API_CONTRACT.md § SEARCH + EXPLORE
  */
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 function buildParams(params) {
   const qs = new URLSearchParams();
