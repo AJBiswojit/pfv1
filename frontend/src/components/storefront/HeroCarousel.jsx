@@ -227,6 +227,12 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
     };
   }, [nextSrc]);
 
+  /* Empty state — `src/data/catalog/hero.js` is backend-driven and
+     legitimately yields no slides until the home hero is curated, so the
+     carousel renders nothing, exactly like the other placement-driven
+     seams on this page (a placement with nothing curated stays absent). */
+  if (count === 0) return null;
+
   const active = slides[index];
   const toneOnDark = active.tone === "dark";
 
