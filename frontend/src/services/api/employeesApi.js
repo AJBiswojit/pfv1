@@ -5,12 +5,7 @@
  * Admin: CRUD, status, reset-password, permissions, departments, sections, attendance
  * Employee self-service: /employee/me, /employee/attendance
  */
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 function normEmployee(u) {
   if (!u) return u;

@@ -20,14 +20,7 @@
  * half-persist.
  */
 
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message, status: err.status, data: err.data ?? null };
-  }
-  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 /** Backend coupon dict → normalized UI offer model (single mapping layer). */
 export function normaliseOffer(data) {

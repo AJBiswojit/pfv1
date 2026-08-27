@@ -27,6 +27,7 @@ import {
   apiAdminRestoreCategory,
   apiAdminCreateSubcategory,
   apiAdminUpdateSubcategory,
+  apiAdminActivateSubcategory,
   apiAdminArchiveSubcategory,
   apiAdminRestoreSubcategory,
 } from "./api/categoriesApi";
@@ -39,6 +40,8 @@ import {
   apiAdminRestoreCollection,
   apiAdminAssignCollectionProducts,
   apiAdminGetCollection,
+  apiAdminGetTaxonomyMetrics,
+  apiAdminGetTaxonomyProductCounts,
 } from "./api/collectionsApi";
 import { slugify } from "./catalogRepository";
 
@@ -102,7 +105,7 @@ const asCollection = (record) => ({
   thumbnailMediaId: record.thumbnailMediaId ?? record.thumbnail_media_id ?? null,
   type: record.type ?? COLLECTION_TYPES.MANUAL,
   status: record.status ?? COLLECTION_STATUS.DRAFT,
-  displayStatus: record.status ?? COLLECTION_STATUS.DRAFT,
+  displayStatus: record.displayStatus ?? record.display_status ?? record.status ?? COLLECTION_STATUS.DRAFT,
   featured: Boolean(record.featured ?? record.is_featured),
   sortOrder: Number(record.sortOrder ?? 0),
   startDate: record.startDate ?? record.start_date ?? null,
@@ -112,16 +115,13 @@ const asCollection = (record) => ({
 });
 
 export const normalizeTaxonomyRecord = (record, type = null) => {
-  // Lookups (findCategory / resolveCategoryRoute) return null when the
-  // catalog snapshot is empty or the optional id/slug is absent. Do not
-  // invent a record or an id — callers skip the item instead.
   if (record == null) return null;
   if (type === "collection" || record?.type) return asCollection(record);
   return asCategory(record);
 };
 
 export const deriveCollectionStatus = (collection) =>
-  collection?.status ?? COLLECTION_STATUS.DRAFT;
+  collection?.displayStatus ?? collection?.status ?? COLLECTION_STATUS.DRAFT;
 
 const read = () => ({
   categories: getCategories().map(asCategory),
@@ -168,17 +168,6 @@ export const taxonomyRepository = {
 
   /**
    * ── Admin reads: server-resolved, ANY lifecycle status ──────────────────
-   *
-   * `findCategory` above is a SYNC lookup into the storefront catalog
-   * snapshot, which is hydrated from GET /categories?status=ACTIVE — it can
-   * only ever see ACTIVE rows. Admin desks (detail + edit) must not use it
-   * as their source of truth: a DRAFT or ARCHIVED category is simply absent
-   * there, which is what produced the false "Category not found".
-   *
-   * These loaders go to the admin endpoints instead and return the server
-   * record verbatim (including its real status), or an explicit failure
-   * with the HTTP status so screens can distinguish 404 from a network
-   * error. They never fabricate a record.
    */
   loadCategory: async (idOrSlug) => {
     if (!idOrSlug) return { ok: false, error: "No category id was provided.", status: 0, data: null };
@@ -196,6 +185,18 @@ export const taxonomyRepository = {
         .map((entry) => asSubcategory({ ...entry, categoryId: entry.categoryId ?? categoryId }))
         .sort(byOrder),
     };
+  },
+  loadCollection: async (idOrSlug) => {
+    if (!idOrSlug) return { ok: false, error: "No collection id was provided.", status: 0, data: null };
+    const result = await apiAdminGetCollection(idOrSlug);
+    if (!result.ok) return result;
+    return { ok: true, collection: asCollection(result.collection) };
+  },
+  loadTaxonomyMetrics: async () => {
+    return apiAdminGetTaxonomyMetrics();
+  },
+  loadTaxonomyProductCounts: async () => {
+    return apiAdminGetTaxonomyProductCounts();
   },
 
   // ── Mutations: backend-owned, fire the API and refresh the store ──────────
@@ -233,68 +234,78 @@ export const taxonomyRepository = {
 
   createSubcategory: async (categoryId, draft, _actor = null) => {
     const result = await apiAdminCreateSubcategory(categoryId, draft);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, subcategory: result.subcategory };
   },
   updateSubcategory: async (id, patch, _actor = null) => {
     const result = await apiAdminUpdateSubcategory(id, patch);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
+    await refreshCatalog();
+    return { ok: true, subcategory: result.subcategory };
+  },
+  activateSubcategory: async (id, _actor = null) => {
+    const result = await apiAdminActivateSubcategory(id);
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, subcategory: result.subcategory };
   },
   archiveSubcategory: async (id, _actor = null) => {
     const result = await apiAdminArchiveSubcategory(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
-  restoreSubcategory: async (id, _actor = null) => taxonomyRepository.updateSubcategory(id, { status: TAXONOMY_STATUS.ACTIVE }),
+  restoreSubcategory: async (id, _actor = null) => {
+    const result = await apiAdminRestoreSubcategory(id);
+    if (!result.ok) return result;
+    await refreshCatalog();
+    return { ok: true, subcategory: result.subcategory };
+  },
 
   createCollection: async (draft, _actor = null) => {
     const result = await apiAdminCreateCollection({ ...draft, slug: draft.slug || slugify(draft.name) });
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, collection: result.collection };
   },
   updateCollection: async (id, patch, _actor = null) => {
     const result = await apiAdminUpdateCollection(id, patch);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true, collection: result.collection };
   },
   activateCollection: async (id, _actor = null) => {
     const result = await apiAdminActivateCollection(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
   pauseCollection: async (id, _actor = null) => {
     const result = await apiAdminPauseCollection(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
   archiveCollection: async (id, _actor = null) => {
     const result = await apiAdminArchiveCollection(id);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
-  restoreCollection: async (id, _actor = null) => taxonomyRepository.updateCollection(id, { status: COLLECTION_STATUS.DRAFT }),
+  restoreCollection: async (id, _actor = null) => {
+    const result = await apiAdminRestoreCollection(id);
+    if (!result.ok) return result;
+    await refreshCatalog();
+    return { ok: true, collection: result.collection };
+  },
 
   assignProductsToCollection: async (collectionId, productIds, _actor = null) => {
     const result = await apiAdminAssignCollectionProducts(collectionId, productIds);
-    if (!result.ok) return { ok: false, error: result.error };
+    if (!result.ok) return result;
     await refreshCatalog();
     return { ok: true };
   },
-  /*
-   * The assign endpoint REPLACES the whole explicit list, so both helpers
-   * re-read the collection from the server first — building the new list on
-   * a possibly stale local snapshot could silently drop or resurrect
-   * memberships another desk just changed (stale-snapshot overwrite).
-   */
   addProductsToCollection: async (collectionId, productIds, _actor = null) => {
     const fresh = await apiAdminGetCollection(collectionId);
     const current =
@@ -313,15 +324,6 @@ export const taxonomyRepository = {
     return taxonomyRepository.assignProductsToCollection(collectionId, current.filter((id) => !remove.has(id)));
   },
 
-  /**
-   * Product counts derived from the SERVER product snapshot held by the
-   * catalog store (hydrated by catalogStore from /products or
-   * /admin/products) — never a local dataset. `byCategory` accepts either a
-   * category id or slug because the store records both across generations.
-   * NOTE (documented limitation): counts cover the loaded snapshot; the
-   * category API's own `productCountTotal` stays the authoritative number
-   * shown on the category detail desk.
-   */
   productCounts: () => {
     const byCategory = {};
     let productsClassified = 0;

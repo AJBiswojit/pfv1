@@ -89,7 +89,7 @@ export function OrderProvider({ children }) {
   // Fetch orders from backend when user authenticates. The server is
   // authoritative; the previous local mirror is only replaced by server data.
   useEffect(() => {
-    if (!user?.id || !getAccessToken()) {
+    if (!user?.id || !getAccessToken("customer")) {
       setOrdersError(null);
       setOrdersErrorStatus(null);
       return;
@@ -130,7 +130,7 @@ export function OrderProvider({ children }) {
 
   const getOrderById = useCallback(async (orderId) => {
     // Try backend first when authenticated
-    if (user?.id && getAccessToken()) {
+    if (user?.id && getAccessToken("customer")) {
       const result = await apiGetOrder(orderId);
       if (result.ok) {
         // Update local store
@@ -181,7 +181,7 @@ export function OrderProvider({ children }) {
    * from a failed request.
    */
   const refreshOrders = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getAccessToken("customer")) {
       return { ok: false, orders: [], status: 401, error: "Please sign in to see your orders." };
     }
     setIsLoadingOrders(true);
@@ -358,7 +358,7 @@ export function OrderProvider({ children }) {
   }, [customerId, applyResult]);
 
   const cancelOrder = useCallback(async (orderId, options = {}) => {
-    if (user?.id && getAccessToken()) {
+    if (user?.id && getAccessToken("customer")) {
       const result = await apiCancelOrderCall(orderId, { reason: options.reason, note: options.note });
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -465,7 +465,7 @@ export function OrderProvider({ children }) {
   // ---------------------------------------------------------------------------
 
   const adminPost = useCallback((apiFn, localFn) => async (orderId, payload) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiFn(orderId, payload);
       if (result.ok && result.order) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -485,7 +485,7 @@ export function OrderProvider({ children }) {
   const markDelivered       = adminPost(apiAdminMarkDelivered,   (orders, id, p) => orderService.markDelivered(orders, id, p));
 
   const markItemPicked = useCallback(async (orderId, lineId, opts = {}) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminPickItem(orderId, lineId);
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -497,7 +497,7 @@ export function OrderProvider({ children }) {
   }, [applyResult]);
 
   const dispatchOrder = useCallback(async (orderId, payload) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminDispatchOrder(orderId, payload);
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -509,7 +509,7 @@ export function OrderProvider({ children }) {
   }, [applyResult]);
 
   const addInternalNote = useCallback(async (orderId, payload) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminAddNote(orderId, payload.text ?? payload.note);
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -521,7 +521,7 @@ export function OrderProvider({ children }) {
   }, [applyResult]);
 
   const cancelOrderAdmin = useCallback(async (orderId, opts = {}) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminCancelOrder(orderId, opts);
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -533,7 +533,7 @@ export function OrderProvider({ children }) {
   }, [applyResult]);
 
   const forceTransition = useCallback(async (orderId, nextStatus, opts = {}) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminForceStatus(orderId, nextStatus, opts.reason || "Admin override");
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));
@@ -545,7 +545,7 @@ export function OrderProvider({ children }) {
   }, [applyResult]);
 
   const applyStatusAdmin = useCallback(async (orderId, nextStatus, opts = {}) => {
-    if (getAccessToken()) {
+    if (getAccessToken("admin")) {
       const result = await apiAdminApplyStatus(orderId, nextStatus, opts.note);
       if (result.ok) {
         setOrders((current) => current.map((o) => o.id === result.order.id ? result.order : o));

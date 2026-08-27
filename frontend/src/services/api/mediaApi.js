@@ -23,15 +23,8 @@
  * review path — registering product media never promotes it to marketing.
  */
 
-import { apiClient, ApiError } from "./apiClient";
+import { apiClient, ApiError, handleError } from "./apiClient";
 import { MEDIA_URL_PREFIX, mediaOrigin, mediaObjectUrl } from "../media/mediaPaths";
-
-const handleError = (fallback) => (error) => {
-  if (error instanceof ApiError) {
-    return { ok: false, error: error.message, status: error.status, data: error.data ?? null };
-  }
-  return { ok: false, error: fallback, status: 0, data: null };
-};
 
 // ---------------------------------------------------------------------------
 // Object storage — REAL
@@ -213,7 +206,7 @@ export async function apiRegisterMediaObject(
       assignment: data?.assignment ?? null,
     };
   } catch (error) {
-    return handleError("Media registration failed.")(error);
+    return handleError(error, "Media registration failed.");
   }
 }
 
@@ -223,7 +216,7 @@ export async function apiListMediaAssets({ scope = "admin" } = {}) {
     const data = await apiClient.get("/media/assets", { scope });
     return { ok: true, items: data?.items ?? [] };
   } catch (error) {
-    return handleError("The media asset library could not be loaded.")(error);
+    return handleError(error, "The media asset library could not be loaded.");
   }
 }
 

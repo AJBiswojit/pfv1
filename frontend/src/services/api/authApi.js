@@ -20,7 +20,7 @@
  *   GET  /auth/me
  */
 
-import { apiClient, ApiError, clearTokens, setTokens } from "./apiClient";
+import { apiClient, ApiError, clearTokens, handleError, setTokens } from "./apiClient";
 
 // ---------------------------------------------------------------------------
 // Response normalisers
@@ -103,13 +103,6 @@ function storeTokensFromResponse(data, scope = "customer") {
     accessToken:  data.access_token,
     refreshToken: data.refresh_token,
   }, scope);
-}
-
-function handleError(err) {
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message };
-  }
-  return { ok: false, error: "An unexpected error occurred." };
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +278,7 @@ export async function apiSignOutAdmin() {
 // Shared — /auth/me (get current session profile)
 // ---------------------------------------------------------------------------
 
-export async function apiGetMe(scope = "customer") {
+export async function apiGetMe(scope) {
   try {
     const dto = await apiClient.get("/auth/me", { scope });
     return { ok: true, dto };

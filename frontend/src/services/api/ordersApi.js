@@ -4,27 +4,13 @@
  *
  * Customer, Admin (fulfillment pipeline), Returns desk
  */
-import { apiClient, ApiError } from "./apiClient";
+import { apiClient, ApiError, handleError } from "./apiClient";
 import {
   buildInvoiceReadModel,
   buildOrderReadModel,
   buildTrackingReadModel,
   normaliseReturnRecord,
 } from "../../utils/orderReadModel";
-
-/**
- * Failures are surfaced with the HTTP status attached so screens can react
- * distinctly to 401 / 403 / 404 / 409 / 422 / 500 instead of collapsing
- * every failure into an empty "no data" success state.
- *
- * `status: 0` means the request never reached the server (network/offline).
- */
-function handleError(err) {
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message, status: err.status, data: err.data ?? null };
-  }
-  return { ok: false, error: "An unexpected error occurred.", status: null, data: null };
-}
 
 /**
  * Normalise a backend order (snake_case OrderResponse) into the canonical

@@ -2,17 +2,7 @@
  * PRATIKSHYA FASHON — Categories & Subcategories API
  * Maps to API_CONTRACT.md § CATEGORIES + SUBCATEGORIES
  */
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  // Status + payload travel with the failure so admin desks can map
-  // 401/403/404/409/422 to distinct copy (formatAdminError) instead of one
-  // generic "could not save" line.
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message, status: err.status ?? 0, data: err.data ?? null };
-  }
-  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 function normCategory(c) {
   if (!c) return c;
@@ -215,6 +205,13 @@ export async function apiAdminCreateSubcategory(categoryId, body) {
 export async function apiAdminUpdateSubcategory(id, body) {
   try {
     const data = await apiClient.patch(`/admin/subcategories/${id}`, buildSubcategoryPayload(body), { scope: "admin" });
+    return { ok: true, subcategory: normSubcategory(data.subcategory ?? data) };
+  } catch (err) { return handleError(err); }
+}
+
+export async function apiAdminActivateSubcategory(id) {
+  try {
+    const data = await apiClient.post(`/admin/subcategories/${id}/activate`, {}, { scope: "admin" });
     return { ok: true, subcategory: normSubcategory(data.subcategory ?? data) };
   } catch (err) { return handleError(err); }
 }

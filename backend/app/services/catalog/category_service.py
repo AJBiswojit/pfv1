@@ -235,10 +235,12 @@ class CategoryService:
         self, req: CategoryCreateRequest, actor: str
     ) -> CategoryResponse:
         """POST /admin/categories — creates a DRAFT category."""
+        import uuid
         slug = req.slug or _slugify(req.name)
         await self._assert_slug_unique(slug)
 
         cat = CategoryModel(
+            id=str(uuid.uuid4()),
             name=req.name,
             slug=slug,
             eyebrow=req.eyebrow or "",
@@ -429,7 +431,9 @@ class CategoryService:
         slug = req.slug or _slugify(req.name)
         await self._assert_sub_slug_unique(cat.id, slug)
 
+        sub_id = f"{cat.slug}-{slug}"
         sub = SubcategoryModel(
+            id=sub_id,
             category_id=cat.id,
             name=req.name,
             slug=slug,

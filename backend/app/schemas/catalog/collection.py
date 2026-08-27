@@ -13,9 +13,28 @@ Key points:
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Enums
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CollectionStatusEnum(str, Enum):
+    DRAFT = "DRAFT"
+    SCHEDULED = "SCHEDULED"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    EXPIRED = "EXPIRED"
+    ARCHIVED = "ARCHIVED"
+
+
+class CollectionTypeEnum(str, Enum):
+    MANUAL = "MANUAL"
+    RULE_BASED = "RULE_BASED"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -49,17 +68,17 @@ class CollectionResponse(BaseModel):
     eyebrow: Optional[str] = ""
     description: Optional[str] = ""
     image: Optional[str] = ""
-    heroMediaId: Optional[str] = Field(None, alias="hero_media_id")
-    thumbnailMediaId: Optional[str] = Field(None, alias="thumbnail_media_id")
+    heroMediaId: Optional[str] = Field(None, alias="hero_media_id", serialization_alias="heroMediaId")
+    thumbnailMediaId: Optional[str] = Field(None, alias="thumbnail_media_id", serialization_alias="thumbnailMediaId")
     type: str = "MANUAL"
     status: str
     displayStatus: str = ""          # derived, injected by service
     featured: bool = False
-    sortOrder: int = Field(0, alias="sort_order")
-    startDate: Optional[datetime] = Field(None, alias="start_date")
-    endDate: Optional[datetime] = Field(None, alias="end_date")
+    sortOrder: int = Field(0, alias="sort_order", serialization_alias="sortOrder")
+    startDate: Optional[datetime] = Field(None, alias="start_date", serialization_alias="startDate")
+    endDate: Optional[datetime] = Field(None, alias="end_date", serialization_alias="endDate")
     rule: Optional[Dict[str, Any]] = None
-    explicitProductIds: List[str] = Field(default_factory=list, alias="explicit_product_ids")
+    explicitProductIds: List[str] = Field(default_factory=list, alias="explicit_product_ids", serialization_alias="explicitProductIds")
     resolvedProductCount: int = 0    # injected by service
 
 
@@ -70,41 +89,59 @@ class CollectionResponse(BaseModel):
 class CollectionCreateRequest(BaseModel):
     """Body for POST /admin/collections."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     slug: Optional[str] = None              # auto-derived from name if omitted
     eyebrow: Optional[str] = ""
     description: Optional[str] = ""
-    image: Optional[str] = ""
-    hero_media_id: Optional[str] = None
-    thumbnail_media_id: Optional[str] = None
-    type: str = "MANUAL"                    # MANUAL | RULE_BASED
+    image: Optional[str] = Field("", alias="imageUrl")
+    hero_media_id: Optional[str] = Field(None, alias="heroMediaId")
+    thumbnail_media_id: Optional[str] = Field(None, alias="thumbnailMediaId")
+    type: CollectionTypeEnum = CollectionTypeEnum.MANUAL
     featured: bool = False
-    sort_order: int = 0
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    sort_order: int = Field(0, alias="sortOrder")
+    start_date: Optional[datetime] = Field(None, alias="startDate")
+    end_date: Optional[datetime] = Field(None, alias="endDate")
     # MANUAL collections
-    explicit_product_ids: Optional[List[str]] = None
+    explicit_product_ids: Optional[List[str]] = Field(None, alias="explicitProductIds")
     # RULE_BASED collections
     rule: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "CollectionCreateRequest":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date < self.start_date:
+                raise ValueError("endDate must be greater than or equal to startDate")
+        return self
 
 
 class CollectionUpdateRequest(BaseModel):
     """Body for PATCH /admin/collections/{id} — all fields optional."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: Optional[str] = None
     slug: Optional[str] = None
     eyebrow: Optional[str] = None
     description: Optional[str] = None
-    image: Optional[str] = None
-    hero_media_id: Optional[str] = None
-    thumbnail_media_id: Optional[str] = None
-    type: Optional[str] = None
+    image: Optional[str] = Field(None, alias="imageUrl")
+    hero_media_id: Optional[str] = Field(None, alias="heroMediaId")
+    thumbnail_media_id: Optional[str] = Field(None, alias="thumbnailMediaId")
+    type: Optional[CollectionTypeEnum] = None
     featured: Optional[bool] = None
-    sort_order: Optional[int] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    explicit_product_ids: Optional[List[str]] = None
+    sort_order: Optional[int] = Field(None, alias="sortOrder")
+    start_date: Optional[datetime] = Field(None, alias="startDate")
+    end_date: Optional[datetime] = Field(None, alias="endDate")
+    explicit_product_ids: Optional[List[str]] = Field(None, alias="explicitProductIds")
     rule: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "CollectionUpdateRequest":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date < self.start_date:
+                raise ValueError("endDate must be greater than or equal to startDate")
+        return self
 
 
 class AssignProductsRequest(BaseModel):
@@ -115,7 +152,8 @@ class AssignProductsRequest(BaseModel):
              removeProductsFromCollection in the frontend.
     """
 
-    productIds: List[str]
+    model_config = ConfigDict(populate_by_name=True)
+    productIds: List[str] = Field(alias="product_ids")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

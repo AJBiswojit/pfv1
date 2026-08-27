@@ -2,17 +2,7 @@
  * PRATIKSHYA FASHON — Collections API
  * Maps to API_CONTRACT.md § COLLECTIONS
  */
-import { apiClient, ApiError } from "./apiClient";
-
-function handleError(err) {
-  // Status + payload travel with the failure so admin desks can map
-  // 401/403/404/409/422 to distinct copy (formatAdminError) instead of one
-  // generic "could not save" line.
-  if (err instanceof ApiError) {
-    return { ok: false, error: err.message, status: err.status ?? 0, data: err.data ?? null };
-  }
-  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
-}
+import { apiClient, ApiError, handleError } from "./apiClient";
 
 function normCollection(c) {
   if (!c) return c;
@@ -122,5 +112,19 @@ export async function apiAdminAssignCollectionProducts(id, productIds) {
   try {
     const data = await apiClient.put(`/admin/collections/${id}/products`, { productIds }, { scope: "admin" });
     return { ok: true, collection: normCollection(data.collection ?? data) };
+  } catch (err) { return handleError(err); }
+}
+
+export async function apiAdminGetTaxonomyMetrics() {
+  try {
+    const data = await apiClient.get("/admin/taxonomy/metrics", { scope: "admin" });
+    return { ok: true, metrics: data.data ?? data };
+  } catch (err) { return handleError(err); }
+}
+
+export async function apiAdminGetTaxonomyProductCounts() {
+  try {
+    const data = await apiClient.get("/admin/taxonomy/product-counts", { scope: "admin" });
+    return { ok: true, counts: data.counts ?? data.data ?? data };
   } catch (err) { return handleError(err); }
 }

@@ -20,34 +20,38 @@ class SubcategoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
-    categoryId: str = Field(alias="category_id")
+    categoryId: str = Field(alias="category_id", serialization_alias="categoryId")
     name: str
     slug: str
     description: Optional[str] = ""
     image: Optional[str] = ""
     status: str
-    sortOrder: int = Field(alias="sort_order")
+    sortOrder: int = Field(0, alias="sort_order", serialization_alias="sortOrder")
     productCount: int = 0
 
 
 class SubcategoryCreateRequest(BaseModel):
     """Body for POST /admin/categories/{categoryId}/subcategories."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     slug: Optional[str] = None          # auto-derived from name if omitted
     description: Optional[str] = ""
-    image: Optional[str] = ""
-    sort_order: int = 0
+    image: Optional[str] = Field("", alias="imageUrl")
+    sort_order: int = Field(0, alias="sortOrder")
 
 
 class SubcategoryUpdateRequest(BaseModel):
     """Body for PATCH /admin/subcategories/{id}."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
-    image: Optional[str] = None
-    sort_order: Optional[int] = None
+    image: Optional[str] = Field(None, alias="imageUrl")
+    sort_order: Optional[int] = Field(None, alias="sortOrder")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -65,43 +69,47 @@ class CategoryResponse(BaseModel):
     eyebrow: Optional[str] = ""
     description: Optional[str] = ""
     image: Optional[str] = ""
-    bannerMediaId: Optional[str] = Field(None, alias="banner_media_id")
+    bannerMediaId: Optional[str] = Field(None, alias="banner_media_id", serialization_alias="bannerMediaId")
     status: str
-    sortOrder: int = Field(alias="sort_order")
-    featured: bool
-    seoTitle: Optional[str] = Field("", alias="seo_title")
-    seoDescription: Optional[str] = Field("", alias="seo_description")
+    sortOrder: int = Field(0, alias="sort_order", serialization_alias="sortOrder")
+    featured: bool = False
+    seoTitle: Optional[str] = Field("", alias="seo_title", serialization_alias="seoTitle")
+    seoDescription: Optional[str] = Field("", alias="seo_description", serialization_alias="seoDescription")
     productCount: int = 0
 
 
 class CategoryCreateRequest(BaseModel):
     """Body for POST /admin/categories."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     slug: Optional[str] = None          # auto-derived from name if omitted
     eyebrow: Optional[str] = ""
     description: Optional[str] = ""
-    image: Optional[str] = ""
-    banner_media_id: Optional[str] = None
-    sort_order: int = 0
+    image: Optional[str] = Field("", alias="imageUrl")
+    banner_media_id: Optional[str] = Field(None, alias="bannerMediaId")
+    sort_order: int = Field(0, alias="sortOrder")
     featured: bool = False
-    seo_title: Optional[str] = ""
-    seo_description: Optional[str] = ""
+    seo_title: Optional[str] = Field("", alias="seoTitle")
+    seo_description: Optional[str] = Field("", alias="seoDescription")
 
 
 class CategoryUpdateRequest(BaseModel):
     """Body for PATCH /admin/categories/{id}."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: Optional[str] = None
     slug: Optional[str] = None
     eyebrow: Optional[str] = None
     description: Optional[str] = None
-    image: Optional[str] = None
-    banner_media_id: Optional[str] = None
-    sort_order: Optional[int] = None
+    image: Optional[str] = Field(None, alias="imageUrl")
+    banner_media_id: Optional[str] = Field(None, alias="bannerMediaId")
+    sort_order: Optional[int] = Field(None, alias="sortOrder")
     featured: Optional[bool] = None
-    seo_title: Optional[str] = None
-    seo_description: Optional[str] = None
+    seo_title: Optional[str] = Field(None, alias="seoTitle")
+    seo_description: Optional[str] = Field(None, alias="seoDescription")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
