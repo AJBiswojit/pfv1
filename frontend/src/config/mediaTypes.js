@@ -482,10 +482,14 @@ export const isAllowedUploadFormat = (file, type) => {
   return extensionOk || mimeOk;
 };
 
-export const UPLOAD_NOTICE = "DEMO MEDIA UPLOAD";
+export const UPLOAD_NOTICE = "MEDIA REGISTRATION BLOCKED";
 
 export const UPLOAD_NOTICE_COPY =
-  "Files are previewed in this browser session only. Nothing is uploaded to a server or cloud storage, and preview URLs are never saved as production media.";
+  "Object storage is live (Phase 6), but media registration is not: the backend " +
+  "media tables carry no business columns, so an upload cannot be recorded, " +
+  "titled or mapped to a product. Files are previewed in this browser session " +
+  "only — nothing is uploaded, nothing is stored locally, and preview URLs are " +
+  "never saved as production media.";
 
 /** Bytes → a short human figure for the upload queue. */
 export const formatFileSize = (bytes) => {

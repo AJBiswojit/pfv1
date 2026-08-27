@@ -5,6 +5,7 @@
  * Handles:
  *   - Base URL from VITE_API_BASE (defaults to /api/v1 via Vite proxy)
  *   - Explicit Authorization token scoping (customer / admin / employee / none)
+ *   - JSON requests plus multipart uploads (apiClient.upload, Phase 6)
  *   - Automatic token refresh on 401 (one retry per request)
  *   - Per-surface token and refresh isolation
  *   - Structured error normalisation → { ok: false, error: string, status: number }
@@ -216,12 +217,23 @@ function emitSessionExpired(scope) {
 // ---------------------------------------------------------------------------
 
 async function request(method, path, body, options = {}) {
-  const { skipAuth = false, isRetry = false, headers: extraHeaders = {} } = options;
+  const {
+    skipAuth = false,
+    isRetry = false,
+    headers: extraHeaders = {},
+    // A pre-built request body (FormData for multipart uploads). When present
+    // it is sent verbatim and NO Content-Type is set, so the browser can add
+    // the correct `multipart/form-data; boundary=…` itself.
+    rawBody,
+  } = options;
   const activeScope = resolveRequestScope(path, options);
   const isPublic = skipAuth || PUBLIC_SCOPES.has(activeScope);
 
   const url = `${BASE_URL}${path}`;
-  const headers = { "Content-Type": "application/json", ...extraHeaders };
+  const headers = {
+    ...(rawBody === undefined ? { "Content-Type": "application/json" } : {}),
+    ...extraHeaders,
+  };
 
   if (!isPublic) {
     const token = getAccessToken(activeScope);
@@ -231,7 +243,11 @@ async function request(method, path, body, options = {}) {
   const fetchOptions = {
     method,
     headers,
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    ...(rawBody !== undefined
+      ? { body: rawBody }
+      : body !== undefined
+        ? { body: JSON.stringify(body) }
+        : {}),
   };
 
   let res;
@@ -279,6 +295,13 @@ export const apiClient = {
   patch:  (path, body, opts)  => request("PATCH",  path, body, opts),
   put:    (path, body, opts)  => request("PUT",    path, body, opts),
   delete: (path, opts)        => request("DELETE", path, undefined, opts),
+  /**
+   * Multipart upload. `formData` must be a FormData instance; the JSON
+   * Content-Type is deliberately omitted so the browser sets the boundary.
+   * Added in Phase 6 for media object uploads.
+   */
+  upload: (path, formData, opts) =>
+    request("POST", path, undefined, { ...opts, rawBody: formData }),
 };
 
 export default apiClient;

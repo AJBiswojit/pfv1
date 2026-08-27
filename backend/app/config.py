@@ -68,13 +68,48 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # --- Object Storage (AWS S3 / compatible) ---
-    STORAGE_PROVIDER: str = "s3"
+    # --- Object Storage -------------------------------------------------------
+    # Phase 6 introduced a provider-agnostic storage abstraction
+    # (`app/storage`). `local` is the development default: a filesystem-backed
+    # object store under LOCAL_MEDIA_ROOT that behaves like object storage
+    # (object keys, put/get/delete/exists, content types, application-level
+    # URLs) without AWS credentials, Docker, MinIO, Redis or Celery.
+    #
+    # `s3` is interface-ready but NOT wired to real AWS in this phase — it
+    # refuses to construct without credentials, so switching to it is a
+    # configuration change, never a rewrite of the media/product layers.
+    STORAGE_PROVIDER: str = "local"
     AWS_ACCESS_KEY_ID: Optional[str] = "your-access-key"
     AWS_SECRET_ACCESS_KEY: Optional[str] = "your-secret-key"
     AWS_REGION: str = "ap-south-1"
     AWS_BUCKET_NAME: str = "pratikshya-fashon-media"
     CDN_BASE_URL: str = "https://cdn.pratikshyafashon.com"
+
+    # --- Local object storage (Phase 6) ---
+    # Root of the local object store. Relative paths resolve against the
+    # backend project directory, so nothing is machine-specific and the
+    # directory survives restarts. Never point this at a temp folder.
+    LOCAL_MEDIA_ROOT: str = "storage/media"
+    # Application-level media URL, relative to API_V1_PREFIX:
+    #   /api/v1 + /media/objects + /{object_key}
+    # The frontend only ever sees this shape — never a filesystem path.
+    MEDIA_URL_PREFIX: str = "/media/objects"
+    # Mount prefix for the versioned API (main.py uses the same value, so the
+    # media URL builder and the router can never drift apart).
+    API_V1_PREFIX: str = "/api/v1"
+    # Optional CDN origin. When set, `url_for(key)` returns `{cdn}/{key}`
+    # instead of the API media route — the CDN then fronts the object store
+    # directly. Left empty in this phase: no CDN is provisioned.
+    MEDIA_CDN_BASE_URL: Optional[str] = None
+    # Rewrite product image references onto canonical media URLs when the
+    # object actually exists in the configured store. Disabling it restores
+    # the pre-Phase-6 behaviour (references passed through verbatim).
+    MEDIA_RESOLVE_PRODUCT_IMAGES: bool = True
+
+    # --- Local media import (Phase 6 migration tool) ---
+    # Read-only source of the real product assets. The importer only ever
+    # copies FROM here; it never writes, moves or deletes inside it.
+    LOCAL_MEDIA_IMPORT_SOURCE: str = "../frontend/public/images"
 
     # --- Payment (Razorpay) ---
     RAZORPAY_KEY_ID: Optional[str] = "your-razorpay-key-id"
@@ -107,9 +142,13 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 64
 
     # --- File Upload Limits ---
+    # NOTE (Phase 6): `image/avif` is part of the house policy because the real
+    # product asset library is AVIF-first (228 of the 238 shipped assets).
+    # This extends the EXISTING allowed-type configuration — it does not
+    # introduce a second media policy, and it stays env-overridable.
     MAX_IMAGE_SIZE_MB: int = 10
     MAX_VIDEO_SIZE_MB: int = 100
-    ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp"
+    ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp,image/avif"
     ALLOWED_VIDEO_TYPES: str = "video/mp4,video/webm"
 
     # --- Pagination ---
@@ -156,6 +195,63 @@ class Settings(BaseSettings):
     @property
     def allowed_video_types(self) -> List[str]:
         return _split_csv(self.ALLOWED_VIDEO_TYPES) or []
+
+    # ── Media / object storage accessors ─────────────────────────────────────
+
+    @property
+    def storage_provider_name(self) -> str:
+        """Normalised storage provider id (`local` | `s3`)."""
+        return (self.STORAGE_PROVIDER or "local").strip().lower()
+
+    @property
+    def local_media_root_path(self):
+        """
+        Absolute, resolved root of the local object store.
+
+        Relative values resolve against the backend project directory (the
+        parent of `app/`), never against the current working directory, so a
+        `.env` value such as `storage/media` is stable no matter where the
+        process was started from.
+        """
+        from pathlib import Path
+
+        backend_dir = Path(__file__).resolve().parent.parent
+        raw = (self.LOCAL_MEDIA_ROOT or "storage/media").strip()
+        candidate = Path(raw).expanduser()
+        if not candidate.is_absolute():
+            candidate = backend_dir / candidate
+        return candidate.resolve()
+
+    @property
+    def media_url_prefix_absolute(self) -> str:
+        """`/api/v1/media/objects` — the application-level media URL prefix."""
+        api_prefix = (self.API_V1_PREFIX or "").strip()
+        media_prefix = (self.MEDIA_URL_PREFIX or "").strip()
+        if api_prefix and not api_prefix.startswith("/"):
+            api_prefix = "/" + api_prefix
+        if media_prefix and not media_prefix.startswith("/"):
+            media_prefix = "/" + media_prefix
+        return f"{api_prefix.rstrip('/')}{media_prefix.rstrip('/')}"
+
+    @property
+    def media_cdn_base_url(self) -> Optional[str]:
+        """CDN origin for media objects, or None when no CDN is configured."""
+        value = (self.MEDIA_CDN_BASE_URL or "").strip()
+        return value.rstrip("/") or None
+
+    @property
+    def local_media_import_source_path(self):
+        """Absolute path of the read-only source asset folder for the importer."""
+        from pathlib import Path
+
+        backend_dir = Path(__file__).resolve().parent.parent
+        raw = (self.LOCAL_MEDIA_IMPORT_SOURCE or "").strip()
+        if not raw:
+            return None
+        candidate = Path(raw).expanduser()
+        if not candidate.is_absolute():
+            candidate = backend_dir / candidate
+        return candidate.resolve()
 
     # ── Production safety guards ──────────────────────────────────────────────
 

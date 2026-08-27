@@ -60,7 +60,9 @@ setup_middleware(app)
 register_error_handlers(app)
 
 # Include API v1 Router
-app.include_router(api_router, prefix="/api/v1")
+# The mount prefix is read from settings so the media-URL builder
+# (settings.media_url_prefix_absolute) and the router cannot drift apart.
+app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["System"])

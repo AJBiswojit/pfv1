@@ -69,3 +69,9 @@ prometheus-fastapi-instrumentator==6.1.0
 python-slugify==8.0.4
 orjson==3.10.3
 pendulum==3.0.0
+
+# --- Testing only (not used by the application at runtime) ---
+# tests/unit/test_phase6_media_db.py runs the real ORM models against a local
+# SQLite file because no PostgreSQL server is available in CI/sandbox
+# environments. The production database remains PostgreSQL.
+aiosqlite==0.22.1

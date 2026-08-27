@@ -21,6 +21,7 @@ import useMediaActions from "../../hooks/useMediaActions";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import catalogRepository from "../../services/catalogRepository";
+import { MEDIA_UPLOAD_BLOCKER } from "../../services/api/mediaApi";
 import { getImage } from "../../data/mediaPlaceholder";
 import { cn } from "../../utils/cn";
 
@@ -183,17 +184,19 @@ export default function MediaUploadForm({
     event.preventDefault();
     if (!validateForm()) return;
 
-    /* Media upload is backend-owned. The backend media service is not
-       available yet (the media tables do not carry business columns — see
-       INTEGRATION_AUDIT.md §7), so the upload is NOT simulated: the UI
-       shows an explicit error instead of creating fake records. */
-    setFormError("Media upload is not available yet: the backend media service has not been activated in this phase. File details were not stored and no placeholder media was created.");
-    setUploadState("idle");
-    setUploadProgress(0);
-    return;
+    /* BACKEND_GAP — stated precisely, never simulated.
 
-    /* Kept explicit: media upload requires the backend upload service
-       (blocker documented in INTEGRATION_AUDIT.md §7). */
+       Phase 6 made the OBJECT STORE live (POST /media/objects stores real
+       bytes and returns a canonical media URL). What is still missing is the
+       MEDIA REGISTER this form exists to write: `media_media_asset` and
+       `media_product_media` declare a table name and no business columns,
+       so there is nowhere to persist a title, scope, role, product mapping
+       or review state. Registering an upload would mean inventing schema,
+       which this phase is forbidden from doing.
+
+       So the form reports the exact blocker instead of faking a success,
+       and nothing is written to browser storage either. */
+    setFormError(MEDIA_UPLOAD_BLOCKER);
     setUploadState("idle");
     setUploadProgress(0);
   };

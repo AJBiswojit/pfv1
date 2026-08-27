@@ -40,6 +40,10 @@ from app.core.exceptions import (
 )
 from app.models.catalog.category import CategoryModel
 from app.models.catalog.product import ProductModel
+from app.services.media.product_media_resolver import (
+    resolve_product_image_list,
+    resolve_product_image_reference,
+)
 from app.schemas.catalog.product import (
     ADMIN_SORTS,
     EMPLOYEE_EDITABLE_FIELDS,
@@ -340,9 +344,13 @@ class ProductService:
             availability=p.availability or "in-stock",
             rating=float(p.rating) if p.rating else None,
             reviewCount=p.review_count or 0,
-            image=p.image or "",
-            hoverImage=p.hover_image or "",
-            additionalImages=p.additional_images or [],
+            # Media references are resolved by the storage layer so the
+            # frontend receives a canonical media URL (or, while an object is
+            # still only in public/, the original reference). See
+            # app/services/media/product_media_resolver.py.
+            image=resolve_product_image_reference(p.image),
+            hoverImage=resolve_product_image_reference(p.hover_image),
+            additionalImages=resolve_product_image_list(p.additional_images),
             primaryMediaId=p.primary_media_id,
             href=f"/products/{p.slug or p.id}",
             status=p.status,
@@ -417,9 +425,9 @@ class ProductService:
             mediaIds=p.media_ids or [],
             primaryMediaId=p.primary_media_id,
             galleryMediaIds=p.gallery_media_ids or [],
-            image=p.image or "",
-            hoverImage=p.hover_image or "",
-            additionalImages=p.additional_images or [],
+            image=resolve_product_image_reference(p.image),
+            hoverImage=resolve_product_image_reference(p.hover_image),
+            additionalImages=resolve_product_image_list(p.additional_images),
             createdBy=p.created_by,
             createdAt=p.created_at.isoformat() if p.created_at else None,
             updatedBy=p.updated_by,
