@@ -1,34 +1,39 @@
 """
-PHASE 7 — DISPOSABLE-POSTGRESQL END-TO-END VERIFICATION
-=======================================================
+MEDIA LIFECYCLE — REAL-POSTGRESQL END-TO-END VERIFICATION
+=========================================================
 
-This script is the required "≥1 E2E create → upload → register → assign →
-publish → storefront" proof for the Phase 7 product media lifecycle, run
-against a REAL schema applied by the REAL Alembic chain on a REAL PostgreSQL
-server — while honouring every standing constraint:
+The "≥1 E2E create → upload → register → assign → publish → storefront" proof
+for the product media lifecycle, run against a REAL schema applied by the REAL
+Alembic chain on a REAL PostgreSQL server — while honouring every standing
+constraint:
 
-  · The PostgreSQL cluster is DISPOSABLE: `pgserver` provisions a private
-    cluster in a temporary directory, and it (and its data directory) are
-    removed when the run ends. The company database is never touched, never
-    connected to, never referenced.
+  · The database is DISPOSABLE: `app.testing.local_postgres` creates a private
+    database (`pf_media_e2e_<random>`) on the LOCAL server, and drops it again
+    when the run ends. That helper refuses to start unless `DATABASE_URL`
+    points at a loopback host and at `pratikshya_local`, so the company
+    database is never touched, never connected to, never referenced.
   · `alembic upgrade head` runs against that disposable database ONLY —
     proving the full migration chain (initial schema → m001 schema move →
-    p7_media_lifecycle) applies cleanly to a fresh PostgreSQL.
+    add_media_asset_and_product_media_tables) applies cleanly to a fresh
+    PostgreSQL, with no manual SQL.
   · STORAGE_PROVIDER stays `local`, rooted in a temporary directory. No AWS,
     no S3, no credentials anywhere.
   · No seeding of production data: the only rows written are the isolated
-    test fixtures this run creates inside the disposable cluster.
+    test fixtures this run creates inside the disposable database.
   · Nothing under frontend/public/images or backend/storage/media is read,
     modified or deleted.
 
 Run it:
 
-    backend/.venv/bin/python backend/scripts/phase7_pg_e2e.py
+    cd backend
+    DATABASE_URL="postgresql+asyncpg://USER@localhost:5432/pratikshya_local" \
+        python scripts/media_lifecycle_pg_e2e.py
 
-Exit code 0 = every step passed. The final section prints a structured
-PASS/FAIL report per lifecycle step, including HTTP status codes, the
-Content-Type the storefront media URL was served with, and the byte-identity
-check between the uploaded image and the served bytes.
+Exit code 0 = every step passed, 2 = refused to run or a step failed. The
+final section prints a structured PASS/FAIL report per lifecycle step,
+including HTTP status codes, the Content-Type the storefront media URL was
+served with, and the byte-identity check between the uploaded image and the
+served bytes.
 """
 
 from __future__ import annotations
@@ -42,31 +47,42 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BACKEND_DIR.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 # ---------------------------------------------------------------------------
-# 0. Disposable PostgreSQL — provisioned FIRST, because app modules bind the
+# 0. Disposable database — provisioned FIRST, because app modules bind the
 #    engine from DATABASE_URL at import time.
 # ---------------------------------------------------------------------------
 
-import pgserver  # noqa: E402
+import contextlib  # noqa: E402
 
-_TMP = tempfile.TemporaryDirectory(prefix="pf7-pg-e2e-")
-_WORK = Path(_TMP.name)
-_PG_DIR = _WORK / "pg"
-_MEDIA_ROOT = _WORK / "media-store"
+from app.testing.local_postgres import (  # noqa: E402
+    LocalDatabaseUnavailable,
+    create_database,
+    redact,
+)
+
+_TMP = tempfile.TemporaryDirectory(prefix="pf-media-e2e-")
+_MEDIA_ROOT = Path(_TMP.name) / "media-store"
 _MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 
 print("=" * 78)
-print("PHASE 7 E2E — disposable PostgreSQL lifecycle verification")
+print("MEDIA LIFECYCLE E2E — disposable PostgreSQL verification")
 print("=" * 78)
-print(f"[0/9] Provisioning disposable PostgreSQL in {(_PG_DIR)} …")
-_server = pgserver.get_server(str(_PG_DIR))
-_pg_uri = _server.get_uri()  # postgresql://postgres@localhost:<port>/postgres
-_async_uri = _pg_uri.replace("postgresql://", "postgresql+asyncpg://", 1)
-print(f"      cluster ready: {_pg_uri.rsplit('@', 1)[-1]} (temporary dir cluster)")
+
+_STACK = contextlib.ExitStack()
+try:
+    _DB = _STACK.enter_context(create_database("media_e2e"))
+except LocalDatabaseUnavailable as _exc:
+    print(f"REFUSED: {_exc}", file=sys.stderr)
+    _TMP.cleanup()
+    sys.exit(2)
+print(f"[0/9] disposable database ready: {_DB.name}")
+print(f"      target: {redact(_DB.url).rsplit('@', 1)[-1]} (local server only)")
 
 # Environment for BOTH the alembic subprocess and the app import below.
-os.environ["DATABASE_URL"] = _async_uri
+os.environ["DATABASE_URL"] = _DB.url
 os.environ["STORAGE_PROVIDER"] = "local"
 os.environ["LOCAL_MEDIA_ROOT"] = str(_MEDIA_ROOT)
 os.environ["APP_ENV"] = "test"
@@ -103,6 +119,7 @@ _head = subprocess.run(
 print(f"      alembic current: {_head.stdout.strip() or '(unknown)'}")
 if "(head)" not in _head.stdout:
     print("FAIL: alembic current is not at head after upgrade.", file=sys.stderr)
+    _STACK.close()
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
@@ -185,7 +202,7 @@ import asyncio  # noqa: E402
 
 async def seed():
     async with AsyncSessionLocal() as session:
-        role = RoleModel(name="P7_E2E_CATALOGUE_ADMIN", description="phase7 e2e", is_system=False)
+        role = RoleModel(name="MEDIA_E2E_CATALOGUE_ADMIN", description="media lifecycle e2e", is_system=False)
         session.add(role)
         permissions = {}
         for code in ("products.view", "products.manage", "media.view", "media.upload", "media.delete"):
@@ -197,8 +214,8 @@ async def seed():
             session.add(RolePermissionModel(role_id=role.id, permission_id=permission.id))
 
         admin = UserModel(
-            email="p7-e2e-admin@pratikshyafashon.test",
-            full_name="Phase7 E2E Admin",
+            email="media-e2e-admin@pratikshyafashon.test",
+            full_name="Media E2E Admin",
             hashed_password="x",
             user_type="admin",
             status="ACTIVE",
@@ -215,7 +232,7 @@ async def seed():
 def build_app(admin_id: str) -> FastAPI:
     app = FastAPI()
     register_error_handlers(app)
-    FastAPICache.init(backend=PassThroughCacheBackend(), prefix="pf7-e2e")
+    FastAPICache.init(backend=PassThroughCacheBackend(), prefix="media-e2e")
     app.include_router(media_router, prefix="/api/v1")
     app.include_router(products_router, prefix="/api/v1")
 
@@ -247,19 +264,19 @@ async def main() -> None:
     print(f"[2/9] seeded isolated test admin ({admin_id}) with real RBAC grants")
 
     app = build_app(admin_id)
-    client = AsyncClient(transport=ASGITransport(app=app), base_url="http://pf7-e2e.test")
+    client = AsyncClient(transport=ASGITransport(app=app), base_url="http://media-e2e.test")
 
     # ── 3. Admin creates a NEW product through the real API ────────────────
     created = await client.post(
         "/api/v1/admin/products/draft",
         json={
             "id": NEW_PRODUCT_ID,
-            "name": "Phase Seven E2E Saree",
+            "name": "Media Lifecycle E2E Saree",
             "sku": NEW_PRODUCT_ID,
             "category": "sarees",
             "subcategory": "silk",
             "price": 7500,
-            "description": "A real product created through the admin API for the Phase 7 E2E.",
+            "description": "A real product created through the admin API for the media lifecycle E2E.",
             "brand": "Pratikshya Fashon",
             "gender": "Women",
         },
@@ -404,22 +421,20 @@ except Exception:
     traceback.print_exc()
     sys.exit(2)
 finally:
-    print(f"[x] tearing down the disposable PostgreSQL cluster ({_PG_DIR})")
-    try:
-        _server.cleanup()
-    except Exception:
-        pass
+    print(f"[x] tearing down the disposable database ({_DB.name})")
+    _STACK.close()
     _TMP.cleanup()
 
 print()
 print("=" * 78)
-print(f"PHASE 7 E2E RESULT: {len(STEPS)}/{len(STEPS)} steps PASSED")
+print(f"MEDIA LIFECYCLE E2E RESULT: {len(STEPS)}/{len(STEPS)} steps PASSED")
 print("=" * 78)
 for index, entry in enumerate(STEPS, start=1):
     print(f"  {index}. {entry['step']}: {'PASS' if entry['ok'] else 'FAIL'} — {entry['detail']}")
 print()
-print("Constraints honored: disposable PostgreSQL only (cluster removed above),")
-print("STORAGE_PROVIDER=local in a temporary directory, no AWS/S3, the company")
-print("database was never referenced, and no tracked repository file was touched.")
+print("Constraints honored: a disposable database on the local server only")
+print("(dropped above), STORAGE_PROVIDER=local in a temporary directory, no")
+print("AWS/S3, the company database was never referenced, and no tracked")
+print("repository file was touched.")
 print()
 print("E2E PASSED")

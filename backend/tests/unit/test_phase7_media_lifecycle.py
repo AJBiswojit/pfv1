@@ -32,10 +32,18 @@ ORM models and a real database session:
 
 WHY SQLITE
 ----------
-As in `test_phase6_media_db.py`: no PostgreSQL server is pip-installable, so
-the REAL models run against SQLite via the same two test-only shims (JSONB →
-JSON compile, `ATTACH DATABASE … AS pratikshya`). The disposable-PostgreSQL
-Alembic verification lives in `backend/scripts/phase7_pg_e2e.py`.
+As in `test_phase6_media_db.py`, this suite keeps the API/ORM behaviour checks
+on SQLite via the two test-only shims (JSONB → JSON compile,
+`ATTACH DATABASE … AS pratikshya`) so it runs anywhere, with no server.
+
+The PostgreSQL half is covered separately and runs whenever a local server is
+configured:
+  · `backend/tests/unit/test_media_schema_integrity.py` — the real PK/FK/unique
+    constraints, enforced by PostgreSQL, plus model↔schema parity.
+  · `backend/scripts/media_lifecycle_pg_e2e.py` — the disposable-database
+    `alembic upgrade head` + full lifecycle E2E.
+Both are provided by `backend/app/testing/local_postgres.py`, which refuses to
+run against anything but the local `pratikshya_local` database.
 """
 
 import asyncio

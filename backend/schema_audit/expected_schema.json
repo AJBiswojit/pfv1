@@ -1,9 +1,9 @@
 {
   "meta": {
-    "columns_total": 538,
-    "foreign_keys_total": 31,
+    "columns_total": 560,
+    "foreign_keys_total": 34,
     "generator": "backend/schema_audit/generate_expected_schema.py",
-    "indexes_total": 137,
+    "indexes_total": 139,
     "notes": [
       "Contract generated from backend SQLAlchemy models only; no external DB was accessed.",
       "Index matching in verify_schema.py is by column signature + uniqueness, not by index name, because Alembic/model naming conventions differ.",
@@ -78,7 +78,7 @@
       "variants_product_variant"
     ],
     "tables_count": 64,
-    "unique_constraints_total": 3
+    "unique_constraints_total": 5
   },
   "schema": "pratikshya",
   "tables": {
@@ -3659,20 +3659,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "coupon_id"
-          ],
-          "columns_signature": "coupon_id",
-          "name": null,
-          "ondelete": "SET NULL",
-          "onupdate": null,
-          "referred_columns": [
-            "commerce_coupon.id"
-          ],
-          "referred_signature": "commerce_coupon.id",
-          "referred_table": "commerce_coupon"
-        },
-        {
-          "columns": [
             "customer_id"
           ],
           "columns_signature": "customer_id",
@@ -3684,6 +3670,20 @@
           ],
           "referred_signature": "users.id",
           "referred_table": "users"
+        },
+        {
+          "columns": [
+            "coupon_id"
+          ],
+          "columns_signature": "coupon_id",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "commerce_coupon.id"
+          ],
+          "referred_signature": "commerce_coupon.id",
+          "referred_table": "commerce_coupon"
         }
       ],
       "indexes": [
@@ -4449,20 +4449,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "coupon_id"
-          ],
-          "columns_signature": "coupon_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "commerce_coupon.id"
-          ],
-          "referred_signature": "commerce_coupon.id",
-          "referred_table": "commerce_coupon"
-        },
-        {
-          "columns": [
             "customer_id"
           ],
           "columns_signature": "customer_id",
@@ -4474,6 +4460,20 @@
           ],
           "referred_signature": "users.id",
           "referred_table": "users"
+        },
+        {
+          "columns": [
+            "coupon_id"
+          ],
+          "columns_signature": "coupon_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "commerce_coupon.id"
+          ],
+          "referred_signature": "commerce_coupon.id",
+          "referred_table": "commerce_coupon"
         }
       ],
       "indexes": [
@@ -5881,20 +5881,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "employee_id"
-          ],
-          "columns_signature": "employee_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "employee_profiles.id"
-          ],
-          "referred_signature": "employee_profiles.id",
-          "referred_table": "employee_profiles"
-        },
-        {
-          "columns": [
             "reviewer_id"
           ],
           "columns_signature": "reviewer_id",
@@ -5906,6 +5892,20 @@
           ],
           "referred_signature": "users.id",
           "referred_table": "users"
+        },
+        {
+          "columns": [
+            "employee_id"
+          ],
+          "columns_signature": "employee_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "employee_profiles.id"
+          ],
+          "referred_signature": "employee_profiles.id",
+          "referred_table": "employee_profiles"
         }
       ],
       "indexes": [
@@ -7027,6 +7027,246 @@
     "media_media_asset": {
       "columns": [
         {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 512,
+          "name": "object_key",
+          "nullable": false,
+          "pg_datatype": "varchar(512)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=512)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "'local'",
+          "index": false,
+          "kind": "varchar",
+          "length": 20,
+          "name": "storage_provider",
+          "nullable": false,
+          "pg_datatype": "varchar(20)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=20)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "'image'",
+          "index": false,
+          "kind": "varchar",
+          "length": 30,
+          "name": "media_type",
+          "nullable": false,
+          "pg_datatype": "varchar(30)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=30)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 100,
+          "name": "mime_type",
+          "nullable": false,
+          "pg_datatype": "varchar(100)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=100)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 255,
+          "name": "original_filename",
+          "nullable": false,
+          "pg_datatype": "varchar(255)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=255)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "integer",
+          "length": null,
+          "name": "file_size",
+          "nullable": false,
+          "pg_datatype": "integer",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Integer()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": true,
+          "kind": "varchar",
+          "length": 64,
+          "name": "checksum_sha256",
+          "nullable": false,
+          "pg_datatype": "varchar(64)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=64)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "integer",
+          "length": null,
+          "name": "width",
+          "nullable": true,
+          "pg_datatype": "integer",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Integer()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "integer",
+          "length": null,
+          "name": "height",
+          "nullable": true,
+          "pg_datatype": "integer",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Integer()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 255,
+          "name": "title",
+          "nullable": true,
+          "pg_datatype": "varchar(255)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=255)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "text",
+          "length": null,
+          "name": "alt_text",
+          "nullable": true,
+          "pg_datatype": "text",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Text()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "text",
+          "length": null,
+          "name": "caption",
+          "nullable": true,
+          "pg_datatype": "text",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Text()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "'uploaded'",
+          "index": false,
+          "kind": "varchar",
+          "length": 30,
+          "name": "status",
+          "nullable": false,
+          "pg_datatype": "varchar(30)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=30)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "'product'",
+          "index": false,
+          "kind": "varchar",
+          "length": 30,
+          "name": "scope",
+          "nullable": false,
+          "pg_datatype": "varchar(30)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=30)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "uploaded_by",
+          "nullable": true,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
           "app_default": "<callable>",
           "index": true,
           "kind": "varchar",
@@ -7075,8 +7315,31 @@
           "unique": false
         }
       ],
-      "foreign_keys": [],
+      "foreign_keys": [
+        {
+          "columns": [
+            "uploaded_by"
+          ],
+          "columns_signature": "uploaded_by",
+          "name": null,
+          "ondelete": "SET NULL",
+          "onupdate": null,
+          "referred_columns": [
+            "users.id"
+          ],
+          "referred_signature": "users.id",
+          "referred_table": "users"
+        }
+      ],
       "indexes": [
+        {
+          "columns": [
+            "checksum_sha256"
+          ],
+          "columns_signature": "checksum_sha256",
+          "name": "ix_pratikshya_media_media_asset_checksum_sha256",
+          "unique": false
+        },
         {
           "columns": [
             "id"
@@ -7091,7 +7354,15 @@
         "id"
       ],
       "schema": "pratikshya",
-      "unique_constraints": []
+      "unique_constraints": [
+        {
+          "columns": [
+            "object_key"
+          ],
+          "columns_signature": "object_key",
+          "name": "uq_media_asset_object_key"
+        }
+      ]
     },
     "media_media_review": {
       "columns": [
@@ -7165,6 +7436,118 @@
     "media_product_media": {
       "columns": [
         {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "product_id",
+          "nullable": false,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": true,
+          "kind": "varchar",
+          "length": 36,
+          "name": "media_id",
+          "nullable": false,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "'gallery'",
+          "index": false,
+          "kind": "varchar",
+          "length": 30,
+          "name": "role",
+          "nullable": false,
+          "pg_datatype": "varchar(30)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=30)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "0",
+          "index": false,
+          "kind": "integer",
+          "length": null,
+          "name": "sort_order",
+          "nullable": false,
+          "pg_datatype": "integer",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Integer()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": "False",
+          "index": false,
+          "kind": "boolean",
+          "length": null,
+          "name": "is_primary",
+          "nullable": false,
+          "pg_datatype": "boolean",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "Boolean()",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 36,
+          "name": "assigned_by",
+          "nullable": true,
+          "pg_datatype": "varchar(36)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=36)",
+          "timezone": null,
+          "unique": false
+        },
+        {
+          "app_default": null,
+          "index": false,
+          "kind": "varchar",
+          "length": 500,
+          "name": "assignment_note",
+          "nullable": true,
+          "pg_datatype": "varchar(500)",
+          "precision": null,
+          "primary_key": false,
+          "scale": null,
+          "server_default": null,
+          "sqlalchemy_type": "String(length=500)",
+          "timezone": null,
+          "unique": false
+        },
+        {
           "app_default": "<callable>",
           "index": true,
           "kind": "varchar",
@@ -7213,7 +7596,36 @@
           "unique": false
         }
       ],
-      "foreign_keys": [],
+      "foreign_keys": [
+        {
+          "columns": [
+            "product_id"
+          ],
+          "columns_signature": "product_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "catalog_product.id"
+          ],
+          "referred_signature": "catalog_product.id",
+          "referred_table": "catalog_product"
+        },
+        {
+          "columns": [
+            "media_id"
+          ],
+          "columns_signature": "media_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "media_media_asset.id"
+          ],
+          "referred_signature": "media_media_asset.id",
+          "referred_table": "media_media_asset"
+        }
+      ],
       "indexes": [
         {
           "columns": [
@@ -7222,6 +7634,14 @@
           "columns_signature": "id",
           "name": "ix_pratikshya_media_product_media_id",
           "unique": false
+        },
+        {
+          "columns": [
+            "media_id"
+          ],
+          "columns_signature": "media_id",
+          "name": "ix_pratikshya_media_product_media_media_id",
+          "unique": false
         }
       ],
       "name": "media_product_media",
@@ -7229,7 +7649,16 @@
         "id"
       ],
       "schema": "pratikshya",
-      "unique_constraints": []
+      "unique_constraints": [
+        {
+          "columns": [
+            "product_id",
+            "media_id"
+          ],
+          "columns_signature": "product_id|media_id",
+          "name": "uq_product_media_asset"
+        }
+      ]
     },
     "notification_notification": {
       "columns": [
@@ -10091,20 +10520,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "role_id"
-          ],
-          "columns_signature": "role_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "roles.id"
-          ],
-          "referred_signature": "roles.id",
-          "referred_table": "roles"
-        },
-        {
-          "columns": [
             "permission_id"
           ],
           "columns_signature": "permission_id",
@@ -10116,6 +10531,20 @@
           ],
           "referred_signature": "permissions.id",
           "referred_table": "permissions"
+        },
+        {
+          "columns": [
+            "role_id"
+          ],
+          "columns_signature": "role_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "roles.id"
+          ],
+          "referred_signature": "roles.id",
+          "referred_table": "roles"
         }
       ],
       "indexes": [
@@ -10362,20 +10791,6 @@
       "foreign_keys": [
         {
           "columns": [
-            "role_id"
-          ],
-          "columns_signature": "role_id",
-          "name": null,
-          "ondelete": "CASCADE",
-          "onupdate": null,
-          "referred_columns": [
-            "roles.id"
-          ],
-          "referred_signature": "roles.id",
-          "referred_table": "roles"
-        },
-        {
-          "columns": [
             "user_id"
           ],
           "columns_signature": "user_id",
@@ -10387,6 +10802,20 @@
           ],
           "referred_signature": "users.id",
           "referred_table": "users"
+        },
+        {
+          "columns": [
+            "role_id"
+          ],
+          "columns_signature": "role_id",
+          "name": null,
+          "ondelete": "CASCADE",
+          "onupdate": null,
+          "referred_columns": [
+            "roles.id"
+          ],
+          "referred_signature": "roles.id",
+          "referred_table": "roles"
         }
       ],
       "indexes": [

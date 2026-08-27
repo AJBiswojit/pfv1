@@ -4,10 +4,10 @@ Generated from the backend SQLAlchemy models. No external database was accessed.
 
 - **Schema**: `pratikshya`
 - **Tables**: 64
-- **Columns**: 538
-- **Foreign keys**: 31
-- **Unique constraints**: 3
-- **Indexes**: 137
+- **Columns**: 560
+- **Foreign keys**: 34
+- **Unique constraints**: 5
+- **Indexes**: 139
 
 > Index matching in the verification script is by column signature + 
 > uniqueness, not by index name, because Alembic/model naming conventions differ.
@@ -684,8 +684,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `coupon_id` -> `commerce_coupon` (`commerce_coupon.id`) ondelete=SET NULL
 - `customer_id` -> `users` (`users.id`) ondelete=CASCADE
+- `coupon_id` -> `commerce_coupon` (`commerce_coupon.id`) ondelete=SET NULL
 
 ### Unique constraints
 
@@ -804,8 +804,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `coupon_id` -> `commerce_coupon` (`commerce_coupon.id`) ondelete=CASCADE
 - `customer_id` -> `users` (`users.id`) ondelete=CASCADE
+- `coupon_id` -> `commerce_coupon` (`commerce_coupon.id`) ondelete=CASCADE
 
 ### Unique constraints
 
@@ -1082,8 +1082,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `employee_id` -> `employee_profiles` (`employee_profiles.id`) ondelete=CASCADE
 - `reviewer_id` -> `users` (`users.id`) ondelete=SET NULL
+- `employee_id` -> `employee_profiles` (`employee_profiles.id`) ondelete=CASCADE
 
 ### Unique constraints
 
@@ -1412,22 +1412,38 @@ _None (unique columns are represented by unique indexes below)._
 
 | Column | Type | Nullable | PK | Default (app-side) |
 |--------|------|----------|----|--------------------|
+| `object_key` | `varchar(512)` | false |  | `` |
+| `storage_provider` | `varchar(20)` | false |  | `'local'` |
+| `media_type` | `varchar(30)` | false |  | `'image'` |
+| `mime_type` | `varchar(100)` | false |  | `` |
+| `original_filename` | `varchar(255)` | false |  | `` |
+| `file_size` | `integer` | false |  | `` |
+| `checksum_sha256` | `varchar(64)` | false |  | `` |
+| `width` | `integer` | true |  | `` |
+| `height` | `integer` | true |  | `` |
+| `title` | `varchar(255)` | true |  | `` |
+| `alt_text` | `text` | true |  | `` |
+| `caption` | `text` | true |  | `` |
+| `status` | `varchar(30)` | false |  | `'uploaded'` |
+| `scope` | `varchar(30)` | false |  | `'product'` |
+| `uploaded_by` | `varchar(36)` | true |  | `` |
 | `id` | `varchar(36)` | false | yes | `<callable>` |
 | `created_at` | `timestamp with time zone` | false |  | `<callable>` |
 | `updated_at` | `timestamp with time zone` | false |  | `<callable>` |
 
 ### Foreign keys
 
-_None._
+- `uploaded_by` -> `users` (`users.id`) ondelete=SET NULL
 
 ### Unique constraints
 
-_None (unique columns are represented by unique indexes below)._
+- `uq_media_asset_object_key`: (object_key)
 
 ### Indexes
 
 | Index (name candidates) | Columns | Unique |
 |------------------------|---------|--------|
+| `ix_pratikshya_media_media_asset_checksum_sha256` | (checksum_sha256) | false |
 | `ix_pratikshya_media_media_asset_id` | (id) | false |
 
 
@@ -1468,23 +1484,32 @@ _None (unique columns are represented by unique indexes below)._
 
 | Column | Type | Nullable | PK | Default (app-side) |
 |--------|------|----------|----|--------------------|
+| `product_id` | `varchar(36)` | false |  | `` |
+| `media_id` | `varchar(36)` | false |  | `` |
+| `role` | `varchar(30)` | false |  | `'gallery'` |
+| `sort_order` | `integer` | false |  | `0` |
+| `is_primary` | `boolean` | false |  | `False` |
+| `assigned_by` | `varchar(36)` | true |  | `` |
+| `assignment_note` | `varchar(500)` | true |  | `` |
 | `id` | `varchar(36)` | false | yes | `<callable>` |
 | `created_at` | `timestamp with time zone` | false |  | `<callable>` |
 | `updated_at` | `timestamp with time zone` | false |  | `<callable>` |
 
 ### Foreign keys
 
-_None._
+- `product_id` -> `catalog_product` (`catalog_product.id`) ondelete=CASCADE
+- `media_id` -> `media_media_asset` (`media_media_asset.id`) ondelete=CASCADE
 
 ### Unique constraints
 
-_None (unique columns are represented by unique indexes below)._
+- `uq_product_media_asset`: (product_id, media_id)
 
 ### Indexes
 
 | Index (name candidates) | Columns | Unique |
 |------------------------|---------|--------|
 | `ix_pratikshya_media_product_media_id` | (id) | false |
+| `ix_pratikshya_media_product_media_media_id` | (media_id) | false |
 
 
 ## `notification_notification`
@@ -1964,8 +1989,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `role_id` -> `roles` (`roles.id`) ondelete=CASCADE
 - `permission_id` -> `permissions` (`permissions.id`) ondelete=CASCADE
+- `role_id` -> `roles` (`roles.id`) ondelete=CASCADE
 
 ### Unique constraints
 
@@ -2029,8 +2054,8 @@ _None (unique columns are represented by unique indexes below)._
 
 ### Foreign keys
 
-- `role_id` -> `roles` (`roles.id`) ondelete=CASCADE
 - `user_id` -> `users` (`users.id`) ondelete=CASCADE
+- `role_id` -> `roles` (`roles.id`) ondelete=CASCADE
 
 ### Unique constraints
 
