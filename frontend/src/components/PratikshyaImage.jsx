@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { resolveMediaUrl } from "../services/media/mediaPaths";
+import { normalizeMediaReference } from "../services/media/mediaPaths";
 
 /**
  * Shared product-media renderer. It never invents or requests a fallback
  * image: absent and failed media stays a quiet Atelier empty plate.
+ *
+ * Every source goes through the single media resolver
+ * (`services/media/mediaPaths`), so a canonical backend media URL, an
+ * absolute URL, a `{ src }`/`{ url }`/`{ path }` record and a legacy
+ * `/images/…` reference are all handled in one place — no component builds
+ * a storage path of its own.
  */
-const sourceOf = (image) => {
-  if (typeof image === "string") return resolveMediaUrl(image);
-  return resolveMediaUrl(image?.src || image?.url || "");
-};
+const sourceOf = (image) => normalizeMediaReference(image);
 
 function EmptyMedia({ className, label = "Product media coming soon" }) {
   return (
