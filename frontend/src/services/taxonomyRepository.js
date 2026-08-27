@@ -19,6 +19,7 @@ import {
 } from "./catalog/catalogStore";
 import {
   apiAdminGetCategory,
+  apiAdminListCategories,
   apiAdminListSubcategories,
   apiAdminCreateCategory,
   apiAdminUpdateCategory,
@@ -169,6 +170,25 @@ export const taxonomyRepository = {
   /**
    * ── Admin reads: server-resolved, ANY lifecycle status ──────────────────
    */
+  /**
+   * Admin category option list — the product editor's write surface reads
+   * the ADMIN taxonomy endpoint, which returns every lifecycle state
+   * (DRAFT / ACTIVE / ARCHIVED), so an admin-created category that is not yet
+   * ACTIVE is still assignable. The storefront `categoryOptions()` stays
+   * ACTIVE-only; this is the editor-only, id-valued surface.
+   */
+  loadCategoryOptions: async () => {
+    const result = await apiAdminListCategories();
+    if (!result.ok) return result;
+    return {
+      ok: true,
+      items: (result.items ?? [])
+        .map((entry) => asCategory(entry))
+        .sort(byOrder)
+        .map((entry) => ({ id: entry.id, label: entry.name, value: entry.id })),
+    };
+  },
+
   loadCategory: async (idOrSlug) => {
     if (!idOrSlug) return { ok: false, error: "No category id was provided.", status: 0, data: null };
     const result = await apiAdminGetCategory(idOrSlug);

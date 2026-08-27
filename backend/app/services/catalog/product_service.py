@@ -1780,8 +1780,14 @@ class ProductService:
         """
         Deterministic nextStableProductId() — never random.
         Scans the register, honours preferredNumber, picks lowest free integer.
+
+        Canonical form: `PF-{CATEGORY_CODE}-{NNNN}` — a four-digit serial under
+        a server-derived prefix. This is the SINGLE product-id authority: the
+        client requests the id here and stores it verbatim, and never derives
+        one from a local taxonomy snapshot.
         """
-        prefix = CATEGORY_ID_PREFIXES.get(category_id, "PF")
+        code = CATEGORY_ID_PREFIXES.get(category_id, "GEN")
+        prefix = f"PF-{code}"
         result = await self.db.execute(
             select(ProductModel.id).where(
                 ProductModel.id.like(f"{prefix}-%")
@@ -1803,7 +1809,7 @@ class ProductService:
             while n in taken_nums:
                 n += 1
 
-        return f"{prefix}-{n:03d}"
+        return f"{prefix}-{n:04d}"
 
     # ── Metrics ───────────────────────────────────────────────────────────────
 

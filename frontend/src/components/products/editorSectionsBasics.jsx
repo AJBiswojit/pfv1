@@ -3,6 +3,7 @@
  * Category & Attributes (Phase 13).
  */
 
+import { useEffect, useState } from "react";
 import {
   AVAILABILITY_OPTIONS,
   COLLECTION_OPTIONS,
@@ -18,9 +19,6 @@ import {
   SIZE_OPTIONS,
   TAG_SUGGESTIONS,
   WORK_OPTIONS,
-  departmentCategoriesFor,
-  departmentSubcategoriesFor,
-  subcategoryOptionsFor,
 } from "../../config/productCatalogConfig";
 import catalogRepository from "../../services/catalogRepository";
 import taxonomyRepository from "../../services/taxonomyRepository";
@@ -223,21 +221,45 @@ export function SectionBasics({ draft, patch, errors, isNew }) {
 /* ------------------------------------------------------------------ */
 
 export function SectionAttributes({ draft, patch, errors, isNew }) {
-  const allSubcategoryOptions = subcategoryOptionsFor(draft.category);
-  const departmentSubcategories = draft.department
-    ? departmentSubcategoriesFor(draft.department, draft.category)
-    : [];
-  const subcategoryOptions = departmentSubcategories.length
-    ? departmentSubcategories.map((sub) => sub.id)
-    : allSubcategoryOptions;
+  /*
+   * The product write path reads the ADMIN taxonomy surface — every lifecycle
+   * state (DRAFT / ACTIVE / ARCHIVED) — and emits server ids for both levels.
+   * It no longer depends on the static `data/products/departments.js` /
+   * `data/catalog/taxonomy.js` hierarchy, so categories and subcategories an
+   * admin created through the taxonomy screens are assignable exactly like the
+   * authored ones.
+   */
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [subcategoryOptions, setSubcategoryOptions] = useState([]);
 
-  const allCategoryOptions = taxonomyRepository.categoryOptions();
-  const departmentCategories = draft.department
-    ? departmentCategoriesFor(draft.department)
-    : [];
-  const categoryOptions = departmentCategories.length
-    ? departmentCategories
-    : allCategoryOptions;
+  useEffect(() => {
+    let cancelled = false;
+    taxonomyRepository.loadCategoryOptions().then((result) => {
+      if (cancelled || !result.ok) return;
+      setCategoryOptions(result.items ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!draft.category) {
+      setSubcategoryOptions([]);
+      return undefined;
+    }
+    taxonomyRepository.loadSubcategories(draft.category).then((result) => {
+      if (cancelled || !result.ok) return;
+      setSubcategoryOptions(
+        (result.items ?? []).map((entry) => ({ id: entry.id, name: entry.name }))
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.category]);
+
   const collectionOptions = taxonomyRepository.collectionOptions().map((entry) => entry.label);
 
   return (
@@ -248,7 +270,7 @@ export function SectionAttributes({ draft, patch, errors, isNew }) {
             id="pf-category"
             value={draft.category}
             onChange={(event) => patch({ category: event.target.value, subcategory: "" })}
-            placeholder={draft.department ? "Choose a category" : "Choose a department first"}
+            placeholder="Choose a category"
             disabled={!isNew}
             options={categoryOptions.map((category) => ({ value: category.id, label: category.label }))}
           />
@@ -261,8 +283,7 @@ export function SectionAttributes({ draft, patch, errors, isNew }) {
             onChange={(event) => patch({ subcategory: event.target.value })}
             placeholder={draft.category ? "Choose a style" : "Choose a category first"}
             disabled={!isNew}
-            options={subcategoryOptions.map((entry) => ({ value: entry, label: entry }))}
-            allowCustom
+            options={subcategoryOptions.map((entry) => ({ value: entry.id, label: entry.name }))}
           />
         </Field>
 
