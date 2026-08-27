@@ -21,7 +21,8 @@
 import { apiListProducts, apiGetProduct } from "../api/productsApi";
 import { apiListCategories, apiListSubcategories } from "../api/categoriesApi";
 import { apiListCollections } from "../api/collectionsApi";
-import { apiGetHome, apiGetExploreOffers } from "../api/searchApi";
+import { apiGetHome } from "../api/searchApi";
+import { apiListOffers } from "../api/offersApi";
 import { PRODUCT_MEDIA_ROLES } from "../../config/mediaTypes";
 
 export const CATALOG_CHANGED_EVENT = "pf:catalog-changed";
@@ -40,6 +41,7 @@ const state = {
   subcategories: {},       // categoryId -> [subcategory, ...]
   collections: [],         // active collections
   offers: [],
+  offersError: null,
   home: null,              // GET /home payload (hero, sections, sale banner)
 };
 
@@ -204,7 +206,11 @@ export async function hydrateCatalog({ force = false } = {}) {
       apiListCategories({ status: "ACTIVE" }),
       apiListCollections({ status: "ACTIVE" }),
       apiGetHome(),
-      apiGetExploreOffers(),
+      // Phase 5: the shared offer cache is hydrated from the REAL coupon
+      // table (GET /offers — active, non-expired), not from the explore
+      // stream's static offer strip. A failed fetch leaves an explicit
+      // error flag instead of silently showing nothing or stale rows.
+      apiListOffers(),
     ]);
 
     if (!productsResult.ok) throw new Error(productsResult.error);
@@ -222,7 +228,13 @@ export async function hydrateCatalog({ force = false } = {}) {
 
     applySnapshot(productsResult.items, categories, collectionsResult.collections ?? collectionsResult.items ?? [], subcategories);
     if (homeResult.ok) state.home = homeResult;
-    if (offersResult.ok) state.offers = offersResult.offers ?? [];
+    if (offersResult.ok) {
+      state.offers = offersResult.offers ?? [];
+      state.offersError = null;
+    } else {
+      state.offers = [];
+      state.offersError = offersResult.error ?? "Offers could not be loaded from the server.";
+    }
     state.status = "ready";
     emit();
     return state;

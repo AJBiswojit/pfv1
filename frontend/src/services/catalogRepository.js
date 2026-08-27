@@ -84,6 +84,40 @@ export const replaceServerProducts = (items) => {
   return serverProducts;
 };
 
+/**
+ * Merge server-returned records into the session cache (upsert by id).
+ *
+ * This is the reconciliation primitive the awaited admin API layer uses
+ * after a successful backend write: the AUTHORITATIVE record returned by
+ * the server replaces the local one, so the editor's next save starts from
+ * server truth instead of a stale snapshot. Merging (not replacing) keeps
+ * already-loaded pages in the cache intact while pagination fetches more.
+ */
+export const upsertServerProducts = (records) => {
+  const incoming = Array.isArray(records) ? records.filter(Boolean) : [];
+  if (!incoming.length) return serverProducts;
+  const byId = new Map(incoming.map((record) => [String(record.id), record]));
+  let changed = false;
+  const next = serverProducts.map((record) => {
+    const replacement = byId.get(String(record.id));
+    if (!replacement) return record;
+    changed = true;
+    byId.delete(String(record.id));
+    return { ...record, ...replacement };
+  });
+  byId.forEach((record) => next.unshift(record));
+  serverProducts = next;
+  if (changed || incoming.length) {
+    productVersion += 1;
+    readCache = null;
+    normalizedCache = { raw: null, parsedRef: null, list: null, byId: null, bySlug: null };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
+    }
+  }
+  return serverProducts;
+};
+
 /** The current session cache (server-backed). */
 export const getServerProducts = () => serverProducts;
 
@@ -812,22 +846,44 @@ const writeProduct = (draft, actor, options = {}) => {
   return merged;
 };
 
-/** Fire-and-forget backend persistence for product writes. */
+/**
+ * Legacy fire-and-forget persistence for non-editor write paths.
+ *
+ * Phase 5: the ADMIN surface's authoritative writes go through
+ * `services/admin/productAdminService` (awaited, error-surfaced). This
+ * shim remains for legacy command paths (media detach, employee portal)
+ * and is payload-normalized through the SAME single mapping layer
+ * (`buildAdminProductPayload`) so it can never send lifecycle keys that
+ * the backend now rejects, nor silently invent fields: creation lands as
+ * a canonical-ID draft (`POST /admin/products/draft`), updates are partial
+ * PATCHes. Failures are deliberately not swallowed here — the result is
+ * stashed on the repository for diagnostics.
+ */
+let lastSyncError = null;
+export const getLastSyncError = () => lastSyncError;
+
 async function syncProductToBackend(product, isUpdate) {
   const { getAccessToken } = await import("./api/apiClient");
-  const { apiAdminCreateProduct, apiAdminUpdateProduct, apiEmployeeUpdateProduct } =
+  const { apiAdminCreateDraft, apiAdminUpdateProduct, apiEmployeeUpdateProduct, buildAdminProductPayload } =
     await import("./api/productsApi");
-  const payload = { ...product };
-  delete payload.history;
-  delete payload.flags;
   const hasAdmin = Boolean(getAccessToken("admin"));
   const hasEmployee = Boolean(getAccessToken("employee"));
   if (!hasAdmin && !hasEmployee) return;
-  if (isUpdate) {
-    if (hasAdmin) await apiAdminUpdateProduct(product.id, payload);
-    else await apiEmployeeUpdateProduct(product.id, payload);
-  } else {
-    await apiAdminCreateProduct(payload);
+  try {
+    if (isUpdate) {
+      const payload = buildAdminProductPayload(product);
+      if (hasAdmin) await apiAdminUpdateProduct(product.id, payload);
+      else await apiEmployeeUpdateProduct(product.id, payload);
+    } else if (hasAdmin && product.id) {
+      const { id: _id, ...payload } = buildAdminProductPayload(product);
+      await apiAdminCreateDraft({ id: String(product.id), ...payload });
+    } else {
+      const { apiAdminCreateProduct } = await import("./api/productsApi");
+      await apiAdminCreateProduct(buildAdminProductPayload(product));
+    }
+    lastSyncError = null;
+  } catch (err) {
+    lastSyncError = err?.message ? String(err.message) : String(err);
   }
 }
 

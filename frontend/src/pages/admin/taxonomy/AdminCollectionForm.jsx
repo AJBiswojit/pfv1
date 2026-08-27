@@ -19,13 +19,20 @@ export default function AdminCollectionForm() {
   const [draft, setDraft] = useState(() => existing ? { ...emptyDraft, ...existing } : emptyDraft);
   const [error, setError] = useState("");
   const setField = (field, value) => { setDraft((current) => ({ ...current, [field]: value, ...(field === "name" && !current.slug ? { slug: slugify(value) } : {}) })); setError(""); };
-  const submit = (event) => {
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event) => {
     event.preventDefault();
+    if (saving) return;
     if (!draft.name.trim()) return setError("Collection name is required.");
     if (draft.startDate && draft.endDate && draft.endDate < draft.startDate) return setError("End date cannot be before start date.");
     const payload = { ...draft, slug: slugify(draft.slug || draft.name), sortOrder: Number(draft.sortOrder) || 0, heroMediaId: draft.heroMediaId || null, thumbnailMediaId: draft.thumbnailMediaId || null };
-    const result = existing ? taxonomyRepository.updateCollection(existing.id, payload, actor) : taxonomyRepository.createCollection(payload, actor);
-    if (!result.ok) return setError(result.error || "Collection could not be saved.");
+    setSaving(true);
+    const result = existing
+      ? await taxonomyRepository.updateCollection(existing.id, payload, actor)
+      : await taxonomyRepository.createCollection(payload, actor);
+    setSaving(false);
+    if (!result.ok) return setError(formatAdminError(result, { entity: "collection", action: existing ? "updated" : "created" }));
     navigate(`/admin/collections/${result.collection.id}`);
   };
 

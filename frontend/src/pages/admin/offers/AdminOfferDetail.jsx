@@ -2,7 +2,7 @@
  * PRATIKSHYA FASHON — Admin offer detail (Phase 17)
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Pause, Play, Archive } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
@@ -31,7 +31,7 @@ export default function AdminOfferDetail() {
   const { admin } = useAdminAuth();
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const { activity } = useEmployeeManagement();
-  const offer = useOffer(offerId);
+  const { offer, loading, error } = useOffer(offerId);
   const [confirm, setConfirm] = useState(null);
   const [notice, setNotice] = useState("");
 
@@ -44,9 +44,20 @@ export default function AdminOfferDetail() {
     [activity, offer]
   );
 
+  if (loading) {
+    return (
+      <AdminPage eyebrow="Offers" title="Loading offer…">
+        <p className="py-12 text-center font-ui text-sm text-taupe">Fetching this offer from the server…</p>
+      </AdminPage>
+    );
+  }
+
   if (!offer) {
     return (
-      <AdminPage eyebrow="Offers" title="Offer not found" description="This promotion is not in this browser.">
+      <AdminPage eyebrow="Offers" title="Offer not found" description="The server has no coupon with this id.">
+        {error ? (
+          <p role="alert" className="mb-4 font-ui text-sm text-accent">{error}</p>
+        ) : null}
         <Link to="/admin/offers" className="font-ui text-sm text-brass hover:text-accent">
           Back to offers
         </Link>
@@ -57,15 +68,27 @@ export default function AdminOfferDetail() {
   const used = effectiveUsageCount(offer);
   const discountGiven = redemptions.reduce((sum, entry) => sum + (entry.discount || 0), 0);
 
-  const apply = (action) => {
+  const apply = async (action) => {
     const result =
       action === "activate"
-        ? offerRepository.activate(offer.id, actor)
+        ? await offerRepository.activate(offer.id, actor)
         : action === "pause"
-          ? offerRepository.pause(offer.id, actor)
-          : offerRepository.archive(offer.id, actor);
+          ? await offerRepository.pause(offer.id, actor)
+          : await offerRepository.archive(offer.id, actor);
     setConfirm(null);
-    setNotice(result.ok ? `${offer.code} updated.` : result.error || "Could not update offer.");
+    if (!result.ok) {
+      // Server truth wins over optimism — the record here is re-read from
+      // the response envelope (or shown as the rejection).
+      setNotice(result.error || `The server refused to ${action} this offer.`);
+      return;
+    }
+    setNotice(
+      action === "activate"
+        ? `${offer.code} is active on the server.`
+        : action === "pause"
+          ? `${offer.code} was deactivated on the server. Note: the coupon table stores one inactive flag, so a paused and an archived offer look identical to checkout — only “Activate” reverses either.`
+          : `${offer.code} archived (deactivated) on the server.`
+    );
   };
 
   return (

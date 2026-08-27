@@ -8,6 +8,7 @@ import { AtelierButton } from "../../../design-system";
 import catalogRepository from "../../../services/catalogRepository";
 import taxonomyRepository, { TAXONOMY_STATUS } from "../../../services/taxonomyRepository";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
+import { formatAdminError } from "../../../services/admin/adminError";
 import { formatINR } from "../../../utils/shopping";
 import { slugify } from "../../../services/catalogRepository";
 
@@ -34,32 +35,48 @@ export default function AdminCategoryDetail() {
     return <AdminPage title="Category unavailable"><AtelierButton as={Link} to="/admin/categories" size="chip">Back to categories</AtelierButton></AdminPage>;
   }
 
-  const archiveOrRestore = () => {
-    const result = category.status === TAXONOMY_STATUS.ARCHIVED
-      ? taxonomyRepository.restoreCategory(category.id, actor)
-      : taxonomyRepository.archiveCategory(category.id, actor);
+  const archiveOrRestore = async () => {
+    // Awaited server transition; failures keep the backend's own reason
+    // (e.g. the 409 refusal when a category still carries sub-records).
+    const wasArchived = category.status === TAXONOMY_STATUS.ARCHIVED;
+    const result = wasArchived
+      ? await taxonomyRepository.restoreCategory(category.id, actor)
+      : await taxonomyRepository.archiveCategory(category.id, actor);
     if (result.ok) {
-      setNotice(category.status === TAXONOMY_STATUS.ARCHIVED ? "Category restored." : products.length ? "This category contains products and cannot be permanently deleted. It has been archived instead." : "Category archived.");
+      setNotice(
+        wasArchived
+          ? "Category restored on the server."
+          : products.length
+            ? "Category archived on the server. It contains products, and the taxonomy API exposes no permanent-delete route — products were left untouched."
+            : "Category archived on the server."
+      );
       setVersion((value) => value + 1);
-    } else setNotice(result.error);
+    } else setNotice(formatAdminError(result, { entity: `category ${category.name ?? category.id}`, action: wasArchived ? "restored" : "archived" }));
   };
 
-  const createSubcategory = (event) => {
+  const createSubcategory = async (event) => {
     event.preventDefault();
     if (!subDraft.name.trim()) return setNotice("Subcategory name is required.");
-    const result = taxonomyRepository.createSubcategory(category.id, { ...subDraft, slug: slugify(subDraft.slug || subDraft.name), sortOrder: Number(subDraft.sortOrder) || 0 }, actor);
+    const result = await taxonomyRepository.createSubcategory(category.id, { ...subDraft, slug: slugify(subDraft.slug || subDraft.name), sortOrder: Number(subDraft.sortOrder) || 0 }, actor);
     if (result.ok) {
       setSubDraft({ name: "", slug: "", description: "", sortOrder: 100, status: TAXONOMY_STATUS.ACTIVE });
-      setNotice("Subcategory created.");
+      setNotice("Subcategory created on the server.");
       setVersion((value) => value + 1);
-    } else setNotice(result.error);
+    } else setNotice(formatAdminError(result, { entity: "subcategory", action: "created" }));
   };
 
-  const toggleSubcategory = (subcategory) => {
-    const result = subcategory.status === TAXONOMY_STATUS.ARCHIVED
-      ? taxonomyRepository.restoreSubcategory(subcategory.id, actor)
-      : taxonomyRepository.archiveSubcategory(subcategory.id, actor);
-    setNotice(result.ok ? (subcategory.status === TAXONOMY_STATUS.ARCHIVED ? "Subcategory restored." : "Subcategory archived. Products remain intact.") : result.error);
+  const toggleSubcategory = async (subcategory) => {
+    const wasArchived = subcategory.status === TAXONOMY_STATUS.ARCHIVED;
+    const result = wasArchived
+      ? await taxonomyRepository.restoreSubcategory(subcategory.id, actor)
+      : await taxonomyRepository.archiveSubcategory(subcategory.id, actor);
+    setNotice(
+      result.ok
+        ? wasArchived
+          ? "Subcategory restored on the server."
+          : "Subcategory archived on the server. Products remain intact — the backend keeps product references."
+        : formatAdminError(result, { entity: `subcategory ${subcategory.name ?? subcategory.id}`, action: wasArchived ? "restored" : "archived" })
+    );
     setVersion((value) => value + 1);
   };
 

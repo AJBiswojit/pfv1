@@ -185,6 +185,31 @@ const STATUS_META = {
 
 export const getStatusMeta = (status) => STATUS_META[status] ?? STATUS_META[OFFER_STATUS.DRAFT];
 
+/**
+ * Map the UI eligibility selections onto the fields the coupon table
+ * actually has (id lists on the API payload). The table stores NO
+ * maximumDiscount cap, NO priority and NO separate auto-apply flag — those
+ * editor notions are deliberately DROPPED here (documented BACKEND_GAP)
+ * instead of being silently half-persisted under other columns.
+ */
+export const toApiScopeFields = (draft = {}) => {
+  const mode = draft.productEligibility ?? PRODUCT_ELIGIBILITY.ALL_PRODUCTS;
+  const customerMode = draft.customerEligibility ?? CUSTOMER_ELIGIBILITY.ALL_CUSTOMERS;
+  const scope = {
+    eligibleProductIds: mode === PRODUCT_ELIGIBILITY.SPECIFIC_PRODUCTS ? asArray(draft.includedProducts) : [],
+    eligibleCategoryIds: mode === PRODUCT_ELIGIBILITY.CATEGORY ? asArray(draft.includedCategories) : [],
+    eligibleCollectionIds: mode === PRODUCT_ELIGIBILITY.COLLECTION ? asArray(draft.includedCollections) : [],
+    excludedProductIds: asArray(draft.excludedProducts),
+    excludedCategoryIds: asArray(draft.excludedCategories),
+    eligibleCustomerIds:
+      customerMode === CUSTOMER_ELIGIBILITY.SPECIFIC_CUSTOMERS ? asArray(draft.specificCustomerIds) : [],
+    isStackable: Boolean(draft.stackable),
+  };
+  // "New customers only" has no column on the coupon table — it cannot be
+  // persisted; the editor flags this and the field is not sent.
+  return scope;
+};
+
 export const toCheckoutCoupon = (offer) => {
   if (!offer) return null;
   return {

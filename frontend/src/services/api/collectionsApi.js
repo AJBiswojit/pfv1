@@ -5,8 +5,13 @@
 import { apiClient, ApiError } from "./apiClient";
 
 function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+  // Status + payload travel with the failure so admin desks can map
+  // 401/403/404/409/422 to distinct copy (formatAdminError) instead of one
+  // generic "could not save" line.
+  if (err instanceof ApiError) {
+    return { ok: false, error: err.message, status: err.status ?? 0, data: err.data ?? null };
+  }
+  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
 }
 
 function normCollection(c) {

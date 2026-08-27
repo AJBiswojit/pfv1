@@ -18,7 +18,7 @@ import { formatINR } from "../../utils/shopping";
 export default function EmployeeOfferDetail() {
   const { offerId } = useParams();
   const { employee, hasPermission } = useEmployeeAuth();
-  const offer = useOffer(offerId);
+  const { offer, loading: offerLoading, error: offerError } = useOffer(offerId);
   const [notice, setNotice] = useState("");
 
   const canEdit = hasPermission(PERMISSIONS.OFFERS_EDIT) || hasPermission(PERMISSIONS.OFFERS_MANAGE);

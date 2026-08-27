@@ -24,7 +24,7 @@ URL mapping (API_CONTRACT.md → implementation):
   GET  /admin/products/{id}                     ← full admin record
   PATCH /admin/products/{id}                    ← full-field patch
   POST /admin/products/{id}/assign              ← assign / unassign employee
-  POST /admin/products/{id}/approve             ← approve → PUBLISHED
+  POST /admin/products/{id}/approve             ← approve review (gates publish)
   POST /admin/products/{id}/reject              ← reject → DRAFT
   POST /admin/products/{id}/publish             ← publish
   POST /admin/products/{id}/unpublish           ← unpublish → DRAFT
@@ -59,6 +59,7 @@ from app.dependencies import (
     get_current_employee,
     get_current_user,
     get_db,
+    require_admin_permission,
     require_permission_for_user,
 )
 from app.models.auth.user import UserModel
@@ -280,25 +281,36 @@ async def submit_for_review(
     summary="Admin — full product catalogue list",
     description=(
         "Authorization: `products.view`.  \n"
-        "Filters: `status`, `category`, `assignedEmployeeId`, `q`, `sort`.  \n"
-        "Returns full records including `review`, `reviewFlags`, `history`, `assignedEmployeeId`."
+        "Filters: `status`, `category`, `subcategory`, `assignedEmployeeId`, `q` "
+        "(name / SKU / id / label / taxonomy / fabric).  \n"
+        "Sort: `newest|oldest|name|price-asc|price-desc|status|updated`.  \n"
+        "Pagination: `page` + `pageSize` (1–500); `total` is the FULL filtered "
+        "count. Returns full records including `review`, `reviewFlags`, "
+        "`history`, `assignedEmployeeId`."
     ),
 )
 async def admin_list_products(
     status_filter: Optional[str] = Query(None, alias="status"),
     category: Optional[str] = Query(None),
+    subcategory: Optional[str] = Query(None),
     assignedEmployeeId: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     sort: str = Query("newest"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(25, ge=1, le=500),
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     query = AdminProductListQuery(
         status=status_filter,
         category=category,
+        subcategory=subcategory,
         assignedEmployeeId=assignedEmployeeId,
         q=q,
         sort=sort,
+        page=page,
+        pageSize=pageSize,
     )
     service = ProductService(db)
     result = await service.list_admin_products(query)
@@ -317,6 +329,7 @@ async def admin_create_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.create_product(req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -329,8 +342,11 @@ async def admin_create_product(
     summary="Admin — create draft with caller-supplied permanent ID",
     description=(
         "Authorization: `products.manage`.  \n"
-        "Body: `{ id, name?, category, subcategory?, mediaIds?[] }`.  \n"
-        "ID must match `^[A-Z0-9][A-Z0-9-]{1,14}$` and be unique."
+        "Body: `{ id, ...full supported product fields }`.  \n"
+        "ID must match `^[A-Z0-9][A-Z0-9-]{1,35}$` (covers the canonical "
+        "`PF-<DEPT>-<FAMILY>-<SUB>-NNNN` ids) and be unique — a taken ID is a 409.  \n"
+        "Lifecycle/unsupported keys are rejected; every other supported field "
+        "is persisted in the same call."
     ),
 )
 async def admin_create_draft(
@@ -338,6 +354,7 @@ async def admin_create_draft(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.create_draft(req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -359,6 +376,7 @@ async def admin_get_next_id(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     next_id = await service.get_next_id(category, preferred_number=preferredNumber)
     return NextIdResponse(nextId=next_id)
@@ -376,6 +394,7 @@ async def admin_check_availability(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     result = await service.check_availability(sku=sku, slug=slug)
     return AvailabilityResponse(**result)
@@ -390,6 +409,7 @@ async def admin_product_metrics(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     return await service.get_metrics()
 
@@ -403,6 +423,7 @@ async def admin_workflow_metrics(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     return await service.get_metrics()
 
@@ -422,6 +443,7 @@ async def admin_bulk_update(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     result = await service.bulk_update(req, actor=current_user.id)
     return OkResponse(message=f"Updated {result['updatedCount']} product(s).")
@@ -437,6 +459,7 @@ async def admin_get_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     product = await service.get_admin_product(id)
     return SingleProductResponse(product=product)
@@ -454,6 +477,7 @@ async def admin_update_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.update_product(id, req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -474,6 +498,7 @@ async def admin_assign_employee(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.assign_employee(id, req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -482,11 +507,12 @@ async def admin_assign_employee(
 @router.post(
     "/admin/products/{id}/approve",
     response_model=SingleProductResponse,
-    summary="Admin — approve product → PUBLISHED",
+    summary="Admin — approve the review (does not publish)",
     description=(
-        "Authorization: Admin.  \n"
-        "Precondition: `getPublishIssues()` must return `[]`.  \n"
-        "Effect: `status = PUBLISHED`, `review.state = APPROVED`."
+        "Authorization: `products.manage`.  \n"
+        "Precondition: product is pending review.  \n"
+        "Effect: `review.state = APPROVED`; visibility stays PENDING_REVIEW. "
+        "Going live requires the separate, gated publish action."
     ),
 )
 async def admin_approve_product(
@@ -494,6 +520,7 @@ async def admin_approve_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.approve_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -514,6 +541,7 @@ async def admin_reject_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.reject_product(id, req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -523,13 +551,19 @@ async def admin_reject_product(
     "/admin/products/{id}/publish",
     response_model=SingleProductResponse,
     summary="Admin — publish product",
-    description="Blocked by `getPublishIssues()`. Activity `PRODUCT_PUBLISHED`.",
+    description=(
+        "Authorization: `products.manage`.  \n"
+        "Preconditions: review approved (`review.state == APPROVED`) AND no "
+        "unresolved `getPublishIssues()`. Effect: `status = PUBLISHED`, "
+        "`published = true`, `published_by/_at` recorded."
+    ),
 )
 async def admin_publish_product(
     id: str,
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.publish_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -545,6 +579,7 @@ async def admin_unpublish_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.unpublish_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -564,6 +599,7 @@ async def admin_archive_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.archive_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -579,6 +615,7 @@ async def admin_restore_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.restore_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -598,6 +635,7 @@ async def admin_publish_issues(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
     issues = await service.get_publish_issues(id)
     return PublishIssuesResponse(issues=issues)
@@ -608,7 +646,7 @@ async def admin_publish_issues(
     response_model=SingleProductResponse,
     summary="Admin — change permanent product ID",
     description=(
-        "Body: `{ newId }` — validated `^[A-Z0-9][A-Z0-9-]{1,14}$`, must be free.  \n"
+        "Body: `{ newId }` — validated `^[A-Z0-9][A-Z0-9-]{1,35}$`, must be free.  \n"
         "Activity `PRODUCT_RENAMED_ID`.  \n"
         "**BACKEND DECISION REQUIRED**: cascade to media, inventory, collection, order history."
     ),
@@ -619,6 +657,7 @@ async def admin_change_product_id(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.change_product_id(id, req, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -636,6 +675,7 @@ async def admin_duplicate_product(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.duplicate_product(id, actor=current_user.id)
     return SingleProductResponse(product=product)
@@ -656,6 +696,7 @@ async def admin_clear_review_flags(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "products.manage")
     service = ProductService(db)
     product = await service.clear_review_flags(id, req, actor=current_user.id)
     return SingleProductResponse(product=product)

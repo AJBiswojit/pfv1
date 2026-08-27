@@ -1,47 +1,45 @@
 import { useMemo, useState } from "react";
-import { Archive, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, RotateCcw } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import StatusBadge from "../employee/StatusBadge";
 import { AtelierButton } from "../../design-system";
-import {
-  archiveProduct,
-  restoreProduct,
-} from "../../services/workflow/productWorkflowCommands";
-import {
-  deleteProductPermanently,
-  getProductLifecycleOptions,
-} from "../../services/productDeletionService";
+import { runAction } from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
+import { getProductLifecycleOptions } from "../../services/productDeletionService";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 
 /**
- * PRATIKSHYA FASHON — Product lifecycle actions (Phase 3F).
+ * PRATIKSHYA FASHON — Product lifecycle actions (Phase 5 rework).
  *
- * The Media Management view of "remove this product". It exposes only the
- * decisions the canonical architecture supports:
+ * The Media Management view of "retire this product". Every transition here
+ * is a SERVER action, awaited: the button reports only what the backend
+ * confirmed, and rejections (wrong state, missing gate) show the server's
+ * own message via the shared admin-error mapper.
  *
- *   · ARCHIVE — the default retirement. The product leaves the storefront;
- *     orders, reviews, history and media are preserved. Runs through the
- *     canonical archiveProduct workflow command.
- *   · RESTORE — an archived product returns to DRAFT.
- *   · DELETE — permanent, and only for a dependency-free draft. Requires
- *     the admin to re-type the Product ID. Owned media is released back to
- *     the unassigned library, never physically deleted.
+ *   · ARCHIVE / RESTORE — POST /admin/products/{id}/archive and /restore.
+ *     Archive is the canonical retirement: the product leaves the storefront
+ *     while orders, reviews, history and media are preserved.
+ *   · Permanent DELETE — NOT offered. The product API exposes no hard-delete
+ *     route (archive is deletion by design), and a locally simulated
+ *     deletion would silently diverge from the server register. The old
+ *     dependency-checked local delete is therefore honestly disabled here,
+ *     documented as a BACKEND_GAP in PHASE_5_IMPLEMENTATION_REPORT.md.
  *
- * Dependency blockers are listed verbatim from the deletion service so the
- * admin always sees WHY only archiving is offered.
+ * The local lifecycle options remain only as a read-only hint panel (they
+ * still answer "could this draft theoretically be removed"), never as an
+ * execution path.
  */
 export default function ProductLifecycleActions({ product, onChanged = null, onDeleted = null }) {
   const { admin } = useAdminAuth();
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
 
-  const [confirming, setConfirming] = useState(false);
-  const [typedId, setTypedId] = useState("");
   const [message, setMessage] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
 
   const options = useMemo(
     () => (product ? getProductLifecycleOptions(product.id) : null),
-    [product, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [product, version] // eslint-disable-next-line react-hooks/exhaustive-deps
   );
 
   if (!product || !options) return null;
@@ -52,39 +50,26 @@ export default function ProductLifecycleActions({ product, onChanged = null, onD
     onChanged?.();
   };
 
-  const archive = () => {
-    const result = archiveProduct(product.id, actor);
-    refresh(
-      result.ok
-        ? "Archived. The product is no longer storefront-visible; orders and media are preserved."
-        : result.error
-    );
-  };
-
-  const restore = () => {
-    const result = restoreProduct(product.id, actor);
-    refresh(result.ok ? "Restored to draft." : result.error);
-  };
-
-  const destroy = () => {
-    const result = deleteProductPermanently({
-      productId: product.id,
-      confirmProductId: typedId,
-      principal: actor,
-      actor,
-    });
+  const run = async (action) => {
+    if (busy) return;
+    setBusy(true);
+    const result = await runAction(product.id, action, { actor });
+    setBusy(false);
     if (result.ok) {
-      setConfirming(false);
-      onDeleted?.(result);
-      return;
+      refresh(
+        action === "archive"
+          ? "Archived on the server. The product is no longer storefront-visible; orders and media are preserved."
+          : "Restored to draft on the server."
+      );
+    } else {
+      refresh(formatAdminError(result, { entity: product.name ?? "product", action }));
     }
-    setMessage(result.error);
   };
 
   const mediaCount = options.dependencies.ownedMedia.length;
 
   return (
-    <AdminPanel eyebrow="Lifecycle" title="Retire or delete this product" className="mt-6">
+    <AdminPanel eyebrow="Lifecycle" title="Retire this product" className="mt-6">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusBadge label={options.status} tone={options.status === "PUBLISHED" ? "accent" : "quiet"} />
         <span className="font-ui text-[12px] text-taupe">
@@ -93,80 +78,28 @@ export default function ProductLifecycleActions({ product, onChanged = null, onD
         </span>
       </div>
 
-      {options.deleteBlockers.length ? (
-        <div className="mb-4 border border-mist/80 bg-surface/40 px-4 py-3">
-          <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-            Permanent deletion unavailable
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {options.deleteBlockers.map((blocker) => (
-              <li key={blocker} className="font-ui text-[12px] text-cocoa">
-                — {blocker}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap gap-2">
         {options.canArchive ? (
-          <AtelierButton size="chip" variant="outline" onClick={archive}>
+          <AtelierButton size="chip" variant="outline" disabled={busy} onClick={() => run("archive")}>
             <Archive size={13} strokeWidth={1.5} aria-hidden="true" className="mr-1.5" />
             Archive product
           </AtelierButton>
         ) : null}
         {options.canRestore ? (
-          <AtelierButton size="chip" variant="outline" onClick={restore}>
+          <AtelierButton size="chip" variant="outline" disabled={busy} onClick={() => run("restore")}>
             <RotateCcw size={13} strokeWidth={1.5} aria-hidden="true" className="mr-1.5" />
             Restore to draft
           </AtelierButton>
         ) : null}
-        {options.canDelete ? (
-          <AtelierButton
-            size="chip"
-            variant="outline"
-            onClick={() => {
-              setTypedId("");
-              setMessage(null);
-              setConfirming((open) => !open);
-            }}
-          >
-            <Trash2 size={13} strokeWidth={1.5} aria-hidden="true" className="mr-1.5" />
-            {confirming ? "Cancel deletion" : "Delete product…"}
-          </AtelierButton>
-        ) : null}
       </div>
 
-      {confirming && options.canDelete ? (
-        <div className="mt-4 border border-accent/40 bg-accent/[0.05] px-4 py-4">
-          <p className="font-ui text-sm text-ink">Delete product {product.id}?</p>
-          <p className="mt-1 font-ui text-[12px] text-taupe">
-            This permanently removes the draft “{product.name}”.{" "}
-            {mediaCount
-              ? `Its ${mediaCount} owned media asset${mediaCount === 1 ? "" : "s"} return to the unassigned library — no file is deleted.`
-              : "It owns no media."}
-          </p>
-          <label className="mt-3 block">
-            <span className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
-              Type {product.id} to confirm
-            </span>
-            <input
-              value={typedId}
-              onChange={(event) => setTypedId(event.target.value)}
-              placeholder={product.id}
-              className="mt-1 w-full max-w-xs border border-mist bg-canvas px-2.5 py-1.5 font-ui text-[12px] text-ink outline-none focus:border-accent"
-            />
-          </label>
-          <AtelierButton
-            size="chip"
-            className="mt-3"
-            disabled={typedId.trim() !== String(product.id)}
-            onClick={destroy}
-          >
-            Permanently delete {product.id}
-          </AtelierButton>
-        </div>
-      ) : null}
+      <p className="mt-4 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
+        <strong>Permanent deletion is not offered.</strong> The product API has no
+        hard-delete route — archiving is the server’s retirement, keeping historical
+        order and media references intact. A locally simulated delete would desync
+        this desk from the register, so it is disabled rather than faked
+        (BACKEND_GAP: recorded for a future phase).
+      </p>
 
       {message ? <p className="mt-3 font-ui text-[12px] text-cocoa">{message}</p> : null}
     </AdminPanel>

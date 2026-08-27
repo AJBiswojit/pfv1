@@ -34,15 +34,9 @@ import {
   isApprovableStage,
 } from "../../services/workflow/productWorkflowState";
 import { getUnifiedReviewRow } from "../../services/unifiedProductReview";
-import {
-  approveProduct,
-  archiveProduct,
-  assignProductToEmployee,
-  mediaFileName,
-  publishProduct,
-  returnProduct,
-  submitProductForReview,
-} from "../../services/productWorkflow";
+import { mediaFileName } from "../../services/productWorkflow";
+import { runAction as runServerAction } from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
 import { reviewFlagLabel, PUBLISH_BLOCKING_FLAGS } from "../../services/productReviewFlags";
 import { getActiveAssignmentEmployees, loadEmployees } from "../../services/employees/employeeService";
 import { PERMISSIONS } from "../../config/employeePermissions";
@@ -121,77 +115,81 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
   const reviewFlags = product?.reviewFlags ?? [];
   const conflicts = mediaSet?.ownershipConflicts ?? [];
 
-  const run = useCallback((key, action) => {
-    if (busy) return;
-    setBusy(key);
-    setActionNotice(null);
-    setTimeout(() => {
-      const result = action();
+  /*
+   * Phase 5: the review desk's canonical commands run on the SERVER.
+   * Each action awaits its endpoint; success copy only appears after the
+   * response, and rejections surface the backend's reason (409 states,
+   * 422 publish blockers, 403 scopes) through the shared mapper. The
+   * response record is upserted into the shared register by
+   * productAdminService, so every subscribing view reconciles from the
+   * server's answer — never from an optimistic local flip.
+   */
+  const run = useCallback(
+    async (action, okText, opts) => {
+      if (busy || !product?.id) return;
+      setBusy(action);
+      setActionNotice(null);
+      const result = await runServerAction(product.id, action, opts);
       setBusy(null);
-      if (result?.ok) return;
-      setActionNotice({
-        tone: "warn",
-        text: `${product?.id ?? "Product"}: ${(result?.errors ?? [result?.error ?? "Action failed."]).join(" ")}`,
-      });
-    }, 0);
-  }, [busy, product]);
-
-  const approve = useCallback(() => run("approve", () => {
-    const result = approveProduct(product.id, actor);
-    if (result.ok && !result.alreadyApproved && !result.alreadyPublished) {
-      setActionNotice({ tone: "ok", text: `${product.id} approved — publish it when you are ready.` });
-    } else if (result.ok) {
-      setActionNotice({ tone: "ok", text: `${product.id} is already approved.` });
-    }
-    return result;
-  }), [run, product, actor]);
-
-  const doReturn = useCallback(() => {
-    const reason = returnReason.trim();
-    if (!reason) return;
-    run("return", () => {
-      const result = returnProduct(product.id, reason, actor);
-      if (result.ok) {
-        setReturnReason("");
-        setReturnArmed(false);
-        setActionNotice({ tone: "ok", text: `${product.id} returned for rework — the reason is recorded.` });
+      if (result?.ok) {
+        if (okText) setActionNotice({ tone: "ok", text: okText });
+      } else {
+        setActionNotice({
+          tone: "warn",
+          text: `${product.id}: ${formatAdminError(result, { entity: "product", action })}`,
+        });
       }
       return result;
-    });
-  }, [run, product, actor, returnReason]);
+    },
+    [busy, product]
+  );
 
-  const publish = useCallback(() => run("publish", () => {
-    const result = publishProduct(product.id, actor);
-    if (result.ok && !result.alreadyPublished) {
-      setActionNotice({ tone: "ok", text: `${product.id} published to the storefront.` });
-    } else if (result.ok) {
-      setActionNotice({ tone: "ok", text: `${product.id} is already published.` });
+  const approve = useCallback(
+    () => run("approve", `${product.id} approved on the server — publish it when you are ready.`),
+    [run, product]
+  );
+
+  const doReturn = useCallback(async () => {
+    const reason = returnReason.trim();
+    if (!reason) return;
+    if (busy || !product?.id) return;
+    setBusy("reject");
+    setActionNotice(null);
+    const result = await runServerAction(product.id, "reject", { reason });
+    setBusy(null);
+    if (result?.ok) {
+      setReturnReason("");
+      setReturnArmed(false);
+      setActionNotice({ tone: "ok", text: `${product.id} returned for rework — the reason is on the server record.` });
+    } else {
+      setActionNotice({ tone: "warn", text: `${product.id}: ${formatAdminError(result, { entity: "product", action: "returned" })}` });
     }
-    return result;
-  }), [run, product, actor]);
+  }, [busy, product, returnReason]);
 
-  const submit = useCallback(() => run("submit", () => {
-    const result = submitProductForReview(product.id, actor);
-    if (result.ok) setActionNotice({ tone: "ok", text: `${product.id} submitted for review.` });
-    return result;
-  }), [run, product, actor]);
+  const publish = useCallback(
+    () => run("publish", `${product.id} published to the storefront (server-confirmed).`),
+    [run, product]
+  );
 
-  const archive = useCallback(() => run("archive", () => {
-    const result = archiveProduct(product.id, actor);
-    if (result.ok && !result.alreadyArchived) setActionNotice({ tone: "ok", text: `${product.id} archived.` });
-    return result;
-  }), [run, product, actor]);
+  const submit = useCallback(
+    () => run("submitReview", `${product.id} submitted for review on the server.`),
+    [run, product]
+  );
 
-  const assign = useCallback((employeeId) => run("assign", () => {
-    const result = assignProductToEmployee(product.id, employeeId || null, actor);
-    if (result.ok) {
-      setActionNotice({
-        tone: "ok",
-        text: employeeId ? `${product.id} assigned to ${employeeId}.` : `${product.id} unassigned.`,
-      });
-    }
-    return result;
-  }), [run, product, actor]);
+  const archive = useCallback(
+    () => run("archive", `${product.id} archived on the server.`),
+    [run, product]
+  );
+
+  const assign = useCallback(
+    (employeeId) =>
+      run(
+        "assign",
+        employeeId ? `${product.id} assigned to ${employeeId} on the server.` : `${product.id} unassigned on the server.`,
+        { employeeId: employeeId || null }
+      ),
+    [run, product]
+  );
 
   if (!product) {
     return <p className="py-8 text-center font-ui text-sm text-taupe">Product not found in the register.</p>;

@@ -26,7 +26,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cache import TTL_PRODUCT_DETAIL, TTL_RECENTLY_VIEWED, cache
+from app.core.cache import (
+    TTL_PRODUCT_DETAIL,
+    TTL_RECENTLY_VIEWED,
+    cache,
+    invalidate_response_cache,
+)
 from app.core.exceptions import (
     BusinessLogicException,
     ConflictException,
@@ -36,6 +41,7 @@ from app.core.exceptions import (
 from app.models.catalog.category import CategoryModel
 from app.models.catalog.product import ProductModel
 from app.schemas.catalog.product import (
+    ADMIN_SORTS,
     EMPLOYEE_EDITABLE_FIELDS,
     PRODUCT_ID_RE,
     SORT_ALIASES,
@@ -242,9 +248,17 @@ class ProductService:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     async def _get_or_404(self, product_id: str) -> ProductModel:
-        """Fetch by id or slug; raises NotFoundException if missing."""
+        """
+        Fetch by permanent id, stable display label (`product_id`, kept in
+        sync by the change-id action) or slug; raises NotFoundException if
+        missing.
+        """
         stmt = select(ProductModel).where(
-            or_(ProductModel.id == product_id, ProductModel.slug == product_id)
+            or_(
+                ProductModel.id == product_id,
+                ProductModel.slug == product_id,
+                ProductModel.product_id == product_id,
+            )
         )
         result = await self.db.execute(stmt)
         product = result.scalars().first()
@@ -294,6 +308,7 @@ class ProductService:
             careInstructions=p.care_instructions or [],
             deliveryInfo=p.delivery_info or "",
             returnInfo=p.return_info or "",
+            returnPolicy=getattr(p, "return_policy", None) or None,
             fabric=p.fabric or "",
             material=p.material or "",
             primaryColor=p.primary_color or "",
@@ -311,11 +326,11 @@ class ProductService:
             collections=p.collections or [],
             tags=p.tags or [],
             badges=p.badges or [],
-            isFeatured=p.is_featured,
-            isBestseller=p.is_bestseller,
-            isNew=p.is_new,
-            isLimitedEdition=p.is_limited_edition,
-            isTrending=p.is_trending,
+            isFeatured=bool(p.is_featured),
+            isBestseller=bool(p.is_bestseller),
+            isNew=bool(p.is_new),
+            isLimitedEdition=bool(p.is_limited_edition),
+            isTrending=bool(p.is_trending),
             price=final_price,
             originalPrice=original_price,
             currency=p.currency or "INR",
@@ -356,6 +371,7 @@ class ProductService:
             careInstructions=p.care_instructions or [],
             deliveryInfo=p.delivery_info or "",
             returnInfo=p.return_info or "",
+            returnPolicy=getattr(p, "return_policy", None) or None,
             fabric=p.fabric or "",
             material=p.material or "",
             primaryColor=p.primary_color or "",
@@ -374,11 +390,11 @@ class ProductService:
             collections=p.collections or [],
             tags=p.tags or [],
             badges=p.badges or [],
-            isFeatured=p.is_featured,
-            isBestseller=p.is_bestseller,
-            isNew=p.is_new,
-            isLimitedEdition=p.is_limited_edition,
-            isTrending=p.is_trending,
+            isFeatured=bool(p.is_featured),
+            isBestseller=bool(p.is_bestseller),
+            isNew=bool(p.is_new),
+            isLimitedEdition=bool(p.is_limited_edition),
+            isTrending=bool(p.is_trending),
             flags=p.flags or {},
             price=p.price or 0,
             originalPrice=p.original_price,
@@ -388,13 +404,13 @@ class ProductService:
             priceHistory=p.price_history or [],
             stock=p.stock or 0,
             availability=p.availability or "in-stock",
-            inventoryTracked=p.inventory_tracked,
+            inventoryTracked=bool(p.inventory_tracked),
             lowStockThreshold=p.low_stock_threshold or 5,
             rating=float(p.rating) if p.rating else None,
             reviewCount=p.review_count or 0,
             seo=p.seo,
             status=p.status,
-            published=p.published,
+            published=bool(p.published),
             review=p.review,
             reviewFlags=p.review_flags or [],
             assignedEmployeeId=p.assigned_employee_id,
@@ -564,6 +580,8 @@ class ProductService:
             "ok": True,
             "items": page_items,
             "total": total,
+            "page": page,
+            "page_size": page_size,
             "facets": facets,
             "appliedFilters": applied_filters,
         }
@@ -716,7 +734,10 @@ class ProductService:
     async def invalidate_product_cache(self, product_id: str, slug: Optional[str] = None) -> None:
         """
         Remove all cached storefront representations for a product.
-        Called after any status-changing write (publish, unpublish, update, archive).
+        Called after ANY admin or employee write (create, update, lifecycle
+        transition, duplicate, id change) — not just status changes — so a
+        saved admin mutation is visible on the next read instead of up to
+        the TTL later.
         """
         keys = [f"product:storefront:{product_id}"]
         if slug:
@@ -724,6 +745,11 @@ class ProductService:
         await cache.delete(*keys)
         # Also invalidate the broad catalog cache so listing pages refresh
         await cache.invalidate_pattern("pratikshya:cache:*products*")
+        # The decorated @cache responses live in fastapi-cache2's own backend
+        # (FastAPICache.init in main.py), which `cache.invalidate_pattern`
+        # cannot reach — clear that layer too so storefront GETs stop serving
+        # pre-write snapshots.
+        await invalidate_response_cache()
 
     # ── Recommendations ───────────────────────────────────────────────────────
 
@@ -800,11 +826,23 @@ class ProductService:
     # ── Admin — list products ─────────────────────────────────────────────────
 
     async def list_admin_products(self, query: AdminProductListQuery) -> Dict[str, Any]:
+        """
+        GET /admin/products — server-authoritative admin catalogue list.
+
+        Search (`q`), `status`, `category`, `subcategory` and
+        `assignedEmployeeId` are applied as real query filters; `sort` is
+        chosen from the ADMIN_SORTS allow-list; `page`/`pageSize` paginate
+        the response and `total` reports the FULL filtered count (never just
+        the page), so the desk can page honestly instead of treating a
+        fetched subset as the whole catalogue.
+        """
         stmt = select(ProductModel)
         if query.status:
             stmt = stmt.where(ProductModel.status == query.status)
         if query.category:
             stmt = stmt.where(ProductModel.category == query.category)
+        if query.subcategory:
+            stmt = stmt.where(ProductModel.subcategory == query.subcategory)
         if query.assigned_employee_id:
             stmt = stmt.where(ProductModel.assigned_employee_id == query.assigned_employee_id)
         if query.q:
@@ -814,22 +852,137 @@ class ProductService:
                     func.lower(ProductModel.name).like(norm_q),
                     func.lower(ProductModel.sku).like(norm_q),
                     func.lower(ProductModel.id).like(norm_q),
+                    func.lower(ProductModel.product_id).like(norm_q),
+                    func.lower(ProductModel.category).like(norm_q),
+                    func.lower(ProductModel.subcategory).like(norm_q),
+                    func.lower(ProductModel.fabric).like(norm_q),
                 )
             )
+
+        count_result = await self.db.execute(
+            select(func.count()).select_from(stmt.subquery())
+        )
+        total = count_result.scalar() or 0
+
         result = await self.db.execute(stmt)
         products = result.scalars().all()
         items = [self._to_admin(p) for p in products]
-        # Sort admin list
-        if query.sort == "newest":
+
+        sort = query.sort if query.sort in ADMIN_SORTS else "newest"
+        if sort == "newest":
             items.sort(key=lambda p: p.created_at or "", reverse=True)
-        return {"ok": True, "items": items, "total": len(items)}
+        elif sort == "oldest":
+            items.sort(key=lambda p: p.created_at or "")
+        elif sort == "name":
+            items.sort(key=lambda p: (p.name or "").lower())
+        elif sort == "price-asc":
+            items.sort(key=lambda p: p.price or 0)
+        elif sort == "price-desc":
+            items.sort(key=lambda p: p.price or 0, reverse=True)
+        elif sort == "status":
+            items.sort(key=lambda p: (p.status or "", (p.name or "").lower()))
+        elif sort == "updated":
+            items.sort(key=lambda p: p.updated_at or "", reverse=True)
+
+        page = max(1, query.page)
+        page_size = max(1, query.page_size)
+        offset = (page - 1) * page_size
+        page_items = items[offset : offset + page_size]
+
+        return {
+            "ok": True,
+            "items": page_items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
 
     # ── Admin — create product ────────────────────────────────────────────────
+
+    def _content_data(self, req) -> Dict[str, Any]:
+        """Explicitly-set admin content fields, keyed by model column name."""
+        return req.model_dump(exclude_unset=True, by_alias=False)
+
+    # Columns declared NOT NULL with a server-side default. On CREATE an
+    # explicit null falls back to the column default; on UPDATE an explicit
+    # null is ignored — clearing one of these fields is not a supported
+    # operation and must never become a 500 at flush time.
+    _NOT_NULL_DEFAULTS = {
+        "name": "",
+        "slug": "",
+        "sku": "",
+        "brand": "Pratikshya Fashon",
+        "product_type": "fashion",
+        "category": "",
+        "gender": "Women",
+        "price": 0,
+        "currency": "INR",
+        "stock": 0,
+        "availability": "in-stock",
+        "inventory_tracked": False,
+        "low_stock_threshold": 5,
+        "is_featured": False,
+        "is_bestseller": False,
+        "is_new": False,
+        "is_limited_edition": False,
+        "is_trending": False,
+    }
+
+    def _sanitize_for_create(self, data: Dict[str, Any]) -> None:
+        for key, default in self._NOT_NULL_DEFAULTS.items():
+            if key in data and data[key] is None:
+                data[key] = default
+
+    def _sanitize_for_update(self, data: Dict[str, Any]) -> None:
+        for key in self._NOT_NULL_DEFAULTS:
+            if data.get(key, "") is None and key in data:
+                data.pop(key)
+
+    def _derive_pricing(self, data: Dict[str, Any]) -> None:
+        """
+        Run the provided `pricing` dict through the SHARED pricing engine and
+        derive the storefront money fields. Incomplete draft pricing is kept
+        without blocking the save (the publish gate — `get_publish_issues` —
+        is what refuses publication); a complete, valid pricing always wins
+        over a raw `price`, so money on the record is server-computed.
+        """
+        pricing = data.get("pricing")
+        if isinstance(pricing, dict) and pricing:
+            computed = compute_pricing(pricing)
+            if not computed["errors"] and computed.get("finalPrice", 0) > 0:
+                data["price"] = computed["finalPrice"]
+                mrp = int(pricing.get("mrp") or pricing.get("sellingPrice") or 0)
+                if mrp > computed["finalPrice"]:
+                    data["original_price"] = mrp
+                else:
+                    data.setdefault("original_price", None)
+
+    def _flag_mirror(self, data: Dict[str, Any]) -> None:
+        """`flags` is a derived mirror of the flat merchandising booleans."""
+        if any(
+            key in data
+            for key in ("is_featured", "is_bestseller", "is_new", "is_limited_edition", "is_trending")
+        ):
+            data["flags"] = {
+                "featured": bool(data.get("is_featured")),
+                "bestseller": bool(data.get("is_bestseller")),
+                "newArrival": bool(data.get("is_new")),
+                "limitedEdition": bool(data.get("is_limited_edition")),
+                "trending": bool(data.get("is_trending")),
+            }
 
     async def create_product(
         self, req: ProductCreateRequest, actor: str
     ) -> AdminProduct:
-        """POST /admin/products — generates a runtime pf-<base36> id."""
+        """
+        POST /admin/products — create with a server-allocated runtime id.
+
+        The whole supported content contract is persisted (identity, taxonomy,
+        attributes, pricing, stock snapshot, SEO, media references, flags);
+        fields the schema does not have are not part of the request model, so
+        nothing can half-persist. The response is the authoritative server
+        record the admin UI reconciles against.
+        """
         import time
         new_id = f"pf-{int(time.time() * 1000):x}"
 
@@ -843,29 +996,21 @@ class ProductService:
         slug = await self._generate_unique_slug(req.name or new_id)
         sku = await self._generate_unique_sku()
 
-        data = req.model_dump(exclude_unset=True, by_alias=False)
-        pricing = data.pop("pricing", None)
-        if pricing:
-            computed = compute_pricing(pricing)
-            price = computed["finalPrice"]
-        else:
-            price = data.pop("price", 0)
+        data = self._content_data(req)
+        data.setdefault("name", "")
+        data.setdefault("sku", sku)
+        data["slug"] = slug
+        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["product_type"] = data.get("product_type") or "fashion"
+        data["currency"] = data.get("currency") or "INR"
+        self._derive_pricing(data)
+        self._flag_mirror(data)
+        self._sanitize_for_create(data)
 
         product = ProductModel(
             id=new_id,
             product_id=new_id,
-            name=data.get("name", ""),
-            slug=slug,
-            sku=data.get("sku", sku),
-            category=data.get("category", ""),
-            subcategory=data.get("subcategory", ""),
-            gender=data.get("gender", "Women"),
-            description=data.get("description", ""),
-            short_description=data.get("short_description", ""),
-            price=price,
-            compare_at_price=data.get("compare_at_price"),
-            pricing=pricing,
-            stock=data.get("stock", 0),
+            **data,
             status="DRAFT",
             published=False,
             review={"state": "NONE", "submittedBy": None, "submittedAt": None,
@@ -874,33 +1019,46 @@ class ProductService:
             history=[],
             price_history=[],
             created_by=actor,
+            updated_by=actor,
         )
         self.db.add(product)
         await self.db.flush()
+        await self.invalidate_product_cache(new_id, product.slug)
         return self._to_admin(product)
 
     # ── Admin — create draft with caller-supplied id ───────────────────────────
 
     async def create_draft(self, req: ProductDraftRequest, actor: str) -> AdminProduct:
-        """POST /admin/products/draft — permanent id supplied by caller."""
+        """
+        POST /admin/products/draft — the canonical product-creation path:
+        a DRAFT under the caller's permanent ID, in the SAME record shape the
+        editor edits afterwards (every supported field is persisted here).
+        Uniqueness of the permanent ID is enforced against `catalog_product.id`
+        (a taken ID is a 409, never a silent ID swap).
+        """
         existing = await self.db.execute(
             select(ProductModel).where(ProductModel.id == req.id)
         )
         if existing.scalars().first():
             raise ConflictException(f"Product ID '{req.id}' is already taken.")
 
-        slug = await self._generate_unique_slug(req.name or req.id)
-        sku = await self._generate_unique_sku(prefix=req.id)
+        data = self._content_data(req)
+        data.pop("id", None)
+        base_name = data.get("name") or req.id
+        data.setdefault("name", base_name)
+        data["slug"] = await self._generate_unique_slug(data.get("slug") or base_name)
+        data.setdefault("sku", await self._generate_unique_sku(prefix=req.id))
+        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["product_type"] = data.get("product_type") or "fashion"
+        data["currency"] = data.get("currency") or "INR"
+        self._derive_pricing(data)
+        self._flag_mirror(data)
+        self._sanitize_for_create(data)
 
         product = ProductModel(
             id=req.id,
             product_id=req.id,
-            name=req.name or "",
-            slug=slug,
-            sku=sku,
-            category=req.category,
-            subcategory=req.subcategory or "",
-            media_ids=req.media_ids,
+            **data,
             status="DRAFT",
             published=False,
             review={"state": "NONE", "submittedBy": None, "submittedAt": None,
@@ -909,9 +1067,11 @@ class ProductService:
             history=[],
             price_history=[],
             created_by=actor,
+            updated_by=actor,
         )
         self.db.add(product)
         await self.db.flush()
+        await self.invalidate_product_cache(req.id, product.slug)
         return self._to_admin(product)
 
     # ── Admin — get single ────────────────────────────────────────────────────
@@ -925,24 +1085,70 @@ class ProductService:
     async def update_product(
         self, product_id: str, req: ProductUpdateRequest, actor: str
     ) -> AdminProduct:
-        """PATCH /admin/products/{id} — full-field patch for admins."""
+        """
+        PATCH /admin/products/{id} — field-level admin patch.
+
+        Only the fields present in the request are written (`exclude_unset`),
+        so partial saves cannot clobber untouched columns with stale values,
+        and the response is the authoritative post-write record the admin UI
+        reconciles against (preventing the next stale-snapshot save).
+        Lifecycle fields are rejected by the request schema; status changes
+        go through the dedicated, guarded lifecycle endpoints only.
+        """
         p = await self._get_or_404(product_id)
         data = req.model_dump(exclude_unset=True, by_alias=False)
+        data.pop("id", None)
+
+        self._sanitize_for_update(data)
+
+        # Slug changes must stay unique against the live catalogue; the
+        # shared generator appends -2/-3… rather than 409ing an admin edit.
+        requested_slug = data.get("slug")
+        if requested_slug and requested_slug != p.slug:
+            data["slug"] = await self._generate_unique_slug(requested_slug)
+
+        # Server-side pricing: a valid supplied pricing block recomputes the
+        # money fields so the stored price is never trust-the-client garbage.
+        self._derive_pricing(data)
+
+        old_price = p.price
 
         for field, new_val in data.items():
-            old_val = getattr(p, field, None)
+            if field == "price_history":
+                continue
+            try:
+                old_val = getattr(p, field, None)
+            except Exception:
+                continue
             if old_val != new_val:
                 setattr(p, field, new_val)
                 self._append_history(p, field, old_val, new_val, actor)
 
-        # Handle price change → price history
-        if "price" in data:
-            self._append_price_history(p, data.get("price", 0), p.price, actor)
+        # `flags` is a derived mirror — recompute from the *merged* record so
+        # a partial merchandising patch cannot zero out untouched flags.
+        if any(
+            key in data
+            for key in ("is_featured", "is_bestseller", "is_new", "is_limited_edition", "is_trending")
+        ):
+            merged_flags = {
+                "featured": bool(p.is_featured),
+                "bestseller": bool(p.is_bestseller),
+                "newArrival": bool(p.is_new),
+                "limitedEdition": bool(p.is_limited_edition),
+                "trending": bool(p.is_trending),
+            }
+            if (p.flags or {}) != merged_flags:
+                p.flags = merged_flags
+
+        # Handle price change → price history (from = OLD price, to = NEW).
+        if "price" in data and data["price"] != old_price:
+            self._append_price_history(p, old_price, data["price"], actor)
 
         # Keep published flag in sync
         p.published = p.status == "PUBLISHED"
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Employee — update (whitelist only) ────────────────────────────────────
@@ -980,17 +1186,21 @@ class ProductService:
         }
         data = {k: v for k, v in data.items() if k in snake_whitelist}
 
+        old_price = p.price
         for field, new_val in data.items():
             old_val = getattr(p, field, None)
             if old_val != new_val:
                 setattr(p, field, new_val)
                 self._append_history(p, field, old_val, new_val, employee_id)
 
-        if "price" in data:
-            self._append_price_history(p, data["price"], p.price, employee_id)
+        # Price history must record OLD → NEW (the old code recorded the
+        # post-write price as both endpoints).
+        if "price" in data and data["price"] != old_price:
+            self._append_price_history(p, old_price, data["price"], employee_id)
 
         p.updated_by = employee_id
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Assign employee ───────────────────────────────────────────────────────
@@ -1004,6 +1214,7 @@ class ProductService:
         self._append_history(p, "assignedEmployeeId", old, req.employee_id, actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Workflow actions ──────────────────────────────────────────────────────
@@ -1038,6 +1249,25 @@ class ProductService:
         if review_state == "APPROVED":
             raise BusinessLogicException("Approved products cannot be resubmitted; publish or return them first.")
 
+        # Review-submission completeness — distinct from the stricter publish
+        # gate below; an obviously incomplete record is rejected here with an
+        # actionable list instead of burning reviewer time.
+        missing = [
+            label
+            for label, value in (
+                ("name", (p.name or "").strip()),
+                ("SKU", (p.sku or "").strip()),
+                ("category", (p.category or "").strip()),
+            )
+            if not value
+        ]
+        if not p.price or p.price <= 0:
+            missing.append("price (must be greater than zero)")
+        if missing:
+            raise BusinessLogicException(
+                "Product is not ready for review. Missing: " + ", ".join(missing) + "."
+            )
+
         previous_status = p.status or "DRAFT"
         now = _now_utc().isoformat()
         p.status = "PENDING_REVIEW"
@@ -1053,33 +1283,55 @@ class ProductService:
         self._append_history(p, "status", previous_status, "PENDING_REVIEW", actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def approve_product(self, product_id: str, actor: str) -> AdminProduct:
+        """
+        PUT /admin/products/{id}/approve — approves the REVIEW, not the shop.
+
+        Approving sets `review.state = APPROVED` and leaves the product in
+        PENDING_REVIEW visibility state; going live is the separate, gated
+        publish action (C-29: approval previously double-fired as an
+        immediate publish).
+        """
         p = await self._get_or_404(product_id)
-        issues = get_publish_issues(p)
-        if issues:
+        status = (p.status or "").upper()
+        review_state = str((p.review or {}).get("state") or "NONE").upper()
+        if status != "PENDING_REVIEW" and review_state != "PENDING":
             raise BusinessLogicException(
-                "Product has unresolved publish issues.", details={"errors": issues}
+                "Only products pending review can be approved "
+                f"(current status: {p.status or 'DRAFT'}). Submit it for review first."
             )
+        if review_state == "APPROVED":
+            return self._to_admin(p)  # idempotent — already approved
         now = _now_utc()
-        p.status = "PUBLISHED"
-        p.published = True
-        p.published_by = actor
-        p.published_at = now
         p.review = {
             **(p.review or {}),
             "state": "APPROVED",
             "reviewedBy": actor,
             "reviewedAt": now.isoformat(),
         }
-        self._append_history(p, "status", p.status, "PUBLISHED", actor)
+        self._append_history(p, "review.state", review_state, "APPROVED", actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def reject_product(self, product_id: str, req: RejectProductRequest, actor: str) -> AdminProduct:
+        """
+        PUT /admin/products/{id}/reject — only a submitted product can be
+        rejected; the outcome returns it to DRAFT with a visible rejection.
+        """
         p = await self._get_or_404(product_id)
+        status = (p.status or "").upper()
+        review_state = str((p.review or {}).get("state") or "NONE").upper()
+        if status != "PENDING_REVIEW" and review_state != "PENDING":
+            raise BusinessLogicException(
+                "Only products pending review can be rejected or returned "
+                f"(current status: {p.status or 'DRAFT'})."
+            )
+        previous_status = p.status or "PENDING_REVIEW"
         now = _now_utc().isoformat()
         p.status = "DRAFT"
         p.published = False
@@ -1090,53 +1342,92 @@ class ProductService:
             "reviewedAt": now,
             "rejectionReason": req.reason,
         }
-        self._append_history(p, "status", "PENDING_REVIEW", "DRAFT", actor)
+        self._append_history(p, "status", previous_status, "DRAFT", actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def publish_product(self, product_id: str, actor: str) -> AdminProduct:
+        """
+        PUT /admin/products/{id}/publish — the ONLY path to PUBLISHED.
+
+        Enforced server-side: the product must exist, must not be archived,
+        must have passed review (`review.state == APPROVED`) and must have no
+        unresolved publish issues. The frontend publish-issues checklist is a
+        convenience pre-check; this gate is the authority. `status`,
+        `published`, `published_by` and `published_at` are written together
+        so listing filters (status) and detail projection (published) cannot
+        disagree.
+        """
         p = await self._get_or_404(product_id)
+        status = (p.status or "").upper()
+        if status == "ARCHIVED":
+            raise BusinessLogicException("Archived products cannot be published; restore them first.")
+        if status == "PUBLISHED" and p.published:
+            return self._to_admin(p)  # idempotent — already live
+        review_state = str((p.review or {}).get("state") or "NONE").upper()
+        if review_state != "APPROVED":
+            raise BusinessLogicException(
+                "This product has not been approved for publication yet. "
+                "Submit it for review and approve it before publishing "
+                f"(review state: {review_state})."
+            )
         issues = get_publish_issues(p)
         if issues:
             raise BusinessLogicException(
                 "Product has unresolved publish issues.", details={"errors": issues}
             )
+        previous_status = p.status or "DRAFT"
         now = _now_utc()
         p.status = "PUBLISHED"
         p.published = True
         p.published_by = actor
         p.published_at = now
-        self._append_history(p, "status", p.status, "PUBLISHED", actor)
+        self._append_history(p, "status", previous_status, "PUBLISHED", actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def unpublish_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
+        if (p.status or "").upper() != "PUBLISHED":
+            raise BusinessLogicException(
+                f"Only published products can be unpublished (current status: {p.status or 'DRAFT'})."
+            )
         self._append_history(p, "status", p.status, "DRAFT", actor)
         p.status = "DRAFT"
         p.published = False
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def archive_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
+        if (p.status or "").upper() == "ARCHIVED":
+            raise BusinessLogicException("This product is already archived.")
         self._append_history(p, "status", p.status, "ARCHIVED", actor)
         p.status = "ARCHIVED"
         p.published = False
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     async def restore_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
+        if (p.status or "").upper() != "ARCHIVED":
+            raise BusinessLogicException(
+                f"Only archived products can be restored (current status: {p.status or 'DRAFT'})."
+            )
         self._append_history(p, "status", p.status, "DRAFT", actor)
         p.status = "DRAFT"
         p.published = False
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Publish issues ────────────────────────────────────────────────────────
@@ -1164,6 +1455,7 @@ class ProductService:
         self._append_history(p, "productId", old_id, req.new_id, actor)
         p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Duplicate ─────────────────────────────────────────────────────────────
@@ -1206,9 +1498,39 @@ class ProductService:
             collection=p.collection,
             collections=p.collections,
             tags=p.tags,
+            badges=p.badges,
+            # Merchandising booleans + their derived mirror must survive the
+            # copy — dropping them silently changed the copy's storefront
+            # presentation versus the original.
+            is_featured=p.is_featured,
+            is_bestseller=p.is_bestseller,
+            is_new=p.is_new,
+            is_limited_edition=p.is_limited_edition,
+            is_trending=p.is_trending,
+            flags=p.flags,
+            product_code=p.product_code,
+            barcode=p.barcode,
+            internal_reference=p.internal_reference,
+            delivery_info=p.delivery_info,
+            return_info=p.return_info,
+            return_policy=p.return_policy,
+            unavailable_colors=p.unavailable_colors,
+            unavailable_sizes=p.unavailable_sizes,
             price=p.price,
+            original_price=p.original_price,
             compare_at_price=p.compare_at_price,
+            currency=p.currency,
             pricing=p.pricing,
+            stock=p.stock,
+            availability=p.availability,
+            low_stock_threshold=p.low_stock_threshold,
+            seo=p.seo,
+            media_ids=p.media_ids,
+            primary_media_id=p.primary_media_id,
+            gallery_media_ids=p.gallery_media_ids,
+            image=p.image,
+            hover_image=p.hover_image,
+            additional_images=p.additional_images,
             status="DRAFT",
             published=False,
             review={"state": "NONE", "submittedBy": None, "submittedAt": None,
@@ -1217,6 +1539,7 @@ class ProductService:
             history=[],
             price_history=[],
             created_by=actor,
+            updated_by=actor,
         )
         self.db.add(dup)
         await self.db.flush()
@@ -1224,19 +1547,91 @@ class ProductService:
 
     # ── Bulk update ───────────────────────────────────────────────────────────
 
+    # Whitelist for bulk edits: merchandising + content columns only. Bulk
+    # actions must NEVER move lifecycle state — that would bypass the
+    # per-product publish gate — so `status`, review, media ids and pricing
+    # overrides are intentionally absent.
+    BULK_UPDATABLE_FIELDS = {
+        "is_featured": "isFeatured",
+        "is_bestseller": "isBestseller",
+        "is_new": "isNew",
+        "is_limited_edition": "isLimitedEdition",
+        "is_trending": "isTrending",
+        "category": "category",
+        "subcategory": "subcategory",
+        "gender": "gender",
+        "season": "season",
+        "occasion": "occasion",
+        "care_instructions": "careInstructions",
+        "tags": "tags",
+        "seo": "seo",
+    }
+
     async def bulk_update(self, req: BulkUpdateRequest, actor: str) -> Dict[str, Any]:
-        updated = []
+        incoming = dict(req.updates or {})
+        allowed: Dict[str, Any] = {}
+        rejected: List[str] = []
+        for key, value in incoming.items():
+            column = None
+            if key in self.BULK_UPDATABLE_FIELDS:
+                column = key
+            else:
+                for col, alias in self.BULK_UPDATABLE_FIELDS.items():
+                    if key == alias:
+                        column = col
+                        break
+            if column is None or value is None:
+                rejected.append(key)
+            else:
+                allowed[column] = value
+        if not allowed:
+            raise BusinessLogicException(
+                "No supported bulk fields in request.",
+                details={
+                    "rejected": sorted(set(rejected)),
+                    "supported": sorted(self.BULK_UPDATABLE_FIELDS),
+                    "hint": (
+                        "Bulk edits support merchandising/content flags only. "
+                        "Status changes go through the per-product lifecycle "
+                        "endpoints so publish rules are enforced."
+                    ),
+                },
+            )
+
+        updated: List[str] = []
+        skipped: List[str] = []
         for pid in req.product_ids:
             try:
                 p = await self._get_or_404(pid)
-                for field, val in req.updates.items():
-                    setattr(p, field, val)
-                p.updated_by = actor
-                updated.append(pid)
             except NotFoundException:
-                pass
+                skipped.append(pid)
+                continue
+            for field, val in allowed.items():
+                old_val = getattr(p, field, None)
+                if old_val != val:
+                    setattr(p, field, val)
+                    self._append_history(p, field, old_val, val, actor)
+            if any(k in allowed for k in (
+                "is_featured", "is_bestseller", "is_new", "is_limited_edition", "is_trending",
+            )):
+                p.flags = {
+                    "featured": bool(p.is_featured),
+                    "bestseller": bool(p.is_bestseller),
+                    "newArrival": bool(p.is_new),
+                    "limitedEdition": bool(p.is_limited_edition),
+                    "trending": bool(p.is_trending),
+                }
+            p.updated_by = actor
+            updated.append(p.id)
+            await self.invalidate_product_cache(p.id, p.slug)
         await self.db.flush()
-        return {"ok": True, "updatedCount": len(updated), "updatedIds": updated}
+        return {
+            "ok": True,
+            "updatedCount": len(updated),
+            "updatedIds": updated,
+            "notFound": skipped,
+            "rejectedFields": sorted(set(rejected)),
+        }
 
     # ── Availability ──────────────────────────────────────────────────────────
 
@@ -1336,9 +1731,11 @@ class ProductService:
         old_flags = list(p.review_flags or [])
         new_flags = [f for f in old_flags if f not in req.flags]
         p.review_flags = new_flags
-        self._append_history(p, "reviewFlags", old_flags, new_flags, actor)
-        p.updated_by = actor
+        if old_flags != new_flags:
+            self._append_history(p, "reviewFlags", old_flags, new_flags, actor)
+            p.updated_by = actor
         await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
         return self._to_admin(p)
 
     # ── Internal slug/sku helpers ─────────────────────────────────────────────

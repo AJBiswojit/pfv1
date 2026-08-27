@@ -1,17 +1,15 @@
 /**
- * /admin/products
+ * /admin/products — Phase 5: the merchandising desk is BACKEND-DRIVEN.
  *
- * The merchandising desk: repository-derived metrics, search, status
- * filtering, category filtering, bulk merchandising and the full product table.
- * Every row reads the shared catalogue repository; media summaries come from
- * the Phase 12 register. Covers only — the table never loads video.
- *
- * PERFORMANCE OPTIMIZATION:
- *   · Search debounced, filtering uses precomputed searchable text
- *   · Cover resolution only for filtered rows (not all 168)
- *   · Row component memoized
- *   · Bulk actions with loading state and immediate feedback
- *   · Metrics memoized, derived data cached
+ * Search, status/category filters and sort run as real query parameters on
+ * `GET /admin/products` (server-side), the table pages through the server's
+ * `total`, and the metric tiles read `GET /admin/products/metrics`. Rows are
+ * the server records reconciled into the shared catalogue cache; media
+ * summaries come from the Phase 12 register. Every row action (quick publish,
+ * duplicate, archive, restore, bulk flags) awaits its admin endpoint and
+ * reports the server's outcome verbatim — no local-first mutation, no
+ * invented counts, no fake success. Loading / empty / error are distinct
+ * states: a failed fetch says what failed; an empty result says "no matches".
  */
 
 import { useCallback, useEffect, useMemo, useState, memo } from "react";
@@ -35,20 +33,13 @@ import AdminMetricCard from "../../components/admin/AdminMetricCard";
 import StatusBadge from "../../components/employee/StatusBadge";
 import ConfirmDialog from "../../components/orders/ConfirmDialog";
 import { AtelierButton } from "../../design-system";
-import catalogRepository, { catalogMetrics } from "../../services/catalogRepository";
-import {
-  archiveProduct,
-  duplicateProduct,
-  publishProduct,
-  restoreProduct,
-  saveProductDraft,
-} from "../../services/workflow/productWorkflowCommands";
+import catalogRepository from "../../services/catalogRepository";
 import {
   WORKFLOW_STAGES,
   getProductWorkflowState,
 } from "../../services/workflow/productWorkflowState";
-import inventoryRepository from "../../services/inventory/inventoryRepository";
-import { useProducts } from "../../hooks/useProducts";
+import { fetchAdminMetrics, fetchAdminProducts, runAction, runBulkFlags } from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
 import { useProductMediaSummaries } from "../../hooks/useMedia";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { resolveProductCover } from "../../services/media/productMediaSource";
@@ -202,258 +193,251 @@ const ProductRow = memo(function ProductRow({
 });
 
 export default function AdminProducts() {
-  const { admin } = useAdminAuth();
-  const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
-
-  const items = useProducts();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState([]);
   const [notice, setNotice] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [pendingBulkAction, setPendingBulkAction] = useState(null);
 
-  const mediaSummaries = useProductMediaSummaries(items);
+  /* Server-driven list state — never optimistic, never a local subset. */
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const [listError, setListError] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+  const pageSize = 25;
 
-  // Debounce search input for responsive typing
+  // Debounce search input before it becomes a server query
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+      setPage(1);
+    }, 250);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Precompute searchable text per product to avoid rebuilding string on every filter
-  const searchIndex = useMemo(() => {
-    const map = new Map();
-    for (let i = 0; i < items.length; i += 1) {
-      const p = items[i];
-      const text = [
-        p.name,
-        p.sku,
-        p.category,
-        categoryLabels[p.category] ?? "",
-        p.subcategory,
-        p.brand,
-        p.fabric,
-        p.collection,
-        ...(p.tags ?? []),
-      ].join(" ").toLowerCase();
-      map.set(p.id, text);
-    }
-    return map;
-  }, [items]);
-
-  const filtered = useMemo(() => {
-    const term = debouncedQuery.trim().toLowerCase();
-    return items.filter((product) => {
-      if (status !== "ALL" && product.status !== status) return false;
-      if (category !== "ALL" && product.category !== category) return false;
-      if (!term) return true;
-      const hay = searchIndex.get(product.id) || "";
-      return hay.includes(term);
+  const reload = useCallback(async () => {
+    const result = await fetchAdminProducts({
+      q: debouncedQuery || undefined,
+      status: status === "ALL" ? undefined : status,
+      category: category === "ALL" ? undefined : category,
+      sort,
+      page,
+      pageSize,
     });
-  }, [items, debouncedQuery, status, category, searchIndex]);
+    if (result.ok) {
+      setRows(result.items ?? []);
+      setTotal(result.total ?? 0);
+      setListError(null);
+    } else {
+      setRows([]);
+      setTotal(0);
+      setListError(formatAdminError(result, { entity: "product list", action: "loaded" }));
+    }
+    setIsListLoading(false);
+  }, [debouncedQuery, status, category, sort, page]);
 
-  // Only resolve covers for filtered rows (not all 168)
-  const covers = useMemo(
-    () => Object.fromEntries(filtered.map((product) => [product.id, resolveProductCover(product)])),
-    [filtered]
+  const reloadMetrics = useCallback(async () => {
+    const result = await fetchAdminMetrics();
+    if (result.ok) {
+      setMetrics(result.metrics ?? null);
+      setMetricsError(null);
+    } else {
+      setMetrics(null);
+      setMetricsError(formatAdminError(result, { entity: "catalogue metrics", action: "loaded" }));
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsListLoading(true);
+    reload();
+  }, [reload]);
+
+  /* Metrics tiles — the server's CatalogMetricsResponse, or an honest
+     "unavailable"; never a locally fabricated count. Refreshed whenever the
+     list reloads so a publish/archive moves the tiles too. */
+  const [metricsError, setMetricsError] = useState(null);
+  useEffect(() => {
+    reloadMetrics();
+  }, [reloadMetrics, total]);
+
+  /* Normalize server rows through the shared repository record shape so the
+     table renders the same fields every surface uses. */
+  const items = useMemo(
+    () => rows.map((row) => catalogRepository.find(row.id) ?? row),
+    [rows]
   );
 
-  const metrics = useMemo(() => catalogMetrics(items), [items]);
+  const mediaSummaries = useProductMediaSummaries(items);
+
+  // Covers only for the rows actually rendered
+  const covers = useMemo(
+    () => Object.fromEntries(items.map((product) => [product.id, resolveProductCover(product)])),
+    [items]
+  );
 
   const toggleSelect = useCallback((id) =>
     setSelected((current) =>
       current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]
     ), []);
 
-  const allVisibleSelected = filtered.length > 0 && filtered.every((p) => selected.includes(p.id));
+  const allVisibleSelected = items.length > 0 && items.every((p) => selected.includes(p.id));
 
   const toggleSelectAll = useCallback(() => {
-    const visibleIds = new Set(filtered.map((product) => product.id));
+    const visibleIds = new Set(items.map((product) => product.id));
     setSelected((current) =>
       allVisibleSelected
         ? current.filter((id) => !visibleIds.has(id))
         : [...new Set([...current, ...visibleIds])]
     );
-  }, [allVisibleSelected, filtered]);
+  }, [allVisibleSelected, items]);
 
-  /** Merchandising bulk actions are ordinary Product edits, so every selected
-   * ID must pass through the same authorization and editable-stage command as
-   * an individual Admin Products save. Protected Products remain unchanged and
-   * retain the command's exact blocker in the partial-success report. */
-  const runMerchandisingBulk = useCallback((patch, label) => {
+  /**
+   * Merchandising bulk actions run through POST /admin/products/bulk — the
+   * backend applies the flag patch to every ID it accepts (merchandising
+   * fields only; status is refused by design) and the desk reloads its page
+   * from the server instead of assuming the patch client-side.
+   */
+  const runMerchandisingBulk = useCallback(async (patch, label) => {
     if (!selected.length || bulkBusy) return;
     const ids = [...selected];
     setBulkBusy(true);
-    setNotice(`${label}: processing ${ids.length} products…`);
-    setTimeout(() => {
-      const results = ids.map((id) => {
-        const product = catalogRepository.find(id);
-        const result = saveProductDraft(id, patch, actor);
-        return {
-          id,
-          name: product?.name ?? id,
-          ok: Boolean(result.ok),
-          reasons: result.errors?.length
-            ? result.errors
-            : [result.error || "Product edit failed."],
-        };
-      });
-      const applied = results.filter((result) => result.ok).length;
-      const blocked = results.filter((result) => !result.ok);
-      setNotice(
-        <>
-          <p>
-            {label}: applied to {applied} product{applied === 1 ? "" : "s"}
-            {blocked.length ? `, ${blocked.length} blocked.` : "."}
-          </p>
-          {blocked.length ? (
-            <ul className="mt-2 max-h-56 list-disc space-y-1 overflow-y-auto pl-5 text-accent">
-              {blocked.map((result) => (
-                <li key={result.id}>
-                  <span className="font-medium">{result.id}</span>{" — "}
-                  {result.reasons.join(" ")}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      );
-      setSelected([]);
-      setBulkBusy(false);
-    }, 0);
-  }, [selected, bulkBusy, actor]);
+    setNotice(`${label}: applying to ${ids.length} product${ids.length === 1 ? "" : "s"} on the server…`);
+    const result = await runBulkFlags(ids, patch, { reload: async () => { await Promise.all([reload(), reloadMetrics()]); } });
+    if (result.ok) {
+      setNotice(`${label}: applied on the server to ${ids.length} product${ids.length === 1 ? "" : "s"}.`);
+    } else {
+      setNotice(formatAdminError(result, { entity: "bulk update", action: "applied" }));
+    }
+    setSelected([]);
+    setBulkBusy(false);
+  }, [selected, bulkBusy, reload]);
 
-  /** Lifecycle bulk actions deliberately invoke the authoritative individual
-   * command for every selected Product ID. A failed Product stays unchanged,
-   * while its canonical validator/authorization message is surfaced intact. */
-  const runWorkflowBulk = useCallback(() => {
+  /**
+   * Bulk lifecycle actions run the SAME canonical per-product endpoint for
+   * every selected ID — sequentially, each awaited — and the report shows
+   * each server rejection verbatim. A product the server blocks stays
+   * exactly as it was; there is no local fallback transition.
+   */
+  const runWorkflowBulk = useCallback(async () => {
     if (!pendingBulkAction || !selected.length || bulkBusy) return;
     const action = pendingBulkAction;
     const ids = [...selected];
     setPendingBulkAction(null);
     setBulkBusy(true);
-    setNotice(`${action.label}: processing ${ids.length} products…`);
-    setTimeout(() => {
-      const results = ids.map((id) => {
-        const product = catalogRepository.find(id);
-        const result = action.id === "publish"
-          ? publishProduct(id, actor)
-          : archiveProduct(id, actor);
-        if (action.id === "publish" && result.ok) {
-          inventoryRepository.ensureOpeningStock(result.product, actor);
-        }
-        return {
-          id,
-          name: product?.name ?? id,
-          ok: Boolean(result.ok),
-          reasons: result.errors?.length
-            ? result.errors
-            : [result.error || "Workflow action failed."],
-        };
+    setNotice(`${action.label}: processing ${ids.length} products on the server…`);
+    const results = [];
+    for (const id of ids) {
+      const result = await runAction(id, action.id === "publish" ? "publish" : "archive");
+      const product = catalogRepository.find(id);
+      results.push({
+        id,
+        name: product?.name ?? id,
+        ok: Boolean(result.ok),
+        reasons: result.ok ? [] : [formatAdminError(result, { entity: product?.name ?? id, action: action.id })],
       });
-      const applied = results.filter((result) => result.ok).length;
-      const blocked = results.filter((result) => !result.ok);
-      setNotice(
-        <>
-          <p>
-            {action.label}: applied to {applied} product{applied === 1 ? "" : "s"}
-            {blocked.length ? `, ${blocked.length} blocked.` : "."}
-          </p>
-          {blocked.length ? (
-            <ul className="mt-2 max-h-56 list-disc space-y-1 overflow-y-auto pl-5 text-accent">
-              {blocked.map((result) => (
-                <li key={result.id}>
-                  <span className="font-medium">{result.id}</span>{" — "}
-                  {result.reasons.join(" ")}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      );
-      setSelected([]);
-      setBulkBusy(false);
-    }, 0);
-  }, [pendingBulkAction, selected, bulkBusy, actor]);
+    }
+    await Promise.all([reload(), reloadMetrics()]);
+    const applied = results.filter((result) => result.ok).length;
+    const blocked = results.filter((result) => !result.ok);
+    setNotice(
+      <>
+        <p>
+          {action.label}: the server applied this to {applied} product{applied === 1 ? "" : "s"}
+          {blocked.length ? `, ${blocked.length} refused.` : "."}
+        </p>
+        {blocked.length ? (
+          <ul className="mt-2 max-h-56 list-disc space-y-1 overflow-y-auto pl-5 text-accent">
+            {blocked.map((result) => (
+              <li key={result.id}>
+                <span className="font-medium">{result.id}</span>{" — "}
+                {result.reasons.join(" ")}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </>
+    );
+    setSelected([]);
+    setBulkBusy(false);
+  }, [pendingBulkAction, selected, bulkBusy, reload]);
 
-  const publishQuick = useCallback((product) => {
+  const publishQuick = useCallback(async (product) => {
     if (busyId) return;
     setBusyId(product.id);
-    setNotice(`Publishing “${product.name}”…`);
-    setTimeout(() => {
-      const result = publishProduct(product.id, actor);
-      if (result.ok) {
-        inventoryRepository.ensureOpeningStock(result.product, actor);
-        setNotice(`Published “${product.name}” — now visible to customers.`);
-      } else {
-        setNotice(`Could not publish “${product.name}”: ${(result.errors ?? [result.error]).join(" ")}`);
-      }
-      setBusyId(null);
-    }, 0);
-  }, [busyId, actor]);
+    const result = await runAction(product.id, "publish");
+    setNotice(
+      result.ok
+        ? `Published “${product.name}” — the server has put it live for customers.`
+        : formatAdminError(result, { entity: `“${product.name}”`, action: "published" })
+    );
+    await Promise.all([reload(), reloadMetrics()]);
+    setBusyId(null);
+  }, [busyId, reload]);
 
-  const handleDuplicate = useCallback((product) => {
+  const handleDuplicate = useCallback(async (product) => {
     if (busyId) return;
     setBusyId(product.id);
-    setTimeout(() => {
-      const result = duplicateProduct(product.id, actor);
-      setNotice(
-        result.ok
-          ? `Duplicated as “${result.product.name}” — review its SKU and slug.`
-          : `Could not duplicate “${product.name}”: ${result.error}`
-      );
-      setBusyId(null);
-    }, 0);
-  }, [busyId, actor]);
+    const result = await runAction(product.id, "duplicate");
+    setNotice(
+      result.ok
+        ? `Duplicated on the server as “${result.product?.name ?? "a draft copy"}” — review its identity fields.`
+        : formatAdminError(result, { entity: `“${product.name}”`, action: "duplicated" })
+    );
+    await Promise.all([reload(), reloadMetrics()]);
+    setBusyId(null);
+  }, [busyId, reload]);
 
-  const handleArchive = useCallback((product) => {
+  const handleArchive = useCallback(async (product) => {
     if (busyId) return;
     setBusyId(product.id);
-    setTimeout(() => {
-      const result = archiveProduct(product.id, actor);
-      setNotice(
-        result.ok
-          ? `Archived “${product.name}”.`
-          : `Could not archive “${product.name}”: ${result.error}`
-      );
-      setBusyId(null);
-    }, 0);
-  }, [busyId, actor]);
+    const result = await runAction(product.id, "archive");
+    setNotice(
+      result.ok
+        ? `Archived “${product.name}” — it is removed from every customer surface until restored.`
+        : formatAdminError(result, { entity: `“${product.name}”`, action: "archived" })
+    );
+    await Promise.all([reload(), reloadMetrics()]);
+    setBusyId(null);
+  }, [busyId, reload]);
 
-  const handleRestore = useCallback((product) => {
+  const handleRestore = useCallback(async (product) => {
     if (busyId) return;
     setBusyId(product.id);
-    setTimeout(() => {
-      const result = restoreProduct(product.id, actor);
-      setNotice(
-        result.ok
-          ? `Restored “${product.name}” to draft.`
-          : `Could not restore “${product.name}”: ${result.error}`
-      );
-      setBusyId(null);
-    }, 0);
-  }, [busyId, actor]);
+    const result = await runAction(product.id, "restore");
+    setNotice(
+      result.ok
+        ? `Restored “${product.name}” to draft.`
+        : formatAdminError(result, { entity: `“${product.name}”`, action: "restored" })
+    );
+    await Promise.all([reload(), reloadMetrics()]);
+    setBusyId(null);
+  }, [busyId, reload]);
 
   const clearNotice = () => setNotice(null);
   useEffect(() => {
     if (!notice) return undefined;
-    const timer = setTimeout(clearNotice, 6000);
+    const timer = setTimeout(clearNotice, 8000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <AdminPage
       eyebrow="Business / Products"
       title={<>Product <span className="italic text-accent">catalog.</span></>}
-      description="One catalogue serves the storefront, the portals and every future surface. Manage identity, pricing, variants, media and publishing from this desk."
+      description="One catalogue serves the storefront, the portals and every future surface. This desk is fully server-backed: filters, sort, pagination and every action run against the catalogue API."
       actions={
         <>
           <AtelierButton as={Link} to="/admin/products/review" size="chip" variant="outline">
-            <ClipboardCheck size={13} aria-hidden="true" /> Review queue{metrics.pendingReview ? ` (${metrics.pendingReview})` : ""}
+            <ClipboardCheck size={13} aria-hidden="true" /> Review queue{metrics?.pendingReview ? ` (${metrics.pendingReview})` : ""}
           </AtelierButton>
           <AtelierButton as={Link} to="/admin/products/new" size="chip">
             <Plus size={13} aria-hidden="true" /> Create product
@@ -461,17 +445,32 @@ export default function AdminProducts() {
         </>
       }
     >
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <AdminMetricCard label="Total" value={metrics.total} hint="Every product record" />
-        <AdminMetricCard label="Published" value={metrics.published} hint="Visible to customers" />
-        <AdminMetricCard label="Draft" value={metrics.drafts} hint="In progress" />
-        <AdminMetricCard label="Pending Review" value={metrics.pendingReview} hint="Awaiting approval" tone={metrics.pendingReview ? "alert" : "default"} />
-        <AdminMetricCard label="Archived" value={metrics.archived} hint="Retired, order-safe" />
-        <AdminMetricCard label="Featured" value={metrics.featured} hint="House selection" />
-        <AdminMetricCard label="Bestseller" value={metrics.bestsellers} hint="Proven favourites" />
-        <AdminMetricCard label="New Arrivals" value={metrics.newArrivals} hint="Just-in edit" />
-        <AdminMetricCard label="Needs Media" value={metrics.needsMedia} hint="Missing a cover" tone={metrics.needsMedia ? "alert" : "default"} />
-        <AdminMetricCard label="Needs Pricing Review" value={metrics.needsPricingReview} hint="Incomplete or invalid" tone={metrics.needsPricingReview ? "alert" : "default"} />
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+        {metricsError ? (
+          <div className="col-span-full border border-accent/40 bg-canvas px-4 py-3 font-ui text-xs text-accent" role="alert">
+            Metrics unavailable — {metricsError}
+          </div>
+        ) : !metrics ? (
+          <div className="col-span-full font-ui text-xs text-taupe">Loading catalogue metrics from the server…</div>
+        ) : (
+          [
+            { label: "Total", value: metrics.total, hint: "Every product record" },
+            { label: "Published", value: metrics.published, hint: "Visible to customers" },
+            { label: "Draft", value: metrics.draft, hint: "In progress" },
+            { label: "Pending Review", value: metrics.pendingReview, hint: "Awaiting approval", alert: (metrics.pendingReview ?? 0) > 0 },
+            { label: "Archived", value: metrics.archived, hint: "Retired, order-safe" },
+            { label: "Unassigned", value: metrics.unassigned, hint: "No owner on draft/review work", alert: (metrics.unassigned ?? 0) > 0 },
+            { label: "Blocked", value: metrics.blocked, hint: "Carrying blocking review flags", alert: (metrics.blocked ?? 0) > 0 },
+          ].map((tile) => (
+            <AdminMetricCard
+              key={tile.label}
+              label={tile.label}
+              value={tile.value ?? 0}
+              hint={tile.hint}
+              tone={tile.alert ? "alert" : "default"}
+            />
+          ))
+        )}
       </div>
 
       {notice ? (
@@ -485,8 +484,8 @@ export default function AdminProducts() {
         title={`${pendingBulkAction?.label ?? "Update"} selected products?`}
         description={
           pendingBulkAction?.id === "publish"
-            ? `Each of the ${selected.length} selected Product IDs will run through the canonical Publish command. Only approved Products that pass full validation will publish; blocked Products stay unchanged and their exact warnings will be shown.`
-            : `Each of the ${selected.length} selected Product IDs will run through the canonical Archive command. Blocked Products stay unchanged and their exact warnings will be shown.`
+            ? `Each of the ${selected.length} selected Product IDs will run its own Publish call on the server. Only approved Products that pass the publish gate will go live; blocked Products stay unchanged and their exact server errors will be shown.`
+            : `Each of the ${selected.length} selected Product IDs will run its own Archive call on the server. Archived Products leave every customer surface immediately.`
         }
         confirmLabel={pendingBulkAction?.label ?? "Confirm"}
         cancelLabel="Cancel"
@@ -495,7 +494,7 @@ export default function AdminProducts() {
         tone={pendingBulkAction?.id === "archive" ? "danger" : "primary"}
       />
 
-      <AdminPanel eyebrow="Catalog" title="Products">
+      <AdminPanel eyebrow="Catalog" title={`Products${total ? ` · ${total}` : ""}`}>
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
           <label className="relative flex-1">
             <span className="sr-only">Search products</span>
@@ -503,7 +502,7 @@ export default function AdminProducts() {
             <input
               aria-label="Search products"
               className="w-full border border-mist py-2.5 pl-9 pr-3 font-ui text-sm outline-none focus:border-accent"
-              placeholder="Search name, SKU, category, fabric, tags…"
+              placeholder="Search name, SKU, ID, category, fabric…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -515,12 +514,32 @@ export default function AdminProducts() {
               id="admin-category-filter"
               aria-label="Filter by category"
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) => { setCategory(event.target.value); setPage(1); }}
               className="border border-mist bg-canvas px-3 py-2.5 font-ui text-xs text-ink outline-none focus:border-accent"
             >
               <option value="ALL">All categories</option>
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
+            </select>
+            <label htmlFor="admin-sort" className="sr-only">Sort products</label>
+            <select
+              id="admin-sort"
+              aria-label="Sort products"
+              value={sort}
+              onChange={(event) => { setSort(event.target.value); setPage(1); }}
+              className="border border-mist bg-canvas px-3 py-2.5 font-ui text-xs text-ink outline-none focus:border-accent"
+            >
+              {[
+                ["newest", "Newest"],
+                ["oldest", "Oldest"],
+                ["name", "Name A–Z"],
+                ["price-asc", "Price ↑"],
+                ["price-desc", "Price ↓"],
+                ["status", "Status"],
+                ["updated", "Recently updated"],
+              ].map(([id, label]) => (
+                <option key={id} value={id}>{label}</option>
               ))}
             </select>
           </div>
@@ -532,7 +551,7 @@ export default function AdminProducts() {
                 type="button"
                 role="radio"
                 aria-checked={status === option.id}
-                onClick={() => setStatus(option.id)}
+                onClick={() => { setStatus(option.id); setPage(1); }}
                 className={
                   status === option.id
                     ? "border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory"
@@ -557,6 +576,16 @@ export default function AdminProducts() {
           </div>
         ) : null}
 
+        {listError ? (
+          <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-accent/50 bg-canvas px-4 py-4">
+            <div>
+              <p className="font-display text-lg text-ink">The product list could not be loaded</p>
+              <p className="mt-1 font-ui text-sm text-accent">{listError}</p>
+            </div>
+            <button type="button" onClick={reload} className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink hover:bg-ink hover:text-ivory">Retry</button>
+          </div>
+        ) : null}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left">
             <thead>
@@ -568,7 +597,9 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((product) => (
+              {isListLoading ? (
+                <tr><td colSpan={11} className="py-12 text-center font-ui text-sm text-taupe">Loading products from the server…</td></tr>
+              ) : items.map((product) => (
                 <ProductRow
                   key={product.id}
                   product={product}
@@ -587,12 +618,12 @@ export default function AdminProducts() {
           </table>
         </div>
 
-        {!filtered.length ? (
-          items.length === 0 ? (
+        {!isListLoading && !listError && !items.length ? (
+          total === 0 && !debouncedQuery && status === "ALL" && category === "ALL" ? (
             <div className="py-16 text-center">
-              <p className="font-display text-2xl font-light text-ink">No products yet</p>
+              <p className="font-display text-2xl font-light text-ink">No products on the server yet</p>
               <p className="mt-2 font-ui text-sm text-taupe">
-                Start building the PRATIKSHYA FASHON catalog by adding your first product.
+                The catalogue is empty server-side. Create the first product to seed the register.
               </p>
               <Link
                 to="/admin/products/new"
@@ -602,8 +633,36 @@ export default function AdminProducts() {
               </Link>
             </div>
           ) : (
-            <p className="py-12 text-center font-ui text-sm text-taupe">No products match your current filters.</p>
+            <p className="py-12 text-center font-ui text-sm text-taupe">
+              No products match the current search/filters{debouncedQuery ? ` for “${debouncedQuery}”` : ""}.
+            </p>
           )
+        ) : null}
+
+        {!isListLoading && !listError && total > pageSize ? (
+          <div className="mt-5 flex items-center justify-between font-ui text-[11px] text-taupe">
+            <p>
+              Page {page} of {totalPages} · {total} product{total === 1 ? "" : "s"} matching
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         ) : null}
       </AdminPanel>
     </AdminPage>

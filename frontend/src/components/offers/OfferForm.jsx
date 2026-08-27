@@ -21,8 +21,11 @@ import offerRepository, {
   formatOfferDiscount,
   normalizeCode,
   previewOfferDiscount,
+  toApiScopeFields,
   validateOfferDraft,
 } from "../../services/offers/offerRepository";
+import { getCategories, getCollections } from "../../services/catalog/catalogStore";
+import { formatAdminError } from "../../services/admin/adminError";
 import { getRegisteredCustomers } from "../../services/employees/operationsService";
 import { formatINR } from "../../utils/shopping";
 import { categoryLabels } from "../../data/products/taxonomy";
@@ -71,6 +74,8 @@ export default function OfferForm({
       ? {
           ...emptyDraft,
           ...offer,
+          startDate: String(offer.startDate ?? "").slice(0, 10),
+          endDate: String(offer.endDate ?? "").slice(0, 10),
           discountValue: offer.discountValue ?? 10,
           status:
             offer.status === OFFER_STATUS.PAUSED || offer.status === OFFER_STATUS.ARCHIVED
@@ -91,8 +96,17 @@ export default function OfferForm({
     []
   );
   const customers = useMemo(() => getRegisteredCustomers(), []);
-  const collections = offerRepository.collections;
-  const categories = offerRepository.categories;
+  // Scope pickers read the SHARED server-backed stores (products/categories/
+  // collections), never a local dataset or a repository getter misused as
+  // an array (the old `offerRepository.categories.map` crashed the desk).
+  const categories = useMemo(
+    () => (getCategories() ?? []).map((category) => ({ id: category.id ?? category.slug, label: category.name ?? category.label ?? category.slug })),
+    []
+  );
+  const collections = useMemo(
+    () => (getCollections() ?? []).map((collection) => ({ id: collection.id ?? collection.slug, label: collection.name ?? collection.title ?? collection.slug })),
+    []
+  );
 
   const setField = (field, value) => {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -114,8 +128,11 @@ export default function OfferForm({
       .slice(0, 24);
   }, [products, productQuery]);
 
-  const submit = (event) => {
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event) => {
     event.preventDefault();
+    if (saving) return;
     const payload = {
       ...draft,
       code: normalizeCode(draft.code),
@@ -134,13 +151,44 @@ export default function OfferForm({
       return;
     }
 
-    const result = isEdit
-      ? offerRepository.update(offer.id, payload, actor)
-      : offerRepository.create(payload, actor);
+    /*
+     * Only fields the coupon table can persist leave this form (the shared
+     * offersApi builder maps them to the exact request contract). The save
+     * is AWAITED: the form navigates only after the server confirms, and a
+     * 409 (duplicate code) / 422 (bad window, percentage > 100) surfaces
+     * the server's own copy instead of a generic failure.
+     */
+    const apiForm = {
+      code: normalizeCode(draft.code),
+      name: String(draft.name ?? "").trim() || null,
+      description: draft.description ?? "",
+      type: draft.type,
+      discountType: draft.type === OFFER_TYPES.FIXED_AMOUNT ? "fixed" : draft.type === "FREE_SHIPPING" ? "free_shipping" : "percentage",
+      discountValue: Number(draft.discountValue) || 0,
+      minimumOrderValue: Number(draft.minimumOrderValue) || 0,
+      startsAt: draft.startDate || null,
+      expiresAt: draft.endDate || null,
+      usageLimit: Number(draft.usageLimit) > 0 ? Number(draft.usageLimit) : null,
+      perCustomerLimit: Number(draft.perCustomerLimit) > 0 ? Number(draft.perCustomerLimit) : null,
+      ...toApiScopeFields(draft),
+    };
+    setSaving(true);
+    let result;
+    if (isEdit) {
+      if (apiForm.code && apiForm.code !== normalizeCode(offer.code)) apiForm.codeForUpdate = true;
+      result = await offerRepository.update(offer.id, apiForm, actor);
+    } else {
+      result = await offerRepository.create(apiForm, actor);
+    }
+    setSaving(false);
 
     if (!result.ok) {
       setErrors(result.errors || {});
-      setNotice(result.error || "The offer could not be saved.");
+      setNotice(
+        formatAdminError(result, { entity: "offer", action: isEdit ? "updated" : "created" }) ??
+          result.error ??
+          "The offer could not be saved."
+      );
       return;
     }
 
@@ -230,19 +278,11 @@ export default function OfferForm({
               onChange={(event) => setField("minimumOrderValue", event.target.value)}
             />
           </EmployeeField>
-          <EmployeeField
-            label="Maximum discount (₹)"
-            hint="Leave 0 for no cap."
-            error={errors.maximumDiscount}
-          >
-            <input
-              type="number"
-              min="0"
-              className={employeeInputClass(Boolean(errors.maximumDiscount))}
-              value={draft.maximumDiscount}
-              onChange={(event) => setField("maximumDiscount", event.target.value)}
-            />
-          </EmployeeField>
+          <p className="border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink md:col-span-2" role="note">
+            No per-customer maximum-discount cap: the coupon table has no such column
+            (BACKEND_GAP — future phase), so a cap entered here could never be enforced
+            at checkout and is deliberately not offered.
+          </p>
         </div>
       </section>
 
@@ -283,27 +323,22 @@ export default function OfferForm({
               onChange={(event) => setField("perCustomerLimit", event.target.value)}
             />
           </EmployeeField>
-          <EmployeeField label="Priority" hint="Higher wins when several apply.">
-            <input
-              type="number"
-              min="0"
-              className={employeeInputClass()}
-              value={draft.priority}
-              onChange={(event) => setField("priority", event.target.value)}
-            />
-          </EmployeeField>
-          <EmployeeField label="Status">
-            <select
-              className={employeeInputClass()}
-              value={draft.status}
-              onChange={(event) => setField("status", event.target.value)}
-            >
-              <option value={OFFER_STATUS.DRAFT}>Draft</option>
-              <option value={OFFER_STATUS.ACTIVE}>Active / scheduled</option>
-              <option value={OFFER_STATUS.PAUSED}>Paused</option>
-              {isEdit ? <option value={OFFER_STATUS.ARCHIVED}>Archived</option> : null}
-            </select>
-          </EmployeeField>
+          <div className="md:col-span-2 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
+            <p>
+              <strong>Activation is server-derived:</strong> a saved coupon is
+              {isEdit ? " " : " active as soon as it is created ("}
+              {isEdit
+                ? "in the server's state (Active, Scheduled, Expired or Paused/archived) from its live flag plus date window."
+                : "usable immediately, or scheduled by its start date)."}
+            </p>
+            <p className="mt-1">
+              Pause/archive/restore are the dedicated actions on the offer page — the
+              table stores one inactive flag, so “paused” and “archived” persist
+              identically and “Draft” has no column. No status is chosen here, so none
+              can half-save. (Priority has no column either; checkout validates one
+              code at a time.)
+            </p>
+          </div>
           <label className="flex items-center gap-3 font-ui text-sm text-ink md:col-span-2">
             <input
               type="checkbox"
@@ -558,8 +593,8 @@ export default function OfferForm({
       </section>
 
       <div className="flex flex-wrap gap-3">
-        <AtelierButton type="submit" size="chip">
-          {isEdit ? "Save offer" : "Create offer"}
+        <AtelierButton type="submit" size="chip" disabled={saving}>
+          {saving ? "Saving on the server…" : isEdit ? "Save offer" : "Create offer"}
         </AtelierButton>
         <AtelierButton type="button" variant="outline" size="chip" onClick={() => navigate(basePath)}>
           Cancel

@@ -12,6 +12,10 @@ URL mapping (API_CONTRACT.md → implementation):
 
   Admin
   ─────────────────────────────────────────────────────────────────────────────
+  GET   /admin/categories                                  ← admin list (all statuses)
+  GET   /admin/categories/{id}                             ← single category, any status
+  GET   /admin/categories/{id}/subcategories               ← admin subcategory list
+  POST  /admin/categories/{id}/activate                    ← DRAFT → ACTIVE
   POST  /admin/categories                                  ← create category
   PATCH /admin/categories/{id}                            ← update category
   POST  /admin/categories/{id}/archive                    ← archive category
@@ -35,7 +39,7 @@ from fastapi_cache.decorator import cache
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import TTL_CATEGORIES
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
 from app.schemas.catalog.category import (
     CategoryCreateRequest,
@@ -209,6 +213,65 @@ async def get_category(
 # ADMIN — Categories
 # ===========================================================================
 
+@router.get(
+    "/admin/categories",
+    summary="Admin — category list including DRAFT and ARCHIVED",
+    description=(
+        "Authorization: `categories.view`.  \n"
+        "Optional `status` filter; without it every status is returned.  \n"
+        "Rows carry server-computed `productCount` (published) and "
+        "`productCountTotal` (all statuses) for the taxonomy desk tiles."
+    ),
+)
+async def admin_list_categories(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    featured: Optional[bool] = Query(None),
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "categories.view")
+    service = CategoryService(db)
+    items = await service.list_admin_categories(status_filter=status_filter, featured=featured)
+    return {"ok": True, "items": items, "total": len(items)}
+
+
+@router.get(
+    "/admin/categories/{category_id}",
+    response_model=SingleCategoryResponse,
+    summary="Admin — get one category (any status)",
+    description="Authorization: `categories.view`. Resolves DRAFT/ARCHIVED rows too.",
+)
+async def admin_get_category(
+    category_id: str,
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "categories.view")
+    service = CategoryService(db)
+    category = await service.get_admin_category(category_id)
+    return SingleCategoryResponse(category=category)
+
+
+@router.get(
+    "/admin/categories/{category_id}/subcategories",
+    response_model=SubcategoryListResponse,
+    summary="Admin — subcategory list including DRAFT and ARCHIVED",
+    description="Authorization: `categories.view`. Optional `status` filter.",
+)
+async def admin_list_subcategories(
+    category_id: str,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "categories.view")
+    service = CategoryService(db)
+    items = await service.list_admin_subcategories(
+        category_id=category_id, status_filter=status_filter
+    )
+    return SubcategoryListResponse(items=items)
+
+
 @router.post(
     "/admin/categories",
     response_model=SingleCategoryResponse,
@@ -225,6 +288,7 @@ async def admin_create_category(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.create")
     service = CategoryService(db)
     category = await service.create_category(req, actor=current_user.id)
     return SingleCategoryResponse(category=category)
@@ -246,8 +310,32 @@ async def admin_update_category(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.edit")
     service = CategoryService(db)
     category = await service.update_category(category_id, req, actor=current_user.id)
+    return SingleCategoryResponse(category=category)
+
+
+@router.post(
+    "/admin/categories/{category_id}/activate",
+    response_model=SingleCategoryResponse,
+    summary="Admin — activate a DRAFT category (DRAFT → ACTIVE)",
+    description=(
+        "Authorization: `categories.edit`.  \n"
+        "Activation is the promotion step for categories created by the admin "
+        "desk (creation always starts in DRAFT so an unfinished category is "
+        "never surfaced to customers).  \n"
+        "Only `DRAFT` categories can be activated; `ARCHIVED` uses restore."
+    ),
+)
+async def admin_activate_category(
+    category_id: str,
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "categories.edit")
+    service = CategoryService(db)
+    category = await service.activate_category(category_id, actor=current_user.id)
     return SingleCategoryResponse(category=category)
 
 
@@ -268,6 +356,7 @@ async def admin_archive_category(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.archive")
     service = CategoryService(db)
     category = await service.archive_category(category_id, actor=current_user.id)
     return SingleCategoryResponse(category=category)
@@ -288,6 +377,7 @@ async def admin_restore_category(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.archive")
     service = CategoryService(db)
     category = await service.restore_category(category_id, actor=current_user.id)
     return SingleCategoryResponse(category=category)
@@ -314,6 +404,7 @@ async def admin_create_subcategory(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.create")
     service = CategoryService(db)
     sub = await service.create_subcategory(category_id, req, actor=current_user.id)
     return SingleSubcategoryResponse(subcategory=sub)
@@ -335,8 +426,26 @@ async def admin_update_subcategory(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.edit")
     service = CategoryService(db)
     sub = await service.update_subcategory(subcategory_id, req, actor=current_user.id)
+    return SingleSubcategoryResponse(subcategory=sub)
+
+
+@router.post(
+    "/admin/subcategories/{subcategory_id}/activate",
+    response_model=SingleSubcategoryResponse,
+    summary="Admin — activate a DRAFT subcategory (DRAFT → ACTIVE)",
+    description="Authorization: `categories.edit`. Only DRAFT rows can be activated; archived uses restore.",
+)
+async def admin_activate_subcategory(
+    subcategory_id: str,
+    current_user: UserModel = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_admin_permission(current_user, db, "categories.edit")
+    service = CategoryService(db)
+    sub = await service.activate_subcategory(subcategory_id, actor=current_user.id)
     return SingleSubcategoryResponse(subcategory=sub)
 
 
@@ -351,6 +460,7 @@ async def admin_archive_subcategory(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.archive")
     service = CategoryService(db)
     sub = await service.archive_subcategory(subcategory_id, actor=current_user.id)
     return SingleSubcategoryResponse(subcategory=sub)
@@ -370,6 +480,7 @@ async def admin_restore_subcategory(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "categories.archive")
     service = CategoryService(db)
     sub = await service.restore_subcategory(subcategory_id, actor=current_user.id)
     return SingleSubcategoryResponse(subcategory=sub)

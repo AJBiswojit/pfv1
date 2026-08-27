@@ -8,7 +8,7 @@ import { useOffer } from "../../hooks/useOffers";
 export default function EmployeeOfferForm() {
   const { offerId } = useParams();
   const { employee, hasPermission } = useEmployeeAuth();
-  const existing = useOffer(offerId);
+  const { offer: existing } = useOffer(offerId);
 
   const canCreate = hasPermission(PERMISSIONS.OFFERS_CREATE) || hasPermission(PERMISSIONS.OFFERS_MANAGE);
   const canEdit = hasPermission(PERMISSIONS.OFFERS_EDIT) || hasPermission(PERMISSIONS.OFFERS_MANAGE);

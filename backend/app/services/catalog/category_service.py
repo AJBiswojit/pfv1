@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import invalidate_response_cache
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.product import ProductModel
@@ -159,6 +160,15 @@ class CategoryService:
                 f"A subcategory with slug '{slug}' already exists in this category."
             )
 
+    async def _invalidate_taxonomy_cache(self) -> None:
+        """
+        Every category/subcategory write changes what the cached public
+        taxonomy + product surfaces may legitimately serve (visibility gates
+        read category status). Clear the decorated response cache; the KV/LRU
+        layer has no category entries, so a single clear is enough.
+        """
+        await invalidate_response_cache()
+
     # ── Public — categories ───────────────────────────────────────────────────
 
     async def list_categories(
@@ -246,6 +256,7 @@ class CategoryService:
         self.db.add(cat)
         await self.db.flush()
         await self.db.refresh(cat)
+        await self._invalidate_taxonomy_cache()
         return _project_category(cat)
 
     async def update_category(
@@ -280,8 +291,100 @@ class CategoryService:
         cat.updated_by = actor
         await self.db.flush()
         await self.db.refresh(cat)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_category(cat.id)
         return _project_category(cat, count)
+
+    # ── Admin — read paths (any status) + activation ─────────────────────────
+
+    async def list_admin_categories(
+        self,
+        status_filter: Optional[str] = None,
+        featured: Optional[bool] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        GET /admin/categories — the admin desk view.
+
+        Unlike the public list, DRAFT and ARCHIVED rows are included (pass
+        `status` to narrow), and each row carries honest counts:
+        `productCount` (live/published) and `productCountTotal` (all statuses)
+        so the taxonomy desk tiles read from the server instead of from the
+        in-browser catalogue snapshot.
+        """
+        items = await self.list_categories(status_filter=status_filter, featured=featured)
+        output: List[Dict[str, Any]] = []
+        for item in items:
+            total_result = await self.db.execute(
+                select(func.count()).select_from(ProductModel).where(
+                    ProductModel.category == item.id
+                )
+            )
+            row = item.model_dump(by_alias=True)
+            row["productCountTotal"] = total_result.scalar() or 0
+            output.append(row)
+        return output
+
+    async def get_admin_category(self, id_or_slug: str) -> CategoryResponse:
+        """GET /admin/categories/{id} — resolves DRAFT/ARCHIVED rows too."""
+        cat = await self._get_category_or_404(id_or_slug)
+        count = await self._product_count_for_category(cat.id)
+        return _project_category(cat, count)
+
+    async def list_admin_subcategories(
+        self,
+        category_id: str,
+        status_filter: Optional[str] = None,
+    ) -> List[SubcategoryResponse]:
+        """GET /admin/categories/{id}/subcategories — includes DRAFT/ARCHIVED."""
+        cat = await self._get_category_or_404(category_id)
+        stmt = select(SubcategoryModel).where(SubcategoryModel.category_id == cat.id)
+        if status_filter:
+            stmt = stmt.where(SubcategoryModel.status == status_filter)
+        stmt = stmt.order_by(SubcategoryModel.sort_order.asc(), SubcategoryModel.name.asc())
+        result = await self.db.execute(stmt)
+        output = []
+        for sub in result.scalars().all():
+            count = await self._product_count_for_subcategory(cat.id, sub.slug)
+            output.append(_project_subcategory(sub, count))
+        return output
+
+    async def activate_category(self, category_id: str, actor: str) -> CategoryResponse:
+        """
+        POST /admin/categories/{id}/activate — DRAFT → ACTIVE only.
+
+        Restoring archived rows stays on the dedicated `/restore` route so the
+        two state transitions remain auditable separately; going ACTIVE→DRAFT
+        is not offered because nothing in the product flow expects it.
+        """
+        cat = await self._get_category_or_404(category_id)
+        if cat.status != "DRAFT":
+            raise ConflictException(
+                f"Only DRAFT categories can be activated (current status: {cat.status}). "
+                "Use restore for archived categories."
+            )
+        cat.status = "ACTIVE"
+        cat.updated_by = actor
+        await self.db.flush()
+        await self.db.refresh(cat)
+        await self._invalidate_taxonomy_cache()
+        count = await self._product_count_for_category(cat.id)
+        return _project_category(cat, count)
+
+    async def activate_subcategory(self, subcategory_id: str, actor: str) -> SubcategoryResponse:
+        """POST /admin/subcategories/{id}/activate — DRAFT → ACTIVE only."""
+        sub = await self._get_subcategory_or_404(subcategory_id)
+        if sub.status != "DRAFT":
+            raise ConflictException(
+                f"Only DRAFT subcategories can be activated (current status: {sub.status}). "
+                "Use restore for archived subcategories."
+            )
+        sub.status = "ACTIVE"
+        sub.updated_by = actor
+        await self.db.flush()
+        await self.db.refresh(sub)
+        await self._invalidate_taxonomy_cache()
+        count = await self._product_count_for_subcategory(sub.category_id, sub.slug)
+        return _project_subcategory(sub, count)
 
     async def archive_category(self, category_id: str, actor: str) -> CategoryResponse:
         """
@@ -298,6 +401,7 @@ class CategoryService:
         cat.updated_by = actor
         await self.db.flush()
         await self.db.refresh(cat)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_category(cat.id)
         return _project_category(cat, count)
 
@@ -310,6 +414,7 @@ class CategoryService:
         cat.updated_by = actor
         await self.db.flush()
         await self.db.refresh(cat)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_category(cat.id)
         return _project_category(cat, count)
 
@@ -338,6 +443,7 @@ class CategoryService:
         self.db.add(sub)
         await self.db.flush()
         await self.db.refresh(sub)
+        await self._invalidate_taxonomy_cache()
         return _project_subcategory(sub)
 
     async def update_subcategory(
@@ -361,6 +467,7 @@ class CategoryService:
         sub.updated_by = actor
         await self.db.flush()
         await self.db.refresh(sub)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_subcategory(sub.category_id, sub.slug)
         return _project_subcategory(sub, count)
 
@@ -375,6 +482,7 @@ class CategoryService:
         sub.updated_by = actor
         await self.db.flush()
         await self.db.refresh(sub)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_subcategory(sub.category_id, sub.slug)
         return _project_subcategory(sub, count)
 
@@ -389,5 +497,6 @@ class CategoryService:
         sub.updated_by = actor
         await self.db.flush()
         await self.db.refresh(sub)
+        await self._invalidate_taxonomy_cache()
         count = await self._product_count_for_subcategory(sub.category_id, sub.slug)
         return _project_subcategory(sub, count)
