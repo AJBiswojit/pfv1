@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Archive, Pencil, RotateCcw } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
@@ -27,12 +27,59 @@ export default function AdminCategoryDetail() {
   const [notice, setNotice] = useState("");
   const [subDraft, setSubDraft] = useState({ name: "", slug: "", description: "", sortOrder: 100, status: TAXONOMY_STATUS.ACTIVE });
 
-  const category = useMemo(() => taxonomyRepository.findCategory(categoryId), [categoryId, version]);
-  const products = useMemo(() => catalogRepository.all().filter((product) => product.category === category?.id), [category, version]);
-  const subcategories = useMemo(() => taxonomyRepository.subcategories(category?.id), [category, version]);
+  /*
+   * The desk reads the ADMIN detail endpoint (GET /admin/categories/{id}),
+   * which resolves DRAFT/ACTIVE/ARCHIVED alike. The storefront catalog
+   * snapshot behind `taxonomyRepository.findCategory` only ever carries
+   * ACTIVE rows (GET /categories?status=ACTIVE), so reading it here made
+   * every DRAFT category look deleted.
+   */
+  const [load, setLoad] = useState({ state: "loading", message: "" });
+  const [category, setCategory] = useState(null);
+  const [subcategories, setSubcategories] = useState([]);
 
-  if (!category) {
-    return <AdminPage title="Category unavailable"><AtelierButton as={Link} to="/admin/categories" size="chip">Back to categories</AtelierButton></AdminPage>;
+  const fetchCategory = useCallback(async () => {
+    if (!categoryId) return;
+    setLoad({ state: "loading", message: "" });
+    const result = await taxonomyRepository.loadCategory(categoryId);
+    if (!result.ok || !result.category) {
+      setCategory(null);
+      setSubcategories([]);
+      setLoad({
+        state: Number(result.status) === 404 ? "notfound" : "error",
+        message: formatAdminError(result, { entity: "category", action: "loaded" }) ?? "",
+      });
+      return;
+    }
+    setCategory(result.category);
+    setLoad({ state: "ready", message: "" });
+    const subs = await taxonomyRepository.loadSubcategories(result.category.id);
+    setSubcategories(subs.ok ? subs.items : []);
+  }, [categoryId]);
+
+  useEffect(() => { fetchCategory(); }, [fetchCategory, version]);
+
+  const products = useMemo(
+    () => catalogRepository.all().filter((product) => product.category === category?.id || product.category === category?.slug),
+    [category, version],
+  );
+
+  if (load.state === "loading") {
+    return <AdminPage title="Loading category…"><p role="status" className="font-ui text-sm text-taupe">Loading category…</p></AdminPage>;
+  }
+
+  if (load.state !== "ready" || !category) {
+    return (
+      <AdminPage title={load.state === "notfound" ? "Category not found" : "Category could not be loaded"}>
+        <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">
+          {load.state === "notfound" ? "Category not found." : load.message || "The category could not be loaded from the server."}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <AtelierButton size="chip" onClick={fetchCategory}>Retry</AtelierButton>
+          <AtelierButton as={Link} to="/admin/categories" variant="outline" size="chip">Back to categories</AtelierButton>
+        </div>
+      </AdminPage>
+    );
   }
 
   const archiveOrRestore = async () => {
