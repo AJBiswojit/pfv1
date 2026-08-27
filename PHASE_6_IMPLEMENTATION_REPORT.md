@@ -3,7 +3,7 @@
 **Status:** COMPLETE (local-first, no AWS / Docker / Redis / Celery)
 **Branch:** `arena/01a040c9-pfv1`
 **Base commit:** `8681838c6c363689e0981f8bc56fe4af40e84e9b`
-**Verification:** backend `237/237` unit tests green · frontend `170/170` tests green · `vite build` clean · `git diff --check` clean · 238/238 source assets byte-identical
+**Verification:** backend `253/253` unit tests green · frontend `170/170` tests green · `vite build` clean · `git diff --check` clean · 238/238 source assets byte-identical
 
 ---
 
@@ -772,7 +772,7 @@ non-existent CDN would break every image.
 | Command | Result |
 |---|---|
 | `python -m compileall backend/app` | ✅ exit 0 |
-| backend unit suite | ✅ **237 tests, OK** (155 Phase 1–5 + 82 Phase 6) |
+| backend unit suite | ✅ **253 tests, OK** (155 Phase 1–5 + 98 Phase 6) |
 | `npm test` (frontend) | ✅ **170 pass, 0 fail** (143 prior + 27 Phase 6) |
 | `npm run build` | ✅ `✓ 2672 modules transformed … built in 7.95s` |
 | `git diff --check` | ✅ clean |
@@ -790,7 +790,7 @@ repository convention), so discovery is run from inside the unit directory:
 # backend — from backend/
 python -m compileall app
 cd tests/unit && PYTHONPATH=<repo>/backend python -m unittest discover -s . -t .
-#   → Ran 237 tests … OK
+#   → Ran 253 tests … OK
 
 # frontend — from frontend/
 npm test          # → # tests 170  # pass 170  # fail 0
@@ -813,6 +813,7 @@ git diff --check  # → clean
  backend/app/config.py                             | 102 +++++-
  backend/app/main.py                               |   4 +-
  backend/app/schemas/media/media.py                | 125 ++++++-
+ backend/requirements.txt                          |   7 +  (test-only aiosqlite)
  backend/app/services/catalog/product_service.py   |  20 +-
  backend/app/services/media/media_service.py       | 263 ++++++++++++++++-
  backend/app/services/media/upload_service.py      | 131 ++++++++-
@@ -827,6 +828,7 @@ git diff --check  # → clean
       backend/app/services/media/{local_media_migration,migrate_local,
                                   media_validation,product_media_resolver}.py
       backend/tests/unit/test_phase6_media_storage.py
+      backend/tests/unit/test_phase6_media_db.py
       frontend/tests/phase6MediaStorage.test.js
       frontend/.env.example
 ```
@@ -855,6 +857,45 @@ file appears in the diff.
 
 Fixtures build a tiny synthetic asset tree in a temp directory — **the real 238
 production assets are never touched by automated tests.**
+
+### Backend — `backend/tests/unit/test_phase6_media_db.py` (16 tests)
+
+The suite above drives the storage, security, resolver and migration layers with
+mocks, which is the right tool for those. Three Phase 6 routes are only
+meaningful against a **live session**, because their entire job is to read and
+authorise database state. Those are covered separately, against the **real
+declarative models** and the **real Phase-1 RBAC chain** (`get_current_user` →
+`get_current_admin` → `require_admin_permission`), executed unpatched:
+
+| Group | What is proven |
+|---|---|
+| `ProductMediaSetRouteTests` | `GET /media/products/{id}/media-set` reads the real `catalog_product` row: migrated reference → canonical URL, unmigrated plate → legacy fallback, `mediaIds` reported but not resolved, unknown product → 404, a read writes nothing to the store |
+| `StorefrontProjectionTests` | `GET /products/{id}` and `GET /admin/products/{id}` both return the canonical media URL, while the stored `image` column is left exactly as authored — resolution is a projection concern, never a write |
+| `AdminMediaMutationRouteTests` | `POST /media/objects` with a real `users`/`roles`/`permissions`/`role_permissions`/`user_roles` graph: permitted admin → 201 and the bytes are really served; `media.view`-only admin → 403 naming `media.upload` and nothing written; customer → 403; non-image → 422 and nothing written; product-scoped upload of a missing product → 404; `DELETE` removes only the named object and leaves the migrated asset intact; delete without `media.delete` → 403 and the object survives; delete of a missing object → 404, never a silent OK |
+| `ReferenceResolutionRouteTests` | the value read out of the real `image` column round-trips through `POST /media/references/resolve` to the canonical URL |
+
+The seeded admin role is named `MEDIA_LIMITED`, deliberately **not** one of
+`BUILT_IN_ROLES`, so the built-in permission vocabulary cannot quietly grant
+anything the test did not insert — a 403 here is a real denial.
+
+**Why SQLite, and exactly what that does and does not prove.** No PostgreSQL
+server is reachable in this environment: the Debian package mirror is not on the
+sandbox network (`apt-get install postgresql` → *Unable to locate package*), and
+PostgreSQL has no pip-installable server. Rather than leave those routes
+unverified, they run against SQLite through two **test-only** shims, neither of
+which touches production code:
+
+- `@compiles(JSONB, "sqlite")` renders Postgres `JSONB` as `JSON`;
+- the models' `schema="pratikshya"` is satisfied by `ATTACH DATABASE … AS
+  pratikshya` on every pooled connection.
+
+This proves the queries, the ORM mappings, the RBAC joins and the route
+contracts. It does **not** prove Postgres-specific DDL or JSONB operators —
+none of which Phase 6 introduces, because the phase adds no migration, no
+column and no index. `aiosqlite` is declared in `requirements.txt` under a
+clearly labelled *Testing only* section; if the driver is absent the whole
+suite **skips** with a message rather than failing (verified: 16 skipped, 0
+errors).
 
 ### Frontend — `frontend/tests/phase6MediaStorage.test.js` (27 tests)
 
@@ -918,5 +959,5 @@ PARTIALLY_IMPLEMENTED, BACKEND_GAP or BLOCKED.
 | 11 | No AWS credentials are required | ✅ provider refuses to construct without them; nothing logged |
 | 12 | No Docker / Redis / Celery required | ✅ none added; none touched |
 | 13 | Existing product/catalogue functionality continues working | ✅ 155/155 prior backend tests, 143/143 prior frontend tests, build clean |
-| 14 | Phase 1–5 tests remain green | ✅ 237 backend / 170 frontend, all pass |
+| 14 | Phase 1–5 tests remain green | ✅ 253 backend (155 pre-existing still green) / 170 frontend, all pass |
 | 15 | Future S3 replacement can happen behind the abstraction | ✅ same verbs, same keys, config-only switch |
