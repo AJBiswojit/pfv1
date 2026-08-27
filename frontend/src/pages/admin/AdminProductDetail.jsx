@@ -28,6 +28,7 @@ import inventoryRepository from "../../services/inventory/inventoryRepository";
 import { useInventory } from "../../context/InventoryContext";
 import { useProduct } from "../../hooks/useProducts";
 import { useProductMedia } from "../../hooks/useMedia";
+import { getRegisteredProductMedia } from "../../services/media/productMediaService";
 import { useActivityLog } from "../../hooks/useProducts";
 import { activityForProduct, getActivityLabel } from "../../services/employees/activityService";
 import { resolveProductCover } from "../../services/media/productMediaSource";
@@ -95,6 +96,24 @@ export default function AdminProductDetail() {
   }, [reload]);
   const inventory = useInventory();
   const { summary } = useProductMedia(productId);
+  /* Phase 7 — durable registry truth for this product, read from the server
+     (separate from the local review register summarised below). */
+  const [registered, setRegistered] = useState({ status: "loading", count: 0 });
+  useEffect(() => {
+    let alive = true;
+    setRegistered({ status: "loading", count: 0 });
+    getRegisteredProductMedia(productId).then((result) => {
+      if (!alive) return;
+      if (result.ok) {
+        setRegistered({ status: "ready", count: result.items.length });
+      } else {
+        setRegistered({ status: "error", count: 0 });
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [productId]);
   const activity = useActivityLog();
   const [rejection, setRejection] = useState("");
   const [rejecting, setRejecting] = useState(false);
@@ -323,7 +342,14 @@ export default function AdminProductDetail() {
           <div className="border border-mist/80 bg-surface/30 p-4">
             <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Media</p>
             <p className="mt-2 font-ui text-sm text-ink">
-              {summary.total} item{summary.total === 1 ? "" : "s"} · {summary.images} image{summary.images === 1 ? "" : "s"} ·{" "}
+              {registered.status === "ready"
+                ? `${registered.count} registered on the server`
+                : registered.status === "loading"
+                  ? "Checking the media registry…"
+                  : "Registry unreadable"}
+            </p>
+            <p className="mt-1 font-ui text-[11px] text-taupe">
+              Review register: {summary.total} item{summary.total === 1 ? "" : "s"} · {summary.images} image{summary.images === 1 ? "" : "s"} ·{" "}
               {summary.videos} video{summary.videos === 1 ? "" : "s"}
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">

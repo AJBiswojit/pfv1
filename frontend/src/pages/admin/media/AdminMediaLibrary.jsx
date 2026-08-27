@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, Film, Image as ImageIcon, Layers, Plus, Search, Sparkles, Star, Tag } from "lucide-react";
+import { Clock, Database, Film, Image as ImageIcon, Layers, Plus, Search, Sparkles, Star, Tag } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import AdminMetricCard from "../../../components/admin/AdminMetricCard";
@@ -21,6 +21,7 @@ import {
 } from "../../../config/mediaTypes";
 import taxonomyRepository from "../../../services/taxonomyRepository";
 import catalogRepository from "../../../services/catalogRepository";
+import { apiListMediaAssets } from "../../../services/api/mediaApi";
 import { useMediaLibrary, useMediaMetrics } from "../../../hooks/useMedia";
 import useMediaActions from "../../../hooks/useMediaActions";
 import { cn } from "../../../utils/cn";
@@ -97,6 +98,99 @@ const assignmentLine = (media) => {
   }
   return "Unassigned";
 };
+
+/* Phase 7 — the durable registry: media assets that actually live in the
+   database (uploaded to object storage and persisted via the register API),
+   distinct from the local review register staged on this page. Read-only
+   here — uploads and assignments happen on the product media surface. */
+function DurableAssetsPanel() {
+  const [state, setState] = useState({ status: "loading", items: [], error: null });
+
+  useEffect(() => {
+    let alive = true;
+    apiListMediaAssets()
+      .then((result) => {
+        if (!alive) return;
+        if (result?.ok) {
+          setState({ status: "ready", items: Array.isArray(result.items) ? result.items : [], error: null });
+        } else {
+          setState({ status: "error", items: [], error: { message: result?.error, status: result?.status } });
+        }
+      })
+      .catch((error) => alive && setState({ status: "error", items: [], error }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (state.status === "loading") {
+    return (
+      <p className="mb-6 text-xs text-charcoal/45">
+        Loading the durable media registry…
+      </p>
+    );
+  }
+  if (state.status === "error") {
+    if (state.error?.status === 401 || state.error?.status === 403) return null;
+    return (
+      <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+        Could not load the durable media registry: {state.error?.message || "Unknown error"}.
+      </p>
+    );
+  }
+  if (state.items.length === 0) {
+    return (
+      <div className="mb-6 rounded-2xl border border-dashed border-ink-faint bg-shell/50 px-5 py-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-charcoal">
+          <Database size={14} className="text-charcoal/50" /> Durable media registry — empty
+        </p>
+        <p className="mt-1 text-xs text-charcoal/55">
+          Assets registered through the new durable pipeline appear here. Upload against a product from
+          its Media tab or from the product media page; nothing is registered into the database from
+          this staging desk.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <AdminPanel
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Database size={14} className="text-sage" /> Durable media registry ({state.items.length})
+        </span>
+      }
+      description="Persisted in the database — these are the real product assets, not browser records."
+      className="mb-6"
+    >
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {state.items.map((asset) => (
+          <div
+            key={asset.id}
+            className="flex items-center gap-3 rounded-xl border border-ink-faint bg-shell px-3 py-2.5"
+          >
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-ink/5">
+              {asset.url ? (
+                <img src={asset.url} alt={asset.objectKey || "Registered media asset"} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-charcoal/30">
+                  <ImageIcon size={16} />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-mono text-xs font-semibold text-ink">{asset.objectKey || asset.id}</p>
+              <p className="text-[11px] text-charcoal/55">{asset.mimeType || "unknown type"}</p>
+              <p className="text-[10px] text-charcoal/45">
+                Status: {asset.status || "unknown"}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </AdminPanel>
+  );
+}
 
 export default function AdminMediaLibrary() {
   const media = useMediaLibrary();
@@ -204,6 +298,9 @@ export default function AdminMediaLibrary() {
         </div>
       }
     >
+      {/* Phase 7 — durable registry (server truth) above the staging desks. */}
+      <DurableAssetsPanel />
+
       {/* Metrics Row — exactly matching Section 3:
           Total Media, Images, Videos, Product Media, Marketing Media, Unassigned, Pending Review, Active */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">

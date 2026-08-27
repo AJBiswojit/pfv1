@@ -24,7 +24,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.logging import get_logger
+
+logger = get_logger("app.services.catalog.products")
 
 from app.core.cache import (
     TTL_PRODUCT_DETAIL,
@@ -40,6 +45,12 @@ from app.core.exceptions import (
 )
 from app.models.catalog.category import CategoryModel
 from app.models.catalog.product import ProductModel
+from app.services.media.product_media_records import (
+    gallery_urls,
+    primary_item,
+    registered_media_for_product,
+    registered_media_for_products,
+)
 from app.services.media.product_media_resolver import (
     resolve_product_image_list,
     resolve_product_image_reference,
@@ -288,13 +299,84 @@ class ProductService:
         ph.append({"from": from_price, "to": to_price, "actor": actor, "at": _now_utc().isoformat()})
         product.price_history = ph
 
-    def _to_storefront(self, p: ProductModel) -> StorefrontProduct:
+    # ── Registered product-media read model (Phase 7) ────────────────────────
+
+    async def _registered_media_map(
+        self, product_ids: List[str]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Registered product ↔ media associations for the given products.
+
+        Migration-safe: when a database has not yet run the Phase 7 media
+        migration, the media tables do not exist and the join would raise.
+        That state keeps dual-read OFF (empty map → legacy columns serve
+        exactly as before) instead of breaking every product read on the
+        pre-migration database. The failed SELECT runs inside a SAVEPOINT so
+        the surrounding request transaction stays healthy. (Session doubles
+        without SAVEPOINT support run the read directly; a mis-shaped answer
+        is treated the same way — unavailable, never fatal to the product
+        read itself.)
+        """
+        try:
+            begin_nested = getattr(self.db, "begin_nested", None)
+            if begin_nested is not None:
+                async with begin_nested():
+                    return await registered_media_for_products(self.db, product_ids)
+            return await registered_media_for_products(self.db, product_ids)
+        except (SQLAlchemyError, TypeError, ValueError, AttributeError):
+            logger.warning(
+                "Registered media read unavailable (Phase 7 migration pending?) — "
+                "falling back to legacy product image columns.",
+                exc_info=True,
+            )
+            return {}
+
+    async def _registered_media_items(self, product_id: str) -> List[Dict[str, Any]]:
+        try:
+            begin_nested = getattr(self.db, "begin_nested", None)
+            if begin_nested is not None:
+                async with begin_nested():
+                    return await registered_media_for_product(self.db, product_id)
+            return await registered_media_for_product(self.db, product_id)
+        except (SQLAlchemyError, TypeError, ValueError, AttributeError):
+            logger.warning(
+                "Registered media read unavailable (Phase 7 migration pending?) — "
+                "falling back to legacy product image columns.",
+                exc_info=True,
+            )
+            return []
+
+    @staticmethod
+    def _registered_media_view(registered: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Collapse an ordered registered-media list into the fields the product
+        projections expose. The caller decides between this view and the
+        product's legacy columns (dual-read): an empty `registered` list
+        means the product has no Phase 7 associations and is left untouched.
+        """
+        if not registered:
+            return {}
+        primary = primary_item(registered)
+        return {
+            "image": primary["url"] if primary else "",
+            "additionalImages": gallery_urls(registered),
+            "primaryMediaId": primary["mediaId"] if primary else None,
+            "mediaIds": [item["mediaId"] for item in registered],
+            "galleryMediaIds": [
+                item["mediaId"] for item in registered if not item.get("isPrimary")
+            ],
+        }
+
+    def _to_storefront(
+        self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None
+    ) -> StorefrontProduct:
         """Project a ProductModel onto a StorefrontProduct DTO."""
         pricing = p.pricing or {}
         computed = compute_pricing(pricing) if pricing else {}
         final_price = computed.get("finalPrice", p.price)
         effective_discount = computed.get("effectiveDiscountPercent", 0.0)
         original_price = p.original_price if (p.original_price and p.original_price > final_price) else None
+        media_view = self._registered_media_view(registered_media or [])
         return StorefrontProduct(
             id=p.id,
             productId=p.product_id or p.id,
@@ -345,19 +427,33 @@ class ProductService:
             rating=float(p.rating) if p.rating else None,
             reviewCount=p.review_count or 0,
             # Media references are resolved by the storage layer so the
-            # frontend receives a canonical media URL (or, while an object is
-            # still only in public/, the original reference). See
-            # app/services/media/product_media_resolver.py.
-            image=resolve_product_image_reference(p.image),
+            # frontend receives a canonical media URL. Registered Phase 7
+            # associations (when any exist) are the source of truth for NEW
+            # media; the legacy authored columns remain the dual-read
+            # fallback. See app/services/media/product_media_resolver.py.
+            image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
-            additionalImages=resolve_product_image_list(p.additional_images),
-            primaryMediaId=p.primary_media_id,
+            additionalImages=media_view.get("additionalImages")
+            if media_view
+            else resolve_product_image_list(p.additional_images),
+            primaryMediaId=media_view.get("primaryMediaId", p.primary_media_id),
             href=f"/products/{p.slug or p.id}",
             status=p.status,
         )
 
-    def _to_admin(self, p: ProductModel) -> AdminProduct:
+    async def _to_admin_current(self, p: ProductModel) -> AdminProduct:
+        """
+        Single-record admin projection with the Phase 7 registered-media
+        read model resolved. Used by every route that returns ONE product
+        that may already carry media associations (get/patch/workflow).
+        """
+        return self._to_admin(p, await self._registered_media_items(p.id))
+
+    def _to_admin(
+        self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None
+    ) -> AdminProduct:
         """Project a ProductModel onto the full AdminProduct DTO."""
+        media_view = self._registered_media_view(registered_media or [])
         return AdminProduct(
             id=p.id,
             productId=p.product_id or p.id,
@@ -422,12 +518,14 @@ class ProductService:
             review=p.review,
             reviewFlags=p.review_flags or [],
             assignedEmployeeId=p.assigned_employee_id,
-            mediaIds=p.media_ids or [],
-            primaryMediaId=p.primary_media_id,
-            galleryMediaIds=p.gallery_media_ids or [],
-            image=resolve_product_image_reference(p.image),
+            mediaIds=media_view.get("mediaIds", p.media_ids or []),
+            primaryMediaId=media_view.get("primaryMediaId", p.primary_media_id),
+            galleryMediaIds=media_view.get("galleryMediaIds", p.gallery_media_ids or []),
+            image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
-            additionalImages=resolve_product_image_list(p.additional_images),
+            additionalImages=media_view.get("additionalImages")
+            if media_view
+            else resolve_product_image_list(p.additional_images),
             createdBy=p.created_by,
             createdAt=p.created_at.isoformat() if p.created_at else None,
             updatedBy=p.updated_by,
@@ -487,8 +585,15 @@ class ProductService:
             allowed = set(_coll_ids)
             all_products = [p for p in all_products if p.id in allowed]
 
+        # Registered product-media associations (Phase 7 source of truth for
+        # new media), bulk-loaded in ONE query for the whole working set —
+        # products without associations keep their legacy columns untouched.
+        registered_map = await self._registered_media_map([p.id for p in all_products])
+
         # Convert to storefront DTOs for in-memory filtering
-        items = [self._to_storefront(p) for p in all_products]
+        items = [
+            self._to_storefront(p, registered_map.get(p.id)) for p in all_products
+        ]
 
         # Apply search
         if query.q:
@@ -735,7 +840,8 @@ class ProductService:
         if category_status_map.get(p.category, "ACTIVE") != "ACTIVE":
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
 
-        dto = self._to_storefront(p)
+        registered = await self._registered_media_items(p.id)
+        dto = self._to_storefront(p, registered)
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
         return dto
 
@@ -780,7 +886,8 @@ class ProductService:
         products = result.scalars().all()
         category_status_map = await self._category_status_map()
         products = [p for p in products if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"]
-        return [self._to_storefront(p) for p in products]
+        registered_map = await self._registered_media_map([p.id for p in products])
+        return [self._to_storefront(p, registered_map.get(p.id)) for p in products]
 
     # ── Recently viewed ───────────────────────────────────────────────────────
 
@@ -809,9 +916,11 @@ class ProductService:
             if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"
         }
 
+        registered_map = await self._registered_media_map(list(product_map.keys()))
+
         # Preserve recency order (product_ids is already newest-first)
         return [
-            self._to_storefront(product_map[pid])
+            self._to_storefront(product_map[pid], registered_map.get(pid))
             for pid in product_ids
             if pid in product_map
         ]
@@ -874,7 +983,8 @@ class ProductService:
 
         result = await self.db.execute(stmt)
         products = result.scalars().all()
-        items = [self._to_admin(p) for p in products]
+        registered_map = await self._registered_media_map([p.id for p in products])
+        items = [self._to_admin(p, registered_map.get(p.id)) for p in products]
 
         sort = query.sort if query.sort in ADMIN_SORTS else "newest"
         if sort == "newest":
@@ -1086,7 +1196,7 @@ class ProductService:
 
     async def get_admin_product(self, product_id: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Admin — update ────────────────────────────────────────────────────────
 
@@ -1157,7 +1267,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Employee — update (whitelist only) ────────────────────────────────────
 
@@ -1209,7 +1319,7 @@ class ProductService:
         p.updated_by = employee_id
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Assign employee ───────────────────────────────────────────────────────
 
@@ -1223,7 +1333,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Workflow actions ──────────────────────────────────────────────────────
 
@@ -1292,7 +1402,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def approve_product(self, product_id: str, actor: str) -> AdminProduct:
         """
@@ -1312,7 +1422,7 @@ class ProductService:
                 f"(current status: {p.status or 'DRAFT'}). Submit it for review first."
             )
         if review_state == "APPROVED":
-            return self._to_admin(p)  # idempotent — already approved
+            return await self._to_admin_current(p)  # idempotent — already approved
         now = _now_utc()
         p.review = {
             **(p.review or {}),
@@ -1324,7 +1434,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def reject_product(self, product_id: str, req: RejectProductRequest, actor: str) -> AdminProduct:
         """
@@ -1354,7 +1464,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def publish_product(self, product_id: str, actor: str) -> AdminProduct:
         """
@@ -1373,7 +1483,7 @@ class ProductService:
         if status == "ARCHIVED":
             raise BusinessLogicException("Archived products cannot be published; restore them first.")
         if status == "PUBLISHED" and p.published:
-            return self._to_admin(p)  # idempotent — already live
+            return await self._to_admin_current(p)  # idempotent — already live
         review_state = str((p.review or {}).get("state") or "NONE").upper()
         if review_state != "APPROVED":
             raise BusinessLogicException(
@@ -1396,7 +1506,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def unpublish_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
@@ -1410,7 +1520,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def archive_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
@@ -1422,7 +1532,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     async def restore_product(self, product_id: str, actor: str) -> AdminProduct:
         p = await self._get_or_404(product_id)
@@ -1436,7 +1546,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Publish issues ────────────────────────────────────────────────────────
 
@@ -1464,7 +1574,7 @@ class ProductService:
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Duplicate ─────────────────────────────────────────────────────────────
 
@@ -1744,7 +1854,7 @@ class ProductService:
             p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return self._to_admin(p)
+        return await self._to_admin_current(p)
 
     # ── Internal slug/sku helpers ─────────────────────────────────────────────
 

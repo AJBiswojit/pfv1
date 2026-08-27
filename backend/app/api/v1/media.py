@@ -73,6 +73,10 @@ from app.schemas.media.media import (
 )
 from app.services.media.media_service import MediaService
 from app.services.media.media_validation import MediaValidationError
+from app.services.media.product_media_records import (
+    primary_item,
+    registered_media_for_product,
+)
 from app.services.media.product_media_resolver import (
     resolve_many,
     resolve_product_image_list,
@@ -252,12 +256,16 @@ async def get_product_media_set(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    The product's authored image references, resolved to canonical media URLs.
+    The product's media set — BOTH halves of the Phase 7 dual-read.
 
-    Reads ONLY existing `catalog_product` columns (`image`, `hover_image`,
-    `additional_images`, `primary_media_id`, `media_ids`,
-    `gallery_media_ids`). No media-record table is involved, because those
-    tables have no business columns in the current schema — see §19.
+    Legacy half (unchanged): the product's own authored columns (`image`,
+    `hover_image`, `additional_images`) resolved through the storage layer.
+
+    Registered half (Phase 7 source of truth for NEW media): the durable
+    `media_product_media` associations joined to their `media_media_asset`
+    rows, ordered primary-first — each with its object key and canonical
+    `/media/objects/...` URL. A product with no registered rows answers
+    exactly as it did before this phase.
     """
     result = await db.execute(
         select(ProductModel).where(ProductModel.id == product_id)
@@ -272,6 +280,9 @@ async def get_product_media_set(
     # A gallery that repeats the cover is not a gallery.
     gallery = [item for item in gallery if item and item != primary] or list(gallery)
 
+    registered = await registered_media_for_product(db, product.id)
+    registered_primary = primary_item(registered)
+
     return {
         "ok": True,
         "productId": product.id,
@@ -281,11 +292,16 @@ async def get_product_media_set(
         "primaryMediaId": product.primary_media_id,
         "mediaIds": product.media_ids or [],
         "galleryMediaIds": product.gallery_media_ids or [],
-        "mediaRecordsAvailable": False,
+        "mediaItems": registered,
+        "primaryMediaUrl": registered_primary["url"] if registered_primary else None,
+        "mediaRecordsAvailable": bool(registered),
         "note": (
-            "Media records (media_media_asset rows) are not available: those "
-            "tables declare no business columns in the existing schema. This "
-            "endpoint resolves the product's own stored image references."
+            "Registered media records answer this product (mediaItems; "
+            "primary-first). Legacy authored columns remain resolved for "
+            "compatibility."
+            if registered
+            else "No registered media records for this product yet — the "
+            "legacy authored image columns are resolved for compatibility."
         ),
     }
 
@@ -385,7 +401,14 @@ async def register_media_object(
     alt_text: Optional[str] = Form(None), db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
 ):
-    """Create the durable row only after verifying the real object exists."""
+    """Create the durable row only after verifying the real object exists.
+
+    Idempotent by object key: re-registering the same key returns the same
+    asset row and UPDATES the existing product association's role / sort
+    order / primary flag instead of duplicating it. When `is_primary` is set,
+    every other association of the same product is demoted in the same
+    transaction — a product never has two primaries.
+    """
     await require_admin_permission(current_user, db, "media.upload")
     media = _get_media_service(db); key = _safe_key(media, object_key)
     try: meta = await run_in_threadpool(media.object_metadata, key)
@@ -397,6 +420,7 @@ async def register_media_object(
             file_size=meta.size, checksum_sha256=meta.checksum_sha256, status="uploaded", scope="product",
             uploaded_by=current_user.id, title=title, alt_text=alt_text)
         db.add(row); await db.flush()
+    mapping = None
     if product_id:
         product = (await db.execute(select(ProductModel).where(ProductModel.id == product_id))).scalars().first()
         if product is None: raise NotFoundException("Product not found.")
@@ -408,8 +432,39 @@ async def register_media_object(
             db.add(mapping)
         else: mapping.role, mapping.sort_order, mapping.is_primary = role, sort_order, is_primary
         await db.commit()
+        # The storefront product DTO is cached; the registered read model
+        # changed, so the cached snapshot must not outlive this write.
+        try:
+            from app.services.catalog.product_service import ProductService
+
+            await ProductService(db).invalidate_product_cache(product.id, product.slug)
+        except Exception:  # cache maintenance must never fail a committed write
+            logger.debug("Product media cache invalidation skipped", exc_info=True)
     else: await db.commit()
-    return {"ok": True, "media": {"id": row.id, "objectKey": row.object_key, "url": media.object_url(row.object_key), "mimeType": row.mime_type}, "assigned": bool(product_id)}
+    return {
+        "ok": True,
+        "media": {
+            "id": row.id,
+            "objectKey": row.object_key,
+            "url": media.object_url(row.object_key),
+            "mimeType": row.mime_type,
+            "title": row.title,
+            "altText": row.alt_text,
+            "status": row.status,
+        },
+        "assigned": bool(product_id),
+        "assignment": (
+            {
+                "productId": mapping.product_id,
+                "mediaId": mapping.media_id,
+                "role": mapping.role,
+                "sortOrder": mapping.sort_order,
+                "isPrimary": mapping.is_primary,
+            }
+            if mapping is not None
+            else None
+        ),
+    }
 
 
 @router.get("/assets", summary="List registered media assets")

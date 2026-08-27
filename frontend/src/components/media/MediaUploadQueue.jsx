@@ -90,12 +90,38 @@ export default function MediaUploadQueue({
                       <div className="mt-0.5 flex flex-wrap items-center gap-2 font-ui text-[10px] text-taupe">
                         <span>{formatFileSize(item.file.size)}</span>
                         <span>•</span>
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                          <CheckCircle2 size={11} aria-hidden="true" />
-                          Ready
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 font-medium",
+                            item.stage === "failed"
+                              ? "text-accent"
+                              : item.stage === "assigned"
+                                ? "text-sage"
+                                : item.stage
+                                  ? "text-amber-800"
+                                  : "text-emerald-700",
+                          )}
+                        >
+                          <CheckCircle2
+                            size={11}
+                            aria-hidden="true"
+                            className={item.stage === "failed" ? "hidden" : ""}
+                          />
+                          {!item.stage
+                            ? "Ready"
+                            : item.stage === "assigned"
+                              ? "Registered & assigned"
+                              : item.stage === "failed"
+                                ? `Failed — ${item.stageMessage || "server rejected the request"}`
+                                : `${item.stage}…`}
                         </span>
                         <span>•</span>
                         <span>Asset #{index + 1}</span>
+                        {item.mediaId ? (
+                          <span className="font-mono text-[9px] text-charcoal/45">
+                            #{String(item.mediaId).slice(0, 8)}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
