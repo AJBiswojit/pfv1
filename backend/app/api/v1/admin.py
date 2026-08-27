@@ -40,6 +40,7 @@ from app.core.logging import get_logger
 from app.dependencies import get_current_admin, get_db, require_permission_for_user, require_super_admin_user
 from app.models.admin.setting import SettingModel
 from app.models.auth.user import UserModel
+from app.services.media.media_validation import allowed_image_extensions
 
 logger = get_logger(__name__)
 
@@ -143,7 +144,14 @@ SETTINGS_DEFAULTS: Dict[str, Any] = {
     "media": {
         "maxImageSizeMb": 10,
         "maxVideoSizeMb": 100,
-        "allowedImageTypes": ["jpg", "jpeg", "png", "webp"],
+        # DERIVED from the single house image policy the upload validator and
+        # the migration tool enforce (settings.ALLOWED_IMAGE_TYPES mapped
+        # through app.storage.signatures) — never a second hand-maintained
+        # list. This keeps the settings desk from advertising a format the
+        # backend would reject (or omitting one it accepts): .avif and .webp
+        # are part of the policy because the real product asset library is
+        # AVIF-first (228 of the 238 shipped assets carry a .avif name).
+        "allowedImageTypes": [ext.lstrip(".") for ext in allowed_image_extensions()],
         "allowedVideoTypes": ["mp4", "webm"],
     },
 }
