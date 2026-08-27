@@ -25,6 +25,7 @@ export const collectionPath = (slug) => `/collections/${slug}`;
  * be linked. Canonical categories resolve through their full department path.
  */
 export const categoryHref = (category) => {
+  if (category == null) return null;
   const record = normalizeTaxonomyRecord(category, "category");
   if (!record || !record.slug || record.status !== "ACTIVE") return null;
   const canonical = canonicalDepartments
@@ -49,7 +50,9 @@ export const collectionHref = (collection) => {
  * record itself, or null when there is nothing routable to point at.
  */
 export const resolveCategoryRoute = (idOrSlug) => {
+  if (idOrSlug == null || idOrSlug === "") return null;
   const category = taxonomyRepository.findCategory(idOrSlug);
+  if (!category) return null;
   const href = categoryHref(category);
   return href ? { category, href } : null;
 };

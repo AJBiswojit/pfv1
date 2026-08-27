@@ -109,6 +109,10 @@ const asCollection = (record) => ({
 });
 
 export const normalizeTaxonomyRecord = (record, type = null) => {
+  // Lookups (findCategory / resolveCategoryRoute) return null when the
+  // catalog snapshot is empty or the optional id/slug is absent. Do not
+  // invent a record or an id — callers skip the item instead.
+  if (record == null) return null;
   if (type === "collection" || record?.type) return asCollection(record);
   return asCategory(record);
 };
