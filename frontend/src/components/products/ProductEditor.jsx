@@ -21,6 +21,14 @@ import { AtelierButton } from "../../design-system";
 import catalogRepository, { getPublishIssues } from "../../services/catalogRepository";
 import inventoryRepository from "../../services/inventory/inventoryRepository";
 import {
+  fetchAdminProduct,
+  persistAdminProduct,
+  runAction,
+} from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
+import { nextCanonicalProductId } from "../../config/productIdPrefixes";
+import { apiAdminGetPublishIssues } from "../../services/api/productsApi";
+import {
   archiveProduct,
   createProduct,
   publishProduct,
@@ -233,6 +241,34 @@ export default function ProductEditor({
     return issues;
   }, [draft, isNew, savedProduct]);
 
+  /*
+   * Phase 5: for admins the AUTHORITATIVE gate is the server's
+   * GET /admin/products/{id}/publish-issues list (identical to what approve
+   * and publish enforce). It is refetched from the server after every save
+   * and lifecycle action — never fabricated locally; a fetch failure falls
+   * back to the local checklist while flagging that it is not the server's
+   * verdict.
+   */
+  const [serverPublishIssues, setServerPublishIssues] = useState(null);
+  const [serverIssuesError, setServerIssuesError] = useState(null);
+  const refreshServerIssues = useCallback(() => {
+    if (portal !== "admin" || !draft.id || isNew) return;
+    apiAdminGetPublishIssues(draft.id).then((result) => {
+      if (result.ok) {
+        setServerPublishIssues(result.issues ?? []);
+        setServerIssuesError(null);
+      } else {
+        setServerPublishIssues(null);
+        setServerIssuesError(result.error ?? "Could not load the server publish checklist.");
+      }
+    });
+  }, [draft.id, isNew, portal]);
+  useEffect(() => {
+    refreshServerIssues();
+  }, [refreshServerIssues, baseline]);
+  const displayIssues =
+    portal === "admin" && serverPublishIssues ? serverPublishIssues : publishIssues;
+
   const sectionDot = (id) => {
     if (id === "basics") return Boolean(errors.name || errors.sku || errors.category || errors.description);
     if (id === "pricing") return pricingErrors.length > 0;
@@ -294,8 +330,56 @@ export default function ProductEditor({
     };
   };
 
-  const persist = () => {
+  /**
+   * Persistence is AWAITED and server-first for the admin portal: the save
+   * only announces success after the backend response, and the editor
+   * re-baselines from the authoritative record the server returned — the
+   * next save therefore can never re-send a stale snapshot over newer data.
+   * A brand-new product is created through POST /admin/products/draft under
+   * the canonical ID allocated here over the current register.
+   *
+   * The employee portal keeps the local canonical command path (its writes
+   * sync through the same normalized payload layer); its lifecycle commands
+   * run on this machine's register until the employee API surface lands —
+   * recorded as a deferred limitation, not hidden.
+   */
+  const [isSaving, setIsSaving] = useState(false);
+
+  const persist = async () => {
     const payload = buildPayload();
+
+    if (portal === "admin") {
+      setIsSaving(true);
+      try {
+        let id = draft.id;
+        if (!draft.exists && !id) {
+          id = nextCanonicalProductId(
+            catalogRepository.all(),
+            draft.department,
+            draft.category,
+            draft.subcategory
+          );
+        }
+        const result = await persistAdminProduct({ ...payload, id: id ?? undefined }, { isNew: !draft.exists });
+        if (!result.ok) {
+          setFeedback({
+            kind: "error",
+            message:
+              formatAdminError(result, { entity: "product", action: "saved" }) ||
+              "The product could not be saved.",
+          });
+          return null;
+        }
+        const serverProduct = (await fetchAdminProduct(result.product?.id ?? id)).product ?? result.product;
+        const nextDraft = draftFromProduct({ ...(result.product ?? {}), ...(serverProduct ?? {}) });
+        setDraft(nextDraft);
+        setBaseline(JSON.stringify(nextDraft));
+        return nextDraft.exists ? { ...result.product, id: nextDraft.id } : result.product;
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
     const result = draft.exists
       ? saveProductDraft(draft.id, payload, actor)
       : createProduct(payload, actor);
@@ -316,7 +400,7 @@ export default function ProductEditor({
 
   /* --- actions ------------------------------------------------------ */
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!draft.name.trim()) {
       setSection("basics");
       announce("Give the product a name before saving.", "error");
@@ -327,13 +411,13 @@ export default function ProductEditor({
       announce(errors.sku, "error");
       return;
     }
-    const product = persist();
+    const product = await persist();
     if (!product) return;
-    announce("Draft saved successfully.");
+    announce(portal === "admin" ? "Draft saved on the server." : "Draft saved successfully.");
     if (isNew) navigate(`${portal === "admin" ? "/admin" : "/employee"}/products/${product.id}/edit`, { replace: true });
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (!draft.name.trim()) {
       setSection("basics");
       announce("Give the product a name before saving.", "error");
@@ -344,7 +428,7 @@ export default function ProductEditor({
       announce(errors.sku, "error");
       return;
     }
-    const product = persist();
+    const product = await persist();
     if (!product) return;
     const currentIndex = SECTIONS.findIndex((s) => s.id === section);
     if (currentIndex < SECTIONS.length - 1) {
@@ -355,14 +439,27 @@ export default function ProductEditor({
     }
   };
 
-  const handleSubmitForReview = () => {
+  const handleSubmitForReview = async () => {
     const blocking = [errors.name, errors.sku, errors.category, errors.description, errors.variants, errors.slug].filter(Boolean);
     if (blocking.length || pricingErrors.length) {
       announce("Complete the required fields before submitting for review.", "error");
       return;
     }
-    const product = persist();
+    const product = await persist();
     if (!product) return;
+    if (portal === "admin") {
+      const result = await runAction(product.id ?? draft.id, "submitReview");
+      if (!result.ok) {
+        announce(formatAdminError(result, { entity: "product", action: "submitted for review" }) ?? "Submission failed.", "error");
+        return;
+      }
+      const nextDraft = draftFromProduct(result.product);
+      setDraft(nextDraft);
+      setBaseline(JSON.stringify(nextDraft));
+      announce("Submitted for review on the server. A manager or admin will approve it.");
+      setTimeout(() => navigate(exitTo), 900);
+      return;
+    }
     const result = submitProduct(product.id, actor);
     if (!result.ok) {
       announce(result.error || "Submission failed.", "error");
@@ -375,13 +472,40 @@ export default function ProductEditor({
     setTimeout(() => navigate(exitTo), 900);
   };
 
-  const handlePublish = () => {
+  /*
+   * Lifecycle actions run on the SERVER (the publish gate — approved review
+   * + no unresolved issues — is enforced there; the checklist in the
+   * Publishing section is a convenience pre-check fed by
+   * GET /admin/products/{id}/publish-issues, not the authority).
+   */
+  const [busyAction, setBusyAction] = useState(null);
+
+  const runServerAction = async (action, okMessage) => {
+    if (!draft.id || busyAction) return;
+    setBusyAction(action);
+    const result = await runAction(draft.id, action);
+    setBusyAction(null);
+    if (!result.ok) {
+      announce(formatAdminError(result, { entity: "product", action }) || "The action failed.", "error");
+      return;
+    }
+    const nextDraft = draftFromProduct(result.product);
+    setDraft(nextDraft);
+    setBaseline(JSON.stringify(nextDraft));
+    announce(okMessage);
+  };
+
+  const handlePublish = async () => {
     if (!draft.id) return;
     if (dirty) {
       announce(
-        "Approved products cannot be edited during publication. Return the product to an editable stage before changing it.",
+        "Save your changes first — publication always acts on the last saved server record.",
         "error"
       );
+      return;
+    }
+    if (portal === "admin") {
+      await runServerAction("publish", "Published — the server has this piece live in the storefront.");
       return;
     }
     const result = publishProduct(draft.id, actor);
@@ -396,8 +520,12 @@ export default function ProductEditor({
     announce("Published — this piece is now live in the storefront.");
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!draft.id) return;
+    if (portal === "admin") {
+      await runServerAction("archive", "Product archived on the server — removed from every customer surface.");
+      return;
+    }
     const result = archiveProduct(draft.id, actor);
     if (result.ok) {
       const nextDraft = draftFromProduct(result.product);
@@ -407,8 +535,12 @@ export default function ProductEditor({
     }
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     if (!draft.id) return;
+    if (portal === "admin") {
+      await runServerAction("restore", "Product restored to draft on the server.");
+      return;
+    }
     const result = restoreProduct(draft.id, actor);
     if (result.ok) {
       const nextDraft = draftFromProduct(result.product);
@@ -556,12 +688,22 @@ export default function ProductEditor({
           <SectionAttributes draft={draft} patch={patch} errors={errors} isNew={isNew} />
         ) : null}
         {section === "pricing" ? <SectionPricing draft={draft} patch={patch} /> : null}
-        {section === "variants" ? <SectionVariants draft={draft} patch={patch} errors={errors} /> : null}
+        {section === "variants" ? (
+          <>
+            <p className="mb-4 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
+              Variant rows are a planning aid for this session: the backend product contract has
+              no variant table yet (BACKEND_GAP — future phase), so per-variant SKU, stock and
+              price overrides are not persisted. The product-level size list, unavailable
+              sizes/colours and pricing ARE saved server-side.
+            </p>
+            <SectionVariants draft={draft} patch={patch} errors={errors} />
+          </>
+        ) : null}
         {section === "content" ? <SectionContent draft={draft} patch={patch} /> : null}
         {section === "media" ? <SectionMedia draft={draft} patch={patch} portal={portal} /> : null}
         {section === "seo" ? <SectionSeo draft={draft} patch={patch} errors={errors} /> : null}
         {section === "publishing" ? (
-          <SectionPublishing draft={draft} patch={patch} publishIssues={publishIssues} />
+          <SectionPublishing draft={draft} patch={patch} publishIssues={displayIssues} serverCheck={portal === "admin" ? (serverIssuesError ? `Server checklist unavailable — ${serverIssuesError}` : "Checklist is the server’s own publish gate.") : "Local pre-check — the server re-validates on publish."} />
         ) : null}
 
         {/* Section stepping navigation */}

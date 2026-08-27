@@ -18,7 +18,8 @@ import { Eye, PackagePlus, UserPlus } from "lucide-react";
 import StatusBadge from "../../components/employee/StatusBadge";
 import PratikshyaImage from "../../components/PratikshyaImage";
 import taxonomyRepository from "../../services/taxonomyRepository";
-import { assignProductToEmployee } from "../../services/productWorkflow";
+import { runAction as runServerAction } from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
 import { employeeFullName } from "../../utils/employee";
 import {
   EMPLOYEES_CHANGED_EVENT,
@@ -95,20 +96,21 @@ function MediaInboxCardComponent({ row, actor, onNotice }) {
   const assignTo = useCallback((target) => {
     if (!target?.assignedEmployeeId || busy) return;
     setBusy("assign");
-    setTimeout(() => {
-      const result = assignProductToEmployee(target.id, target.assignedEmployeeId, actor);
+    // Awaited server assignment (same canonical endpoint the product desk
+    // uses) — the inbox only reports what the backend confirmed.
+    runServerAction(target.id, "assign", { employeeId: target.assignedEmployeeId }).then((result) => {
       if (result.ok) {
         onNotice?.({
           tone: "ok",
-          text: `Assigned ${target.id} to ${getEmployee(loadEmployees(), target.assignedEmployeeId)?.firstName ?? target.assignedEmployeeId}.`,
+          text: `Assigned ${target.id} to ${getEmployee(loadEmployees(), target.assignedEmployeeId)?.firstName ?? target.assignedEmployeeId} on the server.`,
         });
       } else {
-        onNotice?.({ tone: "warn", text: result.error });
+        onNotice?.({ tone: "warn", text: formatAdminError(result, { entity: target.id, action: "assigned" }) });
       }
       setBusy(null);
       setAssigning(false);
-    }, 0);
-  }, [busy, actor, onNotice]);
+    });
+  }, [busy, onNotice]);
 
   const targetProduct = draftClaim ?? owner;
   const employees = useMemo(() => getAssignableEmployees(), []);

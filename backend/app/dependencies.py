@@ -240,3 +240,45 @@ async def require_super_admin_user(user: UserModel, db: AsyncSession) -> None:
     roles, _permissions = await get_user_roles_and_permissions(user, db)
     if "SUPER_ADMIN" not in roles:
         raise ForbiddenException("SUPER_ADMIN privileges required.")
+
+
+async def require_admin_permission(
+    user: UserModel,
+    db: AsyncSession,
+    *required_permissions: str,
+) -> None:
+    """
+    Fine-grained permission check for ADMIN surfaces, layered on top of the
+    `get_current_admin` surface guard (which already rejects customer and
+    employee tokens with 403 — that isolation is what security depends on).
+
+    Contract:
+      • An admin carrying at least one role must actually hold every
+        requested permission (SUPER_ADMIN role or a `*` permission passes).
+      • An admin with NO role rows at all keeps the surface-level
+        authorization the admin portal has always had. This is the documented
+        compatibility path for databases where the RBAC directory has never
+        been provisioned (the roles table can be empty even though admin
+        accounts exist, because `register_admin` can only attach a role when
+        a `roles` row exists). It is deliberately narrow: it only applies to
+        `user_type == "admin"`, never to customer/employee surfaces, and it
+        disappears as soon as roles are assigned to that account.
+
+    This reuses the existing Phase-1 RBAC helpers (`users`/`roles`/
+    `permissions` join models + the built-in role vocabulary fallback). It is
+    NOT a second RBAC system.
+    """
+    roles, permissions = await get_user_roles_and_permissions(user, db)
+    if not roles:
+        # Provisioned-but-unassigned fallback: only admins reach this point
+        # because every caller sits behind get_current_admin.
+        return
+    permission_set = set(permissions)
+    if "SUPER_ADMIN" in roles or "*" in permission_set:
+        return
+    missing = [perm for perm in required_permissions if perm not in permission_set]
+    if missing:
+        raise ForbiddenException(
+            f"You do not have permission to perform this action. "
+            f"Missing required permission: {', '.join(missing)}"
+        )

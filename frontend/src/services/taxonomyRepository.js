@@ -35,6 +35,7 @@ import {
   apiAdminArchiveCollection,
   apiAdminRestoreCollection,
   apiAdminAssignCollectionProducts,
+  apiAdminGetCollection,
 } from "./api/collectionsApi";
 import { slugify } from "./catalogRepository";
 
@@ -242,22 +243,65 @@ export const taxonomyRepository = {
     await refreshCatalog();
     return { ok: true };
   },
+  /*
+   * The assign endpoint REPLACES the whole explicit list, so both helpers
+   * re-read the collection from the server first — building the new list on
+   * a possibly stale local snapshot could silently drop or resurrect
+   * memberships another desk just changed (stale-snapshot overwrite).
+   */
   addProductsToCollection: async (collectionId, productIds, _actor = null) => {
-    const current = taxonomyRepository.findCollection(collectionId)?.explicitProductIds ?? [];
+    const fresh = await apiAdminGetCollection(collectionId);
+    const current =
+      fresh.ok && fresh.collection?.explicitProductIds !== undefined
+        ? fresh.collection.explicitProductIds
+        : taxonomyRepository.findCollection(collectionId)?.explicitProductIds ?? [];
     return taxonomyRepository.assignProductsToCollection(collectionId, [...new Set([...current, ...productIds])]);
   },
   removeProductsFromCollection: async (collectionId, productIds, _actor = null) => {
+    const fresh = await apiAdminGetCollection(collectionId);
+    const current =
+      fresh.ok && fresh.collection?.explicitProductIds !== undefined
+        ? fresh.collection.explicitProductIds
+        : taxonomyRepository.findCollection(collectionId)?.explicitProductIds ?? [];
     const remove = new Set(productIds);
-    const current = taxonomyRepository.findCollection(collectionId)?.explicitProductIds ?? [];
     return taxonomyRepository.assignProductsToCollection(collectionId, current.filter((id) => !remove.has(id)));
   },
 
+  /**
+   * Product counts derived from the SERVER product snapshot held by the
+   * catalog store (hydrated by catalogStore from /products or
+   * /admin/products) — never a local dataset. `byCategory` accepts either a
+   * category id or slug because the store records both across generations.
+   * NOTE (documented limitation): counts cover the loaded snapshot; the
+   * category API's own `productCountTotal` stays the authoritative number
+   * shown on the category detail desk.
+   */
   productCounts: () => {
-    const counts = {};
-    productsList().forEach((product) => {
-      counts[product.category] = (counts[product.category] ?? 0) + 1;
+    const byCategory = {};
+    let productsClassified = 0;
+    let unassignedProducts = 0;
+    const products = productsList();
+    const categories = read().categories;
+    const slugToId = new Map(categories.map((c) => [c.slug, c.id]));
+    products.forEach((product) => {
+      const rawKey = product.category ?? null;
+      if (!rawKey) {
+        unassignedProducts += 1;
+        return;
+      }
+      const key = slugToId.get(rawKey) ?? rawKey;
+      byCategory[key] = (byCategory[key] ?? 0) + 1;
+      productsClassified += 1;
     });
-    return counts;
+    const collections = taxonomyRepository.collections();
+    const byCollection = {};
+    collections.forEach((collection) => {
+      const explicit = new Set(collection.explicitProductIds ?? []);
+      byCollection[collection.id] = products.filter(
+        (product) => explicit.has(product.id) || (Array.isArray(product.collectionIds) && product.collectionIds.includes(collection.id))
+      ).length;
+    });
+    return { byCategory, byCollection, productsClassified, unassignedProducts, totalProducts: products.length };
   },
 
   collectionsForProduct: (product) => taxonomyRepository.collections().filter((collection) =>
@@ -274,12 +318,20 @@ export const taxonomyRepository = {
   metrics: () => {
     const categories = taxonomyRepository.categories();
     const collections = taxonomyRepository.collections();
+    const counts = taxonomyRepository.productCounts();
     return {
       categories: categories.length,
+      totalCategories: categories.length,
       activeCategories: taxonomyRepository.activeCategories().length,
       collections: collections.length,
       activeCollections: taxonomyRepository.activeCollections().length,
       subcategories: read().subcategories.length,
+      productsClassified: counts.productsClassified,
+      unassignedProducts: counts.unassignedProducts,
+      totalCollections: collections.length,
+      scheduledCollections: collections.filter((c) => c.displayStatus === COLLECTION_STATUS.SCHEDULED).length,
+      featuredCollections: collections.filter((c) => c.featured).length,
+      productsAssigned: Object.values(counts.byCollection ?? {}).reduce((sum, n) => sum + n, 0),
     };
   },
 };

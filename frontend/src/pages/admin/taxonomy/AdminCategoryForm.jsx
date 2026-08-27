@@ -45,8 +45,11 @@ export default function AdminCategoryForm() {
     setError("");
   };
 
-  const submit = (event) => {
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event) => {
     event.preventDefault();
+    if (saving) return;
     if (!draft.name.trim()) {
       setError("Category name is required.");
       return;
@@ -57,11 +60,13 @@ export default function AdminCategoryForm() {
       sortOrder: Number(draft.sortOrder) || 0,
       bannerMediaId: draft.bannerMediaId || null,
     };
+setSaving(true);
     const result = existing
-      ? taxonomyRepository.updateCategory(existing.id, payload, actor)
-      : taxonomyRepository.createCategory(payload, actor);
+      ? await taxonomyRepository.updateCategory(existing.id, payload, actor)
+      : await taxonomyRepository.createCategory(payload, actor);
+    setSaving(false);
     if (!result.ok) {
-      setError(result.error || "Category could not be saved.");
+      setError(formatAdminError(result, { entity: "category", action: existing ? "updated" : "created" }));
       return;
     }
     navigate(`/admin/categories/${result.category.id}`);

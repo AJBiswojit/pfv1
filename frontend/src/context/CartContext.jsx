@@ -412,12 +412,19 @@ export function CartProvider({ children }) {
       return { ok: false, message: cart.error ?? "The offer was applied, but your bag could not be refreshed." };
     }
 
-    // Guest — validate against the backend, keep only a valid code client-side
-    const result = await apiValidateOfferCode({ code });
+    // Guest — validate against the SAME server gate the authenticated flow
+    // uses. The real cart is sent: without cart context the backend would
+    // judge the minimum-order rule against a ₹0 basket and reject valid
+    // coupons (false negative). Totals here are the guest's own lines; the
+    // code is only kept locally when the server says it applies.
+    const cartItems = items.map((item) => ({
+      lineTotal: Math.round((Number(item.product?.price ?? item.price) || 0) * (Number(item.quantity) || 1)),
+    }));
+    const result = await apiValidateOfferCode({ code, cartItems });
     if (!result.ok) return { ok: false, message: result.error };
     setCouponCode(code);
     return { ok: true, coupon: result.offer, message: result.message || `${code} is now part of your order.` };
-  }, [authenticated, applyServerCart]);
+  }, [authenticated, applyServerCart, items]);
 
   const removeCoupon = useCallback(async () => {
     if (authenticated) {

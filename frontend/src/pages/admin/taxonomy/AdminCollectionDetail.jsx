@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Archive, Pause, Pencil, Play, Search } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
@@ -7,10 +7,12 @@ import StatusBadge from "../../../components/employee/StatusBadge";
 import { AtelierButton } from "../../../design-system";
 import catalogRepository from "../../../services/catalogRepository";
 import taxonomyRepository from "../../../services/taxonomyRepository";
+import { apiAdminGetCollection } from "../../../services/api/collectionsApi";
 import { getById as getMediaById } from "../../../services/media/mediaRepository";
 import { imageRef } from "../../../data/mediaPlaceholder";
 import { formatINR } from "../../../utils/shopping";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
+import { formatAdminError } from "../../../services/admin/adminError";
 
 const inputClass = "min-w-0 w-full max-w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent";
 const tone = { ACTIVE: "ink", SCHEDULED: "brass", PAUSED: "alert", EXPIRED: "muted", ARCHIVED: "muted", DRAFT: "quiet" };
@@ -23,20 +25,55 @@ export default function AdminCollectionDetail() {
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("ALL");
   const [subcategory, setSubcategory] = useState("ALL");
   const [status, setStatus] = useState("PUBLISHED");
   const [selected, setSelected] = useState([]);
 
-  const collection = useMemo(() => taxonomyRepository.findCollection(collectionId), [collectionId, version]);
+  /*
+   * The record itself comes from GET /admin/collections/{id} — the public
+   * storefront cache only holds ACTIVE collections, so a DRAFT or ARCHIVED
+   * one would falsely read "unavailable" there. The store copy remains the
+   * fallback only while the request is in flight.
+   */
+  const [serverCollection, setServerCollection] = useState(null);
+  const [collectionError, setCollectionError] = useState(null);
+  const reload = useCallback(async () => {
+    const result = await apiAdminGetCollection(collectionId);
+    if (result.ok && result.collection) {
+      setServerCollection(result.collection);
+      setCollectionError(null);
+    } else if (result.ok) {
+      setServerCollection(null);
+    } else {
+      setCollectionError(formatAdminError(result, { entity: "collection", action: "loaded" }));
+    }
+  }, [collectionId]);
+  useEffect(() => {
+    reload();
+  }, [reload, version]);
+  const collection = useMemo(
+    () => serverCollection ?? taxonomyRepository.findCollection(collectionId),
+    [serverCollection, collectionId, version]
+  );
   const products = useMemo(() => catalogRepository.all(), [version]);
   const assigned = useMemo(() => products.filter((product) => taxonomyRepository.isProductInCollection(product, collection?.id)), [products, collection]);
   const assignedIds = new Set(assigned.map((product) => product.id));
   const categories = taxonomyRepository.categoryOptions();
   const subcategories = category === "ALL" ? [] : taxonomyRepository.subcategoryOptionsFor(category);
 
-  if (!collection) return <AdminPage title="Collection unavailable"><AtelierButton as={Link} to="/admin/collections" size="chip">Back to collections</AtelierButton></AdminPage>;
+  if (!collection) {
+    return (
+      <AdminPage title="Collection unavailable">
+        <p className="font-ui text-sm text-taupe">
+          {collectionError ?? "Fetching this collection from the server…"}
+        </p>
+        <AtelierButton as={Link} to="/admin/collections" size="chip" className="mt-4">Back to collections</AtelierButton>
+      </AdminPage>
+    );
+  }
 
   const hero = collection.heroMediaId ? getMediaById(collection.heroMediaId) : null;
   const heroSrc = hero?.status === "ACTIVE" && hero.url ? hero.url : imageRef(collection.image || "hero-atelier")?.src;
@@ -50,22 +87,42 @@ export default function AdminCollectionDetail() {
     return [product.name, product.sku, product.category, product.subcategory, product.collection].join(" ").toLowerCase().includes(term);
   }).slice(0, 80);
 
-  const mutateStatus = (kind) => {
+  const mutateStatus = async (kind) => {
     const action = kind === "activate" ? taxonomyRepository.activateCollection : kind === "pause" ? taxonomyRepository.pauseCollection : taxonomyRepository.archiveCollection;
-    const result = action(collection.id, actor);
-    setNotice(result.ok ? `Collection ${kind}d.` : result.error);
+    const result = await action.call(taxonomyRepository, collection.id, actor);
+    setNotice(
+      result.ok
+        ? `Collection ${kind}d on the server.`
+        : formatAdminError(result, { entity: `collection ${collection.name ?? collection.id}`, action: `${kind}d` })
+    );
     setVersion((value) => value + 1);
   };
 
-  const addSelected = () => {
-    const result = taxonomyRepository.addProductsToCollection(collection.id, selected, actor);
-    setNotice(result.ok ? `${selected.length} product${selected.length === 1 ? "" : "s"} assigned.` : result.error);
+  const addSelected = async () => {
+    if (!selected.length || busy) return;
+    setBusy(true);
+    // Manual membership is a server write: the explicit list is PUT through
+    // the assign endpoint and the notice reflects the confirmed count.
+    const result = await taxonomyRepository.addProductsToCollection(collection.id, selected, actor);
+    setBusy(false);
+    setNotice(
+      result.ok
+        ? `${selected.length} product${selected.length === 1 ? "" : "s"} assigned on the server.`
+        : formatAdminError(result, { entity: "collection assignment", action: "saved" })
+    );
     setSelected([]);
     setVersion((value) => value + 1);
   };
-  const removeSelected = () => {
-    const result = taxonomyRepository.removeProductsFromCollection(collection.id, selected, actor);
-    setNotice(result.ok ? `${selected.length} product${selected.length === 1 ? "" : "s"} removed from collection. Product records remain intact.` : result.error);
+  const removeSelected = async () => {
+    if (!selected.length || busy) return;
+    setBusy(true);
+    const result = await taxonomyRepository.removeProductsFromCollection(collection.id, selected, actor);
+    setBusy(false);
+    setNotice(
+      result.ok
+        ? `${selected.length} product${selected.length === 1 ? "" : "s"} removed from the collection on the server. Product records remain intact.`
+        : formatAdminError(result, { entity: "collection assignment", action: "saved" })
+    );
     setSelected([]);
     setVersion((value) => value + 1);
   };

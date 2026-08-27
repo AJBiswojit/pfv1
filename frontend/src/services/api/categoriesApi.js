@@ -5,8 +5,13 @@
 import { apiClient, ApiError } from "./apiClient";
 
 function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+  // Status + payload travel with the failure so admin desks can map
+  // 401/403/404/409/422 to distinct copy (formatAdminError) instead of one
+  // generic "could not save" line.
+  if (err instanceof ApiError) {
+    return { ok: false, error: err.message, status: err.status ?? 0, data: err.data ?? null };
+  }
+  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
 }
 
 function normCategory(c) {
@@ -25,6 +30,7 @@ function normCategory(c) {
     seoTitle:       c.seo_title     ?? c.seoTitle ?? "",
     seoDescription: c.seo_description ?? c.seoDescription ?? "",
     productCount:   c.product_count ?? c.productCount ?? 0,
+    productCountTotal: c.productCountTotal ?? c.product_count_total ?? null,
   };
 }
 
@@ -41,6 +47,21 @@ function normSubcategory(s) {
     sortOrder:    s.sort_order  ?? s.sortOrder ?? 0,
     productCount: s.product_count ?? s.productCount ?? 0,
   };
+}
+
+/** Admin desk list — includes DRAFT/ARCHIVED rows and server-computed
+ * per-category product counts (`productCount` live, `productCountTotal`
+ * all statuses) so taxonomy tiles never count a client-side snapshot. */
+export async function apiAdminListCategories({ status, featured } = {}) {
+  try {
+    const qs = new URLSearchParams();
+    if (status) qs.set("status", status);
+    if (featured !== undefined) qs.set("featured", featured);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    const data = await apiClient.get(`/admin/categories${suffix}`, { scope: "admin" });
+    const items = (data.items ?? data.categories ?? []).map(normCategory);
+    return { ok: true, items, total: data.total ?? items.length };
+  } catch (err) { return handleError(err); }
 }
 
 // Public

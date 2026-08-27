@@ -7,23 +7,19 @@
  * diary. The customer preview opens the real storefront design.
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Copy, ExternalLink, Images, Pencil } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
 import StatusBadge from "../../components/employee/StatusBadge";
 import { AtelierButton } from "../../design-system";
-import { getPublishIssues } from "../../services/catalogRepository";
 import {
-  approveProduct,
-  archiveProduct,
-  duplicateProduct,
-  publishProduct,
-  restoreProduct,
-  returnProduct,
-  unpublishProduct,
-} from "../../services/workflow/productWorkflowCommands";
+  fetchAdminProduct,
+  fetchPublishIssues,
+  runAction,
+} from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
 import {
   WORKFLOW_STAGES,
   getProductWorkflowState,
@@ -67,6 +63,36 @@ export default function AdminProductDetail() {
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
 
   const product = useProduct(productId);
+  // Server authority for the desk itself: a deep link must distinguish
+  // "still loading", "404 on the server" and "backend unreachable" —
+  // never collapse them into one "could not be found" card.
+  const [fetchState, setFetchState] = useState({ loading: !product, error: null, notFound: false });
+  const [serverIssues, setServerIssues] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const reload = useCallback(async () => {
+    if (!productId) return;
+    const result = await fetchAdminProduct(productId);
+    if (result.ok) {
+      setFetchState({ loading: false, error: null, notFound: false });
+      const issues = await fetchPublishIssues(productId);
+      setServerIssues(issues.ok ? issues.issues ?? [] : null);
+    } else {
+      setFetchState({
+        loading: false,
+        notFound: Number(result.status) === 404,
+        error:
+          Number(result.status) === 404
+            ? null
+            : formatAdminError(result, { entity: "product", action: "loaded" }),
+      });
+    }
+  }, [productId]);
+  useEffect(() => {
+    setFetchState({ loading: !product, error: null, notFound: false });
+    setServerIssues(null);
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reload]);
   const inventory = useInventory();
   const { summary } = useProductMedia(productId);
   const activity = useActivityLog();
@@ -74,10 +100,22 @@ export default function AdminProductDetail() {
   const [rejecting, setRejecting] = useState(false);
   const [notice, setNotice] = useState(null);
 
+  if (fetchState.loading && !product) {
+    return (
+      <AdminPage title="Loading product…">
+        <p className="py-12 text-center font-ui text-sm text-taupe">Fetching this product from the server…</p>
+      </AdminPage>
+    );
+  }
+
   if (!product) {
     return (
-      <AdminPage title="Product unavailable">
-        <p className="font-ui text-sm text-taupe">That product could not be found.</p>
+      <AdminPage title={fetchState.notFound ? "Product not found" : "Product unavailable"}>
+        <p className="font-ui text-sm text-taupe">
+          {fetchState.notFound
+            ? "The server has no product with this id."
+            : fetchState.error ?? "That product could not be loaded from the server."}
+        </p>
         <AtelierButton as={Link} to="/admin/products" size="chip" variant="outline" className="mt-4">
           Back to catalogue
         </AtelierButton>
@@ -88,7 +126,9 @@ export default function AdminProductDetail() {
   const cover = resolveProductCover(product);
   const workflowState = getProductWorkflowState(product);
   const computed = computePricing(product.pricing);
-  const issues = getPublishIssues(product);
+  // Publish blockers come from the SERVER gate (the same check the publish
+  // endpoint enforces) — never from a client-side reimplementation.
+  const issues = serverIssues;
   const productActivity = activityForProduct(activity, product.id);
   const previewHref = `/product/${product.slug}?preview=1`;
   const taxonomyCollections = taxonomyRepository.collectionsForProduct(product);
@@ -100,15 +140,25 @@ export default function AdminProductDetail() {
     low: summary.low + (row.status === "LOW_STOCK" ? 1 : 0),
   }), { available: 0, reserved: 0, locations: new Set(), low: 0 });
 
-  const run = (fn, successMessage) => {
-    const result = fn();
+  const run = async (action, successMessage, opts) => {
+    if (busy) return;
+    setBusy(true);
+    // Awaited server transition — no optimistic local state. The cache is
+    // reconciled from the response and re-read afterwards (no stale-snapshot
+    // overwrite), and failures keep the server's own wording.
+    const result = await runAction(product.id, action, opts);
+    setBusy(false);
     if (result.ok) {
       if (result.product?.status === "PUBLISHED") {
         inventoryRepository.ensureOpeningStock(result.product, actor);
       }
       setNotice(successMessage);
+      reload();
     } else {
-      setNotice((result.errors ?? [result.error]).join(" "));
+      setNotice(
+        formatAdminError(result, { entity: product.name ?? "product", action }) ??
+          (result.errors ?? [result.error]).join(" ")
+      );
     }
   };
 
@@ -135,10 +185,14 @@ export default function AdminProductDetail() {
           <AtelierButton
             size="chip"
             variant="outline"
-            onClick={() => {
-              const result = duplicateProduct(product.id, actor);
-              if (result.ok) navigate(`/admin/products/${result.product.id}/edit`);
-              else setNotice(result.error);
+            onClick={async () => {
+              const result = await runAction(product.id, "duplicate");
+              if (result.ok && result.product) {
+                setNotice("Duplicated on the server — the copy opens as a fresh draft.");
+                navigate(`/admin/products/${result.product.id}/edit`);
+              } else {
+                setNotice(formatAdminError(result, { entity: "product", action: "duplicated" }));
+              }
             }}
           >
             <Copy size={12} aria-hidden="true" /> Duplicate
@@ -191,7 +245,7 @@ export default function AdminProductDetail() {
               {workflowState.stage === WORKFLOW_STAGES.SUBMITTED ||
               workflowState.stage === WORKFLOW_STAGES.IN_ADMIN_REVIEW ? (
                 <>
-                  <AtelierButton size="chip" onClick={() => run(() => approveProduct(product.id, actor), "Approved — awaiting publication.")}>
+                  <AtelierButton size="chip" disabled={busy} onClick={() => run("approve", "Approved on the server — publication is now permitted, but publishing stays a separate action.")}>
                     Approve
                   </AtelierButton>
                   <AtelierButton size="chip" variant="outline" onClick={() => setRejecting((open) => !open)}>
@@ -199,21 +253,21 @@ export default function AdminProductDetail() {
                   </AtelierButton>
                 </>
               ) : workflowState.stage === WORKFLOW_STAGES.PUBLISHED ? (
-                <AtelierButton variant="outline" size="chip" onClick={() => run(() => unpublishProduct(product.id, actor), "Moved back to draft.")}>
+                <AtelierButton variant="outline" size="chip" disabled={busy} onClick={() => run("unpublish", "Unpublished — the storefront no longer serves it (server-confirmed).")}>
                   Unpublish
                 </AtelierButton>
               ) : workflowState.stage === WORKFLOW_STAGES.APPROVED ? (
-                <AtelierButton size="chip" onClick={() => run(() => publishProduct(product.id, actor), "Published to the storefront.")}>
+                <AtelierButton size="chip" disabled={busy} onClick={() => run("publish", "Published to the storefront (server-confirmed).")}>
                   Publish
                 </AtelierButton>
               ) : null}
 
               {workflowState.stage === WORKFLOW_STAGES.ARCHIVED ? (
-                <AtelierButton variant="outline" size="chip" onClick={() => run(() => restoreProduct(product.id, actor), "Restored to draft.")}>
+                <AtelierButton variant="outline" size="chip" disabled={busy} onClick={() => run("restore", "Restored from the archive to draft on the server.")}>
                   Restore
                 </AtelierButton>
               ) : (
-                <AtelierButton variant="outline" size="chip" onClick={() => run(() => archiveProduct(product.id, actor), "Archived. Historical orders keep their reference.")}>
+                <AtelierButton variant="outline" size="chip" disabled={busy} onClick={() => run("archive", "Archived on the server. Historical orders keep their reference.")}>
                   Archive
                 </AtelierButton>
               )}
@@ -224,10 +278,9 @@ export default function AdminProductDetail() {
                 className="mt-4 space-y-2"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  run(
-                    () => returnProduct(product.id, rejection.trim() || "Missing product details.", actor),
-                    "Returned to draft for revision."
-                  );
+                  run("reject", "Returned to the author as a draft (server-confirmed).", {
+                    reason: rejection.trim() || "Missing product details.",
+                  });
                   setRejecting(false);
                   setRejection("");
                 }}
@@ -252,7 +305,10 @@ export default function AdminProductDetail() {
               </form>
             ) : null}
 
-            {issues.length ? (
+            {issues === null ? (
+              <p className="mt-4 font-ui text-[11px] text-taupe">Publishing checks are being fetched from the server…</p>
+            ) : null}
+            {Array.isArray(issues) && issues.length ? (
               <div className="mt-4 border border-accent/40 bg-accent/[0.05] p-3">
                 <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent font-semibold">Publishing blockers</p>
                 <ul className="mt-2 space-y-1">

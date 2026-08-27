@@ -158,3 +158,27 @@ class CacheService:
 
 # Module-level singleton — import and use directly
 cache = CacheService()
+
+
+async def invalidate_response_cache() -> None:
+    """
+    Drop the `fastapi-cache2` HTTP response cache (the @cache decorator layer
+    backed by the in-memory ``pratikshya:cache`` namespace).
+
+    Catalogue write paths (products, categories, subcategories, collections,
+    offers) call this after a mutation so storefront reads served through
+    `GET /products`, `GET /categories/*`, `GET /collections/*` reflect the
+    change immediately instead of up to TTL stale. The in-memory backend
+    exposes only a global clear — that is acceptable for the single-process
+    runtime this app ships with; a Redis-backed deployment would move to
+    per-key invalidation.
+
+    Never raises: the response cache is an optimization, and a failure here
+    must not fail the business write that already succeeded.
+    """
+    try:
+        from fastapi_cache import FastAPICache
+
+        await FastAPICache.clear()
+    except Exception as exc:  # pragma: no cover — cache is best-effort
+        logger.debug("response cache invalidation skipped: %s", exc)

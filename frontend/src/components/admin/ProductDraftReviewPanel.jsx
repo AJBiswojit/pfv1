@@ -26,16 +26,15 @@ import { Archive, ArrowRight, Check, Save, Star } from "lucide-react";
 import ProductPreview from "../product/ProductPreview";
 import StatusBadge from "../employee/StatusBadge";
 import catalogRepository, { getPublishIssues } from "../../services/catalogRepository";
-import { saveProductDraft } from "../../services/workflow/productWorkflowCommands";
 import {
-  approveProduct,
-  archiveProduct,
-  clearReviewFlags,
+  persistAdminProduct,
+  runAction as runServerAction,
+} from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
+import {
   flagsSatisfiedByProduct,
   getProductWorkflowView,
-  publishProduct,
   setPrimaryMedia,
-  submitProductForReview,
   updateMediaViewLabel,
 } from "../../services/productWorkflow";
 import { CATEGORY_OPTIONS, getProductStatusLabel } from "../../config/productCatalogConfig";
@@ -81,66 +80,71 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
   const issues = useMemo(() => getPublishIssues(product), [product]);
   const subcategoryOptions = useMemo(() => taxonomyRepository.subcategoryOptionsFor(category) ?? [], [category]);
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
     if (busy) return;
     setBusy("save");
-    setTimeout(() => {
-      const patch = { name: name.trim(), category, subcategory, price: price === "" ? 0 : Number(price) || 0, compareAtPrice: compareAt === "" ? null : Number(compareAt) || null, description };
-      const pricingPatch = { pricing: { ...(product.pricing ?? {}), sellingPrice: patch.price, mrp: Math.max(patch.price, patch.compareAtPrice ?? 0) } };
-      const result = saveProductDraft(product.id, { ...patch, ...pricingPatch }, actor);
-      if (result.ok) {
-        const satisfied = flagsSatisfiedByProduct(result.product);
-        const cleared = satisfied.filter((flag) => (result.product.reviewFlags ?? []).includes(flag));
-        if (cleared.length) clearReviewFlags(product.id, cleared, actor);
-        onNotice?.({ tone: "ok", text: `Saved ${product.id}.${cleared.length ? ` ${cleared.length} review flag${cleared.length === 1 ? "" : "s"} resolved.` : ""}` });
-      } else onNotice?.({ tone: "warn", text: result.error });
-      setBusy(null);
-    }, 0);
+    const patch = { name: name.trim(), category, subcategory, price: price === "" ? 0 : Number(price) || 0, compareAtPrice: compareAt === "" ? null : Number(compareAt) || null, description };
+    const pricingPatch = { pricing: { ...(product.pricing ?? {}), sellingPrice: patch.price, mrp: Math.max(patch.price, patch.compareAtPrice ?? 0) } };
+    // Server-first save (Phase 5): PATCH through the shared admin builder,
+    // then reconcile. Flag auto-clear also runs on its endpoint — a review
+    // flag never disappears client-side first.
+    const result = await persistAdminProduct({ ...product, ...patch, ...pricingPatch }, { isNew: false });
+    if (result.ok) {
+      const updated = result.product ?? catalogRepository.find(product.id);
+      const satisfied = flagsSatisfiedByProduct(updated);
+      const cleared = satisfied.filter((flag) => (updated?.reviewFlags ?? []).includes(flag));
+      if (cleared.length) await runServerAction(product.id, "clearFlags", { flags: cleared });
+      onNotice?.({ tone: "ok", text: `Saved ${product.id} on the server.${cleared.length ? ` ${cleared.length} review flag${cleared.length === 1 ? "" : "s"} cleared.` : ""}` });
+    } else {
+      onNotice?.({ tone: "warn", text: formatAdminError(result, { entity: product.id ?? "product", action: "saved" }) });
+    }
+    setBusy(null);
   }, [busy, name, category, subcategory, price, compareAt, description, product, actor, onNotice]);
 
-  const submit = useCallback(() => {
-    if (busy) return;
-    setBusy("submit");
-    setTimeout(() => {
-      const result = submitProductForReview(product.id, actor);
-      onNotice?.(result.ok ? { tone: "ok", text: `${product.id} submitted for review.` } : { tone: "warn", text: result.error ?? "Could not submit." });
+  /*
+   * Lifecycle is server-only (Phase 5): every action below awaits the
+   * backend transition endpoint, and the register is reconciled from the
+   * response (PRODUCTS_CHANGED_EVENT refreshes subscribing views). The
+   * notice text claims success only after the server said so; a rejection
+   * shows the server's own reason via the shared admin-error mapper.
+   */
+  const runAction = useCallback(
+    async (action, okText, opts) => {
+      if (busy) return;
+      setBusy(action);
+      const result = await runServerAction(product.id, action, opts);
+      if (result.ok) {
+        onNotice?.({ tone: "ok", text: okText });
+      } else {
+        onNotice?.({
+          tone: "warn",
+          text: formatAdminError(result, { entity: product.id ?? "product", action }),
+        });
+      }
       setBusy(null);
-    }, 0);
-  }, [busy, product.id, actor, onNotice]);
+    },
+    [busy, product.id, onNotice]
+  );
 
-  const approve = useCallback(() => {
-    if (busy) return;
-    setBusy("approve");
-    setTimeout(() => {
-      const result = approveProduct(product.id, actor);
-      onNotice?.(
-        result.ok
-          ? { tone: "ok", text: `${product.id} approved. Publish it with the separate Publish action.` }
-          : { tone: "warn", text: (result.errors ?? [result.error]).join(" ") }
-      );
-      setBusy(null);
-    }, 0);
-  }, [busy, product.id, actor, onNotice]);
+  const submit = useCallback(
+    () => runAction("submitReview", `${product.id} submitted for review on the server.`),
+    [runAction, product.id]
+  );
 
-  const publish = useCallback(() => {
-    if (busy) return;
-    setBusy("publish");
-    setTimeout(() => {
-      const result = publishProduct(product.id, actor);
-      onNotice?.(result.ok ? { tone: "ok", text: `${product.id} published.` } : { tone: "warn", text: (result.errors ?? [result.error]).join(" ") });
-      setBusy(null);
-    }, 0);
-  }, [busy, product.id, actor, onNotice]);
+  const approve = useCallback(
+    () => runAction("approve", `${product.id} approved on the server. Publish it with the separate action.`),
+    [runAction, product.id]
+  );
 
-  const archive = useCallback(() => {
-    if (busy) return;
-    setBusy("archive");
-    setTimeout(() => {
-      const result = archiveProduct(product.id, actor);
-      onNotice?.(result.ok ? { tone: "ok", text: `${product.id} archived.` } : { tone: "warn", text: result.error });
-      setBusy(null);
-    }, 0);
-  }, [busy, product.id, actor, onNotice]);
+  const publish = useCallback(
+    () => runAction("publish", `${product.id} published — the server confirmed it.`),
+    [runAction, product.id]
+  );
+
+  const archive = useCallback(
+    () => runAction("archive", `${product.id} archived on the server.`),
+    [runAction, product.id]
+  );
 
   const resolveConflict = useCallback((conflict) => {
     if (confirmTransfer !== conflict.mediaId) { setConfirmTransfer(conflict.mediaId); return; }
@@ -158,7 +162,7 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
         const updated = catalogRepository.find(product.id);
         const satisfied = flagsSatisfiedByProduct(updated);
         const cleared = satisfied.filter((flag) => (updated?.reviewFlags ?? []).includes(flag));
-        if (cleared.length) clearReviewFlags(product.id, cleared, actor);
+        if (cleared.length) void runServerAction(product.id, "clearFlags", { flags: cleared });
         setConfirmTransfer(null);
         onNotice?.({ tone: "ok", text: `Ownership of ${conflict.file} moved to ${product.id}.` });
       } else onNotice?.({ tone: "warn", text: result.error });
@@ -166,14 +170,16 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
     }, 0);
   }, [confirmTransfer, busy, product.id, actor, onNotice]);
 
-  const clearFlag = useCallback((flag) => {
+  const clearFlag = useCallback(async (flag) => {
     if (busy) return;
     setBusy(`flag-${flag}`);
-    setTimeout(() => {
-      const result = clearReviewFlags(product.id, [flag], actor);
-      onNotice?.(result.ok ? { tone: "ok", text: `Resolved review flag: ${reviewFlagLabel(flag)}.` } : { tone: "warn", text: result.error });
-      setBusy(null);
-    }, 0);
+    const result = await runServerAction(product.id, "clearFlags", { flags: [flag] });
+    onNotice?.(
+      result.ok
+        ? { tone: "ok", text: `Review flag resolved on the server: ${reviewFlagLabel(flag)}.` }
+        : { tone: "warn", text: formatAdminError(result, { entity: product.id ?? "product", action: "updated" }) }
+    );
+    setBusy(null);
   }, [busy, product.id, actor, onNotice]);
 
   const setPrimary = useCallback((mediaId) => {

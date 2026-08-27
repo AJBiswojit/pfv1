@@ -26,7 +26,16 @@ VALID_SORTS = {
     "recommended", "newest", "price-asc", "price-desc",
     "discount", "name-asc", "popularity", "rating",
 }
-PRODUCT_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,14}$")
+# Admin catalogue sorts — matched 1:1 by ProductService.list_admin_products.
+ADMIN_SORTS = {
+    "newest", "oldest", "name", "price-asc", "price-desc", "status", "updated",
+}
+# Permanent product IDs are the `catalog_product.id` primary key
+# (String(36)).  The canonical frontend identity
+# `PF-{DEPT}-{FAMILY}-{NNNN}` (e.g. "PF-K-BYS-TSH-0001") fits this width,
+# so the same format is accepted on create-draft and change-id without any
+# schema change.  Characters stay uppercase alphanumeric + dash.
+PRODUCT_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,35}$")
 
 
 # ── Nested sub-schemas ────────────────────────────────────────────────────────
@@ -257,63 +266,165 @@ class AdminProduct(BaseModel):
 
 # ── Request bodies ────────────────────────────────────────────────────────────
 
-class ProductCreateRequest(BaseModel):
-    """POST /admin/products — create a product."""
+class ProductContentFields(BaseModel):
+    """
+    Admin-editable content fields for the product catalogue.
+
+    EVERY entry here maps to an existing `catalog_product` column — this is
+    the complete persistence contract for admin create/update. Fields the
+    backend cannot store (variants, departments, media library records,
+    SEO beyond title/description, inventory locations…) are deliberately NOT
+    part of this model, so an editor payload can never half-persist or
+    fabricate storage. Unknown keys are ignored (extra="ignore"), matching
+    the long-standing behaviour, but nothing outside this set is written.
+    """
+
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    sku: Optional[str] = None
+    brand: Optional[str] = None
+    product_type: Optional[str] = Field(None, alias="productType")
+    product_code: Optional[str] = Field(None, alias="productCode")
+    barcode: Optional[str] = None
+    internal_reference: Optional[str] = Field(None, alias="internalReference")
+
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    gender: Optional[str] = None
+
+    short_description: Optional[str] = Field(None, alias="shortDescription")
+    description: Optional[str] = None
+    highlights: Optional[List[Any]] = None
+    specifications: Optional[Dict[str, Any]] = None
+    care_instructions: Optional[List[Any]] = Field(None, alias="careInstructions")
+    delivery_info: Optional[str] = Field(None, alias="deliveryInfo")
+    return_info: Optional[str] = Field(None, alias="returnInfo")
+    return_policy: Optional[Dict[str, Any]] = Field(None, alias="returnPolicy")
+
+    fabric: Optional[str] = None
+    material: Optional[str] = None
+    primary_color: Optional[str] = Field(None, alias="primaryColor")
+    secondary_color: Optional[str] = Field(None, alias="secondaryColor")
+    colors: Optional[List[str]] = None
+    patterns: Optional[List[str]] = None
+    work: Optional[List[str]] = None
+    occasion: Optional[List[str]] = None
+    sizes: Optional[List[str]] = None
+    unavailable_colors: Optional[List[str]] = Field(None, alias="unavailableColors")
+    unavailable_sizes: Optional[List[str]] = Field(None, alias="unavailableSizes")
+    season: Optional[str] = None
+    fit: Optional[str] = None
+    length: Optional[str] = None
+
+    collection: Optional[str] = None
+    collections: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    badges: Optional[List[Any]] = None
+    is_featured: Optional[bool] = Field(None, alias="isFeatured")
+    is_bestseller: Optional[bool] = Field(None, alias="isBestseller")
+    is_new: Optional[bool] = Field(None, alias="isNew")
+    is_limited_edition: Optional[bool] = Field(None, alias="isLimitedEdition")
+    is_trending: Optional[bool] = Field(None, alias="isTrending")
+
+    # Pricing — the server recomputes `price` from `pricing` when provided.
+    price: Optional[int] = None
+    original_price: Optional[int] = Field(None, alias="originalPrice")
+    compare_at_price: Optional[int] = Field(None, alias="compareAtPrice")
+    currency: Optional[str] = None
+    pricing: Optional[Dict[str, Any]] = None
+
+    # Stock snapshot fields — display only; no inventory system lives here.
+    stock: Optional[int] = None
+    availability: Optional[str] = None
+    inventory_tracked: Optional[bool] = Field(None, alias="inventoryTracked")
+    low_stock_threshold: Optional[int] = Field(None, alias="lowStockThreshold")
+
+    seo: Optional[Dict[str, Any]] = None
+
+    # Media references only — real media records/migration are a future phase.
+    media_ids: Optional[List[str]] = Field(None, alias="mediaIds")
+    primary_media_id: Optional[str] = Field(None, alias="primaryMediaId")
+    gallery_media_ids: Optional[List[str]] = Field(None, alias="galleryMediaIds")
+    image: Optional[str] = None
+    hover_image: Optional[str] = Field(None, alias="hoverImage")
+    additional_images: Optional[List[str]] = Field(None, alias="additionalImages")
 
     model_config = ConfigDict(populate_by_name=True)
 
-    name: str = ""
-    category: str = ""
-    subcategory: Optional[str] = ""
-    gender: str = "Women"
-    description: Optional[str] = ""
-    short_description: Optional[str] = Field("", alias="shortDescription")
-    sku: Optional[str] = ""
-    price: int = 0
-    compare_at_price: Optional[int] = Field(None, alias="compareAtPrice")
-    pricing: Optional[PricingDetail] = None
-    stock: int = 0
-    # Allow arbitrary additional fields — stored as-is
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    @field_validator("price", "original_price", "compare_at_price", mode="before")
+    @classmethod
+    def _coerce_int_price(cls, v):
+        if v is None or v == "":
+            return None
+        return int(float(v))
+
+    @field_validator("stock", "low_stock_threshold", mode="before")
+    @classmethod
+    def _coerce_int_stock(cls, v):
+        if v is None or v == "":
+            return None
+        return int(float(v))
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_lifecycle_and_unsupported(cls, values):
+        """
+        Lifecycle state is owned by the dedicated endpoints — approve,
+        reject, publish, unpublish, archive, restore, submit-review. Patching
+        it here would bypass the publish gate (audit C-29), so these keys are
+        rejected with an explicit message rather than silently dropped.
+        """
+        if isinstance(values, dict):
+            blocked = [
+                key
+                for key in (
+                    "status", "published", "review", "review_flags",
+                    "reviewFlags", "history", "price_history", "priceHistory",
+                    "createdBy", "created_by", "updatedBy", "updated_by",
+                )
+                if key in values
+            ]
+            if blocked:
+                raise ValueError(
+                    "Product lifecycle fields cannot be written through this "
+                    "endpoint; use the lifecycle routes (submit-review, approve, "
+                    "reject, publish, unpublish, archive, restore). Blocked: "
+                    + ", ".join(sorted(set(blocked)))
+                + ". Fields the backend does not store (e.g. variants, "
+                  "department) are ignored, never persisted."
+                )
+        return values
 
 
-class ProductDraftRequest(BaseModel):
-    """POST /admin/products/draft — create draft with caller-supplied permanent ID."""
+class ProductCreateRequest(ProductContentFields):
+    """POST /admin/products — create a product with server-allocated id."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    id: str = Field(..., description="Permanent product ID, pattern ^[A-Z0-9][A-Z0-9-]{1,14}$")
-    name: Optional[str] = ""
-    category: str
-    subcategory: Optional[str] = ""
-    media_ids: List[str] = Field([], alias="mediaIds")
+class ProductDraftRequest(ProductContentFields):
+    """
+    POST /admin/products/draft — create a DRAFT under a caller-supplied
+    permanent ID.  The ID is the canonical `catalog_product.id`; the same
+    value is mirrored into `product_id` (the stable UI label column).
+    """
+
+    id: str = Field(..., description="Permanent product ID, pattern ^[A-Z0-9][A-Z0-9-]{1,35}$")
 
     @field_validator("id")
     @classmethod
     def validate_product_id(cls, v: str) -> str:
         if not PRODUCT_ID_RE.match(v):
-            raise ValueError("Product ID must match ^[A-Z0-9][A-Z0-9-]{1,14}$")
+            raise ValueError("Product ID must match ^[A-Z0-9][A-Z0-9-]{1,35}$")
         return v
 
 
-class ProductUpdateRequest(BaseModel):
-    """PATCH /admin/products/{id} — full-field patch for admin."""
+class ProductUpdateRequest(ProductContentFields):
+    """
+    PATCH /admin/products/{id} — field-level admin patch.
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    sku: Optional[str] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    gender: Optional[str] = None
-    description: Optional[str] = None
-    short_description: Optional[str] = Field(None, alias="shortDescription")
-    price: Optional[int] = None
-    compare_at_price: Optional[int] = Field(None, alias="compareAtPrice")
-    pricing: Optional[PricingDetail] = None
-    status: Optional[str] = None
-    assigned_employee_id: Optional[str] = Field(None, alias="assignedEmployeeId")
+    Only explicitly set fields are applied (`exclude_unset` semantics in the
+    service), so a partial save never overwrites untouched columns with stale
+    values. Lifecycle/status keys are rejected (see the base validator).
+    """
 
 
 # 30-field whitelist from API_CONTRACT.md for employee edits
@@ -382,7 +493,7 @@ class ChangeProductIdRequest(BaseModel):
     @classmethod
     def validate_new_id(cls, v: str) -> str:
         if not PRODUCT_ID_RE.match(v):
-            raise ValueError("Product ID must match ^[A-Z0-9][A-Z0-9-]{1,14}$")
+            raise ValueError("Product ID must match ^[A-Z0-9][A-Z0-9-]{1,35}$")
         return v
 
 
@@ -438,11 +549,19 @@ class AdminProductListQuery(BaseModel):
 
     status: Optional[str] = None
     category: Optional[str] = None
+    subcategory: Optional[str] = None
     assigned_employee_id: Optional[str] = Field(None, alias="assignedEmployeeId")
     q: Optional[str] = None
     sort: str = "newest"
+    page: int = 1
+    page_size: int = Field(25, alias="pageSize", ge=1, le=500)
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("sort")
+    @classmethod
+    def resolve_sort(cls, v: str) -> str:
+        return v if v in ADMIN_SORTS else "newest"
 
 
 # ── Response envelopes ────────────────────────────────────────────────────────
@@ -451,6 +570,8 @@ class ProductListResponse(BaseModel):
     ok: bool = True
     items: List[StorefrontProduct] = []
     total: int = 0
+    page: int = 1
+    page_size: int = Field(20, alias="pageSize")
     facets: FacetCounts = Field(default_factory=FacetCounts)
     applied_filters: Dict[str, Any] = Field({}, alias="appliedFilters")
 
@@ -461,6 +582,10 @@ class AdminProductListResponse(BaseModel):
     ok: bool = True
     items: List[AdminProduct] = []
     total: int = 0
+    page: int = 1
+    page_size: int = Field(25, alias="pageSize")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class SingleProductResponse(BaseModel):

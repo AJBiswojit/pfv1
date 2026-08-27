@@ -38,8 +38,121 @@
 import { apiClient, ApiError } from "./apiClient";
 
 function handleError(err) {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  return { ok: false, error: "An unexpected error occurred." };
+  // Carry the HTTP status + parsed body through so admin screens can map
+  // 401/403/404/409/422/5xx to distinct, honest copy instead of a generic
+  // “could not be saved”. `data.errors` (422 envelopes) is preserved.
+  if (err instanceof ApiError) {
+    return { ok: false, error: err.message, status: err.status, data: err.data ?? null };
+  }
+  return { ok: false, error: "An unexpected error occurred.", status: 0, data: null };
+}
+
+/**
+ * Map a repository product record onto the ADMIN write contract
+ * (ProductCreateRequest / ProductDraftRequest / ProductUpdateRequest).
+ *
+ * Single normalization layer: whatever the editor holds, the payload sent to
+ * the backend contains ONLY fields the backend persists (identity, taxonomy,
+ * attributes, pricing, stock snapshot, SEO, media refs, merchandising flags).
+ * Lifecycle keys (status/published/review/history) are never included — they
+ * belong to the dedicated lifecycle endpoints, which are the authority.
+ * Fields with no backend column (variants, department, inventory) are
+ * dropped HERE explicitly, never silently by the server.
+ */
+export function buildAdminProductPayload(record = {}) {
+  const pick = (v) => (v === undefined ? null : v);
+  const pricing = record.pricing && typeof record.pricing === "object" ? record.pricing : null;
+  const imageValue = (m) =>
+    m == null ? "" : typeof m === "string" ? m : String(m.id || m.src || m.url || m.path || "");
+  const payload = {
+    name: pick(record.name ?? ""),
+    slug: record.slug ? String(record.slug) : undefined,
+    sku: record.sku ? String(record.sku) : undefined,
+    brand: record.brand || undefined,
+    productType: record.productType || undefined,
+    productCode: record.productCode ? String(record.productCode) : "",
+    barcode: record.barcode ? String(record.barcode) : "",
+    internalReference: record.internalReference ? String(record.internalReference) : "",
+    category: pick(record.category ?? ""),
+    subcategory: pick(record.subcategory ?? ""),
+    gender: record.gender || undefined,
+    shortDescription: pick(record.shortDescription ?? ""),
+    description: pick(record.description ?? ""),
+    highlights: Array.isArray(record.highlights) ? record.highlights : undefined,
+    specifications:
+      record.specifications && typeof record.specifications === "object" ? record.specifications : undefined,
+    careInstructions: Array.isArray(record.careInstructions) ? record.careInstructions : undefined,
+    deliveryInfo: record.deliveryInfo ? String(record.deliveryInfo) : "",
+    returnInfo: record.returnInfo ? String(record.returnInfo) : "",
+    returnPolicy:
+      record.returnPolicy && typeof record.returnPolicy === "object" ? record.returnPolicy : undefined,
+    fabric: record.fabric ? String(record.fabric) : "",
+    material: record.material ? String(record.material) : "",
+    primaryColor: record.primaryColor ? String(record.primaryColor) : "",
+    secondaryColor: record.secondaryColor ? String(record.secondaryColor) : "",
+    colors: Array.isArray(record.colors) ? record.colors : undefined,
+    patterns: Array.isArray(record.patterns) ? record.patterns : undefined,
+    work: Array.isArray(record.work) ? record.work : undefined,
+    occasion: Array.isArray(record.occasion) ? record.occasion : undefined,
+    sizes: Array.isArray(record.sizes) ? record.sizes : undefined,
+    unavailableColors: Array.isArray(record.unavailableColors) ? record.unavailableColors : undefined,
+    unavailableSizes: Array.isArray(record.unavailableSizes) ? record.unavailableSizes : undefined,
+    season: record.season ? String(record.season) : "",
+    fit: record.fit ? String(record.fit) : "",
+    length: record.length ? String(record.length) : "",
+    collection: record.collection ? String(record.collection) : "",
+    collections: Array.isArray(record.collections) ? record.collections : undefined,
+    tags: Array.isArray(record.tags) ? record.tags : undefined,
+    badges: Array.isArray(record.badges) ? record.badges : undefined,
+    isFeatured: Boolean(record.isFeatured),
+    isBestseller: Boolean(record.isBestseller),
+    isNew: Boolean(record.isNew),
+    isLimitedEdition: Boolean(record.isLimitedEdition),
+    isTrending: Boolean(record.isTrending),
+    price: Number.isFinite(Number(record.price)) ? Math.round(Number(record.price)) : undefined,
+    compareAtPrice:
+      record.compareAtPrice != null && Number.isFinite(Number(record.compareAtPrice))
+        ? Math.round(Number(record.compareAtPrice))
+        : undefined,
+    currency: record.currency || undefined,
+    pricing: pricing
+      ? {
+          mrp: Number(pricing.mrp ?? pricing.sellingPrice ?? 0) || 0,
+          sellingPrice: Number(pricing.sellingPrice ?? pricing.price ?? 0) || 0,
+          discountType: pricing.discountType || "none",
+          discountValue: Number(pricing.discountValue ?? 0) || 0,
+        }
+      : undefined,
+    stock: Number.isFinite(Number(record.stock)) ? Math.round(Number(record.stock)) : undefined,
+    availability: record.availability || undefined,
+    inventoryTracked:
+      record.inventoryTracked === undefined ? undefined : Boolean(record.inventoryTracked),
+    lowStockThreshold:
+      record.lowStockThreshold == null || !Number.isFinite(Number(record.lowStockThreshold))
+        ? undefined
+        : Math.round(Number(record.lowStockThreshold)),
+    seo:
+      record.seo && typeof record.seo === "object"
+        ? {
+            title: String(record.seo.title ?? ""),
+            description: String(record.seo.description ?? ""),
+          }
+        : undefined,
+    mediaIds: Array.isArray(record.mediaIds) ? record.mediaIds.map(String) : undefined,
+    primaryMediaId: record.primaryMediaId ? String(record.primaryMediaId) : undefined,
+    galleryMediaIds: Array.isArray(record.galleryMediaIds) ? record.galleryMediaIds.map(String) : undefined,
+    image: imageValue(record.image),
+    hoverImage: imageValue(record.hoverImage),
+    additionalImages: Array.isArray(record.additionalImages)
+      ? record.additionalImages.map(imageValue)
+      : undefined,
+  };
+  // Drop `undefined` keys so PATCH stays a true partial patch (only fields we
+  // intentionally write); empty strings are meaningful clears and are kept.
+  for (const key of Object.keys(payload)) {
+    if (payload[key] === undefined) delete payload[key];
+  }
+  return payload;
 }
 
 // ---------------------------------------------------------------------------
@@ -268,19 +381,33 @@ export async function apiAddRecentlyViewed(productId) {
 // ===========================================================================
 
 /**
- * GET /admin/products?status=&category=&q=&sort=
+ * GET /admin/products?status=&category=&subcategory=&q=&sort=&page=&pageSize=&assignedEmployeeId=
+ *
+ * Server-driven desk list: every filter is a real backend query, `total` is
+ * the FULL filtered count and `page`/`pageSize` come from the server — the
+ * desk never pretends a fetched subset is the whole catalogue.
  */
 export async function apiAdminListProducts(query = {}) {
   try {
     const qs = buildParams({
       status:             query.status,
       category:           query.category,
+      subcategory:        query.subcategory,
       assignedEmployeeId: query.assignedEmployeeId,
       q:                  query.q,
       sort:               query.sort ?? "newest",
+      page:               query.page,
+      pageSize:           query.pageSize,
     });
     const data = await apiClient.get(`/admin/products${qs ? `?${qs}` : ""}`, { scope: "admin" });
-    return { ok: true, ...normaliseList(data) };
+    const list = normaliseList(data);
+    return {
+      ok: true,
+      items: list.items,
+      total: data.total ?? list.total,
+      page: data.page ?? list.page,
+      pageSize: data.page_size ?? data.pageSize ?? query.pageSize ?? 25,
+    };
   } catch (err) {
     return handleError(err);
   }

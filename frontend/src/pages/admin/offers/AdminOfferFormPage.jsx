@@ -8,7 +8,7 @@ export default function AdminOfferFormPage() {
   const { offerId } = useParams();
   const { admin } = useAdminAuth();
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
-  const existing = useOffer(offerId);
+  const { offer: existing } = useOffer(offerId);
 
   if (offerId && !existing) {
     return (

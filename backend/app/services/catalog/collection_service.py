@@ -47,6 +47,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import invalidate_response_cache
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
@@ -364,6 +365,9 @@ class CollectionService:
         )
         self.db.add(col)
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         return _project(col)
 
@@ -407,6 +411,9 @@ class CollectionService:
 
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         count = await self._resolved_count(col)
         return _project(col, count)
@@ -423,6 +430,9 @@ class CollectionService:
         col.status = "ACTIVE"
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         count = await self._resolved_count(col)
         return _project(col, count)
@@ -439,6 +449,9 @@ class CollectionService:
         col.status = "PAUSED"
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         count = await self._resolved_count(col)
         return _project(col, count)
@@ -453,6 +466,9 @@ class CollectionService:
         col.status = "ARCHIVED"
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         return _project(col)
 
@@ -466,6 +482,9 @@ class CollectionService:
         col.status = "DRAFT"
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         return _project(col)
 
@@ -488,6 +507,9 @@ class CollectionService:
         col.explicit_product_ids = req.productIds
         col.updated_by = actor
         await self.db.flush()
+        # Collections are read by cached storefront surfaces — a write must
+        # not leave stale cached listings behind (see core.cache helper).
+        await invalidate_response_cache()
         await self.db.refresh(col)
         count = await self._resolved_count(col)
         return _project(col, count)

@@ -40,7 +40,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
 from app.schemas.catalog.collection import (
     AssignProductsRequest,
@@ -193,6 +193,7 @@ async def admin_list_collections(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.view")
     service = CollectionService(db)
     items = await service.admin_list_collections(
         status_filter=status_filter, featured=featured, q=q
@@ -210,6 +211,7 @@ async def admin_get_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.view")
     service = CollectionService(db)
     collection = await service.admin_get_collection(collection_id)
     return SingleCollectionResponse(collection=collection)
@@ -237,6 +239,7 @@ async def admin_create_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.create")
     service = CollectionService(db)
     collection = await service.create_collection(req, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -258,6 +261,7 @@ async def admin_update_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.edit")
     service = CollectionService(db)
     collection = await service.update_collection(collection_id, req, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -282,6 +286,7 @@ async def admin_activate_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.edit")
     service = CollectionService(db)
     collection = await service.activate_collection(collection_id, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -302,6 +307,7 @@ async def admin_pause_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.edit")
     service = CollectionService(db)
     collection = await service.pause_collection(collection_id, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -322,6 +328,7 @@ async def admin_archive_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.archive")
     service = CollectionService(db)
     collection = await service.archive_collection(collection_id, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -342,6 +349,7 @@ async def admin_restore_collection(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.archive")
     service = CollectionService(db)
     collection = await service.restore_collection(collection_id, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -370,6 +378,7 @@ async def admin_assign_products(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.assign")
     service = CollectionService(db)
     collection = await service.assign_products(collection_id, req, actor=current_user.id)
     return SingleCollectionResponse(collection=collection)
@@ -388,6 +397,7 @@ async def admin_taxonomy_metrics(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.view")
     service = CollectionService(db)
     return await service.taxonomy_metrics()
 
@@ -404,5 +414,6 @@ async def admin_taxonomy_product_counts(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "collections.view")
     service = CollectionService(db)
     return await service.taxonomy_product_counts()
