@@ -21,10 +21,16 @@ import { AtelierButton } from "../../design-system";
 import catalogRepository, { getPublishIssues } from "../../services/catalogRepository";
 import inventoryRepository from "../../services/inventory/inventoryRepository";
 import {
+  checkAvailability,
   fetchAdminProduct,
   persistAdminProduct,
   runAction,
 } from "../../services/admin/productAdminService";
+import {
+  buildAvailabilityQuery,
+  identityErrors,
+  toVerdict,
+} from "../../services/admin/productIdentityPreflight";
 import { formatAdminError } from "../../services/admin/adminError";
 import { apiAdminGetNextId, apiAdminGetPublishIssues } from "../../services/api/productsApi";
 import {
@@ -150,6 +156,13 @@ const draftFromProduct = (product) => ({
 /* Sections                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * How long the editor waits after the last SKU/slug keystroke before asking
+ * the server whether the value is free. Plain timer, no dependency: one probe
+ * per typing pause instead of one per character.
+ */
+const IDENTITY_PROBE_DELAY_MS = 400;
+
 const SECTIONS = [
   { id: "basics", label: "Basic Information" },
   { id: "attributes", label: "Category & Attributes" },
@@ -237,22 +250,74 @@ export default function ProductEditor({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
+  /* --- server identity pre-flight (PF3-N16) --------------------------- */
+
+  /*
+   * Phase 3 Block 4: SKU/slug uniqueness is decided by the SERVER, through
+   * GET /admin/products/availability, not by the session cache. The cache only
+   * holds records this session fetched, so it reported duplicates as free and
+   * — with its case-sensitive slug compare — free values as duplicates. The
+   * probe passes the current product as `excludeId`, so a product's own
+   * SKU/slug is free, exactly as PATCH treats it.
+   *
+   * The request is coalesced behind the same short timer the operator's typing
+   * produces (one probe per pause, not one per keystroke) and is pinned to the
+   * exact values it asked about, so a late answer can never condemn a value
+   * that has since been corrected. A failed probe yields NO verdict: it must
+   * not block a save, because the server's 409 on the write is the real gate.
+   */
+  const [identityVerdict, setIdentityVerdict] = useState(null);
+  const availabilityQuery = useMemo(
+    () => buildAvailabilityQuery(draft),
+    [draft.sku, draft.slug, draft.id, draft.exists]
+  );
+
+  useEffect(() => {
+    if (portal !== "admin" || !availabilityQuery) {
+      setIdentityVerdict(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      checkAvailability(availabilityQuery).then((result) => {
+        if (cancelled) return;
+        setIdentityVerdict(toVerdict(result, availabilityQuery));
+      });
+    }, IDENTITY_PROBE_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [portal, availabilityQuery]);
+
   /* --- validation --------------------------------------------------- */
 
   const errors = useMemo(() => {
     const next = {};
     if (!draft.name.trim()) next.name = "Product name is required.";
     if (!draft.sku.trim()) next.sku = "SKU is required.";
-    else if (catalogRepository.skuTaken(draft.sku, draft.id)) {
-      next.sku = "This SKU is already in use by another product or variant.";
-    }
     if (!draft.category) next.category = "Category is required.";
     if (!draft.description.trim() && !draft.shortDescription.trim()) {
       next.description = "A description is required.";
     }
-    if (draft.slug && catalogRepository.slugTaken(draft.slug, draft.id)) {
-      next.slug = "This URL slug is already in use.";
+
+    /*
+     * The server's verdict on this product's own sku/slug. It is applied AFTER
+     * the "required" checks so an empty field still reports as missing, and it
+     * is the only source for product-level collisions — no local fallback.
+     */
+    if (portal === "admin") {
+      const identity = identityErrors(identityVerdict, availabilityQuery);
+      if (identity.sku && draft.sku.trim()) next.sku = identity.sku;
+      if (identity.slug) next.slug = identity.slug;
     }
+
+    /*
+     * Variant SKUs stay on the session cache deliberately: the backend has no
+     * variant identity contract at all (variants are not rows), so this local
+     * check is the ONLY coverage that exists. Removing it would delete a real
+     * check, not a duplicated one.
+     */
     const skus = draft.variants.map((variant) => variant.sku).filter(Boolean);
     if (new Set(skus).size !== skus.length) {
       next.variants = "Variant SKUs must be unique within the product.";
@@ -264,7 +329,7 @@ export default function ProductEditor({
       next.variants = "A variant SKU is already used elsewhere in the catalogue.";
     }
     return next;
-  }, [draft]);
+  }, [draft, portal, identityVerdict, availabilityQuery]);
 
   const pricingErrors = useMemo(() => computePricing(draft.pricing).errors, [draft.pricing]);
 
@@ -357,7 +422,16 @@ export default function ProductEditor({
             ? null
             : Number(variant.priceOverride) || null,
       })),
-      slug: draft.slug || catalogRepository.suggestSlug(draft.name, draft.id),
+      /*
+       * Phase 3 Block 3: the slug is sent ONLY when the operator actually
+       * typed one. It used to be back-filled with a locally suggested slug
+       * derived from the session cache, which (now that a duplicate slug is a
+       * hard 409 instead of a silent `-1` rename) would turn a stale cache
+       * into a save the operator never asked for and cannot explain. Omitting
+       * it hands slug allocation to the server, which is the only party that
+       * can see the whole catalogue.
+       */
+      ...(draft.slug ? { slug: draft.slug } : {}),
       collection: draft.collections[0] ?? draft.collection ?? "",
     };
   };

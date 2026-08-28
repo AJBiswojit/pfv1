@@ -1,4 +1,11 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
+
+# `details` is rendered verbatim into the canonical error envelope
+# (`{success, error:{code, message, details}}`). Most business errors describe
+# themselves with a mapping; request-shaped validation errors use the
+# FastAPI field-error LIST (`[{loc, msg, type, …}]`) so a service-raised 422
+# is indistinguishable, to the client, from a schema-raised one.
+ErrorDetails = Union[Dict[str, Any], List[Any]]
 
 
 class AppException(Exception):
@@ -8,12 +15,14 @@ class AppException(Exception):
         message: str,
         status_code: int = 400,
         error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[ErrorDetails] = None,
     ):
         self.message = message
         self.status_code = status_code
         self.error_code = error_code or "BAD_REQUEST"
-        self.details = details or {}
+        # An empty LIST is a legitimate details payload (field-error shape);
+        # only `None` falls back to the empty mapping.
+        self.details = {} if details is None else details
         super().__init__(message)
 
 
@@ -38,8 +47,33 @@ class ConflictException(AppException):
 
 
 class BusinessLogicException(AppException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[ErrorDetails] = None):
         super().__init__(message=message, status_code=422, error_code="BUSINESS_RULE_VIOLATION", details=details)
+
+
+class ValidationException(AppException):
+    """
+    HTTP 422 `VALIDATION_ERROR` raised from the service layer.
+
+    The Phase 1 envelope is unchanged — this only lets a rule that can be
+    decided ONLY against the database (e.g. "does this category exist and may
+    it be assigned?") answer with exactly the same `code`/`details` contract
+    the Pydantic/`RequestValidationError` handler emits, instead of leaking a
+    500 or inventing a second format. `details` is therefore the FastAPI
+    field-error list: `[{"loc": ["body", "<field>"], "msg": …, "type": …}]`.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid request payload or parameters",
+        details: Optional[ErrorDetails] = None,
+    ):
+        super().__init__(
+            message=message,
+            status_code=422,
+            error_code="VALIDATION_ERROR",
+            details=details if details is not None else [],
+        )
 
 
 class TooManyRequestsException(AppException):

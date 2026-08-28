@@ -1044,7 +1044,7 @@
           "Product Catalog"
         ],
         "summary": "Storefront product catalogue \u2014 filtered, sorted, paginated with facet counts",
-        "description": "Gate: `PUBLISHED`, `published=true`, `category.status=ACTIVE`.  \nFacets: 12 (category, subcategory, gender, price, size, color, fabric, material, occasion, collection, rating, availability).  \nSort: recommended (default), newest, price-asc, price-desc, discount, name-asc, popularity, rating. Aliases: price-low, price-high, name, az.  \nPagination: `page` + `pageSize` (default 20).",
+        "description": "Gate: `PUBLISHED`, `published=true`, `category.status=ACTIVE` and \u2014 when set \u2014 `subcategory.status=ACTIVE`. A reference that resolves to no taxonomy row does not hide the product.  \nFacets: 12 (category, subcategory, gender, price, size, color, fabric, material, occasion, collection, rating, availability).  \nSort: recommended (default), newest, price-asc, price-desc, discount, name-asc, popularity, rating. Aliases: price-low, price-high, name, az.  \nPagination: `page` + `pageSize` (default 20).",
         "operationId": "list_products_api_v1_products_get",
         "parameters": [
           {
@@ -1431,7 +1431,7 @@
           "Product Catalog"
         ],
         "summary": "Product detail page \u2014 accepts product id or slug",
-        "description": "Returns the full `StorefrontProduct` shape including `details`, `careInstructions`, `deliveryInfo`, `returnInfo`, `specifications`.  \nOnly `PUBLISHED` products are visible. Returns 404 for anything else.",
+        "description": "Returns the full `StorefrontProduct` shape including `details`, `careInstructions`, `deliveryInfo`, `returnInfo`, `specifications`.  \nOnly `PUBLISHED` products in an `ACTIVE` category and \u2014 when set \u2014 an `ACTIVE` subcategory are visible. Everything else, including a product that is APPROVED but not yet published, returns the canonical `404 NOT_FOUND`.",
         "operationId": "get_product_api_v1_products__id_or_slug__get",
         "parameters": [
           {
@@ -1819,7 +1819,7 @@
           "Product Catalog"
         ],
         "summary": "Admin \u2014 deterministic next stable product id",
-        "description": "Source: `nextStableProductId()`.  \nQuery: `category={categoryId}&preferredNumber={n}` (optional).  \nNever random; scans the register and picks the lowest free integer.",
+        "description": "Source: `nextStableProductId()`.  \nQuery: `category={categoryId}&preferredNumber={n}` (optional).  \nNever random; scans the register and picks the lowest free integer.  \nCanonical form: `PF-{CATEGORY_CODE}-{NNNN}` (four-digit serial).",
         "operationId": "admin_get_next_id_api_v1_admin_products_next_id_get",
         "security": [
           {
@@ -1883,7 +1883,7 @@
           "Product Catalog"
         ],
         "summary": "Admin \u2014 check SKU and slug availability",
-        "description": "Query: `sku=&slug=`. Returns `{ skuTaken, slugTaken, suggestedSlug? }`.",
+        "description": "Query: `sku=&slug=&excludeId=`. Returns `{ skuTaken, slugTaken, suggestedSlug? }`.  \nPre-flight only \u2014 the authoritative uniqueness verdict is the **409 `CONFLICT`** raised by the create/update endpoints, which use the same trimmed, case-insensitive comparison. Pass `excludeId` when editing an existing product so its own SKU/slug is reported as free.",
         "operationId": "admin_check_availability_api_v1_admin_products_availability_get",
         "security": [
           {
@@ -1922,6 +1922,24 @@
               ],
               "title": "Slug"
             }
+          },
+          {
+            "name": "excludeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Product id to exclude \u2014 the product currently being edited.",
+              "title": "Excludeid"
+            },
+            "description": "Product id to exclude \u2014 the product currently being edited."
           }
         ],
         "responses": {
@@ -2558,7 +2576,7 @@
           "Product Catalog"
         ],
         "summary": "Admin \u2014 change permanent product ID",
-        "description": "Body: `{ newId }` \u2014 validated `^[A-Z0-9][A-Z0-9-]{1,35}$`, must be free.  \nActivity `PRODUCT_RENAMED_ID`.  \n**BACKEND DECISION REQUIRED**: cascade to media, inventory, collection, order history.",
+        "description": "Body: `{ newId }` \u2014 validated `^[A-Z0-9][A-Z0-9-]{1,35}$`, must be free.  \nActivity `PRODUCT_RENAMED_ID`.  \n**Cascade question resolved (plan \u00a724 step 8):** this route rewrites the human-facing **display label** (`productId`) only \u2014 never `catalog_product.id`, the primary key that media, inventory, collection membership and order history reference. No cascade is required, and none is performed. `newId` must collide with neither an existing primary key nor another product's display label, otherwise **409 `CONFLICT`**.",
         "operationId": "admin_change_product_id_api_v1_admin_products__id__change_id_post",
         "security": [
           {
@@ -2664,7 +2682,7 @@
           "Product Catalog"
         ],
         "summary": "Admin \u2014 clear specific review flags",
-        "description": "Body: `{ flags: string[] }`.  \nActivity `PRODUCT_REVIEW_FLAGS_CLEARED`.",
+        "description": "Body: `{ flags: string[] }` \u2014 each flag must be a member of the declared review-flag vocabulary (plan \u00a724 step 8); an unknown flag is a **422 `VALIDATION_ERROR`** naming it. Blocking flags: `NAME_REVIEW_REQUIRED`, `PRICE_REVIEW_REQUIRED`, `TAXONOMY_REVIEW_REQUIRED`, `GROUP_REVIEW_REQUIRED`, `VARIANT_REVIEW_REQUIRED`, `NEEDS_MEDIA`, `MEDIA_OWNERSHIP_REVIEW`, `CONFLICT_UNRESOLVED`, `KIDS_MIGRATION_REVIEW`. Informational flags: `CONFLICT_REVIEW_LATER`, `MEDIA_OWNERSHIP_MOVED`, `MEDIA_UNASSIGNED`.  \nActivity `PRODUCT_REVIEW_FLAGS_CLEARED`.",
         "operationId": "admin_clear_review_flags_api_v1_admin_products__id__review_flags_clear_post",
         "security": [
           {
@@ -5285,7 +5303,7 @@
           "Media Assets"
         ],
         "summary": "Upload a media object (admin)",
-        "description": "Store one image in the object store and return its canonical URL.\n\nThe object key is derived from real identity (`products/{PRODUCT_ID}/\n{filename}`), never from a random temp name. Nothing is written to the\ndatabase: persisting the reference onto a product uses the existing\n`PATCH /admin/products/{id}` media fields.",
+        "description": "Store one image in the object store and return its canonical URL.\n\nThe object key is derived from real identity (`products/{PRODUCT_ID}/\n{filename}`), never from a random temp name. Nothing is written to the\ndatabase: persisting the reference onto a product uses the existing\n`PATCH /admin/products/{id}` media fields.\n\n`namespace` is validated against the closed storage vocabulary\n(`app.storage.keys.ALLOWED_NAMESPACES`); an unknown namespace is a 422\n`BUSINESS_RULE_VIOLATION` and no object is written.",
         "operationId": "upload_media_object_api_v1_media_objects_post",
         "requestBody": {
           "content": {
@@ -5390,7 +5408,7 @@
           "Media Assets"
         ],
         "summary": "Register an uploaded object as a media asset",
-        "description": "Create the durable row only after verifying the real object exists.\n\nIdempotent by object key: re-registering the same key returns the same\nasset row and UPDATES the existing product association's role / sort\norder / primary flag instead of duplicating it. When `is_primary` is set,\nevery other association of the same product is demoted in the same\ntransaction \u2014 a product never has two primaries.",
+        "description": "Create the durable row only after verifying the real object exists.\n\nIdempotent by object key: re-registering the same key returns the same\nasset row and UPDATES the existing product association's role / sort\norder / primary flag instead of duplicating it. When `is_primary` is set,\nevery other association of the same product is demoted in the same\ntransaction \u2014 a product never has two primaries.\n\n`role` is checked against the declared product-media vocabulary before\nanything is written. Before plan \u00a724 step 9 this column accepted any\nstring: the value went straight into a `String(30)` column, so a long\nrole was an HTTP 500 (`StringDataRightTruncation`) on PostgreSQL rather\nthan a validation rejection.",
         "operationId": "register_media_object_api_v1_media_register_post",
         "requestBody": {
           "content": {
@@ -11641,7 +11659,7 @@
           "Search"
         ],
         "summary": "Product search \u2014 full-text + faceted, sorted and paginated",
-        "description": "Full-text search across: name, brand, category, subcategory, fabric, material, colors, occasion, tags, collection, SKU.  \nMatching is case/diacritic-normalised substring \u2014 exactly reproduces `matchesSearch()` / `normaliseSearchText()` from the frontend.  \n\n**Visibility gate** \u2014 only `PUBLISHED` products in an `ACTIVE` category.  \n\n**Facets** \u2014 12 facets (category, subcategory, gender, price, size, color, fabric, material, occasion, collection, rating, availability). Multi-value: repeat the key. AND across facets, OR within a facet.  \n\n**Sort** \u2014 recommended (default), newest, price-asc, price-desc, discount, name-asc, popularity, rating. Aliases: price-low \u2192 price-asc, price-high \u2192 price-desc, name/az \u2192 name-asc.  \n\n**Pagination** \u2014 `page` + `pageSize` (default 20, max 200).  \n\n**Suggestions** \u2014 static list today; dynamic suggest is `BACKEND DECISION REQUIRED`.",
+        "description": "Full-text search across: name, brand, category, subcategory, fabric, material, colors, occasion, tags, collection, SKU.  \nMatching is case/diacritic-normalised substring \u2014 exactly reproduces `matchesSearch()` / `normaliseSearchText()` from the frontend.  \n\n**Visibility gate** \u2014 only `PUBLISHED` products in an `ACTIVE` category and, when set, an `ACTIVE` subcategory.  \n\n**Facets** \u2014 12 facets (category, subcategory, gender, price, size, color, fabric, material, occasion, collection, rating, availability). Multi-value: repeat the key. AND across facets, OR within a facet.  \n\n**Sort** \u2014 recommended (default), newest, price-asc, price-desc, discount, name-asc, popularity, rating. Aliases: price-low \u2192 price-asc, price-high \u2192 price-desc, name/az \u2192 name-asc.  \n\n**Pagination** \u2014 `page` + `pageSize` (default 20, max 200).  \n\n**Suggestions** \u2014 static list today; dynamic suggest is `BACKEND DECISION REQUIRED`.",
         "operationId": "search_products_api_v1_search_get",
         "parameters": [
           {
@@ -11984,7 +12002,7 @@
           "Explore"
         ],
         "summary": "Explore \u2014 paginated product stream with interleaved promo/editorial cards",
-        "description": "The **only** paginated surface in the application (pageSize defaults to 20).  \n\nReturns `items` (the plain product page) plus `stream` \u2014 the same products interleaved with `promo` and `editorial` cards at fixed intervals:  \n- A **promo** card is inserted after every 4th product (`EXPLORE_PROMO_AFTER`).  \n- An **editorial** card is inserted after every 8th product (`EXPLORE_EDITORIAL_AFTER`).  \n  When both intervals coincide the editorial card wins.  \n\n**Visibility gate** \u2014 only `PUBLISHED` products in an `ACTIVE` category.  \n\n**Facets, sort, pagination** \u2014 same vocabulary as `GET /products`.  \n\n**`hasMore`** \u2014 `true` when `page \u00d7 pageSize < total`.",
+        "description": "The **only** paginated surface in the application (pageSize defaults to 20).  \n\nReturns `items` (the plain product page) plus `stream` \u2014 the same products interleaved with `promo` and `editorial` cards at fixed intervals:  \n- A **promo** card is inserted after every 4th product (`EXPLORE_PROMO_AFTER`).  \n- An **editorial** card is inserted after every 8th product (`EXPLORE_EDITORIAL_AFTER`).  \n  When both intervals coincide the editorial card wins.  \n\n**Visibility gate** \u2014 only `PUBLISHED` products in an `ACTIVE` category and, when set, an `ACTIVE` subcategory.  \n\n**Facets, sort, pagination** \u2014 same vocabulary as `GET /products`.  \n\n**`hasMore`** \u2014 `true` when `page \u00d7 pageSize < total`.",
         "operationId": "get_explore_api_v1_explore_get",
         "parameters": [
           {
@@ -14306,6 +14324,7 @@
           "role": {
             "type": "string",
             "title": "Role",
+            "description": "Product-media role. Closed vocabulary (plan \u00a724 step 9): COVER, GALLERY, DETAIL, LIFESTYLE, MODEL, CLOSEUP, PRODUCT_VIDEO, SHOWCASE, DETAIL_VIDEO, LIFESTYLE_VIDEO. Matched case-insensitively and stored with the caller's own casing; an empty value stores the default 'gallery'. Anything else is rejected with 422 BUSINESS_RULE_VIOLATION.",
             "default": "gallery"
           },
           "sort_order": {
@@ -14357,7 +14376,15 @@
           },
           "namespace": {
             "type": "string",
+            "enum": [
+              "products",
+              "collections",
+              "hero",
+              "marketing",
+              "uploads"
+            ],
             "title": "Namespace",
+            "description": "Storage namespace. Closed vocabulary, enforced by `app.storage.keys` \u2014 a key whose first segment is not one of these is rejected before any I/O, which is what stops this route becoming a generic file server over the storage root. Case-sensitive. `products` additionally requires `productId`.",
             "default": "products"
           },
           "product_id": {
@@ -15310,7 +15337,8 @@
         "required": [
           "flags"
         ],
-        "title": "ClearReviewFlagsRequest"
+        "title": "ClearReviewFlagsRequest",
+        "description": "Clear specific review flags.\n\nPlan \u00a79.2 flags this route as \"no vocabulary validation \u2014 declare the flag\nvocabulary\" (\u00a724 step 8).  `flags` is now checked against\n`REVIEW_FLAG_VALUES`; an unknown flag is a 422 naming it, rather than a\nsilent 200 that clears nothing."
       },
       "CollectionCreateRequest": {
         "properties": {

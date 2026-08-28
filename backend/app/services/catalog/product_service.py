@@ -42,8 +42,9 @@ from app.core.exceptions import (
     ConflictException,
     ForbiddenException,
     NotFoundException,
+    ValidationException,
 )
-from app.models.catalog.category import CategoryModel
+from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.product import ProductModel
 from app.services.media.product_media_records import (
     gallery_urls,
@@ -58,7 +59,9 @@ from app.services.media.product_media_resolver import (
 from app.schemas.catalog.product import (
     ADMIN_SORTS,
     EMPLOYEE_EDITABLE_FIELDS,
+    LIFECYCLE_TRANSITIONS,
     PRODUCT_ID_RE,
+    REVIEW_FLAG_BLOCKING,
     SORT_ALIASES,
     AdminProduct,
     AdminProductListQuery,
@@ -238,14 +241,9 @@ def get_publish_issues(product: ProductModel) -> List[str]:
     if not has_authored_image and not has_primary_media:
         issues.append("At least one cover image is required before publishing.")
 
-    # Review flags — blocking subset
-    blocking_flags = {
-        "NAME_REVIEW_REQUIRED", "PRICE_REVIEW_REQUIRED", "TAXONOMY_REVIEW_REQUIRED",
-        "GROUP_REVIEW_REQUIRED", "VARIANT_REVIEW_REQUIRED", "NEEDS_MEDIA",
-        "MEDIA_OWNERSHIP_REVIEW", "CONFLICT_UNRESOLVED", "KIDS_MIGRATION_REVIEW",
-    }
+    # Review flags — blocking subset (declared vocabulary, plan §24 step 8)
     product_flags = set(product.review_flags or [])
-    active_blocking = product_flags & blocking_flags
+    active_blocking = product_flags & set(REVIEW_FLAG_BLOCKING)
     if active_blocking:
         issues.append(f"Review flags must be resolved before publishing: {', '.join(sorted(active_blocking))}.")
 
@@ -549,14 +547,360 @@ class ProductService:
                 status_map[category.name] = category.status
         return status_map
 
+    async def _subcategory_status_map(self) -> Dict[str, str]:
+        """
+        Map subcategory id/slug/name to status for storefront visibility.
+
+        Deliberately the exact mirror of `_category_status_map` — same key
+        triple, same shape — because PHASE_3_PRODUCT_CATALOG_IMPLEMENTATION_PLAN.md
+        §10.4(1) asks for *parity* between the two levels, and because
+        `catalog_product.subcategory` is the same untyped `String(100)`
+        reference column as `catalog_product.category`.
+
+        Ambiguity note: subcategory slugs/names are only unique WITHIN a
+        category, so if two categories own a same-named subcategory with
+        different statuses this flat map keeps the last row scanned. Block 2
+        (API-204) normalises every NEW write to the canonical row id, so the
+        ambiguity can only ever affect legacy rows that still carry a slug or
+        a name. Resolving it properly needs the category-scoped pair, which is
+        what `_resolve_taxonomy` already enforces on the write path.
+        """
+        result = await self.db.execute(select(SubcategoryModel))
+        rows = result.scalars().all()
+        status_map: Dict[str, str] = {}
+        for subcategory in rows:
+            if subcategory.id:
+                status_map[subcategory.id] = subcategory.status
+            if subcategory.slug:
+                status_map[subcategory.slug] = subcategory.status
+            if subcategory.name:
+                status_map[subcategory.name] = subcategory.status
+        return status_map
+
+    # ── The storefront visibility gate (Phase 3 §10 — API-180 / PF3-N06) ──────
+    #
+    # ONE predicate, used by every public read path, so `GET /products`,
+    # `GET /products/{id}`, `/explore`, `/search`, `/categories/{id}/products`,
+    # `/collections/{id}/products`, recommendations and recently-viewed can
+    # never disagree about a row (plan §25 acceptance criterion 13). Before
+    # this block the same expression was hand-copied into four places.
+    #
+    # A product is publicly visible when ALL of:
+    #   1. `status == "PUBLISHED"`            — asserted by each caller's query
+    #   2. `published IS TRUE`                — asserted by each caller's query
+    #   3. its category is not a KNOWN non-ACTIVE `catalog_category`
+    #   4. its subcategory (when set) is not a KNOWN non-ACTIVE
+    #      `catalog_subcategory`                              ← NEW (PF3-N06)
+    #
+    # Rules 3 and 4 both FAIL OPEN on a reference that resolves to no taxonomy
+    # row. That default is deliberate and is NOT an oversight: flipping it to
+    # fail-closed is PF3-N07, and plan §24 step 7 admits it "only after the
+    # step 0 report is reviewed", with §23 R1 ("Never flip the default blind")
+    # rating it the single highest regression risk in Phase 3. The step 0
+    # reconciliation (`SELECT DISTINCT category` over the real catalogue)
+    # needs a PostgreSQL server, which this environment does not have
+    # (plan Appendix B). See PHASE_3_BLOCK_5_IMPLEMENTATION_REPORT.md §23.
+
+    @staticmethod
+    def _taxonomy_visible(
+        product: ProductModel,
+        category_status_map: Dict[str, str],
+        subcategory_status_map: Dict[str, str],
+    ) -> bool:
+        """True when the product's taxonomy references do not hide it."""
+        if category_status_map.get(product.category, "ACTIVE") != "ACTIVE":
+            return False
+        subcategory = (product.subcategory or "").strip()
+        if subcategory and subcategory_status_map.get(subcategory, "ACTIVE") != "ACTIVE":
+            return False
+        return True
+
+    async def _visibility_maps(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """Load both taxonomy status maps for one storefront read."""
+        return await self._category_status_map(), await self._subcategory_status_map()
+
+    # ── Product ↔ taxonomy contract (Phase 3 — API-204) ───────────────────────
+    #
+    # `catalog_product.category` / `.subcategory` are plain String(100) columns
+    # with NO foreign key (deliberately — Phase 3 is migration-free), so the
+    # ONLY place the reference can be enforced is here, on the write path.
+    #
+    # Rules, taken from PHASE_3_PRODUCT_CATALOG_IMPLEMENTATION_PLAN.md §12.3,
+    # §16.2 and §22.1:
+    #   1. An incoming value is resolved against `catalog_category` /
+    #      `catalog_subcategory` by id, then slug, then name (the same triple
+    #      `_category_status_map` already keys on).
+    #   2. A value that resolves to nothing is rejected — never stored.
+    #   3. A taxonomy node may only be ASSIGNED while it is ACTIVE; DRAFT and
+    #      ARCHIVED nodes are rejected (§16.2 "Inactive category assigned").
+    #      The rule applies to the field being WRITTEN: a patch that does not
+    #      touch a field cannot be failed by that field's status.
+    #   4. The subcategory must belong to the resulting category — the pair is
+    #      validated, not merely the existence of two ids.
+    #   5. What is stored is the canonical row id, so the visibility gate, the
+    #      admin filter and the editor's selects all key on one vocabulary.
+    #
+    # Every rejection is HTTP 422 `VALIDATION_ERROR` in the Phase 1 envelope,
+    # with FastAPI-shaped field details, so the admin UI renders it exactly
+    # like a schema rejection.
+
+    ASSIGNABLE_TAXONOMY_STATUS = "ACTIVE"
+
+    @staticmethod
+    def _taxonomy_rejection(
+        field: str, message: str, error_type: str, value: Any
+    ) -> ValidationException:
+        """Canonical 422 for one taxonomy field."""
+        return ValidationException(
+            message=message,
+            details=[
+                {
+                    "loc": ["body", field],
+                    "field": field,
+                    "msg": message,
+                    "type": error_type,
+                    "input": value,
+                }
+            ],
+        )
+
+    async def _lookup_category(self, value: str) -> Optional[CategoryModel]:
+        """Resolve a category reference by id, then slug, then name."""
+        rows = (
+            await self.db.execute(
+                select(CategoryModel).where(
+                    or_(
+                        CategoryModel.id == value,
+                        CategoryModel.slug == value,
+                        CategoryModel.name == value,
+                    )
+                )
+            )
+        ).scalars().all()
+        for attribute in ("id", "slug", "name"):
+            for row in rows:
+                if getattr(row, attribute, None) == value:
+                    return row
+        return None
+
+    async def _lookup_subcategories(self, value: str) -> List[SubcategoryModel]:
+        """Every subcategory whose id, slug or name matches (any category)."""
+        rows = (
+            await self.db.execute(
+                select(SubcategoryModel).where(
+                    or_(
+                        SubcategoryModel.id == value,
+                        SubcategoryModel.slug == value,
+                        SubcategoryModel.name == value,
+                    )
+                )
+            )
+        ).scalars().all()
+        return [row for row in rows]
+
+    @staticmethod
+    def _pick_subcategory(
+        rows: List[SubcategoryModel], value: str, category_id: str
+    ) -> Optional[SubcategoryModel]:
+        """The id/slug/name match that actually belongs to `category_id`."""
+        owned = [row for row in rows if getattr(row, "category_id", None) == category_id]
+        for attribute in ("id", "slug", "name"):
+            for row in owned:
+                if getattr(row, attribute, None) == value:
+                    return row
+        return None
+
+    async def _resolve_taxonomy(
+        self,
+        data: Dict[str, Any],
+        current_category: Optional[str] = None,
+        current_subcategory: Optional[str] = None,
+    ) -> None:
+        """
+        Validate — and canonicalise in place — the taxonomy of one write.
+
+        `data` carries only the explicitly-set request fields (`exclude_unset`),
+        so PATCH semantics are preserved: a field that is absent is never
+        validated, never written and never turned into a PUT. The values that
+        are absent are read from the stored record (`current_*`) purely to
+        validate the RESULTING pair.
+        """
+        category_supplied = "category" in data
+        subcategory_supplied = "subcategory" in data
+        if not category_supplied and not subcategory_supplied:
+            return
+
+        raw_category = data.get("category") if category_supplied else current_category
+        raw_subcategory = (
+            data.get("subcategory") if subcategory_supplied else current_subcategory
+        )
+        category_value = str(raw_category or "").strip()
+        subcategory_value = str(raw_subcategory or "").strip()
+
+        # A write that only CLEARS the subcategory and leaves the category
+        # untouched assigns nothing, so there is no pair to validate. Without
+        # this, a legacy free-text category on an old row would trap the clear.
+        if not category_supplied and not subcategory_value:
+            return
+
+        # Report against the field the caller actually sent, so the UI can
+        # point at an input the operator can fix.
+        category_field = "category" if category_supplied else "subcategory"
+        subcategory_field = "subcategory" if subcategory_supplied else "category"
+
+        category_row: Optional[CategoryModel] = None
+        if category_value:
+            category_row = await self._lookup_category(category_value)
+            if category_row is None:
+                raise self._taxonomy_rejection(
+                    category_field,
+                    f"Unknown category '{category_value}'.",
+                    "value_error.taxonomy.unknown_category",
+                    category_value,
+                )
+            if (
+                category_supplied
+                and category_row.status != self.ASSIGNABLE_TAXONOMY_STATUS
+            ):
+                raise self._taxonomy_rejection(
+                    category_field,
+                    f"Category '{category_row.name}' is {category_row.status} "
+                    f"and cannot be assigned to a product.",
+                    "value_error.taxonomy.category_status",
+                    category_value,
+                )
+            if category_supplied:
+                data["category"] = category_row.id
+
+        if not subcategory_value:
+            return
+
+        if category_row is None:
+            raise self._taxonomy_rejection(
+                subcategory_field,
+                f"Subcategory '{subcategory_value}' cannot be assigned without "
+                f"a category.",
+                "value_error.taxonomy.subcategory_without_category",
+                subcategory_value,
+            )
+
+        candidates = await self._lookup_subcategories(subcategory_value)
+        if not candidates:
+            raise self._taxonomy_rejection(
+                subcategory_field,
+                f"Unknown subcategory '{subcategory_value}' for category "
+                f"'{category_row.name}'.",
+                "value_error.taxonomy.unknown_subcategory",
+                subcategory_value,
+            )
+
+        subcategory_row = self._pick_subcategory(
+            candidates, subcategory_value, category_row.id
+        )
+        if subcategory_row is None:
+            raise self._taxonomy_rejection(
+                subcategory_field,
+                f"Subcategory '{subcategory_value}' does not belong to category "
+                f"'{category_row.name}'.",
+                "value_error.taxonomy.subcategory_category_mismatch",
+                subcategory_value,
+            )
+
+        if (
+            subcategory_supplied
+            and subcategory_row.status != self.ASSIGNABLE_TAXONOMY_STATUS
+        ):
+            raise self._taxonomy_rejection(
+                subcategory_field,
+                f"Subcategory '{subcategory_row.name}' is {subcategory_row.status} "
+                f"and cannot be assigned to a product.",
+                "value_error.taxonomy.subcategory_status",
+                subcategory_value,
+            )
+
+        if subcategory_supplied:
+            data["subcategory"] = subcategory_row.id
+
+    # ── SKU / slug uniqueness (Phase 3 — PF3-N03 / PF3-N04) ──────────────────
+    #
+    # `ix_catalog_product_sku` and `ix_catalog_product_slug` are NON-unique
+    # indexes (`597f883749d8:115-116`). Plan §19 states the constraint (and the
+    # de-duplication pass it needs) is deliberately SEPARATED into Phase 4, and
+    # that Phase 3 enforces uniqueness "at the service layer — a SELECT before
+    # insert. No constraint needed." That is what these helpers do; the
+    # concurrency limitation is documented in API_CONTRACT.md §9.4.
+    #
+    # Normalisation (plan §22.1 "case/whitespace normalisation defined and
+    # tested"): surrounding whitespace is stripped, and the collision test is
+    # CASE-INSENSITIVE — `pf-sar-0001` and `PF-SAR-0001` are the same identity.
+    # The caller's own casing is preserved in storage; only the comparison is
+    # folded, so nothing is silently rewritten.
+
+    @staticmethod
+    def _normalise_identity(value: Any) -> str:
+        """Trim an identity value; `None`/blank collapse to ""."""
+        return str(value or "").strip()
+
+    async def _product_with_sku(
+        self, sku: str, exclude_id: Optional[str] = None
+    ) -> Optional[ProductModel]:
+        stmt = select(ProductModel).where(func.lower(ProductModel.sku) == sku.lower())
+        if exclude_id:
+            stmt = stmt.where(ProductModel.id != exclude_id)
+        return (await self.db.execute(stmt)).scalars().first()
+
+    async def _product_with_slug(
+        self, slug: str, exclude_id: Optional[str] = None
+    ) -> Optional[ProductModel]:
+        stmt = select(ProductModel).where(func.lower(ProductModel.slug) == slug.lower())
+        if exclude_id:
+            stmt = stmt.where(ProductModel.id != exclude_id)
+        return (await self.db.execute(stmt)).scalars().first()
+
+    async def _assert_sku_available(
+        self, sku: str, exclude_id: Optional[str] = None
+    ) -> str:
+        """A taken SKU is a 409 — never a silent accept (plan §16.2)."""
+        if await self._product_with_sku(sku, exclude_id=exclude_id):
+            raise ConflictException(
+                f"SKU '{sku}' is already in use.",
+                details={"field": "sku", "value": sku},
+            )
+        return sku
+
+    async def _assert_slug_available(
+        self, slug: str, exclude_id: Optional[str] = None
+    ) -> str:
+        """
+        A taken slug is a 409 carrying a deterministic `suggestedSlug` — never
+        a silent `-1` rename (plan §16.2, §25.7, R3).
+        """
+        if await self._product_with_slug(slug, exclude_id=exclude_id):
+            suggested = await self._generate_unique_slug(
+                slug, base=True, exclude_id=exclude_id
+            )
+            raise ConflictException(
+                f"Slug '{slug}' is already in use.",
+                details={"field": "slug", "value": slug, "suggestedSlug": suggested},
+            )
+        return slug
+
     # ── Public storefront catalogue ───────────────────────────────────────────
 
     async def list_storefront_products(
-        self, query: ProductListQuery, category_status_map: Optional[Dict[str, str]] = None
+        self,
+        query: ProductListQuery,
+        category_status_map: Optional[Dict[str, str]] = None,
+        subcategory_status_map: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         GET /products — apply visibility gate + filters + facets + sort + pagination.
-        Visibility gate: status PUBLISHED, published=True, category ACTIVE.
+
+        Visibility gate: status PUBLISHED, published=True, category ACTIVE and
+        subcategory (when set) ACTIVE — see `_taxonomy_visible`. This one
+        method also backs `/explore`, `/search`, `/categories/{id}/products`
+        and `/collections/{id}/products`, so the gate is applied once for all
+        of them.
         """
         stmt = select(ProductModel).where(
             ProductModel.status == "PUBLISHED",
@@ -565,16 +909,20 @@ class ProductService:
         result = await self.db.execute(stmt)
         all_products = list(result.scalars().all())
 
-        # Apply category-active filter.  General storefront/search/explore
-        # callers do not pass a map, so the service loads it from the existing
-        # category table. Unknown legacy category values remain visible for
-        # backward compatibility; known inactive/archived categories are hidden.
+        # Apply the taxonomy-active filter. General storefront/search/explore
+        # callers do not pass maps, so the service loads them from the existing
+        # category/subcategory tables. Unknown legacy references remain visible
+        # for backward compatibility (PF3-N07, deferred — see
+        # `_taxonomy_visible`); known inactive/archived nodes are hidden at
+        # BOTH levels.
         if category_status_map is None:
             category_status_map = await self._category_status_map()
-        if category_status_map:
+        if subcategory_status_map is None:
+            subcategory_status_map = await self._subcategory_status_map()
+        if category_status_map or subcategory_status_map:
             all_products = [
                 p for p in all_products
-                if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"
+                if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
             ]
 
         # When called from GET /collections/{id}/products the router pre-resolves
@@ -836,8 +1184,8 @@ class ProductService:
         p = await self._get_or_404(id_or_slug)
         if p.status != "PUBLISHED" or not p.published:
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
-        category_status_map = await self._category_status_map()
-        if category_status_map.get(p.category, "ACTIVE") != "ACTIVE":
+        category_status_map, subcategory_status_map = await self._visibility_maps()
+        if not self._taxonomy_visible(p, category_status_map, subcategory_status_map):
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
 
         registered = await self._registered_media_items(p.id)
@@ -884,8 +1232,11 @@ class ProductService:
             stmt = stmt.where(ProductModel.category == source.category)
         result = await self.db.execute(stmt.limit(12))
         products = result.scalars().all()
-        category_status_map = await self._category_status_map()
-        products = [p for p in products if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"]
+        category_status_map, subcategory_status_map = await self._visibility_maps()
+        products = [
+            p for p in products
+            if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
+        ]
         registered_map = await self._registered_media_map([p.id for p in products])
         return [self._to_storefront(p, registered_map.get(p.id)) for p in products]
 
@@ -909,11 +1260,11 @@ class ProductService:
             ProductModel.published.is_(True),
         )
         result = await self.db.execute(stmt)
-        category_status_map = await self._category_status_map()
+        category_status_map, subcategory_status_map = await self._visibility_maps()
         product_map: Dict[str, ProductModel] = {
             p.id: p
             for p in result.scalars().all()
-            if category_status_map.get(p.category, "ACTIVE") == "ACTIVE"
+            if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
         }
 
         registered_map = await self._registered_media_map(list(product_map.keys()))
@@ -1104,6 +1455,11 @@ class ProductService:
         import time
         new_id = f"pf-{int(time.time() * 1000):x}"
 
+        # Taxonomy is validated FIRST: an invalid reference must not consume an
+        # id, a slug or a sku, and must never reach the row.
+        data = self._content_data(req)
+        await self._resolve_taxonomy(data)
+
         # Check for id collision (unlikely but safe)
         existing = await self.db.execute(
             select(ProductModel).where(ProductModel.id == new_id)
@@ -1111,13 +1467,24 @@ class ProductService:
         if existing.scalars().first():
             new_id = f"{new_id}-{int(time.time() * 1000) % 1000}"
 
-        slug = await self._generate_unique_slug(req.name or new_id)
-        sku = await self._generate_unique_sku()
-
-        data = self._content_data(req)
         data.setdefault("name", "")
-        data.setdefault("sku", sku)
-        data["slug"] = slug
+
+        # Identity: a supplied slug/sku is honoured VERBATIM on this path too
+        # (PF3-N04 — it used to be discarded), and a collision is a 409 rather
+        # than a silent `-1` rename. Generation happens only when the caller
+        # supplied nothing.
+        supplied_slug = self._normalise_identity(data.get("slug"))
+        supplied_sku = self._normalise_identity(data.get("sku"))
+        data["slug"] = (
+            await self._assert_slug_available(supplied_slug)
+            if supplied_slug
+            else await self._generate_unique_slug(req.name or new_id)
+        )
+        data["sku"] = (
+            await self._assert_sku_available(supplied_sku)
+            if supplied_sku
+            else await self._generate_unique_sku()
+        )
         data["brand"] = data.get("brand") or "Pratikshya Fashon"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
@@ -1162,10 +1529,26 @@ class ProductService:
 
         data = self._content_data(req)
         data.pop("id", None)
+        # Same domain rule as POST /admin/products — one validator, both
+        # create paths, so neither can store an unauthorised reference.
+        await self._resolve_taxonomy(data)
         base_name = data.get("name") or req.id
         data.setdefault("name", base_name)
-        data["slug"] = await self._generate_unique_slug(data.get("slug") or base_name)
-        data.setdefault("sku", await self._generate_unique_sku(prefix=req.id))
+        # Identical identity rules to POST /admin/products — one contract, two
+        # entry points: supplied values are stored verbatim or 409, and only an
+        # absent value is generated.
+        supplied_slug = self._normalise_identity(data.get("slug"))
+        supplied_sku = self._normalise_identity(data.get("sku"))
+        data["slug"] = (
+            await self._assert_slug_available(supplied_slug)
+            if supplied_slug
+            else await self._generate_unique_slug(base_name)
+        )
+        data["sku"] = (
+            await self._assert_sku_available(supplied_sku)
+            if supplied_sku
+            else await self._generate_unique_sku(prefix=req.id)
+        )
         data["brand"] = data.get("brand") or "Pratikshya Fashon"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
@@ -1219,11 +1602,31 @@ class ProductService:
 
         self._sanitize_for_update(data)
 
-        # Slug changes must stay unique against the live catalogue; the
-        # shared generator appends -2/-3… rather than 409ing an admin edit.
-        requested_slug = data.get("slug")
-        if requested_slug and requested_slug != p.slug:
-            data["slug"] = await self._generate_unique_slug(requested_slug)
+        # Taxonomy: only validated when the patch actually carries one of the
+        # two fields. The resulting PAIR is validated — a category-only patch
+        # is checked against the stored subcategory and vice versa — while an
+        # untouched field is never failed for its own status.
+        await self._resolve_taxonomy(
+            data, current_category=p.category, current_subcategory=p.subcategory
+        )
+
+        # Identity uniqueness is decided BEFORE any attribute is mutated, so a
+        # rejected patch writes nothing. A value the product already owns is
+        # never a conflict (the current row is excluded from the probe), and a
+        # taken one is a 409 with `suggestedSlug` — no silent -1 rename
+        # (PF3-N03 / PF3-N04, plan §8 "the silent slug rename").
+        if "slug" in data:
+            requested_slug = self._normalise_identity(data["slug"])
+            if requested_slug:
+                data["slug"] = await self._assert_slug_available(
+                    requested_slug, exclude_id=p.id
+                )
+        if "sku" in data:
+            requested_sku = self._normalise_identity(data["sku"])
+            if requested_sku:
+                data["sku"] = await self._assert_sku_available(
+                    requested_sku, exclude_id=p.id
+                )
 
         # Server-side pricing: a valid supplied pricing block recomputes the
         # money fields so the stored price is never trust-the-client garbage.
@@ -1304,6 +1707,12 @@ class ProductService:
         }
         data = {k: v for k, v in data.items() if k in snake_whitelist}
 
+        # The employee whitelist includes `category`/`subcategory`, so it is a
+        # product-taxonomy write path and carries the identical domain rule.
+        await self._resolve_taxonomy(
+            data, current_category=p.category, current_subcategory=p.subcategory
+        )
+
         old_price = p.price
         for field, new_val in data.items():
             old_val = getattr(p, field, None)
@@ -1336,6 +1745,40 @@ class ProductService:
         return await self._to_admin_current(p)
 
     # ── Workflow actions ──────────────────────────────────────────────────────
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _lifecycle_state(p: ProductModel) -> Tuple[str, str]:
+        """The product's two independent lifecycle axes, normalised."""
+        status = (p.status or "DRAFT").upper()
+        review_state = str((p.review or {}).get("state") or "NONE").upper()
+        return status, review_state
+
+    @classmethod
+    def _assert_transition(cls, p: ProductModel, action: str, message: str) -> Tuple[str, str]:
+        """
+        Enforce the DECLARED source states for `action` (plan §24 step 8).
+
+        Both axes are checked independently against `LIFECYCLE_TRANSITIONS`, so
+        a product can never satisfy a guard on one axis while violating the
+        other.  The previous per-method guards combined the two axes with
+        `and`, which meant an ARCHIVED product whose review was still PENDING
+        (reachable by archiving a submitted product) passed both the approve
+        and the reject guard — the latter silently resurrecting it to DRAFT.
+
+        Raises BusinessLogicException — the project's canonical
+        422 BUSINESS_RULE_VIOLATION. No new error code is introduced.
+        """
+        rule = LIFECYCLE_TRANSITIONS[action]
+        status, review_state = cls._lifecycle_state(p)
+        allowed_status = rule["from_status"]
+        allowed_review = rule["from_review"]
+        if allowed_status is not None and status not in allowed_status:
+            raise BusinessLogicException(f"{message} (current status: {status}).")
+        if allowed_review is not None and review_state not in allowed_review:
+            raise BusinessLogicException(f"{message} (review state: {review_state}).")
+        return status, review_state
 
     async def submit_for_review(
         self,
@@ -1414,13 +1857,14 @@ class ProductService:
         immediate publish).
         """
         p = await self._get_or_404(product_id)
-        status = (p.status or "").upper()
-        review_state = str((p.review or {}).get("state") or "NONE").upper()
-        if status != "PENDING_REVIEW" and review_state != "PENDING":
-            raise BusinessLogicException(
-                "Only products pending review can be approved "
-                f"(current status: {p.status or 'DRAFT'}). Submit it for review first."
-            )
+        # Declared transition (plan §24 step 8): PENDING_REVIEW on the status
+        # axis AND PENDING/APPROVED on the review axis. Checking the two axes
+        # independently is what stops an ARCHIVED product whose review is still
+        # PENDING from being approved.
+        status, review_state = self._assert_transition(
+            p, "approve",
+            "Only products pending review can be approved; submit it for review first",
+        )
         if review_state == "APPROVED":
             return await self._to_admin_current(p)  # idempotent — already approved
         now = _now_utc()
@@ -1442,13 +1886,14 @@ class ProductService:
         rejected; the outcome returns it to DRAFT with a visible rejection.
         """
         p = await self._get_or_404(product_id)
-        status = (p.status or "").upper()
-        review_state = str((p.review or {}).get("state") or "NONE").upper()
-        if status != "PENDING_REVIEW" and review_state != "PENDING":
-            raise BusinessLogicException(
-                "Only products pending review can be rejected or returned "
-                f"(current status: {p.status or 'DRAFT'})."
-            )
+        # Declared transition (plan §24 step 8). Previously the two axes were
+        # combined with `and`, so an ARCHIVED product still carrying a PENDING
+        # review could be "rejected" — which set status=DRAFT and silently
+        # resurrected it out of the archive.
+        self._assert_transition(
+            p, "reject",
+            "Only products pending review can be rejected or returned",
+        )
         previous_status = p.status or "PENDING_REVIEW"
         now = _now_utc().isoformat()
         p.status = "DRAFT"
@@ -1559,18 +2004,44 @@ class ProductService:
     async def change_product_id(
         self, product_id: str, req: ChangeProductIdRequest, actor: str
     ) -> AdminProduct:
+        """
+        POST /admin/products/{id}/change-id — change the DISPLAY LABEL only.
+
+        Plan §24 step 8 requires the "BACKEND DECISION REQUIRED: cascade to
+        media, inventory, collection, order history" question to be resolved.
+
+        RESOLUTION — no cascade is required, because no cascade target exists.
+        This route has never touched `catalog_product.id`, the primary key that
+        `media_product_media.product_id`, inventory, collection membership and
+        order lines all reference. It only rewrites `catalog_product.product_id`,
+        the human-facing label. Every foreign reference therefore stays valid by
+        construction, and a cascade would in fact be the bug.
+
+        What DID need restricting is the freeness check: it tested the new label
+        against the primary key only, so two rows could end up sharing one
+        `product_id`. `_get_or_404` resolves on id OR product_id OR slug, so a
+        duplicate label makes admin lookups silently ambiguous — the same class
+        of defect Block 3 closed for SKU and slug, and it is closed the same
+        way, with a service-layer 409 and no UNIQUE constraint.
+        """
         p = await self._get_or_404(product_id)
-        # Check new id is free
-        existing = await self.db.execute(
-            select(ProductModel).where(ProductModel.id == req.new_id)
+        new_id = req.new_id
+        # The new label must collide with neither a primary key nor another
+        # row's display label (self-collision is a no-op, not a conflict).
+        clash = await self.db.execute(
+            select(ProductModel).where(
+                or_(
+                    ProductModel.id == new_id,
+                    ProductModel.product_id == new_id,
+                ),
+                ProductModel.id != p.id,
+            )
         )
-        if existing.scalars().first():
-            raise ConflictException(f"Product ID '{req.new_id}' is already taken.")
-        old_id = p.id
-        # SQLAlchemy won't let us directly change the PK on most backends; we note this
-        # is a BACKEND DECISION in the spec. We update product_id as the display label.
-        p.product_id = req.new_id
-        self._append_history(p, "productId", old_id, req.new_id, actor)
+        if clash.scalars().first():
+            raise ConflictException(f"Product ID '{new_id}' is already taken.")
+        old_id = p.product_id or p.id
+        p.product_id = new_id
+        self._append_history(p, "productId", old_id, new_id, actor)
         p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
@@ -1754,21 +2225,45 @@ class ProductService:
     # ── Availability ──────────────────────────────────────────────────────────
 
     async def check_availability(
-        self, sku: Optional[str] = None, slug: Optional[str] = None
+        self,
+        sku: Optional[str] = None,
+        slug: Optional[str] = None,
+        exclude_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Pre-flight identity probe for the admin editor.
+
+        This is a CONVENIENCE, not the enforcement layer: the authority remains
+        the 409 raised by `_assert_sku_available` / `_assert_slug_available` on
+        the write itself. To make the two agree, this method calls exactly the
+        SAME probe helpers and the SAME slug generator the write path uses —
+        there is deliberately no second copy of the collision rule here. Trim,
+        case-insensitive comparison and self-exclusion therefore behave
+        identically, so `skuTaken == false` cannot be followed by a 409 for
+        that same value in the same exclusion context (barring a concurrent
+        write between the two requests — see `API_CONTRACT.md` §9.5).
+
+        `exclude_id` is the product being edited. Its own SKU/slug must report
+        as FREE, exactly as `PATCH` accepts a product's own identity. An
+        `exclude_id` matching no row simply excludes nothing.
+        """
         sku_taken = False
         slug_taken = False
         suggested_slug = None
 
+        sku = self._normalise_identity(sku)
+        slug = self._normalise_identity(slug)
+        exclude_id = self._normalise_identity(exclude_id) or None
+
         if sku:
-            result = await self.db.execute(select(ProductModel).where(ProductModel.sku == sku))
-            sku_taken = result.scalars().first() is not None
+            sku_taken = await self._product_with_sku(sku, exclude_id=exclude_id) is not None
 
         if slug:
-            result = await self.db.execute(select(ProductModel).where(ProductModel.slug == slug))
-            slug_taken = result.scalars().first() is not None
+            slug_taken = await self._product_with_slug(slug, exclude_id=exclude_id) is not None
             if slug_taken:
-                suggested_slug = await self._generate_unique_slug(slug, base=True)
+                suggested_slug = await self._generate_unique_slug(
+                    slug, base=True, exclude_id=exclude_id
+                )
 
         return {"ok": True, "skuTaken": sku_taken, "slugTaken": slug_taken, "suggestedSlug": suggested_slug}
 
@@ -1819,11 +2314,7 @@ class ProductService:
         result2 = await self.db.execute(
             select(ProductModel.review_flags).where(ProductModel.status != "ARCHIVED")
         )
-        blocking_flags = {
-            "NAME_REVIEW_REQUIRED", "PRICE_REVIEW_REQUIRED", "TAXONOMY_REVIEW_REQUIRED",
-            "GROUP_REVIEW_REQUIRED", "VARIANT_REVIEW_REQUIRED", "NEEDS_MEDIA",
-            "MEDIA_OWNERSHIP_REVIEW", "CONFLICT_UNRESOLVED", "KIDS_MIGRATION_REVIEW",
-        }
+        blocking_flags = set(REVIEW_FLAG_BLOCKING)
         blocked = sum(
             1 for (flags,) in result2
             if flags and set(flags) & blocking_flags
@@ -1864,15 +2355,20 @@ class ProductService:
 
     # ── Internal slug/sku helpers ─────────────────────────────────────────────
 
-    async def _generate_unique_slug(self, base_text: str, base: bool = False) -> str:
+    async def _generate_unique_slug(
+        self, base_text: str, base: bool = False, exclude_id: Optional[str] = None
+    ) -> str:
+        """
+        The generator used when the caller supplied NO slug (and to compute a
+        `suggestedSlug` after a collision). It uses the same case-insensitive
+        comparison as the enforcement path, so a suggestion can never come back
+        as a 409.
+        """
         base_slug = _slugify(base_text) if not base else base_text
         slug = base_slug
         counter = 1
         while True:
-            result = await self.db.execute(
-                select(ProductModel).where(ProductModel.slug == slug)
-            )
-            if not result.scalars().first():
+            if not await self._product_with_slug(slug, exclude_id=exclude_id):
                 return slug
             slug = f"{base_slug}-{counter}"
             counter += 1
@@ -1883,9 +2379,6 @@ class ProductService:
         for _ in range(100):
             n = random.randint(10000, 99999)
             candidate = f"{prefix[:2].upper()}-{n:05d}"
-            result = await self.db.execute(
-                select(ProductModel).where(ProductModel.sku == candidate)
-            )
-            if not result.scalars().first():
+            if not await self._product_with_sku(candidate):
                 return candidate
         raise BusinessLogicException("Could not generate a unique SKU.")

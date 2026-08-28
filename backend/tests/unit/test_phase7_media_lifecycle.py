@@ -90,6 +90,7 @@ from app.config import settings  # noqa: E402
 from app.dependencies import get_current_user, get_db  # noqa: E402
 from app.models.auth.user import UserModel  # noqa: E402
 from app.models.base import Base  # noqa: E402
+from app.models.catalog.category import CategoryModel, SubcategoryModel  # noqa: E402
 from app.models.catalog.product import ProductModel  # noqa: E402
 from app.models.employee.employee import EmployeeProfileModel  # noqa: E402
 from app.models.media.media_asset import MediaAssetModel  # noqa: E402
@@ -116,6 +117,9 @@ AVIF_BYTES = b"\x00\x00\x00\x1c" + b"ftypavif" + b"\x00\x00\x00\x00avifmif1" + b
 SEED_PRODUCT_ID = "PF-W-SAR-SIL-0001"
 LEGACY_IMAGE = f"/images/products/{SEED_PRODUCT_ID}/primary.avif"
 NEW_PRODUCT_ID = "PF-W-TST-NEW-0001"
+# Authoritative taxonomy rows the product writes are validated against.
+SEED_CATEGORY_ID = "cat-p7-sarees"
+SEED_SUBCATEGORY_ID = "cat-p7-sarees-silk"
 
 
 @unittest.skipUnless(
@@ -256,6 +260,27 @@ class Phase7LifecycleCase(unittest.IsolatedAsyncioTestCase):
                 EmployeeProfileModel(user_id=employee1.id, employee_code="P7-EMP-001", designation="Stylist"),
                 EmployeeProfileModel(user_id=employee2.id, employee_code="P7-EMP-002", designation="Stylist"),
             ])
+
+            # The authoritative taxonomy the products below live under.
+            # Phase 3 validates every product write against these rows, so a
+            # create/patch that names `sarees` / `silk` must find them here.
+            session.add(
+                CategoryModel(
+                    id=SEED_CATEGORY_ID,
+                    name="Sarees",
+                    slug="sarees",
+                    status="ACTIVE",
+                )
+            )
+            session.add(
+                SubcategoryModel(
+                    id=SEED_SUBCATEGORY_ID,
+                    category_id=SEED_CATEGORY_ID,
+                    name="Silk",
+                    slug="silk",
+                    status="ACTIVE",
+                )
+            )
 
             # A legacy product (legacy authored image only, no registered
             # records) and a product assigned to employee 1.

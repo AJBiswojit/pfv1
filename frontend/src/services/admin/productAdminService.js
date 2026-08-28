@@ -80,9 +80,18 @@ export async function fetchAdminMetrics() {
   return apiAdminProductMetrics();
 }
 
-/** GET /admin/products/availability — server-side SKU/slug uniqueness. */
-export async function checkAvailability({ sku, slug } = {}) {
-  return apiAdminCheckAvailability({ sku, slug });
+/**
+ * GET /admin/products/availability — server-side SKU/slug uniqueness.
+ *
+ * The SERVER is the authority for product identity pre-flight; the session
+ * cache must not be consulted for it (it holds only the records this session
+ * happened to fetch, so it produces both false negatives — an unfetched page —
+ * and false positives — a stale or case-mismatched row).
+ *
+ * `excludeId` is the product being edited, so its own SKU/slug reports free.
+ */
+export async function checkAvailability({ sku, slug, excludeId } = {}) {
+  return apiAdminCheckAvailability({ sku, slug, excludeId });
 }
 
 /**

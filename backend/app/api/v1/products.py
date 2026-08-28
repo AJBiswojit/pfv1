@@ -111,7 +111,9 @@ async def _employee_code_for_user(user: UserModel, db: AsyncSession) -> Optional
     response_model=ProductListResponse,
     summary="Storefront product catalogue — filtered, sorted, paginated with facet counts",
     description=(
-        "Gate: `PUBLISHED`, `published=true`, `category.status=ACTIVE`.  \n"
+        "Gate: `PUBLISHED`, `published=true`, `category.status=ACTIVE` and — when set — "
+        "`subcategory.status=ACTIVE`. A reference that resolves to no taxonomy row "
+        "does not hide the product.  \n"
         "Facets: 12 (category, subcategory, gender, price, size, color, fabric, "
         "material, occasion, collection, rating, availability).  \n"
         "Sort: recommended (default), newest, price-asc, price-desc, discount, "
@@ -191,7 +193,9 @@ async def add_recently_viewed(
     description=(
         "Returns the full `StorefrontProduct` shape including `details`, `careInstructions`, "
         "`deliveryInfo`, `returnInfo`, `specifications`.  \n"
-        "Only `PUBLISHED` products are visible. Returns 404 for anything else."
+        "Only `PUBLISHED` products in an `ACTIVE` category and — when set — an `ACTIVE` "
+        "subcategory are visible. Everything else, including a product that is "
+        "APPROVED but not yet published, returns the canonical `404 NOT_FOUND`."
     ),
 )
 @cache(expire=TTL_PRODUCT_DETAIL)
@@ -387,17 +391,27 @@ async def admin_get_next_id(
     "/admin/products/availability",
     response_model=AvailabilityResponse,
     summary="Admin — check SKU and slug availability",
-    description="Query: `sku=&slug=`. Returns `{ skuTaken, slugTaken, suggestedSlug? }`.",
+    description=(
+        "Query: `sku=&slug=&excludeId=`. Returns "
+        "`{ skuTaken, slugTaken, suggestedSlug? }`.  \n"
+        "Pre-flight only — the authoritative uniqueness verdict is the **409 "
+        "`CONFLICT`** raised by the create/update endpoints, which use the same "
+        "trimmed, case-insensitive comparison. Pass `excludeId` when editing an "
+        "existing product so its own SKU/slug is reported as free."
+    ),
 )
 async def admin_check_availability(
     sku: Optional[str] = Query(None),
     slug: Optional[str] = Query(None),
+    excludeId: Optional[str] = Query(
+        None, description="Product id to exclude — the product currently being edited."
+    ),
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
     await require_admin_permission(current_user, db, "products.view")
     service = ProductService(db)
-    result = await service.check_availability(sku=sku, slug=slug)
+    result = await service.check_availability(sku=sku, slug=slug, exclude_id=excludeId)
     return AvailabilityResponse(**result)
 
 
@@ -649,7 +663,12 @@ async def admin_publish_issues(
     description=(
         "Body: `{ newId }` — validated `^[A-Z0-9][A-Z0-9-]{1,35}$`, must be free.  \n"
         "Activity `PRODUCT_RENAMED_ID`.  \n"
-        "**BACKEND DECISION REQUIRED**: cascade to media, inventory, collection, order history."
+        "**Cascade question resolved (plan §24 step 8):** this route rewrites the "
+        "human-facing **display label** (`productId`) only — never "
+        "`catalog_product.id`, the primary key that media, inventory, collection "
+        "membership and order history reference. No cascade is required, and none "
+        "is performed. `newId` must collide with neither an existing primary key "
+        "nor another product's display label, otherwise **409 `CONFLICT`**."
     ),
 )
 async def admin_change_product_id(
@@ -687,7 +706,14 @@ async def admin_duplicate_product(
     response_model=SingleProductResponse,
     summary="Admin — clear specific review flags",
     description=(
-        "Body: `{ flags: string[] }`.  \n"
+        "Body: `{ flags: string[] }` — each flag must be a member of the declared "
+        "review-flag vocabulary (plan §24 step 8); an unknown flag is a "
+        "**422 `VALIDATION_ERROR`** naming it. Blocking flags: "
+        "`NAME_REVIEW_REQUIRED`, `PRICE_REVIEW_REQUIRED`, `TAXONOMY_REVIEW_REQUIRED`, "
+        "`GROUP_REVIEW_REQUIRED`, `VARIANT_REVIEW_REQUIRED`, `NEEDS_MEDIA`, "
+        "`MEDIA_OWNERSHIP_REVIEW`, `CONFLICT_UNRESOLVED`, `KIDS_MIGRATION_REVIEW`. "
+        "Informational flags: `CONFLICT_REVIEW_LATER`, `MEDIA_OWNERSHIP_MOVED`, "
+        "`MEDIA_UNASSIGNED`.  \n"
         "Activity `PRODUCT_REVIEW_FLAGS_CLEARED`."
     ),
 )

@@ -64,12 +64,16 @@ from app.models.media.product_media import ProductMediaModel
 from app.storage import get_storage_provider
 from sqlalchemy import update
 from app.schemas.media.media import (
+    DEFAULT_PRODUCT_MEDIA_ROLE,
+    MEDIA_UPLOAD_NAMESPACES,
+    PRODUCT_MEDIA_ROLE_VALUES,
     MediaObjectMetaResponse,
     MediaObjectResponse,
     MediaReferenceResolveRequest,
     MediaReferenceResolveResponse,
     MediaStorageStatusResponse,
     ProductMediaSetResponse,
+    coerce_product_media_role,
 )
 from app.services.media.media_service import MediaService
 from app.services.media.media_validation import MediaValidationError
@@ -318,7 +322,17 @@ async def get_product_media_set(
 )
 async def upload_media_object(
     file: UploadFile = File(..., description="Image file to store"),
-    namespace: str = Form("products"),
+    namespace: str = Form(
+        "products",
+        description=(
+            "Storage namespace. Closed vocabulary, enforced by "
+            "`app.storage.keys` — a key whose first segment is not one of "
+            "these is rejected before any I/O, which is what stops this "
+            "route becoming a generic file server over the storage root. "
+            "Case-sensitive. `products` additionally requires `productId`."
+        ),
+        json_schema_extra={"enum": list(MEDIA_UPLOAD_NAMESPACES)},
+    ),
     product_id: Optional[str] = Form(None, alias="productId"),
     group: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
@@ -331,6 +345,10 @@ async def upload_media_object(
     {filename}`), never from a random temp name. Nothing is written to the
     database: persisting the reference onto a product uses the existing
     `PATCH /admin/products/{id}` media fields.
+
+    `namespace` is validated against the closed storage vocabulary
+    (`app.storage.keys.ALLOWED_NAMESPACES`); an unknown namespace is a 422
+    `BUSINESS_RULE_VIOLATION` and no object is written.
     """
     await require_admin_permission(current_user, db, "media.upload")
 
@@ -396,7 +414,18 @@ async def upload_product_media_object(
 
 @router.post("/register", status_code=201, summary="Register an uploaded object as a media asset")
 async def register_media_object(
-    object_key: str = Form(...), product_id: Optional[str] = Form(None), role: str = Form("gallery"),
+    object_key: str = Form(...), product_id: Optional[str] = Form(None),
+    role: str = Form(
+        DEFAULT_PRODUCT_MEDIA_ROLE,
+        description=(
+            "Product-media role. Closed vocabulary (plan §24 step 9): "
+            + ", ".join(PRODUCT_MEDIA_ROLE_VALUES)
+            + ". Matched case-insensitively and stored with the caller's own "
+            "casing; an empty value stores the default "
+            f"'{DEFAULT_PRODUCT_MEDIA_ROLE}'. Anything else is rejected with "
+            "422 BUSINESS_RULE_VIOLATION."
+        ),
+    ),
     sort_order: int = Form(0), is_primary: bool = Form(False), title: Optional[str] = Form(None),
     alt_text: Optional[str] = Form(None), db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
@@ -408,8 +437,18 @@ async def register_media_object(
     order / primary flag instead of duplicating it. When `is_primary` is set,
     every other association of the same product is demoted in the same
     transaction — a product never has two primaries.
+
+    `role` is checked against the declared product-media vocabulary before
+    anything is written. Before plan §24 step 9 this column accepted any
+    string: the value went straight into a `String(30)` column, so a long
+    role was an HTTP 500 (`StringDataRightTruncation`) on PostgreSQL rather
+    than a validation rejection.
     """
     await require_admin_permission(current_user, db, "media.upload")
+    try:
+        role = coerce_product_media_role(role)
+    except ValueError as exc:
+        raise BusinessLogicException(str(exc)) from exc
     media = _get_media_service(db); key = _safe_key(media, object_key)
     try: meta = await run_in_threadpool(media.object_metadata, key)
     except ObjectNotFoundError as exc: raise NotFoundException("Media object not found.") from exc
