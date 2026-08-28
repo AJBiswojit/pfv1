@@ -745,9 +745,32 @@ what makes the per-product route un-spoofable.
 
 ### 12.4 Publish gate and media
 
-The publish gate requires **an authored `image` or a `primaryMediaId` on the
-product row**. It reads the product's own columns only and does **not** consult
-`media_product_media`: a product whose media exists solely as registered
-associations does not satisfy the gate. This is current behaviour, unchanged by
-Block 7, and it is the reason the product write contract still accepts the
-media-write keys.
+A product satisfies the cover-media publish requirement when **any one** of
+these holds:
+
+| Source | Authority |
+|---|---|
+| `catalog_product.image` (authored plate) | legacy, transitional fallback |
+| `catalog_product.primary_media_id` | legacy, transitional fallback |
+| a `media_product_media` association for the product with **`is_primary = true`** | **authoritative for new media** |
+
+The registered association is the authoritative signal: `POST /media/register`
+is its only writer, and a registered-only product (legacy media columns empty,
+no product PATCH) satisfies the gate. `role="COVER"` is **descriptive, not the
+primary signal** — `is_primary=true` with any declared role satisfies the gate,
+and `role=COVER` without `is_primary=true` does not. A registered set with
+**zero** primaries does not satisfy the gate, and the media-set's "first item"
+fallback is never consulted for publishability.
+
+The legacy branches are retained during the transition (plan §11.4 item 3) so
+products whose media predates Phase 7 keep publishing; they retire only once
+every live product has registered media. A missing media table (pre-migration
+database) makes the registered read answer empty and the legacy branch keeps
+working — the failure is never an HTTP 500.
+
+The canonical rejection is unchanged:
+
+`"At least one cover image is required before publishing."`
+
+inside the standard 422 `BUSINESS_RULE_VIOLATION` envelope, returned by both
+`GET /admin/products/{id}/publish-issues` and `POST /admin/products/{id}/publish`.

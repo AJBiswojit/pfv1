@@ -204,10 +204,21 @@ def compute_pricing(pricing: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── Publish issue gate ────────────────────────────────────────────────────────
 
-def get_publish_issues(product: ProductModel) -> List[str]:
+def get_publish_issues(
+    product: ProductModel,
+    registered_media: Optional[List[Dict[str, Any]]] = None,
+) -> List[str]:
     """
-    Exact reimplementation of getPublishIssues() from frontend.
-    Returns list of blocker messages; empty ⇒ safe to publish.
+    Publish blocker list. Empty ⇒ safe to publish.
+
+    Originally an exact reimplementation of the frontend's getPublishIssues();
+    the media branch now additionally consults the authoritative registered
+    association (`media_product_media`, plan §11.1). Callers pass the
+    product's registered associations (already fetched through the
+    SAVEPOINT-guarded `_registered_media_items`, so a database whose Phase 7
+    media migration is pending still answers `[]` and the legacy branch
+    keeps working). The legacy `image` / `primary_media_id` branch is
+    retained as the transitional fallback (plan §11.4 item 3).
     """
     issues: List[str] = []
 
@@ -235,10 +246,16 @@ def get_publish_issues(product: ProductModel) -> List[str]:
     if not has_description:
         issues.append("A description is required.")
 
-    # Media check — authored image OR primary media must exist
+    # Media check — authored image, OR legacy primary_media_id, OR a
+    # registered association with is_primary=True (the authoritative primary
+    # signal; `role` text is descriptive and is deliberately not consulted,
+    # and the media-set "first item" fallback does NOT count).
     has_authored_image = bool((product.image or "").strip())
-    has_primary_media = bool(product.primary_media_id)
-    if not has_authored_image and not has_primary_media:
+    has_legacy_primary = bool(product.primary_media_id)
+    has_registered_primary = any(
+        item.get("isPrimary") is True for item in (registered_media or [])
+    )
+    if not has_authored_image and not has_legacy_primary and not has_registered_primary:
         issues.append("At least one cover image is required before publishing.")
 
     # Review flags — blocking subset (declared vocabulary, plan §24 step 8)
@@ -1936,7 +1953,10 @@ class ProductService:
                 "Submit it for review and approve it before publishing "
                 f"(review state: {review_state})."
             )
-        issues = get_publish_issues(p)
+        # The gate reads the authoritative registered association inside this
+        # same request session/transaction; a pending Phase 7 migration makes
+        # the helper answer [] so the legacy media branch keeps working.
+        issues = get_publish_issues(p, await self._registered_media_items(p.id))
         if issues:
             raise BusinessLogicException(
                 "Product has unresolved publish issues.", details={"errors": issues}
@@ -1997,7 +2017,7 @@ class ProductService:
 
     async def get_publish_issues(self, product_id: str) -> List[str]:
         p = await self._get_or_404(product_id)
-        return get_publish_issues(p)
+        return get_publish_issues(p, await self._registered_media_items(p.id))
 
     # ── Change ID ─────────────────────────────────────────────────────────────
 

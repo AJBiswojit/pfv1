@@ -41,9 +41,13 @@ REGRESSION LOCKS (pass with or without the Block 7 change)
      written when authorization fails.
   8. PF3-N09's CURRENT state, asserted exactly as it is so that the two-stage
      removal in §23 R5 cannot happen silently or by accident.
-  9. THE BLOCKER (see the Block 7 report §11): the publish gate reads only the
-     product's own legacy columns and is blind to `media_product_media`.  This
-     is asserted so the day someone changes it, this test says so.
+  9. THE PUBLISH GATE RESOLUTION (approved Option A decision): the gate's
+     media branch now also accepts a registered `is_primary=true`
+     association, so a registered-only product publishes with NO legacy
+     PATCH — while the legacy `image` / `primary_media_id` branch stays as
+     the transitional fallback. `role="COVER"` is descriptive and is NOT
+     the primary signal, and the media-set "first item" fallback does NOT
+     satisfy the gate.
 
 Harness: the REAL media + products routers, the REAL storage provider and the
 REAL ORM on a throwaway SQLite file with a temporary media root.  No
@@ -753,56 +757,290 @@ class ProductMediaWriteHonestyTests(_MediaCase):
 
 class PublishGateMediaSourceTests(_MediaCase):
     """
-    Plan §11.4 item 3 asserts "the publish gate already accepts either source".
-    It does not.  Both branches it accepts (`product.image`,
-    `product.primary_media_id`) are the product's OWN legacy columns; neither
-    is `media_product_media`.  The only thing that ever copies registered
-    media into those columns is the frontend's `syncProductMediaFromServer`,
-    which is precisely the write step 9 asks to remove.
+    The Block 7 blocker, now RESOLVED (approved decision: Option A).
 
-    This is why the frontend half of step 9 is blocked. These assertions
-    describe today's behaviour, so the resolution — whichever the plan owner
-    picks — announces itself here.
+    The gate's media branch is:
+
+        authored `product.image`
+        OR legacy `product.primary_media_id`
+        OR a registered `media_product_media` association with
+           `is_primary = True`
+
+    `role` text — including `"COVER"` — is descriptive and is deliberately
+    NOT the primary signal, and the media-set "first item" fallback does NOT
+    satisfy the gate. The legacy branch is retained as the transitional
+    fallback (plan §11.4 item 3), so legacy-only products keep publishing,
+    and `POST /media/register` still writes nothing onto the product row
+    (the Phase 7 contract lock below stays green).
+
+    Before this resolution `test_registered_primary_media_does_not_satisfy_the_publish_gate`
+    pinned the broken behaviour; it has been rewritten — deliberately, not
+    by accident — into the accepted behaviour, exactly as the Block 7 report
+    said the resolution would announce itself.
     """
 
-    async def test_registered_primary_media_does_not_satisfy_the_publish_gate(self):
-        up = self.upload_for_product("gate.png")
+    def _cover_error(self, issues):
+        return "At least one cover image is required before publishing." in issues
+
+    def _publish_issues(self):
+        return self.client.get(
+            f"/api/v1/admin/products/{PRODUCT_ID}/publish-issues"
+        ).json()["issues"]
+
+    async def _register_one(self, filename, *, role, is_primary):
+        up = self.upload_for_product(filename)
         self.assertEqual(up.status_code, 201, up.text)
-        registered = self.register(up.json()["object"]["key"],
-                                   role="COVER", is_primary=True)
+        registered = self.register(
+            up.json()["object"]["key"], role=role, is_primary=is_primary
+        )
         self.assertEqual(registered.status_code, 201, registered.text)
+        return registered
+
+    async def _submit_and_approve(self):
+        submitted = self.client.post(f"/api/v1/products/{PRODUCT_ID}/submit-review")
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        approved = self.client.post(f"/api/v1/admin/products/{PRODUCT_ID}/approve")
+        self.assertEqual(approved.status_code, 200, approved.text)
+
+    async def _assert_publish_succeeds(self):
+        published = self.client.post(f"/api/v1/admin/products/{PRODUCT_ID}/publish")
+        self.assertEqual(published.status_code, 200, published.text)
+        body = published.json()["product"]
+        self.assertEqual(body["status"], "PUBLISHED")
+        self.assertIs(body["published"], True)
+        return body
+
+    # ── Matrix A: no media at all ────────────────────────────────────────────
+
+    async def test_no_media_at_all_keeps_the_gate_closed(self):
+        issues = self._publish_issues()
+        self.assertTrue(self._cover_error(issues), issues)
+
+    # ── Matrix B: registered NON-primary media only ──────────────────────────
+
+    async def test_registered_non_primary_media_does_not_satisfy_the_publish_gate(self):
+        await self._register_one("gallery-only.png", role="gallery", is_primary=False)
+        rows = await self.mappings()
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0].is_primary)
+        issues = self._publish_issues()
+        self.assertTrue(self._cover_error(issues), issues)
+
+    # ── Matrix C + H + K: registered primary, legacy empty, no PATCH ─────────
+
+    async def test_registered_primary_media_alone_satisfies_the_publish_gate(self):
+        """
+        THE regression test of this block. Before the gate resolution this
+        asserted the OPPOSITE — that registered primary media did NOT satisfy
+        the gate (Block 7 §23). Now it proves, with no legacy PATCH anywhere:
+
+        · the association exists with is_primary=True
+        · the legacy `image` / `primary_media_id` columns stay empty
+        · publish-issues carries no cover blocker
+        · publish itself succeeds
+        """
+        registered = await self._register_one(
+            "registered-cover.png", role="COVER", is_primary=True
+        )
 
         rows = await self.mappings()
         self.assertEqual(len(rows), 1)
         self.assertTrue(rows[0].is_primary)
 
+        row = await self.product_row()
+        self.assertEqual((row.image or "").strip(), "")
+        self.assertIsNone(row.primary_media_id)
+        self.assertEqual(row.media_ids or [], [])
+
+        mediaset = self.client.get(
+            f"/api/v1/media/products/{PRODUCT_ID}/media-set").json()
+        self.assertTrue(mediaset["mediaRecordsAvailable"])
+        self.assertTrue(mediaset["primaryMediaUrl"])
+        # media-set's `primaryMediaId` is the legacy column echo (still None);
+        # the registered primary's id lives in the ordered mediaItems.
+        self.assertEqual(
+            mediaset["mediaItems"][0]["mediaId"], registered.json()["media"]["id"]
+        )
+        self.assertIsNone(mediaset["primaryMediaId"])
+
+        issues = self._publish_issues()
+        self.assertFalse(self._cover_error(issues), issues)
+
+        await self._submit_and_approve()
+        await self._assert_publish_succeeds()
+
+        # A published row whose media came solely from the association.
+        after = await self.product_row()
+        self.assertEqual(after.status, "PUBLISHED")
+        self.assertIs(after.published, True)
+        self.assertEqual((after.image or "").strip(), "")
+        self.assertIsNone(after.primary_media_id)
+
+    # ── Matrix D: exactly one primary among several ──────────────────────────
+
+    async def test_multiple_registered_media_with_exactly_one_primary_satisfy_the_gate(self):
+        await self._register_one("cover.png", role="COVER", is_primary=True)
+        await self._register_one("angle.png", role="GALLERY", is_primary=False)
+        await self._register_one("detail.png", role="DETAIL", is_primary=False)
+
+        rows = await self.mappings()
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(sum(1 for r in rows if r.is_primary), 1)
+
+        issues = self._publish_issues()
+        self.assertFalse(self._cover_error(issues), issues)
+
+        await self._submit_and_approve()
+        await self._assert_publish_succeeds()
+
+    # ── Matrix E: registered rows but ZERO primaries ─────────────────────────
+
+    async def test_zero_registered_primaries_do_not_satisfy_the_gate(self):
+        await self._register_one("one.png", role="GALLERY", is_primary=False)
+        await self._register_one("two.png", role="DETAIL", is_primary=False)
+
+        rows = await self.mappings()
+        self.assertEqual(len(rows), 2)
+        self.assertFalse(any(r.is_primary for r in rows))
+
+        # The media-set read model FALLS BACK to the first item — and that
+        # fallback must NOT leak into the publish gate.
         mediaset = self.client.get(
             f"/api/v1/media/products/{PRODUCT_ID}/media-set").json()
         self.assertTrue(mediaset["mediaRecordsAvailable"])
         self.assertTrue(mediaset["primaryMediaUrl"])
 
-        issues = self.client.get(
-            f"/api/v1/admin/products/{PRODUCT_ID}/publish-issues").json()
-        self.assertIn("At least one cover image is required before publishing.",
-                      issues["issues"],
-                      "if this ever stops failing, the gate learned to read "
-                      "registered media and the step 9 frontend work is "
-                      "unblocked — see the Block 7 report §11")
+        issues = self._publish_issues()
+        self.assertTrue(self._cover_error(issues), issues)
+
+    # ── Matrix I: role=COVER is descriptive, not the primary signal ──────────
+
+    async def test_cover_role_without_primary_does_not_satisfy_the_gate(self):
+        await self._register_one("cover-role.png", role="COVER", is_primary=False)
+        rows = await self.mappings()
+        self.assertEqual(rows[0].role, "COVER")
+        self.assertFalse(rows[0].is_primary)
+        issues = self._publish_issues()
+        self.assertTrue(self._cover_error(issues), issues)
+
+    # ── Matrix J: is_primary=True with a non-COVER role ──────────────────────
+
+    async def test_primary_with_a_non_cover_role_satisfies_the_gate(self):
+        await self._register_one("detail-primary.png", role="DETAIL", is_primary=True)
+        rows = await self.mappings()
+        self.assertEqual(rows[0].role, "DETAIL")
+        self.assertTrue(rows[0].is_primary)
+        issues = self._publish_issues()
+        self.assertFalse(self._cover_error(issues), issues)
+
+        await self._submit_and_approve()
+        await self._assert_publish_succeeds()
+
+    # ── Matrix F + G: the legacy branches remain transitional sources ────────
 
     async def test_the_legacy_columns_do_satisfy_the_publish_gate(self):
         """The other half of the proof: the gate reads product columns only."""
         self.client.patch(f"/api/v1/admin/products/{PRODUCT_ID}",
                           json={"primaryMediaId": "anything-at-all"})
-        issues = self.client.get(
-            f"/api/v1/admin/products/{PRODUCT_ID}/publish-issues").json()
+        issues = self._publish_issues()
         self.assertNotIn("At least one cover image is required before publishing.",
-                         issues["issues"])
+                         issues)
+
+    async def test_an_authored_legacy_image_satisfies_the_publish_gate(self):
+        self.client.patch(f"/api/v1/admin/products/{PRODUCT_ID}",
+                          json={"image": "/images/products/legacy/plate.jpg"})
+        issues = self._publish_issues()
+        self.assertFalse(self._cover_error(issues), issues)
+
+    # ── Matrix L + M: fresh reads agree with the published record ────────────
+
+    async def test_publish_result_survives_a_fresh_admin_read(self):
+        registered = await self._register_one(
+            "fresh-read.png", role="COVER", is_primary=True
+        )
+        await self._submit_and_approve()
+        await self._assert_publish_succeeds()
+
+        fresh = self.client.get(
+            f"/api/v1/admin/products/{PRODUCT_ID}").json()["product"]
+        self.assertEqual(fresh["status"], "PUBLISHED")
+        self.assertIs(fresh["published"], True)
+        self.assertEqual(fresh["primaryMediaId"], registered.json()["media"]["id"])
+        self.assertTrue(fresh["image"].endswith("fresh-read.png"), fresh["image"])
+
+    async def test_storefront_resolves_the_same_registered_primary(self):
+        await self._register_one("storefront-cover.png", role="COVER", is_primary=True)
+        await self._submit_and_approve()
+        await self._assert_publish_succeeds()
+
+        mediaset = self.client.get(
+            f"/api/v1/media/products/{PRODUCT_ID}/media-set").json()
+        storefront = self.client.get(
+            f"/api/v1/products/{PRODUCT_ID}").json()["product"]
+        self.assertEqual(storefront["image"], mediaset["primaryMediaUrl"])
+
+    # ── Matrix N: registration still invalidates the cached storefront DTO ───
+
+    async def test_registering_a_new_primary_invalidates_the_product_cache(self):
+        import unittest.mock as mock
+
+        from app.services.catalog.product_service import ProductService
+
+        await self._register_one("first-cover.png", role="COVER", is_primary=True)
+        calls = []
+
+        async def _spy(self_, product_id, slug=None):
+            calls.append((product_id, slug))
+
+        with mock.patch.object(
+            ProductService, "invalidate_product_cache", new=_spy
+        ):
+            await self._register_one("second-cover.png", role="COVER", is_primary=True)
+
+        self.assertEqual(calls, [(PRODUCT_ID, "pf3b7-banarasi-silk")], calls)
+
+        # And the fresh read model reflects the new primary immediately.
+        mediaset = self.client.get(
+            f"/api/v1/media/products/{PRODUCT_ID}/media-set").json()
+        self.assertTrue(mediaset["primaryMediaUrl"].endswith("second-cover.png"),
+                        mediaset["primaryMediaUrl"])
+
+    # ── Matrix O: pre-migration fallback (media tables unavailable) ──────────
+
+    async def test_an_unavailable_media_read_falls_back_to_the_legacy_branch(self):
+        import unittest.mock as mock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        from app.services.catalog import product_service
+
+        def _boom(db, product_id):
+            raise SQLAlchemyError("media_product_media is not available")
+
+        with mock.patch.object(
+            product_service, "registered_media_for_product", side_effect=_boom
+        ):
+            # Legacy-populated product: the gate must stay open, not 500.
+            self.client.patch(f"/api/v1/admin/products/{PRODUCT_ID}",
+                              json={"image": "/images/products/legacy/plate.jpg"})
+            response = self.client.get(
+                f"/api/v1/admin/products/{PRODUCT_ID}/publish-issues")
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertFalse(self._cover_error(response.json()["issues"]))
+
+            # Legacy-empty product: the canonical issue must still be returned.
+            self.client.patch(f"/api/v1/admin/products/{PRODUCT_ID}",
+                              json={"image": ""})
+            response = self.client.get(
+                f"/api/v1/admin/products/{PRODUCT_ID}/publish-issues")
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertTrue(self._cover_error(response.json()["issues"]))
 
     async def test_registering_media_does_not_write_the_product_row(self):
         """
         Registration is transactionally complete on its own tables. Nothing
-        server-side projects it onto the product, which is the gap the
-        frontend has been filling.
+        server-side projects it onto the product — the Phase 7 contract lock
+        that Option A keeps green. The publish gate now READS the
+        association instead of needing the product row written.
         """
         before = await self.product_row()
         snapshot = (before.image, before.primary_media_id,
