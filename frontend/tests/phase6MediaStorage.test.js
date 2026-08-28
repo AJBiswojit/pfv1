@@ -226,7 +226,7 @@ test("a product with no media renders nothing rather than a borrowed image", () 
   assert.deepEqual(product.images.gallery, []);
 });
 
-test("the admin write payload keeps media references as plain strings", () => {
+test("the admin write payload keeps authored media references as plain strings", () => {
   const payload = buildAdminProductPayload({
     id: "PF-W-SAR-SIL-0001",
     name: "Banarasi Silk Saree",
@@ -237,11 +237,14 @@ test("the admin write payload keeps media references as plain strings", () => {
     additionalImages: [CANONICAL, null],
     mediaIds: ["pm-1"],
     primaryMediaId: "pm-1",
+    galleryMediaIds: ["pm-2"],
   });
   assert.equal(payload.image, CANONICAL);
   assert.equal(payload.hoverImage, LEGACY);
   assert.deepEqual(payload.additionalImages, [CANONICAL, ""]);
-  assert.deepEqual(payload.mediaIds, ["pm-1"]);
+  assert.equal(payload.mediaIds, undefined);
+  assert.equal(payload.primaryMediaId, undefined);
+  assert.equal(payload.galleryMediaIds, undefined);
   // Lifecycle keys never ride along on a media edit.
   assert.equal(payload.status, undefined);
   assert.equal(payload.published, undefined);

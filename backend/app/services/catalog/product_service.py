@@ -45,7 +45,9 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.models.catalog.category import CategoryModel, SubcategoryModel
+from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
+from app.models.employee.employee import EmployeeProfileModel
 from app.services.media.product_media_records import (
     gallery_urls,
     primary_item,
@@ -70,6 +72,7 @@ from app.schemas.catalog.product import (
     CatalogMetricsResponse,
     ChangeProductIdRequest,
     ClearReviewFlagsRequest,
+    EmployeeProduct,
     EmployeeProductUpdateRequest,
     FacetCounts,
     FacetValue,
@@ -382,8 +385,79 @@ class ProductService:
             ],
         }
 
+    async def _collection_membership_names(
+        self, products: List[ProductModel]
+    ) -> Dict[str, List[str]]:
+        """Resolve collection-owned membership into product response labels.
+
+        The legacy product labels remain available as a read fallback for the
+        collection resolver, but they are no longer write authority. This
+        batch helper keeps product projections portable across the SQLite test
+        harness and PostgreSQL by evaluating the existing JSONB arrays in
+        Python rather than adding an association table or migration.
+        """
+        names: Dict[str, List[str]] = {str(product.id): [] for product in products}
+        if not products:
+            return names
+
+        try:
+            result = await self.db.execute(select(CollectionModel))
+            collections = result.scalars().all()
+        except (SQLAlchemyError, AttributeError, TypeError):
+            logger.warning("Collection membership read unavailable; using legacy labels.", exc_info=True)
+            return names
+
+        for collection in collections:
+            collection_id = getattr(collection, "id", None)
+            collection_name = getattr(collection, "name", None)
+            if not collection_id or not collection_name:
+                continue
+            collection_id = str(collection_id)
+            collection_name = str(collection_name)
+            collection_type = getattr(collection, "type", "MANUAL")
+            rule = getattr(collection, "rule", None) or {}
+            explicit_ids = {
+                str(value) for value in (getattr(collection, "explicit_product_ids", None) or [])
+            }
+
+            for product in products:
+                member = str(product.id) in explicit_ids
+                if not member and collection_type == "RULE_BASED":
+                    if product.status != "PUBLISHED" or not product.published:
+                        continue
+                    flag = rule.get("flag")
+                    occasion = rule.get("occasion")
+                    fabric_includes = rule.get("fabricIncludes")
+                    if flag and not (product.flags or {}).get(flag):
+                        continue
+                    if occasion and occasion not in (product.occasion or []):
+                        continue
+                    if fabric_includes and fabric_includes.lower() not in (product.fabric or "").lower():
+                        continue
+                    member = True
+                if not member and collection_type != "RULE_BASED":
+                    legacy_labels = [
+                        str(value).lower()
+                        for value in (product.collections or [])
+                    ]
+                    legacy_scalar = str(product.collection or "").lower()
+                    needle_name = collection_name.lower()
+                    needle_id = collection_id.lower()
+                    member = (
+                        needle_name in legacy_scalar
+                        or needle_id in legacy_scalar
+                        or needle_name in legacy_labels
+                        or needle_id in legacy_labels
+                    )
+                if member:
+                    product_names = names[str(product.id)]
+                    if collection_name not in product_names:
+                        product_names.append(collection_name)
+        return names
+
     def _to_storefront(
-        self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None
+        self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None,
+        collection_names: Optional[List[str]] = None,
     ) -> StorefrontProduct:
         """Project a ProductModel onto a StorefrontProduct DTO."""
         pricing = p.pricing or {}
@@ -423,8 +497,10 @@ class ProductService:
             season=p.season or "",
             fit=p.fit or "",
             length=p.length or "",
+            # `collection` is the retained legacy scalar. The plural field is
+            # resolved from collection-owned membership when available.
             collection=p.collection or "",
-            collections=p.collections or [],
+            collections=collection_names if collection_names is not None else (p.collections or []),
             tags=p.tags or [],
             badges=p.badges or [],
             isFeatured=bool(p.is_featured),
@@ -459,13 +535,29 @@ class ProductService:
     async def _to_admin_current(self, p: ProductModel) -> AdminProduct:
         """
         Single-record admin projection with the Phase 7 registered-media
-        read model resolved. Used by every route that returns ONE product
-        that may already carry media associations (get/patch/workflow).
+        read model and collection-owned membership resolved.
         """
-        return self._to_admin(p, await self._registered_media_items(p.id))
+        collection_names = await self._collection_membership_names([p])
+        return self._to_admin(
+            p,
+            await self._registered_media_items(p.id),
+            collection_names.get(str(p.id), []),
+        )
+
+    async def _to_employee_current(self, p: ProductModel) -> EmployeeProduct:
+        """Single-record employee projection with authoritative reads resolved."""
+        collection_names = await self._collection_membership_names([p])
+        return self._to_employee(
+            p,
+            await self._registered_media_items(p.id),
+            collection_names.get(str(p.id), []),
+        )
 
     def _to_admin(
-        self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None
+        self,
+        p: ProductModel,
+        registered_media: Optional[List[Dict[str, Any]]] = None,
+        collection_names: Optional[List[str]] = None,
     ) -> AdminProduct:
         """Project a ProductModel onto the full AdminProduct DTO."""
         media_view = self._registered_media_view(registered_media or [])
@@ -506,7 +598,7 @@ class ProductService:
             fit=p.fit or "",
             length=p.length or "",
             collection=p.collection or "",
-            collections=p.collections or [],
+            collections=collection_names if collection_names is not None else (p.collections or []),
             tags=p.tags or [],
             badges=p.badges or [],
             isFeatured=bool(p.is_featured),
@@ -549,6 +641,18 @@ class ProductService:
             publishedAt=p.published_at.isoformat() if p.published_at else None,
             history=p.history or [],
         )
+
+    def _to_employee(
+        self,
+        p: ProductModel,
+        registered_media: Optional[List[Dict[str, Any]]] = None,
+        collection_names: Optional[List[str]] = None,
+    ) -> EmployeeProduct:
+        """Project a product without admin-only workflow/audit fields."""
+        admin_payload = self._to_admin(p, registered_media, collection_names).model_dump(
+            by_alias=True
+        )
+        return EmployeeProduct.model_validate(admin_payload)
 
     async def _category_status_map(self) -> Dict[str, str]:
         """Map category id/slug/name to status for storefront visibility."""
@@ -945,7 +1049,7 @@ class ProductService:
         # When called from GET /collections/{id}/products the router pre-resolves
         # membership and passes the id list via _collection_product_ids.
         # Restrict the working set to only those products.
-        _coll_ids = getattr(query, "_collection_product_ids", None)
+        _coll_ids = getattr(query, "collection_product_ids", None)
         if _coll_ids is not None:
             allowed = set(_coll_ids)
             all_products = [p for p in all_products if p.id in allowed]
@@ -954,10 +1058,18 @@ class ProductService:
         # new media), bulk-loaded in ONE query for the whole working set —
         # products without associations keep their legacy columns untouched.
         registered_map = await self._registered_media_map([p.id for p in all_products])
+        collection_map = await self._collection_membership_names(all_products)
 
-        # Convert to storefront DTOs for in-memory filtering
+        # Convert to storefront DTOs for in-memory filtering. Collection
+        # membership is read from collection-owned data; the legacy scalar is
+        # retained separately for backwards-compatible facet/search matching.
         items = [
-            self._to_storefront(p, registered_map.get(p.id)) for p in all_products
+            self._to_storefront(
+                p,
+                registered_map.get(p.id),
+                collection_map.get(str(p.id), []),
+            )
+            for p in all_products
         ]
 
         # Apply search
@@ -1206,7 +1318,12 @@ class ProductService:
             raise NotFoundException(f"Product '{id_or_slug}' not found.")
 
         registered = await self._registered_media_items(p.id)
-        dto = self._to_storefront(p, registered)
+        collection_names = await self._collection_membership_names([p])
+        dto = self._to_storefront(
+            p,
+            registered,
+            collection_names.get(str(p.id), []),
+        )
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
         return dto
 
@@ -1255,7 +1372,15 @@ class ProductService:
             if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
         ]
         registered_map = await self._registered_media_map([p.id for p in products])
-        return [self._to_storefront(p, registered_map.get(p.id)) for p in products]
+        collection_map = await self._collection_membership_names(products)
+        return [
+            self._to_storefront(
+                p,
+                registered_map.get(p.id),
+                collection_map.get(str(p.id), []),
+            )
+            for p in products
+        ]
 
     # ── Recently viewed ───────────────────────────────────────────────────────
 
@@ -1285,10 +1410,15 @@ class ProductService:
         }
 
         registered_map = await self._registered_media_map(list(product_map.keys()))
+        collection_map = await self._collection_membership_names(list(product_map.values()))
 
         # Preserve recency order (product_ids is already newest-first)
         return [
-            self._to_storefront(product_map[pid], registered_map.get(pid))
+            self._to_storefront(
+                product_map[pid],
+                registered_map.get(pid),
+                collection_map.get(str(pid), []),
+            )
             for pid in product_ids
             if pid in product_map
         ]
@@ -1352,7 +1482,15 @@ class ProductService:
         result = await self.db.execute(stmt)
         products = result.scalars().all()
         registered_map = await self._registered_media_map([p.id for p in products])
-        items = [self._to_admin(p, registered_map.get(p.id)) for p in products]
+        collection_map = await self._collection_membership_names(products)
+        items = [
+            self._to_admin(
+                p,
+                registered_map.get(p.id),
+                collection_map.get(str(p.id), []),
+            )
+            for p in products
+        ]
 
         sort = query.sort if query.sort in ADMIN_SORTS else "newest"
         if sort == "newest":
@@ -1598,6 +1736,11 @@ class ProductService:
         p = await self._get_or_404(product_id)
         return await self._to_admin_current(p)
 
+    async def get_employee_product(self, product_id: str) -> EmployeeProduct:
+        """GET /employee/products/{id} — employee-safe product projection."""
+        p = await self._get_or_404(product_id)
+        return await self._to_employee_current(p)
+
     # ── Admin — update ────────────────────────────────────────────────────────
 
     async def update_product(
@@ -1698,7 +1841,7 @@ class ProductService:
         employee_id: str,
         is_super_admin: bool = False,
         employee_user_id: Optional[str] = None,
-    ) -> AdminProduct:
+    ) -> EmployeeProduct:
         """PATCH /employee/products/{id} — whitelisted fields only."""
         p = await self._get_or_404(product_id)
 
@@ -1713,13 +1856,14 @@ class ProductService:
 
         data = req.model_dump(exclude_unset=True, by_alias=False)
 
-        # Silently drop any fields not in whitelist
+        # Schema validation rejects fields outside this write contract before
+        # this method runs; keep the explicit set as a defence-in-depth guard.
         snake_whitelist = {
             "name", "price", "compare_at_price", "description", "short_description",
             "category", "subcategory", "gender", "fabric", "material",
             "primary_color", "secondary_color", "colors", "patterns", "work",
             "occasion", "sizes", "season", "fit", "length", "highlights",
-            "care_instructions", "collection_ids", "collections", "tags",
+            "care_instructions", "tags",
             "stock", "availability",
         }
         data = {k: v for k, v in data.items() if k in snake_whitelist}
@@ -1745,7 +1889,7 @@ class ProductService:
         p.updated_by = employee_id
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
-        return await self._to_admin_current(p)
+        return await self._to_employee_current(p)
 
     # ── Assign employee ───────────────────────────────────────────────────────
 
@@ -1753,6 +1897,17 @@ class ProductService:
         self, product_id: str, req: AssignEmployeeRequest, actor: str
     ) -> AdminProduct:
         p = await self._get_or_404(product_id)
+        if req.employee_id is not None:
+            employee_result = await self.db.execute(
+                select(EmployeeProfileModel.employee_code).where(
+                    EmployeeProfileModel.employee_code == req.employee_id
+                )
+            )
+            if employee_result.scalars().first() is None:
+                raise BusinessLogicException(
+                    f"Unknown employee code '{req.employee_id}'.",
+                    details={"field": "employeeId", "value": req.employee_id},
+                )
         old = p.assigned_employee_id
         p.assigned_employee_id = req.employee_id
         self._append_history(p, "assignedEmployeeId", old, req.employee_id, actor)

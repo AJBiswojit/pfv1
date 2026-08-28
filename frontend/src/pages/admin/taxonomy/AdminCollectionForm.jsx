@@ -13,7 +13,6 @@ const emptyDraft = {
   name: "",
   slug: "",
   description: "",
-  shortDescription: "",
   image: "",
   heroMediaId: "",
   thumbnailMediaId: "",
@@ -23,8 +22,6 @@ const emptyDraft = {
   sortOrder: 100,
   startDate: "",
   endDate: "",
-  seoTitle: "",
-  seoDescription: "",
 };
 
 export default function AdminCollectionForm() {
@@ -85,12 +82,19 @@ export default function AdminCollectionForm() {
     if (draft.startDate && draft.endDate && draft.endDate < draft.startDate) {
       return setError("End date cannot be before start date.");
     }
+    // Keep the write payload to the fields in CollectionCreate/UpdateRequest.
+    // Lifecycle status and unsupported editorial/SEO fields are read-only or
+    // absent from the backend contract and must never be silently discarded.
     const payload = {
-      ...draft,
+      name: draft.name.trim(),
       slug: slugify(draft.slug || draft.name),
-      sortOrder: Number(draft.sortOrder) || 0,
+      description: draft.description || "",
+      image: draft.image || "",
       heroMediaId: draft.heroMediaId || null,
       thumbnailMediaId: draft.thumbnailMediaId || null,
+      type: draft.type,
+      featured: Boolean(draft.featured),
+      sortOrder: Number(draft.sortOrder) || 0,
       startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
       endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,
     };
@@ -144,10 +148,6 @@ export default function AdminCollectionForm() {
             </select>
           </label>
           <label className="lg:col-span-2">
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Short description</span>
-            <input className={inputClass} value={draft.shortDescription || ""} onChange={(event) => setField("shortDescription", event.target.value)} />
-          </label>
-          <label className="lg:col-span-2">
             <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Description</span>
             <textarea rows={4} className={inputClass} value={draft.description || ""} onChange={(event) => setField("description", event.target.value)} />
           </label>
@@ -163,12 +163,11 @@ export default function AdminCollectionForm() {
             <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Thumbnail media ID</span>
             <input className={inputClass} value={draft.thumbnailMediaId || ""} onChange={(event) => setField("thumbnailMediaId", event.target.value)} placeholder="med-..." />
           </label>
-          <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Status</span>
-            <select className={inputClass} value={draft.status} onChange={(event) => setField("status", event.target.value)}>
-              {Object.values(COLLECTION_STATUS).map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-          </label>
+          <div className="border border-mist bg-canvas px-3 py-2.5">
+            <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Status</span>
+            <span className="font-ui text-sm text-ink">{existing ? draft.status : "DRAFT on create"}</span>
+            <p className="mt-1 font-ui text-[11px] text-taupe">Use the dedicated lifecycle actions after saving.</p>
+          </div>
           <label>
             <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Start date</span>
             <input type="date" className={inputClass} value={draft.startDate || ""} onChange={(event) => setField("startDate", event.target.value)} />
@@ -183,14 +182,6 @@ export default function AdminCollectionForm() {
           </label>
           <label className="flex items-center gap-3 pt-7 font-ui text-sm text-ink">
             <input type="checkbox" checked={draft.featured} onChange={(event) => setField("featured", event.target.checked)} /> Featured collection
-          </label>
-          <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">SEO title</span>
-            <input className={inputClass} value={draft.seoTitle || ""} onChange={(event) => setField("seoTitle", event.target.value)} />
-          </label>
-          <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">SEO description</span>
-            <textarea rows={3} className={inputClass} value={draft.seoDescription || ""} onChange={(event) => setField("seoDescription", event.target.value)} />
           </label>
           <div className="flex flex-wrap gap-3 lg:col-span-2">
             <AtelierButton type="submit" size="chip">{existing ? "Save collection" : "Create collection"}</AtelierButton>

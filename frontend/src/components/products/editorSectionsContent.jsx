@@ -288,17 +288,7 @@ export function SectionMedia({ draft, patch, portal }) {
               <Star size={12} aria-hidden="true" /> Open full Media Manager <ExternalLink size={11} aria-hidden="true" />
             </Link>
           </div>
-          <ProductMediaManager
-            productId={draft.id}
-            scope="admin"
-            onChange={(serverProduct) => {
-              if (!serverProduct) return;
-              patch({
-                image: serverProduct.image ?? "",
-                additionalImages: serverProduct.additionalImages ?? [],
-              });
-            }}
-          />
+          <ProductMediaManager productId={draft.id} scope="admin" />
         </div>
       ) : isSaved ? (
         <div className="border border-mist/80 bg-surface/40 p-5">

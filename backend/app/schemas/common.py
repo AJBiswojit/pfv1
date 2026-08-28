@@ -1,4 +1,4 @@
-from typing import Any, Optional, Generic, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
@@ -14,12 +14,15 @@ class DataResponse(BaseResponse, Generic[T]):
     data: T
 
 
+ErrorDetails = Union[Dict[str, Any], List[Any]]
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
-    details: Optional[Any] = None
+    details: ErrorDetails
 
 
 class ErrorResponse(BaseModel):
-    success: bool = False
+    success: bool
     error: ErrorDetail

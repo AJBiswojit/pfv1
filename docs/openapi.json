@@ -1997,7 +1997,8 @@
         "tags": [
           "Product Catalog"
         ],
-        "summary": "Admin \u2014 workflow metrics (alias of /admin/products/metrics)",
+        "summary": "Admin \u2014 workflow metrics (compatibility alias of /admin/products/metrics)",
+        "description": "Compatibility alias retained for existing workflow clients. It returns the same CatalogMetricsResponse and uses the same authorization and service path as `/admin/products/metrics`.",
         "operationId": "admin_workflow_metrics_api_v1_admin_workflow_metrics_get",
         "responses": {
           "200": {
@@ -2739,7 +2740,8 @@
         "tags": [
           "Product Catalog"
         ],
-        "summary": "Employee \u2014 get product record (same as admin view)",
+        "summary": "Employee \u2014 get product record (employee projection)",
+        "description": "Returns catalogue content, operational state, assignment and read-only media projections. Internal review history and actor/audit fields are not exposed.",
         "operationId": "employee_get_product_api_v1_employee_products__id__get",
         "security": [
           {
@@ -2763,7 +2765,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SingleProductResponse"
+                  "$ref": "#/components/schemas/SingleEmployeeProductResponse"
                 }
               }
             }
@@ -2785,7 +2787,7 @@
           "Product Catalog"
         ],
         "summary": "Employee \u2014 whitelisted 30-field patch",
-        "description": "Authorization: `products.manage` AND `product.assignedEmployeeId === employee.employeeId` (SUPER_ADMIN bypasses).  \nWhitelist: name, price, compareAtPrice, description, shortDescription, category, subcategory, gender, fabric, material, primaryColor, secondaryColor, colors, patterns, work, occasion, sizes, season, fit, length, highlights, careInstructions, collectionIds, collections, tags, stock, availability.  \nAny field outside this list is silently dropped.",
+        "description": "Authorization: `products.manage` AND `product.assignedEmployeeId === employee.employeeId` (SUPER_ADMIN bypasses).  \nWhitelist: name, price, compareAtPrice, description, shortDescription, category, subcategory, gender, fabric, material, primaryColor, secondaryColor, colors, patterns, work, occasion, sizes, season, fit, length, highlights, careInstructions, tags, stock, availability.  \nUnsupported fields are rejected with the canonical 422 validation envelope.",
         "operationId": "employee_update_product_api_v1_employee_products__id__patch",
         "security": [
           {
@@ -2819,7 +2821,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SingleProductResponse"
+                  "$ref": "#/components/schemas/SingleEmployeeProductResponse"
                 }
               }
             }
@@ -4909,7 +4911,39 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyMetricsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The authenticated caller lacks the required permission; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server failure; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -4934,7 +4968,39 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyProductCountsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The authenticated caller lacks the required permission; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server failure; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -5425,16 +5491,58 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRegistrationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The authenticated caller lacks the required permission; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested media object or product was not found; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
           "422": {
-            "description": "Validation Error",
+            "description": "Request validation or business-rule failure; returns the canonical error envelope.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server failure; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5459,7 +5567,39 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The authenticated caller lacks the required permission; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server failure; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -14030,7 +14170,8 @@
           "employeeId": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
@@ -14052,6 +14193,7 @@
             "title": "Product Ids"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "product_ids"
@@ -15483,6 +15625,7 @@
             "title": "Rule"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name"
@@ -15834,6 +15977,7 @@
             "title": "Rule"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "CollectionUpdateRequest",
         "description": "Body for PATCH /admin/collections/{id} \u2014 all fields optional."
@@ -17043,6 +17187,432 @@
         "title": "EmployeePermissionsRequest",
         "description": "PUT /admin/employees/{id}/permissions\nSpec: { permissionMode: 'role'|'custom', permissions: string[] }"
       },
+      "EmployeeProduct": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "productId": {
+            "type": "string",
+            "title": "Productid",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "default": ""
+          },
+          "sku": {
+            "type": "string",
+            "title": "Sku",
+            "default": ""
+          },
+          "brand": {
+            "type": "string",
+            "title": "Brand",
+            "default": "Pratikshya Fashon"
+          },
+          "productType": {
+            "type": "string",
+            "title": "Producttype",
+            "default": "fashion"
+          },
+          "productCode": {
+            "type": "string",
+            "title": "Productcode",
+            "default": ""
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode",
+            "default": ""
+          },
+          "internalReference": {
+            "type": "string",
+            "title": "Internalreference",
+            "default": ""
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "subcategory": {
+            "type": "string",
+            "title": "Subcategory",
+            "default": ""
+          },
+          "gender": {
+            "type": "string",
+            "title": "Gender",
+            "default": "Women"
+          },
+          "shortDescription": {
+            "type": "string",
+            "title": "Shortdescription",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "highlights": {
+            "items": {},
+            "type": "array",
+            "title": "Highlights",
+            "default": []
+          },
+          "specifications": {
+            "type": "object",
+            "title": "Specifications",
+            "default": {}
+          },
+          "careInstructions": {
+            "items": {},
+            "type": "array",
+            "title": "Careinstructions",
+            "default": []
+          },
+          "deliveryInfo": {
+            "type": "string",
+            "title": "Deliveryinfo",
+            "default": ""
+          },
+          "returnInfo": {
+            "type": "string",
+            "title": "Returninfo",
+            "default": ""
+          },
+          "returnPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReturnPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fabric": {
+            "type": "string",
+            "title": "Fabric",
+            "default": ""
+          },
+          "material": {
+            "type": "string",
+            "title": "Material",
+            "default": ""
+          },
+          "primaryColor": {
+            "type": "string",
+            "title": "Primarycolor",
+            "default": ""
+          },
+          "secondaryColor": {
+            "type": "string",
+            "title": "Secondarycolor",
+            "default": ""
+          },
+          "colors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Colors",
+            "default": []
+          },
+          "patterns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Patterns",
+            "default": []
+          },
+          "work": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Work",
+            "default": []
+          },
+          "occasion": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Occasion",
+            "default": []
+          },
+          "sizes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sizes",
+            "default": []
+          },
+          "unavailableColors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unavailablecolors",
+            "default": []
+          },
+          "unavailableSizes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unavailablesizes",
+            "default": []
+          },
+          "season": {
+            "type": "string",
+            "title": "Season",
+            "default": ""
+          },
+          "fit": {
+            "type": "string",
+            "title": "Fit",
+            "default": ""
+          },
+          "length": {
+            "type": "string",
+            "title": "Length",
+            "default": ""
+          },
+          "collection": {
+            "type": "string",
+            "title": "Collection",
+            "default": ""
+          },
+          "collections": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Collections",
+            "default": []
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "badges": {
+            "items": {},
+            "type": "array",
+            "title": "Badges",
+            "default": []
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "title": "Isfeatured",
+            "default": false
+          },
+          "isBestseller": {
+            "type": "boolean",
+            "title": "Isbestseller",
+            "default": false
+          },
+          "isNew": {
+            "type": "boolean",
+            "title": "Isnew",
+            "default": false
+          },
+          "isLimitedEdition": {
+            "type": "boolean",
+            "title": "Islimitededition",
+            "default": false
+          },
+          "isTrending": {
+            "type": "boolean",
+            "title": "Istrending",
+            "default": false
+          },
+          "flags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Flags",
+            "default": {}
+          },
+          "price": {
+            "type": "integer",
+            "title": "Price",
+            "default": 0
+          },
+          "originalPrice": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalprice"
+          },
+          "compareAtPrice": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compareatprice"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "pricing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PricingDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock",
+            "default": 0
+          },
+          "availability": {
+            "type": "string",
+            "title": "Availability",
+            "default": "in-stock"
+          },
+          "inventoryTracked": {
+            "type": "boolean",
+            "title": "Inventorytracked",
+            "default": false
+          },
+          "lowStockThreshold": {
+            "type": "integer",
+            "title": "Lowstockthreshold",
+            "default": 5
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "reviewCount": {
+            "type": "integer",
+            "title": "Reviewcount",
+            "default": 0
+          },
+          "seo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeoDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "DRAFT"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "default": false
+          },
+          "assignedEmployeeId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignedemployeeid"
+          },
+          "mediaIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mediaids",
+            "default": []
+          },
+          "primaryMediaId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primarymediaid"
+          },
+          "galleryMediaIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gallerymediaids",
+            "default": []
+          },
+          "image": {
+            "type": "string",
+            "title": "Image",
+            "default": ""
+          },
+          "hoverImage": {
+            "type": "string",
+            "title": "Hoverimage",
+            "default": ""
+          },
+          "additionalImages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Additionalimages",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "EmployeeProduct",
+        "description": "Employee-safe product projection.\n\nThis is deliberately not an ``AdminProduct`` subclass: inheritance would\npublish the admin workflow and audit fields in OpenAPI and at runtime.\nEmployee product reads contain catalogue content, operational state and\nread-only media/assignment projections, but never internal review history\nor actor/audit metadata."
+      },
       "EmployeeProductUpdateRequest": {
         "properties": {
           "name": {
@@ -17304,34 +17874,6 @@
             ],
             "title": "Careinstructions"
           },
-          "collectionIds": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collectionids"
-          },
-          "collections": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collections"
-          },
           "tags": {
             "anyOf": [
               {
@@ -17369,7 +17911,7 @@
             "title": "Availability"
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "title": "EmployeeProductUpdateRequest",
         "description": "PATCH /employee/products/{id} \u2014 whitelisted employee edit."
@@ -17773,6 +18315,54 @@
         "type": "object",
         "title": "EmployeeUpdateRequest",
         "description": "Partial update payload for an employee profile (all fields optional)."
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "details"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "error"
+        ],
+        "title": "ErrorResponse"
       },
       "ExploreOffer": {
         "properties": {
@@ -18485,6 +19075,62 @@
         "title": "MeResponse",
         "description": "GET /customers/me response envelope.\nShape: { profile, addresses[], preferences, security: { activeSessions[] } }"
       },
+      "MediaAssetListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "objectKey": {
+            "type": "string",
+            "title": "Objectkey"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mimeType": {
+            "type": "string",
+            "title": "Mimetype"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "objectKey",
+          "url",
+          "status",
+          "mimeType"
+        ],
+        "title": "MediaAssetListItem",
+        "description": "One item in the unpaginated registered media library."
+      },
+      "MediaAssetListResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MediaAssetListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "items"
+        ],
+        "title": "MediaAssetListResponse",
+        "description": "Successful wire shape for ``GET /media/assets``."
+      },
       "MediaObjectMetaResponse": {
         "properties": {
           "ok": {
@@ -18693,6 +19339,131 @@
         },
         "type": "object",
         "title": "MediaReferenceResolveResponse"
+      },
+      "MediaRegistrationAsset": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "objectKey": {
+            "type": "string",
+            "title": "Objectkey"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "mimeType": {
+            "type": "string",
+            "title": "Mimetype"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "altText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alttext"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "objectKey",
+          "url",
+          "mimeType",
+          "title",
+          "status"
+        ],
+        "title": "MediaRegistrationAsset",
+        "description": "The registered media descriptor returned by ``POST /media/register``."
+      },
+      "MediaRegistrationAssignment": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "title": "Productid"
+          },
+          "mediaId": {
+            "type": "string",
+            "title": "Mediaid"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "title": "Sortorder"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "title": "Isprimary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "productId",
+          "mediaId",
+          "role",
+          "sortOrder",
+          "isPrimary"
+        ],
+        "title": "MediaRegistrationAssignment",
+        "description": "The optional product association returned during media registration."
+      },
+      "MediaRegistrationResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "media": {
+            "$ref": "#/components/schemas/MediaRegistrationAsset"
+          },
+          "assigned": {
+            "type": "boolean",
+            "title": "Assigned"
+          },
+          "assignment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaRegistrationAssignment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "media",
+          "assigned",
+          "assignment"
+        ],
+        "title": "MediaRegistrationResponse",
+        "description": "Successful wire shape for ``POST /media/register``."
       },
       "MediaStorageStatusResponse": {
         "properties": {
@@ -20494,31 +21265,6 @@
             ],
             "title": "Length"
           },
-          "collection": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collection"
-          },
-          "collections": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collections"
-          },
           "tags": {
             "anyOf": [
               {
@@ -21177,31 +21923,6 @@
               }
             ],
             "title": "Length"
-          },
-          "collection": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collection"
-          },
-          "collections": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collections"
           },
           "tags": {
             "anyOf": [
@@ -22014,31 +22735,6 @@
               }
             ],
             "title": "Length"
-          },
-          "collection": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collection"
-          },
-          "collections": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Collections"
           },
           "tags": {
             "anyOf": [
@@ -23520,6 +24216,23 @@
         ],
         "title": "SingleCollectionResponse"
       },
+      "SingleEmployeeProductResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "product": {
+            "$ref": "#/components/schemas/EmployeeProduct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product"
+        ],
+        "title": "SingleEmployeeProductResponse"
+      },
       "SingleOrderResponse": {
         "properties": {
           "ok": {
@@ -24389,6 +25102,114 @@
         },
         "type": "object",
         "title": "TargetUpdateRequest"
+      },
+      "TaxonomyCollectionMetrics": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "byStatus": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Bystatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "byStatus"
+        ],
+        "title": "TaxonomyCollectionMetrics",
+        "description": "Collection totals and status counts returned by taxonomy metrics."
+      },
+      "TaxonomyEntityCount": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "TaxonomyEntityCount",
+        "description": "Total for one taxonomy entity kind."
+      },
+      "TaxonomyMetricsResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "collections": {
+            "$ref": "#/components/schemas/TaxonomyCollectionMetrics"
+          },
+          "categories": {
+            "$ref": "#/components/schemas/TaxonomyEntityCount"
+          },
+          "subcategories": {
+            "$ref": "#/components/schemas/TaxonomyEntityCount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "collections",
+          "categories",
+          "subcategories"
+        ],
+        "title": "TaxonomyMetricsResponse",
+        "description": "Successful wire shape for ``GET /admin/taxonomy/metrics``."
+      },
+      "TaxonomyProductCountItem": {
+        "properties": {
+          "collectionId": {
+            "type": "string",
+            "title": "Collectionid"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "productCount": {
+            "type": "integer",
+            "title": "Productcount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collectionId",
+          "name",
+          "productCount"
+        ],
+        "title": "TaxonomyProductCountItem",
+        "description": "Resolved product count for one collection."
+      },
+      "TaxonomyProductCountsResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyProductCountItem"
+            },
+            "type": "array",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "counts"
+        ],
+        "title": "TaxonomyProductCountsResponse",
+        "description": "Successful wire shape for ``GET /admin/taxonomy/product-counts``."
       },
       "TokenResponse": {
         "properties": {

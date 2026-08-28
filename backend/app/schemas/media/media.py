@@ -162,6 +162,64 @@ class MediaObjectResponse(BaseModel):
     status: int = 201
 
 
+class MediaRegistrationAsset(BaseModel):
+    """The registered media descriptor returned by ``POST /media/register``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    object_key: str = Field(..., alias="objectKey")
+    url: str
+    mime_type: str = Field(..., alias="mimeType")
+    title: Optional[str]
+    alt_text: Optional[str] = Field(None, alias="altText")
+    status: str
+
+
+class MediaRegistrationAssignment(BaseModel):
+    """The optional product association returned during media registration."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    product_id: str = Field(..., alias="productId")
+    media_id: str = Field(..., alias="mediaId")
+    role: str
+    sort_order: int = Field(..., alias="sortOrder")
+    is_primary: bool = Field(..., alias="isPrimary")
+
+
+class MediaRegistrationResponse(BaseModel):
+    """Successful wire shape for ``POST /media/register``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool
+    media: MediaRegistrationAsset
+    assigned: bool
+    assignment: Optional[MediaRegistrationAssignment]
+
+
+class MediaAssetListItem(BaseModel):
+    """One item in the unpaginated registered media library."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    object_key: str = Field(..., alias="objectKey")
+    url: str
+    status: str
+    mime_type: str = Field(..., alias="mimeType")
+
+
+class MediaAssetListResponse(BaseModel):
+    """Successful wire shape for ``GET /media/assets``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool
+    items: List[MediaAssetListItem]
+
+
 class MediaObjectMetaResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

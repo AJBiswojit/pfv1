@@ -59,7 +59,9 @@ export default function AdminCollectionDetail() {
     [serverCollection, collectionId, version]
   );
   const products = useMemo(() => catalogRepository.all(), [version]);
-  const assigned = useMemo(() => products.filter((product) => taxonomyRepository.isProductInCollection(product, collection?.id)), [products, collection]);
+  const assigned = useMemo(() => products.filter((product) =>
+    taxonomyRepository.isProductInCollection(product, collection?.id, collection)
+  ), [products, collection]);
   const assignedIds = new Set(assigned.map((product) => product.id));
   const categories = taxonomyRepository.categoryOptions();
   const subcategories = category === "ALL" ? [] : taxonomyRepository.subcategoryOptionsFor(category);
@@ -149,15 +151,13 @@ export default function AdminCollectionDetail() {
             {heroSrc ? <img src={heroSrc} alt={collection.name} className="h-64 w-full max-w-full object-cover border border-mist" /> : <div className="flex h-64 items-center justify-center bg-mist/50 font-ui text-xs uppercase tracking-widest text-taupe">Fallback artwork</div>}
             <p className="mt-3 font-ui text-xs text-taupe">{hero ? `Media ${hero.id} · ${hero.status}` : "Using premium fallback artwork."}</p>
           </AdminPanel>
-          <AdminPanel eyebrow="Collection information" title="SEO & lifecycle">
+          <AdminPanel eyebrow="Collection information" title="Lifecycle">
             <dl className="grid min-w-0 gap-4">
               <Term label="Slug" value={`/collections/${collection.slug}`} />
               <Term label="Type" value={collection.type} />
               <Term label="Status" value={<StatusBadge label={collection.displayStatus} tone={tone[collection.displayStatus] || "quiet"} />} />
               <Term label="Dates" value={`${collection.startDate || "No start"} → ${collection.endDate || "No end"}`} />
               <Term label="Featured" value={collection.featured ? "Yes" : "No"} />
-              <Term label="SEO title" value={collection.seoTitle} />
-              <Term label="SEO description" value={collection.seoDescription} />
             </dl>
           </AdminPanel>
         </div>

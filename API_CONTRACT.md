@@ -237,6 +237,27 @@ Every API module exports/uses `handleError(err)` which guarantees:
 * **Taxonomy Metrics**: `GET /admin/taxonomy/metrics` (`scope: "admin"`) — returns total categories, subcategories, and collections by status.
 * **Per-Collection Counts**: `GET /admin/taxonomy/product-counts` (`scope: "admin"`) — returns resolved product counts per collection.
 
+The successful response wrappers are stable and intentionally unpaginated:
+
+```json
+{
+  "ok": true,
+  "collections": { "total": 5, "byStatus": { "ACTIVE": 3, "DRAFT": 2 } },
+  "categories": { "total": 12 },
+  "subcategories": { "total": 24 }
+}
+```
+
+`GET /admin/taxonomy/product-counts` returns
+`{ "ok": true, "counts": [{ "collectionId": "…", "name": "…", "productCount": 0 }] }`.
+`counts` is `[]` when no collections exist. `byStatus` is `{}` when no collection
+statuses exist. These routes do not introduce pagination or additional fields.
+
+The legacy `GET /admin/workflow/metrics` route is retained as a **compatibility
+alias** for `GET /admin/products/metrics`. It returns the same
+`CatalogMetricsResponse` shape and follows the same admin authorization path;
+clients should use `/admin/products/metrics` for new integrations.
+
 
 ---
 
@@ -774,3 +795,40 @@ The canonical rejection is unchanged:
 
 inside the standard 422 `BUSINESS_RULE_VIOLATION` envelope, returned by both
 `GET /admin/products/{id}/publish-issues` and `POST /admin/products/{id}/publish`.
+
+### 12.5 Registered media response shapes
+
+The registered-media admin library remains an unpaginated surface. The
+successful response for `POST /media/register` is:
+
+```json
+{
+  "ok": true,
+  "media": {
+    "id": "media-id",
+    "objectKey": "products/PF-W-0001/cover.png",
+    "url": "/api/v1/media/objects/products/PF-W-0001/cover.png",
+    "mimeType": "image/png",
+    "title": null,
+    "altText": null,
+    "status": "uploaded"
+  },
+  "assigned": false,
+  "assignment": null
+}
+```
+
+When `productId` is supplied, `assigned` is `true` and `assignment` is the
+existing association shape:
+`{ productId, mediaId, role, sortOrder, isPrimary }`. Media `status` and
+association `role` remain strings in responses so legacy stored values are
+preserved; the register input vocabulary is documented separately above.
+
+`GET /media/assets` returns
+`{ "ok": true, "items": [{ "id", "objectKey", "url", "status", "mimeType" }] }`.
+`items` is `[]` when no registered assets exist. It does not add pagination.
+
+For these four Step 11B-aligned routes, documented HTTP errors use the same
+canonical envelope from §4.1, including `details` as the runtime object or
+validation-error array. This documentation does not change exception handlers,
+status codes, or successful payloads.

@@ -43,7 +43,9 @@ import { apiClient, ApiError, handleError } from "./apiClient";
  *
  * Single normalization layer: whatever the editor holds, the payload sent to
  * the backend contains ONLY fields the backend persists (identity, taxonomy,
- * attributes, pricing, stock snapshot, SEO, media refs, merchandising flags).
+ * attributes, pricing, stock snapshot, SEO, authored media plates,
+ * merchandising flags). Registered product media is managed by the media API,
+ * not by this product payload.
  * Lifecycle keys (status/published/review/history) are never included — they
  * belong to the dedicated lifecycle endpoints, which are the authority.
  * Fields with no backend column (variants, department, inventory) are
@@ -90,8 +92,8 @@ export function buildAdminProductPayload(record = {}) {
     season: record.season ? String(record.season) : "",
     fit: record.fit ? String(record.fit) : "",
     length: record.length ? String(record.length) : "",
-    collection: record.collection ? String(record.collection) : "",
-    collections: Array.isArray(record.collections) ? record.collections : undefined,
+    // Collection membership is collection-owned and is intentionally absent
+    // from product write payloads. Read projections still expose it.
     tags: Array.isArray(record.tags) ? record.tags : undefined,
     badges: Array.isArray(record.badges) ? record.badges : undefined,
     isFeatured: Boolean(record.isFeatured),
@@ -128,9 +130,9 @@ export function buildAdminProductPayload(record = {}) {
             description: String(record.seo.description ?? ""),
           }
         : undefined,
-    mediaIds: Array.isArray(record.mediaIds) ? record.mediaIds.map(String) : undefined,
-    primaryMediaId: record.primaryMediaId ? String(record.primaryMediaId) : undefined,
-    galleryMediaIds: Array.isArray(record.galleryMediaIds) ? record.galleryMediaIds.map(String) : undefined,
+    // Registered media identifiers are read-only projections. Registered media
+    // is written only through /media/register; these authored plates remain
+    // valid product content.
     image: imageValue(record.image),
     hoverImage: imageValue(record.hoverImage),
     additionalImages: Array.isArray(record.additionalImages)
@@ -159,7 +161,7 @@ function normaliseProduct(p) {
     sku:              p.sku ?? "",
     price:            p.price ?? p.selling_price ?? 0,
     originalPrice:    p.originalPrice ?? p.original_price ?? p.mrp ?? p.compare_at_price ?? null,
-    compareAtPrice:   p.compare_at_price ?? p.compareAtPrice ?? null,
+    compareAtPrice:   p.compareAtPrice ?? p.compare_at_price ?? null,
     currency:         p.currency ?? "INR",
     description:      p.description ?? "",
     shortDescription: p.short_description ?? p.shortDescription ?? "",

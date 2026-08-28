@@ -45,7 +45,7 @@ export async function apiGetMediaStorageStatus() {
     const data = await apiClient.get("/media/storage/status", { scope: "none" });
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: error?.message || "Media storage status unavailable.", status: error?.status ?? 0 };
+    return handleError(error, "Media storage status unavailable.");
   }
 }
 
@@ -68,7 +68,7 @@ export async function apiResolveMediaReferences(references = []) {
     );
     return { ok: true, items: data?.items ?? [], total: data?.total ?? 0 };
   } catch (error) {
-    return { ok: false, error: error?.message || "Media resolution unavailable.", status: error?.status ?? 0 };
+    return handleError(error, "Media resolution unavailable.");
   }
 }
 
@@ -80,7 +80,7 @@ export async function apiGetMediaObjectMeta(objectKey) {
     const data = await apiClient.get(`/media/object-meta/${encodeMediaKey(key)}`, { scope: "none" });
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: error?.message || "Media metadata unavailable.", status: error?.status ?? 0 };
+    return handleError(error, "Media metadata unavailable.");
   }
 }
 
@@ -92,7 +92,7 @@ export async function apiGetProductMediaSet(productId) {
     const data = await apiClient.get(`/media/products/${encodeURIComponent(id)}/media-set`, { scope: "none" });
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: error?.message || "Product media set unavailable.", status: error?.status ?? 0 };
+    return handleError(error, "Product media set unavailable.");
   }
 }
 
@@ -115,7 +115,7 @@ export async function apiUploadMediaObject(file, { productId = null, namespace =
     const data = await apiClient.upload("/media/objects", form, { scope: "admin" });
     return { ok: true, data, object: data?.object ?? null };
   } catch (error) {
-    return { ok: false, error: error?.message || "Upload failed.", status: error?.status ?? 0 };
+    return handleError(error, "Upload failed.");
   }
 }
 
@@ -132,7 +132,7 @@ export async function apiUploadProductMediaObject(productId, file) {
     });
     return { ok: true, data, object: data?.object ?? null };
   } catch (error) {
-    return { ok: false, error: error?.message || "Upload failed.", status: error?.status ?? 0 };
+    return handleError(error, "Upload failed.");
   }
 }
 
@@ -150,7 +150,7 @@ export async function apiDeleteMediaObject(objectKey) {
     const data = await apiClient.delete(`/media/objects/${encodeMediaKey(key)}`, { scope: "admin" });
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error: error?.message || "Delete failed.", status: error?.status ?? 0 };
+    return handleError(error, "Delete failed.");
   }
 }
 
@@ -179,9 +179,10 @@ export const encodeMediaKey = (objectKey) =>
  * association's role / sort order / primary flag in place and never
  * duplicates the asset row.
  *
- * A failed registration returns `{ ok: false, error, status }` with the
- * server's own message — the caller must surface it and must NOT invent a
- * media id.
+ * A failed registration returns the canonical `handleError` shape with the
+ * server's own message and structured fields (`code`, `details`, `data`,
+ * `status`, and `isNetworkError`) — the caller must surface it and must NOT
+ * invent a media id.
  */
 export async function apiRegisterMediaObject(
   objectKey,
