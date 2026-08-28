@@ -145,6 +145,34 @@ class CollectionService:
         if result.scalars().first():
             raise ConflictException(f"A collection with slug '{slug}' already exists.")
 
+    async def _validated_product_ids(
+        self, product_ids: Optional[List[str]], field: str = "productIds"
+    ) -> List[str]:
+        """Validate and canonicalise a collection-owned product ID list.
+
+        Collection membership is stored in JSONB rather than a relational
+        association table, so the database cannot enforce these references.
+        Resolve every id before mutating the collection and preserve caller
+        order while removing duplicate associations. Unknown ids are a single
+        atomic 422 business-rule failure; no partial list is ever stored.
+        """
+        ids = list(product_ids or [])
+        unique_ids = list(dict.fromkeys(ids))
+        if not unique_ids:
+            return unique_ids
+
+        result = await self.db.execute(
+            select(ProductModel.id).where(ProductModel.id.in_(unique_ids))
+        )
+        existing = {str(value) for value in result.scalars().all()}
+        unknown = [value for value in unique_ids if str(value) not in existing]
+        if unknown:
+            raise BusinessLogicException(
+                f"Unknown product(s): {', '.join(unknown)}.",
+                details={"field": field, "unknown": unknown},
+            )
+        return unique_ids
+
     async def _resolve_product_ids(self, model: CollectionModel) -> List[str]:
         """
         Resolve the final set of product IDs for a collection.
@@ -345,6 +373,9 @@ class CollectionService:
         await self._assert_slug_unique(slug)
 
         type_val = req.type.value if hasattr(req.type, "value") else str(req.type)
+        explicit_product_ids = await self._validated_product_ids(
+            req.explicit_product_ids, field="explicitProductIds"
+        )
 
         col = CollectionModel(
             name=req.name,
@@ -360,7 +391,7 @@ class CollectionService:
             start_date=req.start_date,
             end_date=req.end_date,
             status="DRAFT",
-            explicit_product_ids=req.explicit_product_ids or [],
+            explicit_product_ids=explicit_product_ids,
             rule=req.rule or {},
             created_by=actor,
             updated_by=actor,
@@ -380,6 +411,11 @@ class CollectionService:
     ) -> CollectionResponse:
         """PATCH /admin/collections/{id}."""
         col = await self._get_or_404(collection_id)
+        validated_explicit_product_ids = None
+        if req.explicit_product_ids is not None:
+            validated_explicit_product_ids = await self._validated_product_ids(
+                req.explicit_product_ids, field="explicitProductIds"
+            )
 
         if req.name is not None:
             col.name = req.name
@@ -413,8 +449,8 @@ class CollectionService:
             col.start_date = req.start_date
         if req.end_date is not None:
             col.end_date = req.end_date
-        if req.explicit_product_ids is not None:
-            col.explicit_product_ids = req.explicit_product_ids
+        if validated_explicit_product_ids is not None:
+            col.explicit_product_ids = validated_explicit_product_ids
         if req.rule is not None:
             col.rule = req.rule
 
@@ -513,7 +549,8 @@ class CollectionService:
                 "Product assignment via explicit list is only supported for MANUAL collections. "
                 "For RULE_BASED collections, update the rule via PATCH."
             )
-        col.explicit_product_ids = req.productIds
+        col.explicit_product_ids = await self._validated_product_ids(req.productIds)
+
         col.updated_by = actor
         await self.db.flush()
         # Collections are read by cached storefront surfaces — a write must

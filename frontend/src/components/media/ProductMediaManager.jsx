@@ -8,13 +8,12 @@
  *   Upload & register            stage: uploading → uploaded → registering
  *                                → assigned       (each transition is an
  *                                                  awaited server response)
- *   product references patched   stage: saved      (then re-fetched — the
- *   + product re-read from the                    server's record, not the
- *     server                                        local echo)
+ *   server associations confirmed stage: assigned  (then the authoritative
+ *   media-set and product DTO are re-read from the server)
  *
  * Ordering/cover controls re-register through the idempotent register
  * endpoint and re-read the server state — the UI never reorders a local
- * array and calls it saved.
+ * array and calls it server truth.
  *
  * Server rule reminder: media upload/registration requires an admin with the
  * `media.upload` permission (server-enforced). A 401/403 is shown verbatim;
@@ -172,14 +171,14 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
         kind: "error",
         text: `Upload stopped: ${result.error} ${
           result.results?.some((r) => r.ok)
-            ? "The files listed as assigned were uploaded and registered on the server; this product has been re-synced from it."
+            ? "The files listed as assigned were uploaded and registered on the server; the authoritative media and product reads will be refreshed."
             : "Nothing was registered."
         }`,
       });
     }
 
-    // Whatever the server accepted is now durable — re-read it and persist
-    // the product's own media references from the server's ordering.
+    // Whatever the server accepted is now durable — re-read the authoritative
+    // media-set and product DTO so the UI reflects server ordering.
     const anyAssigned = result.results?.some((r) => r.ok);
     if (anyAssigned) {
       queue.forEach((item) => {
@@ -192,7 +191,7 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
       if (!synced.ok) {
         setNotice({
           kind: "error",
-          text: `Media registered, but the product save failed on the server: ${synced.error}`,
+          text: `Media registered, but the authoritative product read failed on the server: ${synced.error}`,
         });
       } else {
         setNotice((current) =>
@@ -200,7 +199,7 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
             ? current
             : {
                 kind: "ok",
-                text: "Media registered, assigned and saved — the product was re-read from the server.",
+                text: "Media registered and assigned — the authoritative media and product reads were refreshed.",
               }
         );
         onChange?.(synced.product ?? null);
@@ -327,8 +326,8 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
         ) : (
           <p className="mt-3 border border-dashed border-mist bg-surface/30 px-4 py-6 text-center font-ui text-[12px] text-taupe">
             No registered media yet. Upload below — each file is stored in object storage,
-            registered as a durable asset, assigned to this product and then saved onto the
-            product record.
+            registered as a durable asset, assigned to this product and then served through the
+            authoritative media-set and product read APIs.
           </p>
         )}
       </div>
@@ -506,8 +505,8 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
       <p className="font-ui text-[11px] leading-relaxed text-taupe">
         Until a file reaches “Assigned to product”, it exists only in this browser and is never
         presented as media. Registration and assignment are real database rows, confirmed by
-        the server; after saving, the product is re-fetched from the server rather than kept
-        from local state.
+        the server; after registration, the authoritative media-set and product DTO are
+        re-fetched rather than projected from local state.
       </p>
     </div>
   );

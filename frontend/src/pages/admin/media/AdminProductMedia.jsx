@@ -119,7 +119,7 @@ const AdminProductMedia = () => {
 
       <AdminPanel
         eyebrow="Registered media"
-        title="Lifecycle: upload → register → assign → save"
+        title="Lifecycle: upload → register → assign → read"
         className="mb-6"
       >
         <ProductMediaManager

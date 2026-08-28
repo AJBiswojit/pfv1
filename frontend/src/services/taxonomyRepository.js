@@ -375,8 +375,10 @@ export const taxonomyRepository = {
   collectionsForProduct: (product) => taxonomyRepository.collections().filter((collection) =>
     taxonomyRepository.isProductInCollection(product, collection.id)
   ),
-  isProductInCollection: (product, collectionIdOrSlugOrName) => {
-    const collection = taxonomyRepository.findCollection(collectionIdOrSlugOrName);
+  isProductInCollection: (product, collectionIdOrSlugOrName, authoritativeCollection = null) => {
+    // Admin callers may pass the freshly fetched collection record. This keeps
+    // DRAFT/ARCHIVED membership reads off the public ACTIVE-only snapshot.
+    const collection = authoritativeCollection ?? taxonomyRepository.findCollection(collectionIdOrSlugOrName);
     if (!collection || !product) return false;
     if ((collection.explicitProductIds ?? []).includes(product.id)) return true;
     const ids = Array.isArray(product.collectionIds) ? product.collectionIds : [];

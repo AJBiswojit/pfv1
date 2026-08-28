@@ -250,11 +250,10 @@ export default function MediaUploadForm({
       return;
     }
 
-    /* Persist the registered order/primary onto the product record itself,
-       then re-read the product from the server so the success view reflects
-       server truth. A sync failure is reported alongside — registration is
-       already durable, so this is a follow-up save, not a rollback. */
-    setUploadState("saving");
+    /* Registration is already durable. Re-read the authoritative media-set
+       and product DTO so the success view reflects server truth; this is a
+       read-only refresh, not a product-contract save. */
+    setUploadState("refreshing");
     const sync = await syncProductMediaFromServer(productId, { scope: "admin" });
 
     setUploadedResults(
@@ -270,7 +269,7 @@ export default function MediaUploadForm({
     setFormError(
       sync.ok
         ? null
-        : `Media is registered and assigned, but saving the product's media fields failed: ${sync.error}`,
+        : `Media is registered and assigned, but refreshing the authoritative product read failed: ${sync.error}`,
     );
     setUploadState("completed");
   };
@@ -333,8 +332,8 @@ export default function MediaUploadForm({
             </p>
           ) : (
             <p className="text-taupe text-[11px] leading-relaxed">
-              The product's media fields were re-read from the server after saving — what you see is
-              the durable record, visible on the product page once the product is published.
+              The authoritative media-set and product fields were re-read from the server after
+              registration — what you see is the durable record, visible once the product is published.
             </p>
           )}
         </div>
@@ -557,8 +556,8 @@ export default function MediaUploadForm({
               <Loader2 size={14} className="animate-spin text-accent" />
               {uploadState === "preparing"
                 ? "Preparing assets..."
-                : uploadState === "saving"
-                  ? "Saving the product's media fields…"
+                : uploadState === "refreshing"
+                  ? "Refreshing the authoritative media…"
                   : "Uploading & registering media…"}
             </span>
             <span className="font-mono text-taupe">{uploadProgress}%</span>

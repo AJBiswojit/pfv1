@@ -32,8 +32,6 @@ export const EMPLOYEE_EDITABLE_FIELDS = [
   "length",
   "highlights",
   "careInstructions",
-  "collectionIds",
-  "collections",
   "tags",
   "stock",
   "availability",

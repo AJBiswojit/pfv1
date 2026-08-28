@@ -21,9 +21,10 @@
  *     allow-list;
  *   * media registration goes through `apiClient` with an explicit scope, and
  *     never through raw `fetch`;
- *   * the media-write keys on the PRODUCT contract are still sent — asserted
- *     as-is, because stage 1 of §23 R5 is BLOCKED (Block 7 report §11) and
- *     must not appear to have happened.
+ *   * R5 Stage 1 removes the three media-write keys from every frontend
+ *     product payload while retaining authored URL fields;
+ *   * registered-media refreshes are read-only: no product PATCH is used as a
+ *     client-side projection.
  *
  * HARNESS LIMITATION, stated honestly and not worked around: `node:test` with
  * NO DOM and NO React renderer. Upload dropzones, drag-reorder, the media
@@ -40,7 +41,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { PRODUCT_MEDIA_ROLES, defaultRoleForType } from "../src/config/mediaTypes.js";
-import { PRODUCT_MEDIA_COVER_ROLE, buildProductMediaPatch } from "../src/services/media/productMediaService.js";
+import { PRODUCT_MEDIA_COVER_ROLE } from "../src/services/media/productMediaService.js";
+import { buildAdminProductPayload } from "../src/services/api/productsApi.js";
 
 const src = (relative) =>
   readFileSync(fileURLToPath(new URL(`../src/${relative}`, import.meta.url)), "utf8");
@@ -158,51 +160,87 @@ test("STATIC: no raw fetch anywhere in the media API surface", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 4. PF3-N09 — the write keys are STILL sent (stage 1 is blocked)      */
+/* 4. R5 Stage 1 — product media IDs are read-only to the frontend      */
 /* ------------------------------------------------------------------ */
 
-test("buildProductMediaPatch still emits the three media-write keys", () => {
-  // Asserted as-is. Step 9 asks for these to stop, but the publish gate reads
-  // `primaryMediaId`/`image` and is blind to `media_product_media`, so removing
-  // them today makes a registered-media-only product unpublishable.
-  // See the Block 7 report §11. When that is resolved, THIS test is the one
-  // that must be rewritten — deliberately, not by accident.
-  const patch = buildProductMediaPatch([
-    { mediaId: "m1", url: "/api/v1/media/objects/products/P/1.png", isPrimary: true },
-    { mediaId: "m2", url: "/api/v1/media/objects/products/P/2.png", isPrimary: false },
-  ]);
-  assert.deepEqual(patch.mediaIds, ["m1", "m2"]);
-  assert.equal(patch.primaryMediaId, "m1");
-  assert.deepEqual(patch.galleryMediaIds, ["m2"]);
-  assert.equal(patch.image, "/api/v1/media/objects/products/P/1.png");
+const LEGACY_MEDIA_WRITE_KEYS = ["mediaIds", "primaryMediaId", "galleryMediaIds"];
+
+test("buildAdminProductPayload omits all three legacy media-write keys", () => {
+  const payload = buildAdminProductPayload({
+    name: "Registered-media product",
+    mediaIds: ["media-1"],
+    primaryMediaId: "media-1",
+    galleryMediaIds: ["media-2"],
+    image: "authored-cover.jpg",
+    hoverImage: "authored-hover.jpg",
+    additionalImages: ["authored-gallery.jpg"],
+  });
+
+  for (const key of LEGACY_MEDIA_WRITE_KEYS) {
+    assert.equal(Object.hasOwn(payload, key), false, `${key} must not be a product write field`);
+    assert.equal(JSON.stringify(payload).includes(`\"${key}\"`), false, `${key} reached the wire payload`);
+  }
+  // Authored legacy plates remain valid product content, even when they are URLs.
+  assert.equal(payload.image, "authored-cover.jpg");
+  assert.equal(payload.hoverImage, "authored-hover.jpg");
+  assert.deepEqual(payload.additionalImages, ["authored-gallery.jpg"]);
 });
 
-test("buildProductMediaPatch clears the keys for an empty media set", () => {
-  const patch = buildProductMediaPatch([]);
-  assert.deepEqual(patch.mediaIds, []);
-  assert.equal(patch.primaryMediaId, null);
-  assert.deepEqual(patch.galleryMediaIds, []);
-  assert.equal(patch.image, "");
-});
-
-test("STATIC: buildAdminProductPayload still forwards the media-write keys", () => {
+test("STATIC: buildAdminProductPayload cannot regain legacy media forwarding", () => {
   const text = src("services/api/productsApi.js");
-  for (const key of ["mediaIds", "primaryMediaId", "galleryMediaIds"]) {
-    assert.match(
-      text,
-      new RegExp(`${key}:\\s*`),
-      `${key} disappeared from the admin payload — if that was deliberate, the ` +
-        `publish gate must first learn to read media_product_media (Block 7 report §11)`,
-    );
+  const start = text.indexOf("function buildAdminProductPayload");
+  assert.ok(start >= 0, "the single admin payload builder moved unexpectedly");
+  const body = text.slice(start, text.indexOf("\n}\n", start) + 3);
+  for (const key of LEGACY_MEDIA_WRITE_KEYS) {
+    assert.doesNotMatch(body, new RegExp(`\\b${key}\\s*:`), `${key} was restored to the payload builder`);
   }
 });
 
-test("STATIC: syncProductMediaFromServer is the only writer of the legacy projection", () => {
-  // The gap the frontend is currently filling for the server. Named here so
-  // that when the server takes it over, the duplication is obvious.
+test("STATIC: the media service has no registered-media product PATCH path", () => {
   const text = src("services/media/productMediaService.js");
-  assert.match(text, /buildProductMediaPatch\(media\.items\)/);
-  assert.match(text, /apiAdminUpdateProduct\(id,\s*patch\)/);
+  assert.doesNotMatch(text, /buildProductMediaPatch/);
+  assert.doesNotMatch(text, /apiAdminUpdateProduct/);
+  assert.doesNotMatch(text, /PATCH \/admin\/products/);
+  assert.match(text, /apiAdminGetProduct/);
+  assert.match(text, /apiGetProductMediaSet/);
+});
+
+test("STATIC: product API writers all use the central payload without legacy media fields", () => {
+  const payloadBuilder = src("services/api/productsApi.js");
+  const builderStart = payloadBuilder.indexOf("function buildAdminProductPayload");
+  const builderBody = payloadBuilder.slice(builderStart, payloadBuilder.indexOf("\n}\n", builderStart) + 3);
+  const catalog = src("services/catalogRepository.js");
+  const backendSyncStart = catalog.indexOf("async function syncProductToBackend");
+  assert.ok(backendSyncStart >= 0, "catalog backend sync moved unexpectedly");
+  const writerSources = [
+    ["services/api/productsApi.js", builderBody],
+    ["services/admin/productAdminService.js", src("services/admin/productAdminService.js")],
+    ["services/catalogRepository.js", catalog.slice(backendSyncStart)],
+  ];
+  for (const [file, text] of writerSources) {
+    for (const key of LEGACY_MEDIA_WRITE_KEYS) {
+      assert.doesNotMatch(
+        text,
+        new RegExp(`\\b${key}\\s*:`),
+        `${file} contains an unexpected ${key} product-write property`,
+      );
+    }
+  }
+});
+
+test("STATIC: registered media is read through media-set and product DTO APIs", () => {
+  const text = src("services/media/productMediaService.js");
+  assert.match(text, /getRegisteredProductMedia\(id\)/);
+  assert.match(text, /apiAdminGetProduct\(id\)/);
+  assert.match(text, /upsertServerProducts\(\[fresh\.product\]\)/);
+  assert.match(text, /stage: PRODUCT_MEDIA_STAGES\.REFRESHED/);
+});
+
+test("STATIC: the editor does not copy registered DTO projections into authored media fields", () => {
+  const text = src("components/products/editorSectionsContent.jsx");
+  assert.match(text, /<ProductMediaManager productId=\{draft\.id\} scope="admin" \/>/);
+  assert.doesNotMatch(text, /serverProduct/);
+  assert.doesNotMatch(text, /additionalImages:\\s*server/);
 });
 
 /* ------------------------------------------------------------------ */

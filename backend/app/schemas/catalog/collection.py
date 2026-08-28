@@ -89,7 +89,7 @@ class CollectionResponse(BaseModel):
 class CollectionCreateRequest(BaseModel):
     """Body for POST /admin/collections."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str
     slug: Optional[str] = None              # auto-derived from name if omitted
@@ -119,7 +119,7 @@ class CollectionCreateRequest(BaseModel):
 class CollectionUpdateRequest(BaseModel):
     """Body for PATCH /admin/collections/{id} — all fields optional."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: Optional[str] = None
     slug: Optional[str] = None
@@ -152,7 +152,7 @@ class AssignProductsRequest(BaseModel):
              removeProductsFromCollection in the frontend.
     """
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     productIds: List[str] = Field(alias="product_ids")
 
 
@@ -168,6 +168,51 @@ class CollectionListResponse(BaseModel):
 class SingleCollectionResponse(BaseModel):
     ok: bool = True
     collection: CollectionResponse
+
+
+class TaxonomyCollectionMetrics(BaseModel):
+    """Collection totals and status counts returned by taxonomy metrics."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    total: int
+    by_status: Dict[str, int] = Field(..., alias="byStatus")
+
+
+class TaxonomyEntityCount(BaseModel):
+    """Total for one taxonomy entity kind."""
+
+    total: int
+
+
+class TaxonomyMetricsResponse(BaseModel):
+    """Successful wire shape for ``GET /admin/taxonomy/metrics``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool
+    collections: TaxonomyCollectionMetrics
+    categories: TaxonomyEntityCount
+    subcategories: TaxonomyEntityCount
+
+
+class TaxonomyProductCountItem(BaseModel):
+    """Resolved product count for one collection."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    collection_id: str = Field(..., alias="collectionId")
+    name: str
+    product_count: int = Field(..., alias="productCount")
+
+
+class TaxonomyProductCountsResponse(BaseModel):
+    """Successful wire shape for ``GET /admin/taxonomy/product-counts``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool
+    counts: List[TaxonomyProductCountItem]
 
 
 class OkResponse(BaseModel):

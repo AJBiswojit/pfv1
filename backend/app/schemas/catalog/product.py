@@ -360,6 +360,93 @@ class AdminProduct(BaseModel):
     history: List[Dict[str, Any]] = []
 
 
+class EmployeeProduct(BaseModel):
+    """Employee-safe product projection.
+
+    This is deliberately not an ``AdminProduct`` subclass: inheritance would
+    publish the admin workflow and audit fields in OpenAPI and at runtime.
+    Employee product reads contain catalogue content, operational state and
+    read-only media/assignment projections, but never internal review history
+    or actor/audit metadata.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: str
+    product_id: str = Field(alias="productId", default="")
+    name: str = ""
+    slug: str = ""
+    sku: str = ""
+    brand: str = "Pratikshya Fashon"
+    product_type: str = Field("fashion", alias="productType")
+    product_code: str = Field("", alias="productCode")
+    barcode: str = ""
+    internal_reference: str = Field("", alias="internalReference")
+
+    category: str = ""
+    subcategory: str = ""
+    gender: str = "Women"
+    short_description: str = Field("", alias="shortDescription")
+    description: str = ""
+    highlights: List[Any] = []
+    specifications: Dict[str, Any] = {}
+    care_instructions: List[Any] = Field([], alias="careInstructions")
+    delivery_info: str = Field("", alias="deliveryInfo")
+    return_info: str = Field("", alias="returnInfo")
+    return_policy: Optional[ReturnPolicy] = Field(None, alias="returnPolicy")
+
+    fabric: str = ""
+    material: str = ""
+    primary_color: str = Field("", alias="primaryColor")
+    secondary_color: str = Field("", alias="secondaryColor")
+    colors: List[str] = []
+    patterns: List[str] = []
+    work: List[str] = []
+    occasion: List[str] = []
+    sizes: List[str] = []
+    unavailable_colors: List[str] = Field([], alias="unavailableColors")
+    unavailable_sizes: List[str] = Field([], alias="unavailableSizes")
+    season: str = ""
+    fit: str = ""
+    length: str = ""
+
+    collection: str = ""
+    collections: List[str] = []
+    tags: List[str] = []
+    badges: List[Any] = []
+    is_featured: bool = Field(False, alias="isFeatured")
+    is_bestseller: bool = Field(False, alias="isBestseller")
+    is_new: bool = Field(False, alias="isNew")
+    is_limited_edition: bool = Field(False, alias="isLimitedEdition")
+    is_trending: bool = Field(False, alias="isTrending")
+    flags: Dict[str, bool] = {}
+
+    price: int = 0
+    original_price: Optional[int] = Field(None, alias="originalPrice")
+    compare_at_price: Optional[int] = Field(None, alias="compareAtPrice")
+    currency: str = "INR"
+    pricing: Optional[PricingDetail] = None
+
+    stock: int = 0
+    availability: str = "in-stock"
+    inventory_tracked: bool = Field(False, alias="inventoryTracked")
+    low_stock_threshold: int = Field(5, alias="lowStockThreshold")
+    rating: Optional[float] = None
+    review_count: int = Field(0, alias="reviewCount")
+    seo: Optional[SeoDetail] = None
+
+    status: str = "DRAFT"
+    published: bool = False
+    assigned_employee_id: Optional[str] = Field(None, alias="assignedEmployeeId")
+
+    media_ids: List[str] = Field([], alias="mediaIds")
+    primary_media_id: Optional[str] = Field(None, alias="primaryMediaId")
+    gallery_media_ids: List[str] = Field([], alias="galleryMediaIds")
+    image: str = ""
+    hover_image: str = Field("", alias="hoverImage")
+    additional_images: List[str] = Field([], alias="additionalImages")
+
+
 # ── Request bodies ────────────────────────────────────────────────────────────
 
 class ProductContentFields(BaseModel):
@@ -412,8 +499,6 @@ class ProductContentFields(BaseModel):
     fit: Optional[str] = None
     length: Optional[str] = None
 
-    collection: Optional[str] = None
-    collections: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     badges: Optional[List[Any]] = None
     is_featured: Optional[bool] = Field(None, alias="isFeatured")
@@ -477,10 +562,18 @@ class ProductContentFields(BaseModel):
                     "status", "published", "review", "review_flags",
                     "reviewFlags", "history", "price_history", "priceHistory",
                     "createdBy", "created_by", "updatedBy", "updated_by",
+                    "collection", "collections", "collectionIds", "collection_ids",
                 )
                 if key in values
             ]
             if blocked:
+                collection_keys = {"collection", "collections", "collectionIds", "collection_ids"}
+                if collection_keys.intersection(blocked):
+                    raise ValueError(
+                        "Product collection membership is managed by the collection "
+                        "assignment endpoint; collection fields are read-only. Blocked: "
+                        + ", ".join(sorted(set(blocked)))
+                    )
                 raise ValueError(
                     "Product lifecycle fields cannot be written through this "
                     "endpoint; use the lifecycle routes (submit-review, approve, "
@@ -531,7 +624,7 @@ EMPLOYEE_EDITABLE_FIELDS = {
     "primary_color", "primaryColor", "secondary_color", "secondaryColor",
     "colors", "patterns", "work", "occasion", "sizes", "season",
     "fit", "length", "highlights", "care_instructions", "careInstructions",
-    "collection_ids", "collectionIds", "collections", "tags",
+    "tags",
     "stock", "availability",
 }
 
@@ -539,7 +632,7 @@ EMPLOYEE_EDITABLE_FIELDS = {
 class EmployeeProductUpdateRequest(BaseModel):
     """PATCH /employee/products/{id} — whitelisted employee edit."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: Optional[str] = None
     price: Optional[int] = None
@@ -563,15 +656,13 @@ class EmployeeProductUpdateRequest(BaseModel):
     length: Optional[str] = None
     highlights: Optional[List[Any]] = None
     care_instructions: Optional[List[Any]] = Field(None, alias="careInstructions")
-    collection_ids: Optional[List[str]] = Field(None, alias="collectionIds")
-    collections: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     stock: Optional[int] = None
     availability: Optional[str] = None
 
 
 class AssignEmployeeRequest(BaseModel):
-    employee_id: Optional[str] = Field(None, alias="employeeId")
+    employee_id: Optional[str] = Field(None, alias="employeeId", min_length=1)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -650,7 +741,7 @@ class ProductListQuery(BaseModel):
     page_size: int = Field(20, alias="pageSize")
     # Internal — set by GET /collections/{id}/products to restrict results
     # to the pre-resolved membership set. Not a public query parameter.
-    _collection_product_ids: Optional[List[str]] = None
+    collection_product_ids: Optional[List[str]] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -710,6 +801,11 @@ class AdminProductListResponse(BaseModel):
 class SingleProductResponse(BaseModel):
     ok: bool = True
     product: AdminProduct
+
+
+class SingleEmployeeProductResponse(BaseModel):
+    ok: bool = True
+    product: EmployeeProduct
 
 
 class StorefrontProductResponse(BaseModel):

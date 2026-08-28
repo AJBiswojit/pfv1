@@ -49,7 +49,10 @@ from app.schemas.catalog.collection import (
     CollectionUpdateRequest,
     OkResponse,
     SingleCollectionResponse,
+    TaxonomyMetricsResponse,
+    TaxonomyProductCountsResponse,
 )
+from app.api.v1.response_docs import canonical_error_responses
 from app.schemas.catalog.product import ProductListQuery, ProductListResponse
 from app.services.catalog.collection_service import CollectionService
 from app.services.catalog.product_service import ProductService
@@ -97,9 +100,11 @@ async def get_collection_products(
     query = ProductListQuery(
         q=q,
         category=category,
-        # Pass the resolved ids as the collection filter;
-        # ProductService interprets a list of ids via the collection facet.
-        collection=[col_model.id],
+        # The resolved IDs are already the authoritative collection filter.
+        # Do not also send the collection facet: product responses expose
+        # collection names, so filtering that projection by the collection ID
+        # would discard valid explicit associations.
+        collection=None,
         subcategory=subcategory,
         gender=gender,
         price=price,
@@ -114,7 +119,7 @@ async def get_collection_products(
         page=page,
         pageSize=pageSize,
         # Inform the service of the pre-resolved ids so it can restrict to them.
-        _collection_product_ids=resolved_ids,
+        collection_product_ids=resolved_ids,
     )
     prod_service = ProductService(db)
     result = await prod_service.list_storefront_products(query)
@@ -390,8 +395,10 @@ async def admin_assign_products(
 
 @router.get(
     "/admin/taxonomy/metrics",
+    response_model=TaxonomyMetricsResponse,
     summary="Admin — taxonomy metrics (collection / category / subcategory counts by status)",
     description="Sources: `metrics()`, `productCounts()`. Returns counts for all taxonomy entities.",
+    responses=canonical_error_responses(401, 403, 500),
 )
 async def admin_taxonomy_metrics(
     current_user: UserModel = Depends(get_current_admin),
@@ -404,11 +411,13 @@ async def admin_taxonomy_metrics(
 
 @router.get(
     "/admin/taxonomy/product-counts",
+    response_model=TaxonomyProductCountsResponse,
     summary="Admin — per-collection resolved product counts",
     description=(
         "Sources: `productCounts()`, `collectionsForProduct()`, `isProductInCollection()`.  \n"
         "Returns `{ counts: [{ collectionId, name, productCount }] }`."
     ),
+    responses=canonical_error_responses(401, 403, 500),
 )
 async def admin_taxonomy_product_counts(
     current_user: UserModel = Depends(get_current_admin),

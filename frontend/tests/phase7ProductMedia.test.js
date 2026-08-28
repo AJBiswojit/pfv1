@@ -10,11 +10,10 @@
  *   · failures surface the server's own message, stop the batch at the
  *     failure point and NEVER mint or carry forward a fake media id;
  *   · primary / cover and ordering are re-registered through the idempotent
- *     register endpoint, then the product is re-read from the server —
- *     the UI never assumes the write;
- *   · the durable read model (media-set) maps onto the product's own media
- *     reference fields exactly, and a sync asserts "saved" only after the
- *     PATCH succeeded AND the product was re-fetched;
+ *     register endpoint, then the authoritative media-set and product DTO are
+ *     re-read from the server — the UI never assumes the write;
+ *   · the durable read model (media-set) remains independent of the product
+ *     write contract, and media refresh never issues a product PATCH;
  *   · nothing is written to localStorage: the durable registry is the only
  *     media truth these modules touch.
  *
@@ -30,7 +29,6 @@ import {
   PRODUCT_MEDIA_STAGE_LABELS,
   PRODUCT_MEDIA_COVER_ROLE,
   isTerminalMediaStage,
-  buildProductMediaPatch,
   getRegisteredProductMedia,
   syncProductMediaFromServer,
   uploadAndRegisterProductImage,
@@ -116,7 +114,7 @@ test("the lifecycle vocabulary only ever reflects server-confirmed states", () =
   assert.equal(PRODUCT_MEDIA_STAGES.UPLOADED, "uploaded");
   assert.equal(PRODUCT_MEDIA_STAGES.REGISTERING, "registering");
   assert.equal(PRODUCT_MEDIA_STAGES.ASSIGNED, "assigned");
-  assert.equal(PRODUCT_MEDIA_STAGES.SAVED, "saved");
+  assert.equal(PRODUCT_MEDIA_STAGES.REFRESHED, "refreshed");
   assert.equal(PRODUCT_MEDIA_STAGES.PUBLISHED, "published");
   assert.equal(PRODUCT_MEDIA_STAGES.FAILED, "failed");
 
@@ -125,43 +123,29 @@ test("the lifecycle vocabulary only ever reflects server-confirmed states", () =
   assert.doesNotMatch(PRODUCT_MEDIA_STAGE_LABELS[PRODUCT_MEDIA_STAGES.UPLOADING], /stored|saved|assigned/i);
   assert.match(PRODUCT_MEDIA_STAGE_LABELS[PRODUCT_MEDIA_STAGES.UPLOADED], /object storage/i);
 
-  assert.ok(isTerminalMediaStage(PRODUCT_MEDIA_STAGES.SAVED));
+  assert.ok(isTerminalMediaStage(PRODUCT_MEDIA_STAGES.REFRESHED));
   assert.ok(isTerminalMediaStage(PRODUCT_MEDIA_STAGES.PUBLISHED));
   assert.ok(isTerminalMediaStage(PRODUCT_MEDIA_STAGES.FAILED));
   assert.ok(!isTerminalMediaStage(PRODUCT_MEDIA_STAGES.UPLOADING));
 });
 
 // ===========================================================================
-// 2. buildProductMediaPatch — the read-model mapping, pinned without HTTP
+// 2. Authoritative read model — no product projection
 // ===========================================================================
 
-test("buildProductMediaPatch maps the server's order onto the product fields", () => {
-  const patch = buildProductMediaPatch(MEDIA_SET.mediaItems);
-  assert.deepEqual(patch.mediaIds, ["media-1", "media-2"]);
-  assert.equal(patch.primaryMediaId, "media-1");
-  assert.deepEqual(patch.galleryMediaIds, ["media-2"]);
-  assert.equal(patch.image, "/api/v1/media/objects/products/PF-W-NEW-0001/a.png");
-  assert.deepEqual(patch.additionalImages, [
-    "/api/v1/media/objects/products/PF-W-NEW-0001/a.png",
-    "/api/v1/media/objects/products/PF-W-NEW-0001/b.webp",
-  ]);
-});
+test("the registered media-set is read verbatim without inventing product fields", async () => {
+  const calls = mockFetch(MEDIA_SET);
+  const result = await getRegisteredProductMedia("PF-W-NEW-0001");
 
-test("buildProductMediaPatch falls back to the first item when nothing is primary", () => {
-  const noPrimary = MEDIA_SET.mediaItems.map((item) => ({ ...item, isPrimary: false }));
-  const patch = buildProductMediaPatch(noPrimary);
-  assert.equal(patch.primaryMediaId, "media-1");
-  assert.deepEqual(patch.galleryMediaIds, ["media-2"]);
-});
-
-test("buildProductMediaPatch empties the reference fields for an empty registry", () => {
-  assert.deepEqual(buildProductMediaPatch([]), {
-    mediaIds: [],
-    primaryMediaId: null,
-    galleryMediaIds: [],
-    image: "",
-    additionalImages: [],
-  });
+  assert.equal(result.ok, true);
+  assert.match(calls[0].url, /\/media\/products\/PF-W-NEW-0001\/media-set$/);
+  assert.equal(result.mediaRecordsAvailable, true);
+  assert.deepEqual(result.items, MEDIA_SET.mediaItems);
+  assert.equal(result.primary.mediaId, "media-1");
+  assert.equal(result.gallery.length, 1);
+  assert.equal(Object.hasOwn(result, "mediaIds"), false);
+  assert.equal(Object.hasOwn(result, "primaryMediaId"), false);
+  assert.equal(Object.hasOwn(result, "galleryMediaIds"), false);
 });
 
 // ===========================================================================
@@ -385,11 +369,19 @@ test("getRegisteredProductMedia maps the media-set response without inventing fi
   assert.equal(result.gallery.length, 1);
 });
 
-test("syncProductMediaFromServer PATCHes then RE-FETCHES — saved means server truth", async () => {
+test("syncProductMediaFromServer only refreshes authoritative reads", async () => {
   const calls = mockFetch((url) => {
     if (String(url).endsWith("/media-set")) return MEDIA_SET;
-    if (String(url).endsWith("/PF-W-NEW-0001") || String(url).match(/\/admin\/products\/PF-W-NEW-0001/)) {
-      return { id: "PF-W-NEW-0001", name: "New Sari", mediaIds: ["media-1", "media-2"] };
+    if (String(url).match(/\/admin\/products\/PF-W-NEW-0001/)) {
+      return {
+        id: "PF-W-NEW-0001",
+        name: "New Sari",
+        image: MEDIA_SET.primary.url,
+        additionalImages: MEDIA_SET.mediaItems.map((item) => item.url),
+        mediaIds: ["media-1", "media-2"],
+        primaryMediaId: "media-1",
+        galleryMediaIds: ["media-2"],
+      };
     }
     throw new Error(`unexpected ${url}`);
   });
@@ -398,47 +390,37 @@ test("syncProductMediaFromServer PATCHes then RE-FETCHES — saved means server 
   const result = await syncProductMediaFromServer("PF-W-NEW-0001");
 
   assert.equal(result.ok, true);
-  assert.equal(result.stage, PRODUCT_MEDIA_STAGES.SAVED);
+  assert.equal(result.stage, PRODUCT_MEDIA_STAGES.REFRESHED);
   assert.equal(result.items.length, 2);
+  assert.equal(result.product.image, MEDIA_SET.primary.url);
+  assert.deepEqual(result.product.additionalImages, MEDIA_SET.mediaItems.map((item) => item.url));
 
-  const patchCall = calls.find((call) => (call.options?.method ?? "GET").toUpperCase() === "PATCH");
-  assert.ok(patchCall, "the product fields were persisted");
-  const patchBody = JSON.parse(patchCall.options.body);
-  assert.deepEqual(patchBody.mediaIds, ["media-1", "media-2"]);
-  assert.equal(patchBody.primaryMediaId, "media-1");
-  assert.deepEqual(patchBody.galleryMediaIds, ["media-2"]);
-  assert.equal(patchBody.image, "/api/v1/media/objects/products/PF-W-NEW-0001/a.png");
-
-  const getAfterPatch = calls.filter((call) => (call.options?.method ?? "GET").toUpperCase() === "GET");
-  assert.ok(getAfterPatch.some((call) => /\/products\/PF-W-NEW-0001/.test(call.url) && !/media-set/.test(call.url)),
-    "the product was re-fetched after the patch");
-
-  // …and the shared catalog cache now holds the server's record.
+  const methods = calls.map((call) => (call.options?.method ?? "GET").toUpperCase());
+  assert.deepEqual(methods, ["GET", "GET"], "refresh uses media-set and product reads only");
+  assert.equal(calls.some((call) => call.options?.body), false, "refresh sent no product write body");
   assert.equal(getServerProducts().some((product) => product.id === "PF-W-NEW-0001"), true);
   replaceServerProducts([]);
 });
 
-test("a failed product PATCH is reported — registration is not lied about", async () => {
-  mockFetch((url, options) => {
+test("a failed product read is reported without pretending registration failed", async () => {
+  const calls = mockFetch((url) => {
     if (String(url).endsWith("/media-set")) return MEDIA_SET;
-    if ((options?.method ?? "GET").toUpperCase() === "PATCH") {
-      return jsonResponse({ detail: "AUDIT-ONLY: catalogue writes are denied for this role." }, 403);
-    }
-    throw new Error(`unexpected ${url}`);
+    return jsonResponse({ detail: "AUDIT-ONLY: product read denied." }, 403);
   });
   const result = await syncProductMediaFromServer("PF-W-NEW-0001");
   assert.equal(result.ok, false);
-  assert.equal(result.stage, "save");
+  assert.equal(result.stage, "read");
   assert.match(result.error, /AUDIT-ONLY/);
+  assert.deepEqual(calls.map((call) => (call.options?.method ?? "GET").toUpperCase()), ["GET", "GET"]);
 });
 
 // ===========================================================================
 // 6. Primary / cover and ordering — re-register, then re-read
 // ===========================================================================
 
-test("setPrimaryProductMedia re-registers with the COVER role and syncs the product", async () => {
+test("setPrimaryProductMedia re-registers with the COVER role without a product PATCH", async () => {
   const registers = [];
-  mockFetch((url, options) => {
+  const calls = mockFetch((url, options) => {
     if (String(url).endsWith("/media/register")) {
       registers.push({
         key: options?.body?.get("object_key"),
@@ -448,7 +430,9 @@ test("setPrimaryProductMedia re-registers with the COVER role and syncs the prod
       return { ok: true, assigned: true, media: { id: "media-2" } };
     }
     if (String(url).endsWith("/media-set")) return MEDIA_SET;
-    if ((options?.method ?? "GET").toUpperCase() === "PATCH") return { id: "PF-W-NEW-0001" };
+    if ((options?.method ?? "GET").toUpperCase() === "PATCH") {
+      throw new Error("registered-media primary selection must not PATCH the product");
+    }
     return { id: "PF-W-NEW-0001" };
   });
 
@@ -460,11 +444,16 @@ test("setPrimaryProductMedia re-registers with the COVER role and syncs the prod
     { key: "products/PF-W-NEW-0001/b.webp", role: PRODUCT_MEDIA_COVER_ROLE, primary: "true" },
   ]);
   assert.equal(PRODUCT_MEDIA_COVER_ROLE, "COVER");
+  assert.deepEqual(calls.map((call) => (call.options?.method ?? "GET").toUpperCase()), [
+    "POST",
+    "GET",
+    "GET",
+  ]);
 });
 
-test("reorderProductMedia re-registers every item with its new sort order, roles preserved", async () => {
+test("reorderProductMedia re-registers every item with its new sort order without a product PATCH", async () => {
   const registers = [];
-  mockFetch((url, options) => {
+  const calls = mockFetch((url, options) => {
     if (String(url).endsWith("/media/register")) {
       registers.push({
         key: options?.body?.get("object_key"),
@@ -475,6 +464,9 @@ test("reorderProductMedia re-registers every item with its new sort order, roles
       return { ok: true, assigned: true, media: { id: "media" } };
     }
     if (String(url).endsWith("/media-set")) return MEDIA_SET;
+    if ((options?.method ?? "GET").toUpperCase() === "PATCH") {
+      throw new Error("registered-media reorder must not PATCH the product");
+    }
     return { id: "PF-W-NEW-0001" };
   });
 
@@ -485,6 +477,12 @@ test("reorderProductMedia re-registers every item with its new sort order, roles
   assert.deepEqual(registers, [
     { key: "products/PF-W-NEW-0001/b.webp", role: "GALLERY", sort: "0", primary: null },
     { key: "products/PF-W-NEW-0001/a.png", role: "COVER", sort: "1", primary: "true" },
+  ]);
+  assert.deepEqual(calls.map((call) => (call.options?.method ?? "GET").toUpperCase()), [
+    "POST",
+    "POST",
+    "GET",
+    "GET",
   ]);
 });
 

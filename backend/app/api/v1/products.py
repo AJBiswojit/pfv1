@@ -38,8 +38,8 @@ URL mapping (API_CONTRACT.md → implementation):
 
   Employee
   ─────────────────────────────────────────────────────────────────────────────
-  GET  /employee/products/{id}                  ← same as admin view
-  PATCH /employee/products/{id}                 ← whitelisted 30-field patch
+  GET  /employee/products/{id}                  ← employee-safe product projection
+  PATCH /employee/products/{id}                 ← whitelisted product-content patch
 
   Storefront submit-review (assigned employee or admin)
   ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +86,7 @@ from app.schemas.catalog.product import (
     RecentlyViewedResponse,
     RecommendationsResponse,
     RejectProductRequest,
+    SingleEmployeeProductResponse,
     SingleProductResponse,
     StorefrontProduct,
     StorefrontProductResponse,
@@ -432,7 +433,12 @@ async def admin_product_metrics(
 @router.get(
     "/admin/workflow/metrics",
     response_model=CatalogMetricsResponse,
-    summary="Admin — workflow metrics (alias of /admin/products/metrics)",
+    summary="Admin — workflow metrics (compatibility alias of /admin/products/metrics)",
+    description=(
+        "Compatibility alias retained for existing workflow clients. It returns "
+        "the same CatalogMetricsResponse and uses the same authorization and "
+        "service path as `/admin/products/metrics`."
+    ),
 )
 async def admin_workflow_metrics(
     current_user: UserModel = Depends(get_current_admin),
@@ -735,8 +741,12 @@ async def admin_clear_review_flags(
 
 @router.get(
     "/employee/products/{id}",
-    response_model=SingleProductResponse,
-    summary="Employee — get product record (same as admin view)",
+    response_model=SingleEmployeeProductResponse,
+    summary="Employee — get product record (employee projection)",
+    description=(
+        "Returns catalogue content, operational state, assignment and read-only media "
+        "projections. Internal review history and actor/audit fields are not exposed."
+    ),
 )
 async def employee_get_product(
     id: str,
@@ -744,21 +754,21 @@ async def employee_get_product(
     db: AsyncSession = Depends(get_db),
 ):
     service = ProductService(db)
-    product = await service.get_admin_product(id)
-    return SingleProductResponse(product=product)
+    product = await service.get_employee_product(id)
+    return SingleEmployeeProductResponse(product=product)
 
 
 @router.patch(
     "/employee/products/{id}",
-    response_model=SingleProductResponse,
+    response_model=SingleEmployeeProductResponse,
     summary="Employee — whitelisted 30-field patch",
     description=(
         "Authorization: `products.manage` AND `product.assignedEmployeeId === employee.employeeId` "
         "(SUPER_ADMIN bypasses).  \n"
         "Whitelist: name, price, compareAtPrice, description, shortDescription, category, subcategory, "
         "gender, fabric, material, primaryColor, secondaryColor, colors, patterns, work, occasion, sizes, "
-        "season, fit, length, highlights, careInstructions, collectionIds, collections, tags, stock, availability.  \n"
-        "Any field outside this list is silently dropped."
+        "season, fit, length, highlights, careInstructions, tags, stock, availability.  \n"
+        "Unsupported fields are rejected with the canonical 422 validation envelope."
     ),
 )
 async def employee_update_product(
@@ -780,4 +790,4 @@ async def employee_update_product(
         employee_id=employee_code,
         employee_user_id=current_user.id,
     )
-    return SingleProductResponse(product=product)
+    return SingleEmployeeProductResponse(product=product)

@@ -67,14 +67,17 @@ from app.schemas.media.media import (
     DEFAULT_PRODUCT_MEDIA_ROLE,
     MEDIA_UPLOAD_NAMESPACES,
     PRODUCT_MEDIA_ROLE_VALUES,
+    MediaAssetListResponse,
     MediaObjectMetaResponse,
     MediaObjectResponse,
     MediaReferenceResolveRequest,
     MediaReferenceResolveResponse,
+    MediaRegistrationResponse,
     MediaStorageStatusResponse,
     ProductMediaSetResponse,
     coerce_product_media_role,
 )
+from app.api.v1.response_docs import canonical_error_responses
 from app.services.media.media_service import MediaService
 from app.services.media.media_validation import MediaValidationError
 from app.services.media.product_media_records import (
@@ -412,7 +415,13 @@ async def upload_product_media_object(
     return {"ok": True, "object": stored, "status": 201}
 
 
-@router.post("/register", status_code=201, summary="Register an uploaded object as a media asset")
+@router.post(
+    "/register",
+    response_model=MediaRegistrationResponse,
+    status_code=201,
+    summary="Register an uploaded object as a media asset",
+    responses=canonical_error_responses(401, 403, 404, 422, 500),
+)
 async def register_media_object(
     object_key: str = Form(...), product_id: Optional[str] = Form(None),
     role: str = Form(
@@ -506,7 +515,12 @@ async def register_media_object(
     }
 
 
-@router.get("/assets", summary="List registered media assets")
+@router.get(
+    "/assets",
+    response_model=MediaAssetListResponse,
+    summary="List registered media assets",
+    responses=canonical_error_responses(401, 403, 500),
+)
 async def list_media_assets(db: AsyncSession = Depends(get_db), current_user: UserModel = Depends(get_current_admin)):
     await require_admin_permission(current_user, db, "media.upload")
     rows = (await db.execute(select(MediaAssetModel).order_by(MediaAssetModel.created_at.desc()))).scalars().all()

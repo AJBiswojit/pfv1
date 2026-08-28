@@ -43,6 +43,7 @@ import {
 } from "./productReviewFlags";
 import { unresolvedGroupConflictsFor } from "./media/productMediaGroups";
 import { getWorkflowCommands } from "./workflow/workflowCommandRegistry";
+import { pickEmployeeEditableFields } from "./workflow/employeeEditableFields";
 import {
   buildProductIdPrefix,
   isCanonicalTaxonomyPath,
@@ -873,7 +874,7 @@ async function syncProductToBackend(product, isUpdate) {
     if (isUpdate) {
       const payload = buildAdminProductPayload(product);
       if (hasAdmin) await apiAdminUpdateProduct(product.id, payload);
-      else await apiEmployeeUpdateProduct(product.id, payload);
+      else await apiEmployeeUpdateProduct(product.id, pickEmployeeEditableFields(payload));
     } else if (hasAdmin && product.id) {
       const { id: _id, ...payload } = buildAdminProductPayload(product);
       await apiAdminCreateDraft({ id: String(product.id), ...payload });

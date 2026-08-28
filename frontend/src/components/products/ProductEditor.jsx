@@ -404,6 +404,11 @@ export default function ProductEditor({
       "updatedBy",
       "history",
       "priceHistory",
+      // Collection membership is managed from the collection product
+      // assignment surface, never through a product write.
+      "collection",
+      "collections",
+      "collectionIds",
     ]);
     const editableDraft = Object.fromEntries(
       Object.entries(draft).filter(([field]) => !commandOwnedFields.has(field))
@@ -432,7 +437,6 @@ export default function ProductEditor({
        * can see the whole catalogue.
        */
       ...(draft.slug ? { slug: draft.slug } : {}),
-      collection: draft.collections[0] ?? draft.collection ?? "",
     };
   };
 
