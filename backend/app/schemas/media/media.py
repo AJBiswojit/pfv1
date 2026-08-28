@@ -11,9 +11,99 @@ schema, and Phase 6 may not invent them.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.storage.keys import ALLOWED_NAMESPACES
+
+
+# ---------------------------------------------------------------------------
+# Declared vocabularies (plan §24 step 9 — API-085/086/125/126/132/133/140)
+# ---------------------------------------------------------------------------
+#
+# ROLE — `media_product_media.role`.
+#
+# This vocabulary is DERIVED, not invented. It is the frontend's own declared
+# product-media role set (`frontend/src/config/mediaTypes.js`
+# `PRODUCT_MEDIA_ROLES`), which is the only place in the system where the
+# vocabulary was ever written down. The backend already agreed with one member
+# of it (`product_media_records.PRIMARY_ROLE = "COVER"`).
+#
+# Before this declaration the column accepted ANY string: `role` was
+# `Form("gallery")` and was written straight through to a `String(30)` column.
+# A 200-character role was accepted on SQLite and would raise
+# `StringDataRightTruncation` — an HTTP 500 for what is a validation
+# rejection — on PostgreSQL.
+#
+# CASE: membership is tested case-INSENSITIVELY and the caller's own casing is
+# preserved. The system genuinely uses both casings today — the backend
+# defaults to lowercase `"gallery"` in four places (the `Form` default, the
+# column default, `RegisteredProductMediaItem.role` and the
+# `serialise_assignment` fallback) while the frontend sends `"COVER"` from
+# `PRODUCT_MEDIA_COVER_ROLE`. Folding to one canonical case would rewrite what
+# callers store, which is a data-shape decision this step was not asked to
+# make, and it is recorded as a finding instead. Membership is what the plan
+# asked to close, and closing it does not require picking a winner.
+
+PRODUCT_MEDIA_ROLE_VALUES: Tuple[str, ...] = (
+    "COVER",
+    "GALLERY",
+    "DETAIL",
+    "LIFESTYLE",
+    "MODEL",
+    "CLOSEUP",
+    "PRODUCT_VIDEO",
+    "SHOWCASE",
+    "DETAIL_VIDEO",
+    "LIFESTYLE_VIDEO",
+)
+
+#: What `POST /media/register` stores when the caller names no role. This is
+#: the pre-existing `Form(...)` / column default and is deliberately unchanged.
+DEFAULT_PRODUCT_MEDIA_ROLE = "gallery"
+
+#: Lookup set for the case-insensitive membership test.
+_PRODUCT_MEDIA_ROLE_LOOKUP = {value.casefold() for value in PRODUCT_MEDIA_ROLE_VALUES}
+
+#: NAMESPACE — re-exported from the storage layer, which is the ONE place that
+#: decides what a legal object key looks like. It is not redeclared here: a
+#: second copy would be free to drift from the copy that actually enforces.
+MEDIA_UPLOAD_NAMESPACES: Tuple[str, ...] = tuple(ALLOWED_NAMESPACES)
+
+
+def product_media_role_error(role: str) -> str:
+    """The canonical rejection message for a role outside the vocabulary."""
+    return (
+        f"Media role '{role}' is not a recognised product media role. "
+        f"Allowed roles: {', '.join(PRODUCT_MEDIA_ROLE_VALUES)}."
+    )
+
+
+def is_product_media_role(role: str) -> bool:
+    """True when `role` names a declared product-media role (any casing)."""
+    return str(role or "").strip().casefold() in _PRODUCT_MEDIA_ROLE_LOOKUP
+
+
+def coerce_product_media_role(role: Optional[str]) -> str:
+    """
+    Validate one product-media role and return the value to store.
+
+    Whitespace is trimmed; the caller's casing is preserved. An empty or
+    whitespace-only role falls back to the pre-existing default rather than
+    being rejected, which is exactly what the route did before this step —
+    tightening that would be a behaviour change nobody asked for.
+
+    Raises `ValueError` for a role outside the vocabulary; the route turns
+    that into the canonical 422 business-rule envelope. No new error code is
+    introduced.
+    """
+    text = str(role or "").strip()
+    if not text:
+        return DEFAULT_PRODUCT_MEDIA_ROLE
+    if text.casefold() not in _PRODUCT_MEDIA_ROLE_LOOKUP:
+        raise ValueError(product_media_role_error(text))
+    return text
 
 
 # ---------------------------------------------------------------------------

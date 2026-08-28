@@ -16,10 +16,11 @@ no PostgreSQL server is reachable in this sandbox):
     read     GET  /admin/products/{id}              → 200 (server retrievable)
     store    GET  /products                         → draft ABSENT (not visible)
 
-The category/subcategory sent are server-shaped UUIDs (exactly what the
-editor now emits from the admin taxonomy surface). Server-side taxonomy
-validation is a later Phase 3 step; this block only proves the write path
-accepts and persists them.
+The category/subcategory sent are server-shaped ids (exactly what the
+editor now emits from the admin taxonomy surface). Since Block 2 the server
+validates them against the real `catalog_category` / `catalog_subcategory`
+rows, so the flow seeds the authoritative taxonomy first and asserts the
+write path persists the canonical ids.
 """
 
 import importlib
@@ -40,6 +41,11 @@ from app.schemas.catalog.product import PRODUCT_ID_RE
 from app.services.catalog.product_service import ProductService
 
 HAS_AIOSQLITE = importlib.util.find_spec("aiosqlite") is not None
+
+# The server taxonomy the admin editor selects from — the ids the editor puts
+# on the wire are these primary keys, not names or static slugs.
+CATEGORY_ID = "6f1c2b3a-0000-4000-8000-0000000000c1"
+SUBCATEGORY_ID = "7a9d0001-0000-4000-8000-0000000000c2"
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +145,11 @@ class SaveAndContinueFlowTests(unittest.IsolatedAsyncioTestCase):
         self._UserModel = UserModel
         self._ProductModel = ProductModel
 
+        from app.models.catalog.category import CategoryModel, SubcategoryModel
+
+        self._CategoryModel = CategoryModel
+        self._SubcategoryModel = SubcategoryModel
+
         self._tmp = tempfile.TemporaryDirectory(prefix="pf3-save-")
         self.root = self._tmp.name
         self.main_db = os.path.join(self.root, "main.sqlite")
@@ -171,6 +182,23 @@ class SaveAndContinueFlowTests(unittest.IsolatedAsyncioTestCase):
                 force_password_change=False,
             )
             session.add(admin)
+
+            # The authoritative taxonomy the editor selects from. Both rows
+            # are ACTIVE — the only status a product may be assigned to.
+            session.add(
+                CategoryModel(
+                    id=CATEGORY_ID, name="Sarees", slug="sarees", status="ACTIVE"
+                )
+            )
+            session.add(
+                SubcategoryModel(
+                    id=SUBCATEGORY_ID,
+                    category_id=CATEGORY_ID,
+                    name="Banarasi",
+                    slug="banarasi",
+                    status="ACTIVE",
+                )
+            )
             await session.commit()
             self.admin_id = admin.id
 
@@ -228,8 +256,8 @@ class SaveAndContinueFlowTests(unittest.IsolatedAsyncioTestCase):
         return asyncio.get_event_loop().run_until_complete(_read())
 
     def test_save_and_continue_chain(self):
-        category_id = "6f1c2b3a-0000-4000-8000-0000000000c1"
-        subcategory_id = "7a9d0001-0000-4000-8000-0000000000c2"
+        category_id = CATEGORY_ID
+        subcategory_id = SUBCATEGORY_ID
 
         # 1. Server allocates the id.
         next_res = self.client.get(f"/api/v1/admin/products/next-id?category={category_id}")

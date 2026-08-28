@@ -58,7 +58,23 @@ export function formatAdminError(result, { entity = "record", action = "saved" }
     return `The ${entity} no longer exists on the server. Refresh the list — nothing was ${action}.`;
   }
   if (status === 409) {
-    return `Conflict: ${message || "another record already uses that identifier."} Nothing was overwritten.`;
+    /*
+     * Phase 3 Block 3: a duplicate SKU/slug arrives as 409 CONFLICT with
+     * `details: { field, value, suggestedSlug? }`. The server's own sentence
+     * already names the offending value, and the suggestion — when present —
+     * is a slug known to be free, so surfacing it makes the retry a single
+     * copy/paste instead of a guess. It must never be flattened into a
+     * generic network/server failure.
+     */
+    const conflict =
+      (result.data && typeof result.data === "object" ? result.data.error?.details : null) ??
+      (result.details && !Array.isArray(result.details) ? result.details : null);
+    const suggestion =
+      conflict && typeof conflict === "object" && typeof conflict.suggestedSlug === "string"
+        ? conflict.suggestedSlug
+        : "";
+    const hint = suggestion ? ` Try “${suggestion}” instead.` : "";
+    return `Conflict: ${message || "another record already uses that identifier."} Nothing was overwritten.${hint}`;
   }
   if (status === 422) {
     return `The server rejected this change${message ? `: ${message}` : "."}${detailText}`;

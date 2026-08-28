@@ -16,6 +16,102 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 PRODUCT_STATUS_VALUES = ("DRAFT", "PENDING_REVIEW", "PUBLISHED", "ARCHIVED")
 REVIEW_STATE_VALUES = ("NONE", "PENDING", "APPROVED", "REJECTED")
+
+# ── Lifecycle transitions (plan §9.1/§9.2, §24 step 8) ───────────────────────
+#
+# `status` (visibility) and `review.state` (approval) are two INDEPENDENT axes.
+# Every lifecycle action below declares the source states it accepts on the axis
+# that actually governs it, so a guard can never disagree with the documented
+# contract.  This is a DECLARATION of the transitions the services already
+# implement — not a new state machine, and not a new lifecycle.
+#
+# `None` means "this axis is not consulted by this action".
+
+LIFECYCLE_TRANSITIONS: Dict[str, Dict[str, Any]] = {
+    # action:        from_status,                       from_review_state,   to_status
+    "submitReview": {
+        "from_status": ("DRAFT",),
+        "from_review": ("NONE", "REJECTED"),
+        "to_status": "PENDING_REVIEW",
+        "to_review": "PENDING",
+    },
+    "approve": {
+        # Approval is a REVIEW verb: it is governed by the review axis, but a
+        # product that has left PENDING_REVIEW (archived, unpublished, already
+        # live) is no longer under review and must not be approvable.
+        "from_status": ("PENDING_REVIEW",),
+        "from_review": ("PENDING", "APPROVED"),  # APPROVED ⇒ idempotent no-op
+        "to_status": None,                       # approve NEVER changes status
+        "to_review": "APPROVED",
+        # Re-approving an already-approved product returns 200 and writes
+        # nothing (plan §9.2 "Idempotent when already approved").
+        "idempotent_when": "already_approved",
+    },
+    "reject": {
+        "from_status": ("PENDING_REVIEW",),
+        "from_review": ("PENDING",),
+        "to_status": "DRAFT",
+        "to_review": "REJECTED",
+    },
+    "publish": {
+        # Publication is a VISIBILITY verb gated on the review axis. DRAFT is a
+        # legal source so an unpublished or restored product that still carries
+        # an APPROVED review can go live again without a second review round —
+        # the behaviour plan §9.2 specifies ("gated on review.state == APPROVED").
+        "from_status": ("DRAFT", "PENDING_REVIEW", "PUBLISHED"),
+        "from_review": ("APPROVED",),
+        "to_status": "PUBLISHED",
+        "to_review": None,
+        # Re-publishing a product that is already live returns 200 and writes
+        # nothing (plan §9.2 "Idempotent when already live"). This short-circuit
+        # runs BEFORE the review check, so an already-live row is never failed
+        # for a review state it can no longer be in.
+        "idempotent_when": "already_live",
+    },
+    "unpublish": {
+        "from_status": ("PUBLISHED",),
+        "from_review": None,
+        "to_status": "DRAFT",
+        "to_review": None,
+    },
+    "archive": {
+        "from_status": ("DRAFT", "PENDING_REVIEW", "PUBLISHED"),
+        "from_review": None,
+        "to_status": "ARCHIVED",
+        "to_review": None,
+    },
+    "restore": {
+        "from_status": ("ARCHIVED",),
+        "from_review": None,
+        "to_status": "DRAFT",
+        "to_review": None,
+    },
+}
+
+# ── Review-flag vocabulary (plan §9.2 "declare the flag vocabulary") ─────────
+#
+# Mirrors the canonical frontend declaration in
+# `frontend/src/services/productReviewFlags.js`, plus `KIDS_MIGRATION_REVIEW`,
+# which only the backend blocking set has ever used.  Flags are REVIEW SIGNALS,
+# never a second status system.
+
+REVIEW_FLAG_BLOCKING = (
+    "NAME_REVIEW_REQUIRED",
+    "PRICE_REVIEW_REQUIRED",
+    "TAXONOMY_REVIEW_REQUIRED",
+    "GROUP_REVIEW_REQUIRED",
+    "VARIANT_REVIEW_REQUIRED",
+    "NEEDS_MEDIA",
+    "MEDIA_OWNERSHIP_REVIEW",
+    "CONFLICT_UNRESOLVED",
+    "KIDS_MIGRATION_REVIEW",
+)
+REVIEW_FLAG_INFORMATIONAL = (
+    "CONFLICT_REVIEW_LATER",
+    "MEDIA_OWNERSHIP_MOVED",
+    "MEDIA_UNASSIGNED",
+)
+REVIEW_FLAG_VALUES = REVIEW_FLAG_BLOCKING + REVIEW_FLAG_INFORMATIONAL
 SORT_ALIASES: Dict[str, str] = {
     "price-low": "price-asc",
     "price-high": "price-desc",
@@ -505,7 +601,30 @@ class BulkUpdateRequest(BaseModel):
 
 
 class ClearReviewFlagsRequest(BaseModel):
+    """
+    Clear specific review flags.
+
+    Plan §9.2 flags this route as "no vocabulary validation — declare the flag
+    vocabulary" (§24 step 8).  `flags` is now checked against
+    `REVIEW_FLAG_VALUES`; an unknown flag is a 422 naming it, rather than a
+    silent 200 that clears nothing.
+    """
+
     flags: List[str]
+
+    @field_validator("flags")
+    @classmethod
+    def validate_flags(cls, v: List[str]) -> List[str]:
+        unknown = [f for f in v if f not in REVIEW_FLAG_VALUES]
+        if unknown:
+            raise ValueError(
+                "Unknown review flag(s): "
+                + ", ".join(sorted(set(unknown)))
+                + ". Supported flags: "
+                + ", ".join(REVIEW_FLAG_VALUES)
+                + "."
+            )
+        return v
 
 
 # ── Query params ──────────────────────────────────────────────────────────────

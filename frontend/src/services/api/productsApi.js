@@ -441,11 +441,18 @@ export async function apiAdminGetNextId(categoryId, preferredNumber) {
 }
 
 /**
- * GET /admin/products/availability?sku=&slug=
+ * GET /admin/products/availability
+ *
+ * Pre-flight SKU/slug probe. `excludeId` is the product being edited — the
+ * server excludes that row, so a product's own SKU/slug reports as FREE,
+ * matching what PATCH accepts. Omit it when creating.
+ *
+ * This is a convenience check only: the authoritative verdict is the 409
+ * `CONFLICT` the create/update endpoints raise.
  */
-export async function apiAdminCheckAvailability({ sku, slug } = {}) {
+export async function apiAdminCheckAvailability({ sku, slug, excludeId } = {}) {
   try {
-    const qs = buildParams({ sku, slug });
+    const qs = buildParams({ sku, slug, excludeId });
     const data = await apiClient.get(`/admin/products/availability?${qs}`, { scope: "admin" });
     return { ok: true, ...data };
   } catch (err) {

@@ -50,7 +50,8 @@ router = APIRouter(tags=["Explore"])
         "- A **promo** card is inserted after every 4th product (`EXPLORE_PROMO_AFTER`).  \n"
         "- An **editorial** card is inserted after every 8th product (`EXPLORE_EDITORIAL_AFTER`).  \n"
         "  When both intervals coincide the editorial card wins.  \n\n"
-        "**Visibility gate** — only `PUBLISHED` products in an `ACTIVE` category.  \n\n"
+        "**Visibility gate** — only `PUBLISHED` products in an `ACTIVE` category and, "
+        "when set, an `ACTIVE` subcategory.  \n\n"
         "**Facets, sort, pagination** — same vocabulary as `GET /products`.  \n\n"
         "**`hasMore`** — `true` when `page × pageSize < total`."
     ),

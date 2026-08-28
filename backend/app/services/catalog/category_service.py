@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cache import invalidate_response_cache
+from app.core.cache import cache, invalidate_response_cache
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.product import ProductModel
@@ -163,10 +163,30 @@ class CategoryService:
     async def _invalidate_taxonomy_cache(self) -> None:
         """
         Every category/subcategory write changes what the cached public
-        taxonomy + product surfaces may legitimately serve (visibility gates
-        read category status). Clear the decorated response cache; the KV/LRU
-        layer has no category entries, so a single clear is enough.
+        taxonomy + product surfaces may legitimately serve, because the
+        storefront visibility gate reads category AND subcategory status
+        (`ProductService._taxonomy_visible`).
+
+        Two layers have to go, not one:
+
+        * the decorated `@cache` HTTP response layer, which holds rendered
+          `GET /products`, `GET /categories/*` and `GET /collections/*` bodies;
+        * the KV entries `product:storefront:{id}` / `{slug}` written by
+          `ProductService.get_storefront_product`. That method returns the
+          cached DTO **before** it evaluates the taxonomy gate, so archiving a
+          category or a subcategory would otherwise leave the product
+          reachable on its PDP for the rest of the TTL — the new subcategory
+          gate (PF3-N06) would be silently bypassed on exactly the transition
+          it exists to catch. `ProductService.invalidate_product_cache` clears
+          these keys on product writes; a taxonomy write has to do the same.
+          Note the `*products*` glob used there does NOT match the singular
+          `product:storefront:` prefix, hence the explicit pattern.
+
+        Plan reference: §24 step 7 ("Extend cache invalidation coverage") and
+        §23 R9 ("Adding new read gates must not introduce a second cache key
+        that is not invalidated").
         """
+        await cache.invalidate_pattern("product:storefront:*")
         await invalidate_response_cache()
 
     # ── Public — categories ───────────────────────────────────────────────────

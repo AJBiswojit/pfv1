@@ -134,6 +134,26 @@ def full_admin_stub(**overrides):
     return SimpleNamespace(**base)
 
 
+def category_stub(**overrides):
+    """A `catalog_category` row as the taxonomy resolver reads it."""
+    base = dict(id="cat-kidswear", slug="kidswear", name="Kidswear", status="ACTIVE")
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def subcategory_stub(**overrides):
+    """A `catalog_subcategory` row as the taxonomy resolver reads it."""
+    base = dict(
+        id="cat-kidswear-boys",
+        category_id="cat-kidswear",
+        slug="boys",
+        name="Boys",
+        status="ACTIVE",
+    )
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
 class FakeScalars:
     def __init__(self, values):
         self.values = values
@@ -340,6 +360,8 @@ class DraftCreationTests(unittest.IsolatedAsyncioTestCase):
         service, db = service_with(None)
         service.db = FakeDB(results=[
             FakeResult([]),          # id-collision probe: free
+            FakeResult([category_stub()]),      # taxonomy: category resolves
+            FakeResult([subcategory_stub()]),   # taxonomy: subcategory resolves
             FakeResult([]),          # slug probe: unique
             FakeResult([]),          # sku probe: unique
         ])
@@ -370,6 +392,8 @@ class DraftCreationTests(unittest.IsolatedAsyncioTestCase):
         req = ProductCreateRequest(name="Fresh Product", category="sarees")
         service, db = service_with(None)
         service.db = FakeDB(results=[
+            # taxonomy resolution runs before an id/slug/sku is consumed
+            FakeResult([category_stub(id="cat-sarees", slug="sarees", name="Sarees")]),
             FakeResult([]),          # id collision probe: free
             FakeResult([]),          # slug probe
             FakeResult([]),          # sku probe
