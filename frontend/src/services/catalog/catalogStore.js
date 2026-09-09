@@ -301,20 +301,39 @@ export async function hydrateCatalog({ force = false } = {}) {
       apiListOffers(),
     ]);
 
-    if (!productsResult.ok) throw new Error(productsResult.error);
-    if (!categoriesResult.ok) throw new Error(categoriesResult.error);
-    if (!collectionsResult.ok) throw new Error(collectionsResult.error);
+    // Resilience: hero/home must render even when catalogue endpoints fail
+    // (e.g. DB unavailable). Previously a single failed page threw and left
+    // home unset, causing a blank hero. Now we apply whatever succeeded.
+    let categories = [];
+    let subcategories = {};
+    let collections = [];
+    let products = [];
 
-    const categories = categoriesResult.categories ?? categoriesResult.items ?? [];
-    const subcategoryEntries = await Promise.all(
-      categories.map(async (category) => {
-        const result = await apiListSubcategories(category.id, { status: "ACTIVE" });
-        return [category.id, result.ok ? (result.items ?? []) : []];
-      })
-    );
-    const subcategories = Object.fromEntries(subcategoryEntries);
+    if (categoriesResult.ok) {
+      categories = categoriesResult.categories ?? categoriesResult.items ?? [];
+      try {
+        const subcategoryEntries = await Promise.all(
+          categories.map(async (category) => {
+            const result = await apiListSubcategories(category.id, { status: "ACTIVE" });
+            return [category.id, result.ok ? (result.items ?? []) : []];
+          })
+        );
+        subcategories = Object.fromEntries(subcategoryEntries);
+      } catch {
+        subcategories = {};
+      }
+    }
 
-    applySnapshot(productsResult.items, categories, collectionsResult.collections ?? collectionsResult.items ?? [], subcategories);
+    if (collectionsResult.ok) {
+      collections = collectionsResult.collections ?? collectionsResult.items ?? [];
+    }
+
+    if (productsResult.ok) {
+      products = productsResult.items ?? [];
+    }
+
+    applySnapshot(products, categories, collections, subcategories);
+
     if (homeResult.ok) state.home = homeResult;
     if (offersResult.ok) {
       state.offers = offersResult.offers ?? [];
@@ -323,7 +342,26 @@ export async function hydrateCatalog({ force = false } = {}) {
       state.offers = [];
       state.offersError = offersResult.error ?? "Offers could not be loaded from the server.";
     }
-    state.status = "ready";
+
+    // If at least home succeeded, we are ready enough to render hero.
+    // If everything failed, keep error state but still emit so UI can show fallback.
+    if (homeResult.ok || productsResult.ok || categoriesResult.ok || collectionsResult.ok) {
+      state.status = "ready";
+      state.error = null;
+      // Preserve partial errors for debugging but don't block rendering
+      if (!productsResult.ok || !categoriesResult.ok || !collectionsResult.ok) {
+        const errs = [
+          !productsResult.ok ? `products: ${productsResult.error}` : null,
+          !categoriesResult.ok ? `categories: ${categoriesResult.error}` : null,
+          !collectionsResult.ok ? `collections: ${collectionsResult.error}` : null,
+        ].filter(Boolean).join("; ");
+        if (errs) state.error = errs;
+      }
+    } else {
+      state.status = "error";
+      state.error = homeResult.error || productsResult.error || categoriesResult.error || collectionsResult.error || "Catalogue hydrate failed";
+    }
+
     emit();
     return state;
   })().catch((error) => {
