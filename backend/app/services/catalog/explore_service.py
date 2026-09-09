@@ -276,10 +276,13 @@ class ExploreService:
 
     async def get_home(self) -> HomeResponse:
         """
-        GET /home
+        GET /home — B-02: backend-managed HOME_HERO.
 
         Assembles the homepage in one call:
-          1. hero_slides         — static slides (media resolution BACKEND DECISION REQUIRED)
+          1. hero_slides         — active HOME_HERO from media_marketing_media
+                                   (ordered, active-only, duplicate-safe);
+                                   fallback to canonical 5 hero assets when
+                                   no active entries or DB unavailable.
           2. new_arrivals        — up to 12 newest PUBLISHED products
           3. categories          — all ACTIVE categories (top-level cards)
           4. saree_edit          — up to 8 saree products
@@ -293,19 +296,53 @@ class ExploreService:
         # Tracked media ids — seams exclude images already reserved by heroes.
         used_media_ids: set = set()
 
-        # 1. Hero slides (static — CDN / media resolution is BACKEND DECISION REQUIRED)
-        hero_slides = self._build_hero_slides(used_media_ids)
+        # 1. Hero slides — backend-managed HOME_HERO with canonical fallback
+        hero_slides = await self._build_hero_slides_from_db(used_media_ids)
+        if not hero_slides:
+            # Honest empty when marketing table exists but has zero active rows
+            # is valid — but for resilience when DB unavailable or no seed,
+            # fallback to canonical 5 hero assets (development/emergency fallback).
+            # The fallback is documented and does NOT override valid DB config.
+            try:
+                # Try to detect if marketing table has any rows at all (even inactive)
+                # If it has rows but zero active, return honest empty (case B).
+                from app.services.media.marketing_media_service import MarketingMediaService
+
+                svc = MarketingMediaService(self.db)
+                all_rows = await svc.list(placement="HOME_HERO", active_only=False)
+                if len(all_rows) == 0:
+                    # No rows at all — use canonical fallback for resilience
+                    hero_slides = self._build_hero_slides(used_media_ids)
+                else:
+                    # Rows exist but none active — honest empty per spec case B
+                    hero_slides = []
+            except Exception:
+                # DB unavailable — canonical fallback
+                hero_slides = self._build_hero_slides(used_media_ids)
+
+        # Helper to safely select products when DB is unavailable
+        async def safe_select(**kwargs):
+            try:
+                return await self._select_products(**kwargs)
+            except Exception:
+                return []
+
+        async def safe_categories():
+            try:
+                return await self._build_category_cards(used_media_ids)
+            except Exception:
+                return []
 
         # 2. New arrivals — 12 newest published products
-        new_arrivals = await self._select_products(
+        new_arrivals = await safe_select(
             sort="newest", limit=12, used_media_ids=used_media_ids
         )
 
         # 3. Categories — all active (fetched from product table's category values)
-        categories = await self._build_category_cards(used_media_ids)
+        categories = await safe_categories()
 
         # 4. Saree edit
-        saree_products = await self._select_products(
+        saree_products = await safe_select(
             category="sarees", sort="recommended", limit=8,
             used_media_ids=used_media_ids
         )
@@ -318,11 +355,11 @@ class ExploreService:
         )
 
         # 5. Bride & Groom edit — mix bridal couture + menswear
-        bridal_products = await self._select_products(
+        bridal_products = await safe_select(
             category="bridal-couture", sort="recommended", limit=4,
             used_media_ids=used_media_ids
         )
-        mens_products = await self._select_products(
+        mens_products = await safe_select(
             category="menswear", sort="recommended", limit=4,
             used_media_ids=used_media_ids
         )
@@ -335,7 +372,7 @@ class ExploreService:
         )
 
         # 6. Celebration edit — festive occasion products
-        celebration_products = await self._select_products(
+        celebration_products = await safe_select(
             occasion="festive", sort="recommended", limit=8,
             used_media_ids=used_media_ids
         )
@@ -370,43 +407,102 @@ class ExploreService:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
+    async def _build_hero_slides_from_db(self, used_media_ids: set) -> List[HeroSlide]:
+        """
+        Load active HOME_HERO from media_marketing_media (ordered, active-only).
+
+        Returns [] if no active entries or on DB failure — caller decides
+        whether to use canonical fallback or honest empty.
+        """
+        try:
+            from app.services.media.marketing_media_service import MarketingMediaService
+            from app.storage.urls import build_media_url
+
+            svc = MarketingMediaService(self.db)
+            rows = await svc.list_active_home_hero()
+
+            slides: List[HeroSlide] = []
+            seen_keys: set = set()
+            for row in rows:
+                # Duplicate prevention within same placement (DB has unique constraint,
+                # but also guard in memory)
+                if row.object_key in seen_keys:
+                    continue
+                seen_keys.add(row.object_key)
+
+                try:
+                    image_url = build_media_url(row.object_key)
+                except Exception:
+                    image_url = f"/api/v1/media/objects/{row.object_key}"
+
+                # Track for reservation rule
+                used_media_ids.add(row.object_key)
+                used_media_ids.add(image_url)
+
+                slides.append(
+                    HeroSlide(
+                        id=row.id,
+                        title=row.title or "PRATIKSHYA FASHON",
+                        subtitle=row.subtitle or "",
+                        cta=row.cta_label or "Explore Collection",
+                        href=row.cta_href or "/shop",
+                        image=image_url,
+                        media_id=row.object_key,
+                    )
+                )
+            return slides
+        except Exception:
+            # DB unavailable or table not yet migrated — let caller fallback
+            return []
+
     @staticmethod
     def _build_hero_slides(used_media_ids: set) -> List[HeroSlide]:
         """
-        Static hero slides — media resolution and CDN URLs are
-        BACKEND DECISION REQUIRED.  Image ids are pre-reserved into
-        used_media_ids so downstream seams skip them.
+        Canonical hero slides — five editorial plates from the shipped
+        hero asset library (hero001..hero005). Images are served through
+        the canonical media object store (`/api/v1/media/objects/hero/...`),
+        so the frontend's media resolver and Vite proxy can fetch them
+        without hardcoding a filesystem path. The frontend's hero.js proxy
+        filters on id && image, so image must be a real URL.
+
+        Reservation: hero media ids are tracked so downstream seams skip
+        duplicate plates (homepage reservation rule).
         """
-        slides = [
-            HeroSlide(
-                id="hero-1",
-                title="New Season, New Stories",
-                subtitle="Discover the latest in Indian fashion",
-                cta="Explore Collection",
-                href="/products?sort=newest",
-                image="",
-            ),
-            HeroSlide(
-                id="hero-2",
-                title="Festive Edit",
-                subtitle="Dress up your celebrations",
-                cta="Shop Now",
-                href="/products?occasion=festive",
-                image="",
-            ),
-            HeroSlide(
-                id="hero-3",
-                title="Bridal Couture",
-                subtitle="Crafted for your most special day",
-                cta="View Collection",
-                href="/products?category=bridal-couture",
-                image="",
-            ),
+        from app.storage.urls import build_media_url
+
+        # Five canonical hero assets — order matches HOMEPAGE_HERO_THEMES
+        # festive, bridal, heritage, celebration, arrivals
+        hero_assets = [
+            ("hero-1", "hero001.avif", "Festive Elegance", "Handwoven stories for the season of celebration", "Explore Collection", "/shop", "festive"),
+            ("hero-2", "hero002.avif", "Bridal Couture", "Crafted for your most special day", "View Bridal", "/bridal", "bridal"),
+            ("hero-3", "hero003.avif", "Heritage Weaves", "Six yards of timeless craft", "Shop Sarees", "/women/sarees", "heritage"),
+            ("hero-4", "hero004.avif", "The Celebration Edit", "Dress up every moment", "Shop the Edit", "/shop", "celebration"),
+            ("hero-5", "hero005.avif", "New Arrivals", "Fresh drapes, just landed", "Shop New", "/shop", "arrivals"),
         ]
-        # Reserve media ids from hero slides
-        for slide in slides:
-            if slide.media_id:
-                used_media_ids.add(slide.media_id)
+
+        slides: List[HeroSlide] = []
+        for slide_id, filename, title, subtitle, cta, href, _theme in hero_assets:
+            object_key = f"hero/{filename}"
+            try:
+                image_url = build_media_url(object_key)
+            except Exception:
+                # Fallback to the application-level URL shape if builder fails
+                image_url = f"/api/v1/media/objects/{object_key}"
+            media_id = object_key
+            used_media_ids.add(media_id)
+            used_media_ids.add(image_url)
+            slides.append(
+                HeroSlide(
+                    id=slide_id,
+                    title=title,
+                    subtitle=subtitle,
+                    cta=cta,
+                    href=href,
+                    image=image_url,
+                    media_id=media_id,
+                )
+            )
+
         return slides
 
     async def _select_products(

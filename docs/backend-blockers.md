@@ -45,23 +45,37 @@ So mounted ≠ usable is CONFIRMED: inventory is placeholder tables from initial
 
 ---
 
-## B-02 — Marketing media + media review API (PHASE GAP, P1) — VERIFIED EMPTY MODELS
+## B-02 — Marketing media + media review API (PHASE GAP, P1) — RESOLVED 2026-09-09
 
-**Frontend:** `apiListMarketingMedia`, `apiListMediaReviews`, `apiApproveMedia`, `apiRejectMedia` return `code: "BACKEND_GAP"`. Comment: `media_marketing_media` / `media_media_review` have no API.
+**Previous Frontend:** `apiListMarketingMedia`, `apiListMediaReviews`, `apiApproveMedia`, `apiRejectMedia` returned `code: "BACKEND_GAP"`. Comment: `media_marketing_media` / `media_media_review` had no API.
 
-**Backend verification:**
-- `backend/app/models/media/marketing_media.py` — only `__tablename__ = "media_marketing_media"`, no columns.
-- `media_review.py` — same empty.
-- `backend/app/api/v1/media_reviews.py` — 8 lines health only.
-- `media_service.py` — object operations REAL, but media records for marketing missing.
+**Backend fix (B-02):**
+- `backend/app/models/media/marketing_media.py` — now production-ready: placement (HOME_HERO etc), object_key (hero/hero001.avif etc), media_asset_id FK SET NULL, title/subtitle/cta_label/cta_href/alt_text, sort_order, is_active, created_by/updated_by FK SET NULL, unique (placement, object_key), indexes on placement/active/sort.
+- Migration `c7d8e9f0a1b2_add_marketing_media_real_schema` drops empty stub and creates real table in pratikshya schema — additive/safe, no destructive reset of unrelated tables.
+- `backend/app/schemas/media/marketing.py` — placement vocabulary (HOME_HERO, WOMEN_SECTION, SAREE_SECTION, LEHENGA_SECTION, BRIDAL_SECTION, GROOM_SECTION, KIDS_SECTION, BANGLES_SECTION, JEWELLERY_SECTION, FESTIVE_SECTION, NEW_ARRIVALS, EDITORIAL, PROMOTION), create/update/response/list/reorder schemas.
+- `backend/app/services/media/marketing_media_service.py` — CRUD, list (placement filter, activeOnly), active HOME_HERO ordered by sort_order/created_at, duplicate prevention via unique constraint + ConflictException, reorder, URL generation via build_media_url → /api/v1/media/objects/...
+- `backend/app/api/v1/marketing_media.py` — 8 endpoints:
+  - Admin: GET /admin/marketing/media (media.view), POST /admin/marketing/media (media.upload), GET /admin/marketing/media/{id} (media.view), PATCH /admin/marketing/media/{id} (media.assign), DELETE /admin/marketing/media/{id} (media.delete), PUT /admin/marketing/media/reorder (media.assign)
+  - Public: GET /marketing/placements/{placement}, GET /marketing/hero (active HOME_HERO)
+- `backend/app/services/catalog/explore_service.py` — GET /home now loads active HOME_HERO from marketing_media_service.list_active_home_hero() ordered, with fallback to canonical 5 hero assets when table empty or DB unavailable (resilience). Honest empty when table has rows but zero active (case B). No duplicate media, deterministic ordering, stable IDs.
+- `backend/scripts/seed_marketing_hero.py` — idempotent seed of 5 canonical hero assets (hero001..005) into HOME_HERO with copy (Festive Elegance, Bridal Couture, Heritage Weaves, Celebration Edit, New Arrivals).
+- `backend/app/api/v1/router.py` includes marketing_media_router.
+- Authorization: admin endpoints require get_current_admin + require_admin_permission (media.view/upload/assign/delete) — customer/employee tokens 403. Public hero endpoints no auth, no mutation.
 
-**Why it blocks:** Admin Marketing Media and Admin Media Review cannot assign hero/collection/editorial plates. Product-media upload/register IS LIVE and must stay different pipeline.
+**Frontend integration:**
+- `frontend/src/services/api/marketingMediaApi.js` — real clients for all 8 endpoints.
+- `frontend/src/components/admin/BackendHomeHeroPanel.jsx` — admin UI for HOME_HERO: list, reorder (up/down), activate/deactivate, delete, create from canonical options, seed button, success/error, refresh.
+- `frontend/src/pages/admin/media/AdminMarketingMedia.jsx` now includes BackendHomeHeroPanel at top — production source of truth.
+- `frontend/src/components/storefront/HeroCarousel.jsx` already consumes GET /home heroSlides (now backend-managed) with fallback to canonical object-store URLs via mediaObjectUrl — fallback documented as development/emergency only, does NOT override valid backend config.
+- Tests: backend unit `test_marketing_media.py` 10 tests (create, duplicate prevention, ordering, active exclusion, update/reorder, URL generation, empty, get_home integration). Frontend `marketingMediaHero.test.js` 8 tests (backend data renders, ordering respected, empty handled, invalid not crash, fallback cannot override, product media never fallback, canonical assets reachable, placement vocabulary).
 
-**Rule API must enforce:** registering product media never promotes to marketing slot.
+**Why it unblocks:** Admin can now configure HOME_HERO order/activation without code change. GET /home returns ordered active hero slides with valid media URLs (/api/v1/media/objects/hero/...). Media ownership remains separate: PRODUCT MEDIA (products/...) ≠ COLLECTION/EDITORIAL (collections/...) ≠ MARKETING/HERO (hero/... marketing/...).
 
-**HUMAN DECISION:** placement types (hero, collection, editorial, promotion), approval flow, target_id semantics.
+**Rule enforced:** registering product media never promotes to marketing slot (separate tables, separate namespaces, separate services).
 
-**Classification:** E MISSING BACKEND — P1 BLOCKER — BACKEND ACTION REQUIRED
+**Remaining:** media_media_review still placeholder (media review approval flow) — separate concern, not required for HOME_HERO. Can be implemented later.
+
+**Classification:** A COMPLETE — RESOLVED — 8 APIs added, total 225→233
 
 ---
 

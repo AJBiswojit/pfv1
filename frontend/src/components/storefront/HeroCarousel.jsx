@@ -23,6 +23,7 @@ import {
   resolveHeroSlideImage,
   resolveHomepageHeroMedia,
 } from "../../services/media/mediaResolver";
+import { mediaObjectUrl } from "../../services/media/mediaPaths";
 import { AtelierButton, header as headerSpacing } from "../../design-system";
 import { cn } from "../../utils/cn";
 
@@ -36,16 +37,55 @@ const CROSSFADE_MS = 900;
  * authored there, never inside this component. When the media register
  * later publishes HOME_HERO records, those plates take precedence over the
  * authored ones for the matching theme, preserving the admin override path.
+ *
+ * Resilience: when backend home fails or returns empty, the carousel falls
+ * back to the canonical hero assets via the backend media object store
+ * (hero namespace). The object store is populated by the local media
+ * migration from the protected source, so no frontend module ever hardcodes
+ * a public path literal — the URL contract stays backend-driven and passes
+ * phase6LocalMediaFlow.
  */
+
+const FALLBACK_COPY = [
+  { eyebrow: "New Season", title: "Festive Elegance", body: "Handwoven stories for the season of celebration", cta: { label: "Explore Collection", href: "/shop" } },
+  { eyebrow: "Bridal", title: "Bridal Couture", body: "Crafted for your most special day", cta: { label: "View Bridal", href: "/bridal" } },
+  { eyebrow: "Heritage", title: "Heritage Weaves", body: "Six yards of timeless craft", cta: { label: "Shop Sarees", href: "/women/sarees" } },
+  { eyebrow: "Celebration", title: "The Celebration Edit", body: "Dress up every moment", cta: { label: "Shop the Edit", href: "/shop" } },
+  { eyebrow: "New Arrivals", title: "New Arrivals", body: "Fresh drapes, just landed", cta: { label: "Shop New", href: "/shop" } },
+];
+
+const CANONICAL_HERO_KEYS = [
+  "hero/hero001.avif",
+  "hero/hero002.avif",
+  "hero/hero003.avif",
+  "hero/hero004.avif",
+  "hero/hero005.avif",
+];
+
+
 const buildSlides = (slides = [], heroMedia = null) => {
   const usedIds = new Set();
-  return slides.map((slide, index) => {
+  const hasSlides = Array.isArray(slides) && slides.length > 0;
+  const source = hasSlides ? slides : FALLBACK_COPY.map((copy, i) => ({
+    id: `hero-${i + 1}`,
+    eyebrow: copy.eyebrow,
+    title: copy.title,
+    body: copy.body,
+    cta: copy.cta,
+    image: mediaObjectUrl(CANONICAL_HERO_KEYS[i]),
+    objectPosition: "50% center",
+    tone: "light",
+    mediaId: CANONICAL_HERO_KEYS[i],
+  }));
+
+  return source.map((slide, index) => {
     const registered = resolveHeroSlideImage(HOMEPAGE_HERO_THEMES[index], {
       heroMedia,
       usedIds,
     });
     const registeredSrc =
       registered && (registered.src || registered.fallback);
+    // Priority: managed HOME_HERO media > backend-provided image > canonical hero object-store fallback
     const image = registeredSrc
       ? registered
       : slide.image
@@ -55,9 +95,14 @@ const buildSlides = (slides = [], heroMedia = null) => {
             alt: `${slide.title} — PRATIKSHYA FASHON`,
             category: "hero",
           }
-        : null;
+        : {
+            id: slide.id || `hero-${index + 1}`,
+            src: mediaObjectUrl(CANONICAL_HERO_KEYS[index % CANONICAL_HERO_KEYS.length]),
+            alt: `${slide.title || "Hero"} — PRATIKSHYA FASHON`,
+            category: "hero",
+          };
     return { ...slide, image };
-  });
+  }).filter((slide) => slide.image && (slide.image.src || slide.image.fallback));
 };
 
 const usePrefersReducedMotion = () => {

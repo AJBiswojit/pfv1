@@ -19,16 +19,16 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 
 | Priority | APIs |
 |---|---:|
-| P0 | 79 |
-| P1 | 109 |
+| P0 | 81 |
+| P1 | 115 |
 | P2 | 34 |
 | P3 | 3 |
-| **Total** | **225** |
+| **Total** | **233** |
 
 | Client status | Count |
 |---|---:|
-| exists (coded live client) | 190 |
-| stub (`unavailable` / `BACKEND_GAP`) | 15 |
+| exists (coded live client) | 198 |
+| stub (`unavailable` / `BACKEND_GAP`) | 11 |
 | missing (UI, no client) | 20 |
 
 ## Architecture constraints (every product/media API)
@@ -1928,17 +1928,90 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 
 ## Marketing media (gap)
 
-### API-MMED-01 — List marketing media
+### API-MMED-01 — List marketing media (admin)
 
-- **Method / endpoint:** `GET /admin/marketing-media`
-- **Purpose:** Hero/collection/editorial assignments. Distinct from product media. Path may match backend module but frontend currently BACKEND_GAP.
+- **Method / endpoint:** `GET /admin/marketing/media`
+- **Purpose:** List marketing media entries, optional placement filter, activeOnly. Distinct from product media.
 - **Used by:** F-ADM-MARKETING-MEDIA,F-CUS-HOME
-- **Auth:** admin
-- **Request:** `query`
-- **Response:** `{"items"}`
-- **Errors:** not exposed — B-02
+- **Auth:** admin (media.view)
+- **Request:** `?placement=HOME_HERO&activeOnly=true`
+- **Response:** `{"ok": true, "items": [MarketingMediaResponse], "total", "placement"}`
+- **Errors:** 401,403,422 invalid placement
 - **Priority:** P1
-- **Status:** stub
+- **Status:** exists — B-02 RESOLVED
+
+### API-MMED-05 — Create marketing media (admin)
+
+- **Method / endpoint:** `POST /admin/marketing/media`
+- **Purpose:** Create one marketing placement entry (e.g. HOME_HERO position).
+- **Used by:** F-ADM-MARKETING-MEDIA
+- **Auth:** admin (media.upload)
+- **Request:** `{"placement": "HOME_HERO", "objectKey": "hero/hero001.avif", "title", "subtitle", "ctaLabel", "ctaHref", "sortOrder", "isActive"}`
+- **Response:** `201 MarketingMediaResponse with url`
+- **Errors:** 400 invalid key, 409 duplicate (placement+object_key), 422 validation
+- **Priority:** P1
+- **Status:** exists — B-02
+
+### API-MMED-06 — Get one marketing media (admin)
+
+- **Method / endpoint:** `GET /admin/marketing/media/{id}`
+- **Purpose:** Get single marketing media entry.
+- **Auth:** admin (media.view)
+- **Response:** `MarketingMediaResponse`
+- **Errors:** 404
+- **Priority:** P1
+- **Status:** exists — B-02
+
+### API-MMED-07 — Update marketing media (admin)
+
+- **Method / endpoint:** `PATCH /admin/marketing/media/{id}`
+- **Purpose:** Update metadata, ordering, activation.
+- **Auth:** admin (media.assign)
+- **Request:** partial `{"placement?", "objectKey?", "title?", "sortOrder?", "isActive?"}`
+- **Response:** `MarketingMediaResponse`
+- **Errors:** 404,409 duplicate,422
+- **Priority:** P1
+- **Status:** exists — B-02
+
+### API-MMED-08 — Delete marketing media (admin)
+
+- **Method / endpoint:** `DELETE /admin/marketing/media/{id}`
+- **Purpose:** Delete placement entry.
+- **Auth:** admin (media.delete)
+- **Response:** `{"ok": true, "deleted": id}`
+- **Errors:** 404
+- **Priority:** P1
+- **Status:** exists — B-02
+
+### API-MMED-09 — Reorder marketing media (admin)
+
+- **Method / endpoint:** `PUT /admin/marketing/media/reorder`
+- **Purpose:** Bulk reorder entries within a placement (deterministic ordering).
+- **Auth:** admin (media.assign)
+- **Request:** `{"placement": "HOME_HERO", "items": [{"id", "sortOrder"}]}`
+- **Response:** `{"ok": true, "items": [ordered]}`
+- **Errors:** 404 missing ids,422
+- **Priority:** P1
+- **Status:** exists — B-02
+
+### API-MMED-10 — Get active placement (public)
+
+- **Method / endpoint:** `GET /marketing/placements/{placement}`
+- **Purpose:** Public active entries for a placement (storefront).
+- **Auth:** none
+- **Response:** `{"ok": true, "items": [active ordered], "total", "placement"}`
+- **Errors:** 422 invalid placement
+- **Priority:** P0
+- **Status:** exists — B-02
+
+### API-MMED-11 — Get HOME_HERO (public)
+
+- **Method / endpoint:** `GET /marketing/hero`
+- **Purpose:** Public active HOME_HERO (alias for placement).
+- **Auth:** none
+- **Response:** `{"ok": true, "items": [active ordered HOME_HERO], "total", "placement": "HOME_HERO"}`
+- **Priority:** P0
+- **Status:** exists — B-02
 
 ### API-MMED-02 — List media reviews
 

@@ -9,7 +9,9 @@ One row per feature–API pair. Join keys match `frontend-feature-inventory.md` 
 | F-CUS-HOME | Home / Atelier | customer | P0 | API-COL-01 | GET | `/collections` | exists |
 | F-CUS-HOME | Home / Atelier | customer | P0 | API-OFF-01 | GET | `/offers` | exists |
 | F-CUS-HOME | Home / Atelier | customer | P0 | API-MED-02 | POST | `/media/references/resolve` | exists |
-| F-CUS-HOME | Home / Atelier | customer | P0 | API-MMED-01 | GET | `/admin/marketing-media` | stub |
+| F-CUS-HOME | Home / Atelier | customer | P0 | API-MMED-01 | GET | `/home` | exists |
+| F-CUS-HOME | Home / Atelier | customer | P0 | API-MMED-05 | GET | `/marketing/hero` | exists |
+| F-CUS-HOME | Home / Atelier | customer | P0 | API-MMED-06 | GET | `/marketing/placements/{placement}` | exists |
 | F-CUS-NAV | Taxonomy mega-menu | customer | P0 | API-CAT-01 | GET | `/categories` | exists |
 | F-CUS-NAV | Taxonomy mega-menu | customer | P0 | API-CAT-03 | GET | `/categories/{categoryId}/subcategories` | exists |
 | F-CUS-SHOP | Shop listing | customer | P0 | API-PROD-01 | GET | `/products` | exists |
@@ -150,7 +152,12 @@ One row per feature–API pair. Join keys match `frontend-feature-inventory.md` 
 | F-ADM-MEDIA-REVIEW | Media review | admin | P1 | API-MMED-02 | GET | `/admin/media-reviews` | stub |
 | F-ADM-MEDIA-REVIEW | Media review | admin | P1 | API-MMED-03 | POST | `/admin/media-reviews/{id}/approve` | stub |
 | F-ADM-MEDIA-REVIEW | Media review | admin | P1 | API-MMED-04 | POST | `/admin/media-reviews/{id}/reject` | stub |
-| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-01 | GET | `/admin/marketing-media` | stub |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-01 | GET | `/admin/marketing/media` | exists |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-05 | POST | `/admin/marketing/media` | exists |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-06 | GET | `/admin/marketing/media/{id}` | exists |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-07 | PATCH | `/admin/marketing/media/{id}` | exists |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-08 | DELETE | `/admin/marketing/media/{id}` | exists |
+| F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-09 | PUT | `/admin/marketing/media/reorder` | exists |
 | F-ADM-MARKETING-MEDIA | Marketing media | admin | P1 | API-MMED-02 | GET | `/admin/media-reviews` | stub |
 | F-ADM-MEDIA-MAPPING | Media product mapping | admin | P1 | API-MED-09 | GET | `/media/assets` | exists |
 | F-ADM-MEDIA-MAPPING | Media product mapping | admin | P1 | API-MED-08 | POST | `/media/register` | exists |

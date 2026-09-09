@@ -8,6 +8,7 @@ import StatusBadge from "../../../components/employee/StatusBadge";
 import MediaThumb from "../../../components/media/MediaThumb";
 import MediaUploadPanel from "../../../components/media/MediaUploadPanel";
 import ProductCatalogSelector from "../../../components/admin/ProductCatalogSelector";
+import BackendHomeHeroPanel from "../../../components/admin/BackendHomeHeroPanel";
 import { AtelierButton } from "../../../design-system";
 import {
   MARKETING_PLACEMENT_OPTIONS,
@@ -387,6 +388,9 @@ export default function AdminMarketingMedia() {
       </div>
 
       <div className="space-y-6">
+        {/* B-02: Backend-managed HOME_HERO — production source of truth */}
+        <BackendHomeHeroPanel />
+
         {livePlacements.map(renderPlacement)}
 
         {plannedPlacements.length ? (

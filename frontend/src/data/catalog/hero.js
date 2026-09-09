@@ -23,7 +23,7 @@ const readSlides = () => {
     objectPosition: "50% center",
     tone: slide.tone ?? "light",
     mediaId: slide.mediaId ?? slide.media_id ?? null,
-  })).filter((slide) => slide.id && slide.image);
+  })).filter((slide) => Boolean(slide.id));
 };
 
 /** Live hero slide list — re-reads whenever the catalog store updates. */
