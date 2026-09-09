@@ -276,10 +276,13 @@ class ExploreService:
 
     async def get_home(self) -> HomeResponse:
         """
-        GET /home
+        GET /home — B-02: backend-managed HOME_HERO.
 
         Assembles the homepage in one call:
-          1. hero_slides         — static slides (media resolution BACKEND DECISION REQUIRED)
+          1. hero_slides         — active HOME_HERO from media_marketing_media
+                                   (ordered, active-only, duplicate-safe);
+                                   fallback to canonical 5 hero assets when
+                                   no active entries or DB unavailable.
           2. new_arrivals        — up to 12 newest PUBLISHED products
           3. categories          — all ACTIVE categories (top-level cards)
           4. saree_edit          — up to 8 saree products
@@ -293,8 +296,29 @@ class ExploreService:
         # Tracked media ids — seams exclude images already reserved by heroes.
         used_media_ids: set = set()
 
-        # 1. Hero slides — canonical hero assets, always available (no DB)
-        hero_slides = self._build_hero_slides(used_media_ids)
+        # 1. Hero slides — backend-managed HOME_HERO with canonical fallback
+        hero_slides = await self._build_hero_slides_from_db(used_media_ids)
+        if not hero_slides:
+            # Honest empty when marketing table exists but has zero active rows
+            # is valid — but for resilience when DB unavailable or no seed,
+            # fallback to canonical 5 hero assets (development/emergency fallback).
+            # The fallback is documented and does NOT override valid DB config.
+            try:
+                # Try to detect if marketing table has any rows at all (even inactive)
+                # If it has rows but zero active, return honest empty (case B).
+                from app.services.media.marketing_media_service import MarketingMediaService
+
+                svc = MarketingMediaService(self.db)
+                all_rows = await svc.list(placement="HOME_HERO", active_only=False)
+                if len(all_rows) == 0:
+                    # No rows at all — use canonical fallback for resilience
+                    hero_slides = self._build_hero_slides(used_media_ids)
+                else:
+                    # Rows exist but none active — honest empty per spec case B
+                    hero_slides = []
+            except Exception:
+                # DB unavailable — canonical fallback
+                hero_slides = self._build_hero_slides(used_media_ids)
 
         # Helper to safely select products when DB is unavailable
         async def safe_select(**kwargs):
@@ -382,6 +406,54 @@ class ExploreService:
         )
 
     # ── Internal helpers ──────────────────────────────────────────────────────
+
+    async def _build_hero_slides_from_db(self, used_media_ids: set) -> List[HeroSlide]:
+        """
+        Load active HOME_HERO from media_marketing_media (ordered, active-only).
+
+        Returns [] if no active entries or on DB failure — caller decides
+        whether to use canonical fallback or honest empty.
+        """
+        try:
+            from app.services.media.marketing_media_service import MarketingMediaService
+            from app.storage.urls import build_media_url
+
+            svc = MarketingMediaService(self.db)
+            rows = await svc.list_active_home_hero()
+
+            slides: List[HeroSlide] = []
+            seen_keys: set = set()
+            for row in rows:
+                # Duplicate prevention within same placement (DB has unique constraint,
+                # but also guard in memory)
+                if row.object_key in seen_keys:
+                    continue
+                seen_keys.add(row.object_key)
+
+                try:
+                    image_url = build_media_url(row.object_key)
+                except Exception:
+                    image_url = f"/api/v1/media/objects/{row.object_key}"
+
+                # Track for reservation rule
+                used_media_ids.add(row.object_key)
+                used_media_ids.add(image_url)
+
+                slides.append(
+                    HeroSlide(
+                        id=row.id,
+                        title=row.title or "PRATIKSHYA FASHON",
+                        subtitle=row.subtitle or "",
+                        cta=row.cta_label or "Explore Collection",
+                        href=row.cta_href or "/shop",
+                        image=image_url,
+                        media_id=row.object_key,
+                    )
+                )
+            return slides
+        except Exception:
+            # DB unavailable or table not yet migrated — let caller fallback
+            return []
 
     @staticmethod
     def _build_hero_slides(used_media_ids: set) -> List[HeroSlide]:
