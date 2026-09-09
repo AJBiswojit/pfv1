@@ -38,7 +38,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - Product media register ≠ marketing media.
 - Do not add notification inbox or customer review-write APIs.
 - Empty catalogue/orders → empty arrays / zero KPIs, never demo rupees.
-- Hydrate `GET /products?pageSize=100` must include an honest `total` (blocker B-05).
+- Hydrate walks `GET /products` at `pageSize=100` until `items.length >= total`. Every page **must** include an honest `total` (blocker B-05). Do not omit `total` (client no longer fabricates page length; a full page without `total` fails hydrate).
 
 ## Auth
 
@@ -230,9 +230,9 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Purpose:** Published catalogue for Shop/category/search hydrate. Query: page,pageSize,sort,department,category,subcategory,collection,q,flags.
 - **Used by:** F-CUS-SHOP,F-CUS-CATEGORY,F-CUS-HOME,F-CUS-KIDS
 - **Auth:** none
-- **Request:** `query page,pageSize<=100 used by catalogStore`
-- **Response:** `{"items|products":[Product],"total","page","pageSize"}`
-- **Errors:** 422 bad filter. BLOCKER: hydrate uses pageSize 100 — must return total.
+- **Request:** `query page,pageSize<=100`. Hydrate walks pages; shop listings use pageSize 12.
+- **Response:** `{"items|products":[Product],"total","page","pageSize"}` — `total` is the full published count for the filter, never the page length.
+- **Errors:** 422 bad filter. BLOCKER B-05: omit `total` on a full page and hydrate fails rather than treating page 1 as the whole set.
 - **Priority:** P0
 - **Status:** exists
 

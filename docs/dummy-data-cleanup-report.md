@@ -96,10 +96,11 @@ These screens were showing invented people and rupees. They were **not** deleted
 
 1. **Employee support / styling / sales desks** — UI exists, data is now empty, APIs are P2. Do not invent cases or named clients.
 2. **Workforce attendance/leave/performance repositories** — in-memory session mirrors after the seed file was removed. Check-in/out already fail closed. Do not reintroduce local punches.
-3. **`catalogStore` hydrate `pageSize: 100`** — if the catalogue is larger than 100, storefront lists are incomplete. Backend pagination contract, not dummy data.
+3. **`catalogStore` hydrate** — walks `GET /products` until honest `total` (pageSize 100). Shop listings paginate at 12. If the backend omits `total`, the client no longer fabricates page length as `total` (B-05). Not dummy data.
 4. **Stale comment** in `adminAuthService.js` (“DEMO AUTHENTICATION”) — comment only; login is live JWT. Left as-is (not dummy data).
 5. **Explore offers** — `getExploreOffers()` still used by Explore.jsx while `searchApi` already has `GET /explore/offers`. Wiring gap, not dummy.
 6. **Customer product reviews** — product cards show `rating` / `reviewCount` from the product record. There is no customer write-review UI. Do not invent a review-write API.
+7. **`navigationConfig.searchSuggestions`** includes “Banarasi Saree”. Taxonomy still has a Banarasi subcategory. There is no live Banarasi product. HUMAN_DECISION_REQUIRED — copy vs empty catalogue; do not invent a product to match the hint.
 
 ---
 

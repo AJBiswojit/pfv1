@@ -42,13 +42,17 @@ export async function resolve(specifier, context, nextResolve) {
   if (isRelative && parentURL && !specifier.includes("?") && !specifier.includes("#")) {
     const base = fileURLToPath(parentURL);
     const full = resolvePath(dirname(base), specifier);
+    const declaredExt = extname(specifier);
 
-    if (extname(specifier)) {
-      if (extname(specifier) === ".json") {
-        return { url: pathToFileURL(full).href, shortCircuit: true };
-      }
-      return nextResolve(specifier, context);
+    if (declaredExt === ".json") {
+      return { url: pathToFileURL(full).href, shortCircuit: true };
     }
+
+    /* An exact file wins (./foo.js). Specifiers like `useProducts.apiHelper`
+       have a truthy extname that is not a real module extension — fall
+       through and try `.js` / `.jsx` rather than handing Node a missing URL. */
+    const exact = tryFile(full);
+    if (exact) return { url: pathToFileURL(exact).href, shortCircuit: true };
 
     for (const ext of EXTENSIONS) {
       const hit = tryFile(full + ext);
@@ -62,6 +66,11 @@ export async function resolve(specifier, context, nextResolve) {
 
   return nextResolve(specifier, context);
 }
+
+const stubViteGlob = (source) =>
+  source.includes("import.meta.glob")
+    ? source.replace(/import\.meta\.glob\s*\([^;]*?\)/gs, "({})")
+    : source;
 
 export async function load(url, context, nextLoad) {
   if (url.startsWith(ASSET_SCHEME)) {
@@ -77,13 +86,20 @@ export async function load(url, context, nextLoad) {
   }
   if (url.endsWith(".jsx")) {
     const path = fileURLToPath(url);
-    const raw = await readFile(path, "utf8");
+    const raw = stubViteGlob(await readFile(path, "utf8"));
     const { code } = await transformWithEsbuild(raw, path, {
       loader: "jsx",
       jsx: "automatic",
       target: "node20",
     });
     return { format: "module", source: code, shortCircuit: true };
+  }
+  if (url.endsWith(".js") && !url.includes("node_modules")) {
+    const path = fileURLToPath(url);
+    const raw = await readFile(path, "utf8");
+    if (raw.includes("import.meta.glob")) {
+      return { format: "module", source: stubViteGlob(raw), shortCircuit: true };
+    }
   }
   return nextLoad(url, context);
 }

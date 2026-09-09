@@ -77,15 +77,15 @@ Admin clients exist (`GET/POST /admin/leave`, `POST /admin/leave/{id}/decision`,
 
 ---
 
-## B-05 — Catalogue hydrate page size (BLOCKING P0 if catalogue > 100)
+## B-05 — Catalogue hydrate `total` (BLOCKING P0 if `total` is missing or a later page fails silently)
 
-**Frontend:** `catalogStore` hydrates `GET /products` with `pageSize: 100` (also categories/collections/home/offers).
+**Frontend:** `catalogStore.fetchAllPublishedProducts` walks `GET /products` at `pageSize: 100` until `items.length >= total` or a short last page. Shop listings paginate separately (`useCatalogueQuery` page size 12).
 
-If the backend catalogue is larger than one page, Shop / Explore / category listings are **silently incomplete**. This is not dummy data.
+First-page or later-page failure → hydrate `ok: false` (later-page also `partial: true`). The UI must error; it must not treat a truncated snapshot as the full published set.
 
-**Need:** either a documented total + pagination the storefront walks, or a hydrate contract that returns the published set the storefront is allowed to cache for the session.
+**Need:** `GET /products` **must** return an honest `total` for the published filter. `productsApi.normaliseProductList` no longer falls back to `items.length` when `total` is omitted (`undefined` instead). A full page without `total` fails hydrate rather than pretending the first page is the catalogue. Do not omit `total`. Do not invent a second hydrate endpoint.
 
-**HUMAN DECISION:** max published catalogue size vs paginated browse. Do not raise `pageSize` as a fake “load everything” without a backend cap.
+**HUMAN DECISION:** max published catalogue size vs browse pagination. Do not raise `pageSize` as a fake “load everything” without a backend cap. Safety cap on the frontend is 50 pages (not a catalogue size claim).
 
 ---
 
@@ -167,7 +167,7 @@ The frontend already encodes these. Backend must not reopen them:
 
 | ID | Title | Priority | Kind |
 |---|---|---|---|
-| B-05 | Hydrate pageSize 100 | P0 | Contract |
+| B-05 | Hydrate walk + honest `total` | P0 | Contract |
 | B-12 | Auth scopes / no secrets in docs | P0 | Security |
 | B-01 | Inventory schema | P1 | Schema/wiring |
 | B-02 | Marketing media API | P1 | Phase gap |

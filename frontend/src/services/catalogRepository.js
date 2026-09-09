@@ -21,7 +21,7 @@
  *
  * PERFORMANCE OPTIMIZATION:
  *   · Normalized list is cached with fingerprint; repeated all()/find()
- *     no longer re-normalizes 168 records each time.
+ *     no longer re-normalizes the session cache on every read.
  *   · Indexes by id/slug for O(1) lookups.
  *   · Product version counter for downstream memoization.
  */
@@ -60,6 +60,28 @@ export const slugify = (value) =>
 const KEY = "pratikshya_products";
 export const PRODUCTS_CHANGED_EVENT = "pratikshya-products-changed";
 
+const registerListeners = new Set();
+
+/** In-process subscribers (Node audits/tests have no `window`). */
+export const subscribeCatalogRegister = (fn) => {
+  if (typeof fn !== "function") return () => {};
+  registerListeners.add(fn);
+  return () => registerListeners.delete(fn);
+};
+
+const emitProductsChanged = () => {
+  registerListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      /* listener errors are isolated */
+    }
+  });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
+  }
+};
+
 /* ------------------------------------------------------------------ */
 /* Product source — backend-fed                                       */
 /* ------------------------------------------------------------------ */
@@ -79,9 +101,7 @@ export const catalogueSeedFingerprint = () => `${serverProducts.length}`;
 export const replaceServerProducts = (items) => {
   serverProducts = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
   productVersion += 1;
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
-  }
+  emitProductsChanged();
   return serverProducts;
 };
 
@@ -112,9 +132,7 @@ export const upsertServerProducts = (records) => {
     productVersion += 1;
     readCache = null;
     normalizedCache = { raw: null, parsedRef: null, list: null, byId: null, bySlug: null };
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
-    }
+    emitProductsChanged();
   }
   return serverProducts;
 };
@@ -206,7 +224,7 @@ let productVersion = 0;
  */
 let readCache = null;
 
-/* Normalized cache — avoids re-normalizing 168 products on every all()/find() */
+/* Normalized cache — avoids re-normalizing the session catalogue on every all()/find() */
 let normalizedCache = {
   raw: null,
   parsedRef: null,
@@ -306,9 +324,7 @@ const save = (items) => {
   // keep readCache in sync
   readCache = { raw: productsRegisterRaw() ?? null, parsed: items };
   normalizedCache = { raw: null, parsedRef: null, list: null, byId: null, bySlug: null };
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(PRODUCTS_CHANGED_EVENT));
-  }
+  emitProductsChanged();
   return items;
 };
 

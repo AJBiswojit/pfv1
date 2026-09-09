@@ -78,7 +78,7 @@ Status notes live in the API column: `exists` / `stub` / `missing` refer to APIs
 
 - **Portal:** customer
 - **Surface:** `/shop`
-- **What it does:** Filters/sort via GET /products or /search. pageSize 100 hydrate risk.
+- **What it does:** Filters/sort via GET /products or /search. Listing pageSize 12. Session hydrate walks GET /products until honest `total` (B-05).
 - **Priority:** P0
 - **APIs:** API-PROD-01,API-SRCH-01
 

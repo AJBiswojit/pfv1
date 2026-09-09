@@ -53,17 +53,17 @@ The storefront, admin, and employee portals must:
 | Area | Status | Notes |
 |---|---|---|
 | Home / hero / collections | Partial | Hydrates `/home`; marketing-media assignment is BACKEND_GAP |
-| Shop / category / collection | Partial | `useCatalogueQuery` hits `/products` or `/search`; hydrate capped at 100 |
+| Shop / category / collection | Partial | `useCatalogueQuery` hits `/products` or `/search` (pageSize 12). Session hydrate walks pages; backend must send honest `total` (B-05). Client no longer infers `total` from page length. |
 | Product detail | Wired | `/products/{id}` + media set + related + availability |
 | Cart / wishlist | Wired | `/cart`, `/customers/me/wishlist` |
-| Checkout / payments | Wired | `/checkout/*`, `/payments/*` |
+| Checkout / payments | Wired | `POST /orders`, `/payments/session`, `/payments/verify` |
 | Customer account | Wired | profile, addresses, orders, returns, settings |
 | Search / explore | Partial | `GET /search` live; Explore still calls `getExploreOffers()` |
 | Auth | Wired | register/login/refresh/logout/forgot/reset — no hardcoded passwords |
 | AI shopping / mirror | Preview | Local/brand helpers; not production AI |
 | Reviews write | Absent | Display-only `rating`/`reviewCount` |
 
-**Not production-ready** until hydrate pagination (B-05) is decided and a real backend is serving published products.
+**Not production-ready** until `GET /products` returns an honest `total` (B-05) and a real backend is serving published products.
 
 ---
 
@@ -128,25 +128,13 @@ See `docs/dummy-data-cleanup-report.md` and `docs/golden-data-before-after.md`.
 
 | Check | Result |
 |---|---|
-| `npm test` (`frontend/`) | **368 tests, 367 pass, 0 fail, 1 skip** |
-| `npm run build` | **PASS** — Vite 7.3.2, 2675 modules, `dist/index.html` 2,802.44 kB |
+| `npm test` (`frontend/`) | **377 tests, 376 pass, 0 fail, 1 skip** (`phase6LocalMediaFlow` store-copy — `backend/storage/media` absent) |
+| Architecture `audit:*` | **PASS** |
+| `qa:marketing-assignment` / `qa:storefront-catalog` / `qa:department-listings` / `qa:navigation-editorial` | **PASS** — retargeted to workflow fixtures and current architecture. Deleted seed / Banarasi names not restored. |
+| `npm run build` | **PASS** — Vite 7.3.2, 2675 modules, `dist/index.html` 2,803.61 kB / gzip 968.17 kB |
 | `git diff --check` | **PASS** (exit 0) |
-| Pre-install baseline (before this pass) | 346 tests, 342 pass, 3 fail (`ERR_MODULE_NOT_FOUND: react`), 1 skip |
 
-Existing audits were **not** modified. They currently fail for reasons that predate dummy cleanup (empty server-backed catalogue in Node, missing `adminAccounts.js` import in `audit-employee-management`):
-
-| Audit | Result |
-|---|---|
-| `audit:workflow-foundation` | FAIL — 5 violations (kids/department discovery + lifecycle against empty session catalogue) |
-| `audit:canonical-lifecycle` | FAIL — no canonical department product discovered dynamically |
-| `audit:publish-visibility` | FAIL — canonical product not discovered |
-| `audit:employee-management` | FAIL — `ERR_MODULE_NOT_FOUND: src/data/admin/adminAccounts.js` (stale audit import; not caused by deleting `seedWorkforce.js`) |
-| `audit:media` | FAIL — 0 managed media records in-process; 1 missing test fixture path |
-| `audit:homepage` | FAIL — Kids discovered 0; taxonomy cards 0 |
-| `audit:explore` | FAIL — no canonical kids product in empty session cache |
-| `audit:catalog-completeness` | FAIL — universal validation / primary media on the tiny in-process set |
-
-These failures mean **do not claim production-ready**. They are not licenses to weaken the audits.
+Audits were **not** weakened. Fixture products are test-only DRAFTs with authored plates on existing folders; managed media register stays empty. **Do not claim production-ready.**
 
 This audit **must not** be “made to pass” by weakening tests.
 
@@ -158,10 +146,11 @@ The frontend is a **real application with live API clients** for auth, catalogue
 
 It is **not production-ready** because:
 
-1. Catalogue hydrate can silently drop products after 100.
+1. Hydrate now walks pages, but `GET /products` must still send an honest `total` (B-05). Client `total ?? items.length` remains a trap if omitted.
 2. Inventory and marketing-media clients are honest stubs.
 3. Employee attendance punch is stubbed despite a mounted backend router.
 4. Support/styling desks and AI are preview/empty.
-5. Dummy ops figures were still rendering until this cleanup.
+5. Four `qa:*` scripts still assume a deleted static catalogue / Vite-only Node APIs.
+6. Dummy ops figures were emptied; they must not be re-seeded.
 
 Backend intern work is: implement/align the APIs in `docs/frontend-backend-api-requirements.md` without inventing new product surfaces.

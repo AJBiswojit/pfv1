@@ -2,6 +2,7 @@
 
 **Date:** 2026-09-09  
 **Cleanup performed:** deleted unused `seedWorkforce.js`; emptied EmployeeDesk demo rows; zeroed role KPI demo figures.  
+**This findings-resolution pass:** no further dummy cleanup on catalogue/media. Test fixtures only (`PF-W-SAR-COT-0001`, `PF-W-LEH-BRI-0002`, `PF-K-GRL-DRS-0001`) — paths already on disk.
 **Not touched:** Product IDs, Media IDs, taxonomy, `public/images/**`, workflow states, auth.
 
 Golden data here means **canonical catalogue identity and media** that must survive any dummy-data pass. Workforce demo people were never golden.

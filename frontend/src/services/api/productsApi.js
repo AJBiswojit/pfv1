@@ -190,16 +190,44 @@ function normaliseProduct(p) {
   };
 }
 
-function normaliseList(data) {
-  const items = (data.items ?? data.products ?? data ?? []).map(normaliseProduct);
+/**
+ * Normalise a storefront / admin product list payload.
+ *
+ * `total` is the backend's authoritative filtered count. It is NEVER inferred
+ * from the length of this page: omitting `total` leaves it `undefined` so
+ * hydrate / Load More cannot pretend a full page is the whole catalogue.
+ */
+export function normaliseProductList(data) {
+  const source =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? data
+      : { items: Array.isArray(data) ? data : [] };
+  const raw = Array.isArray(source.items)
+    ? source.items
+    : Array.isArray(source.products)
+      ? source.products
+      : [];
+  const items = raw.map(normaliseProduct);
+  const reported = source.total;
+  const total =
+    reported !== undefined &&
+    reported !== null &&
+    Number.isFinite(Number(reported)) &&
+    Number(reported) >= 0
+      ? Number(reported)
+      : undefined;
   return {
     items,
-    total:          data.total ?? items.length,
-    facets:         data.facets ?? {},
-    appliedFilters: data.applied_filters ?? data.appliedFilters ?? {},
-    page:           data.page ?? 1,
-    pageSize:       data.page_size ?? data.pageSize ?? 20,
+    total,
+    facets: source.facets ?? {},
+    appliedFilters: source.applied_filters ?? source.appliedFilters ?? {},
+    page: source.page ?? 1,
+    pageSize: source.page_size ?? source.pageSize ?? 20,
   };
+}
+
+function normaliseList(data) {
+  return normaliseProductList(data);
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +424,7 @@ export async function apiAdminListProducts(query = {}) {
     return {
       ok: true,
       items: list.items,
-      total: data.total ?? list.total,
+      total: list.total,
       page: data.page ?? list.page,
       pageSize: data.page_size ?? data.pageSize ?? query.pageSize ?? 25,
     };

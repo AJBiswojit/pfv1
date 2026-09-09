@@ -30,7 +30,7 @@ HUMAN DECISION REQUIRED before any ID-changing import. This pass does not change
 | `MOCK_*` operations arrays | already `[]` | `[]` | none |
 | Attendance/leave/performance memory | empty after seed removal | empty | replace with employee APIs (B-03/B-04) |
 | Guest cart localStorage | guest only | unchanged | merge via cart when customer signs in (existing) |
-| Catalogue session cache | `replaceServerProducts` | unchanged | hydrate from GET /products (watch pageSize 100) |
+| Catalogue session cache | `replaceServerProducts` | walk pages until `total` | hydrate from GET /products (honest `total` required; B-05) |
 
 ## 3. Auth
 

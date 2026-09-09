@@ -151,9 +151,11 @@ That assignment API is the gap (B-02).
 
 ## 8. Pagination warning (P0)
 
-`catalogStore` requests `pageSize: 100` for products/categories/collections/home/offers. If you paginate without a total the storefront will **drop** everything after page 1.
+`catalogStore.fetchAllPublishedProducts` **walks** `GET /products` at `pageSize: 100` until `items.length >= total` (or a short last page). Shop/category listings paginate separately (page size 12) and must not be confused with this session snapshot.
 
-Document the contract: either the intern implements a hydrate that returns all **published** products the storefront may cache, or the frontend must be changed later to walk pages (frontend change is out of *your* intern scope unless asked).
+**Contract:** every `GET /products` page **must** include an honest `total` for the published filter. If `total` is omitted, the client currently falls back to `items.length` and would stop after page 1. A later-page error must not be treated as a complete catalogue.
+
+Do not invent a second “hydrate all” endpoint. Do not raise `pageSize` past the documented max (backend `MAX_PAGE_SIZE=100`).
 
 ---
 
