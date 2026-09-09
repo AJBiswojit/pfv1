@@ -3,7 +3,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { products } from "../src/data/catalog/products.js";
 import { catalogueNavigationScopes, catalogueRoutes, departments } from "../src/data/catalog/taxonomy.js";
 import catalogRepository from "../src/services/catalogRepository.js";
 import { isCanonicalMediaUrl } from "../src/services/media/mediaPaths.js";
@@ -32,7 +31,7 @@ const localExists = (src) => {
 };
 
 const register = catalogRepository.all();
-const registerIds = new Set(register.map((product) => product.id));
+const products = register;
 const ids = new Set(products.map((product) => product.id));
 const skus = new Set(products.map((product) => product.sku));
 const mediaFailures = register.filter((product) => {
@@ -60,9 +59,9 @@ const expectedRoutes = departments.flatMap((department) => [
 const routeSet = new Set(catalogueRoutes.map((route) => route.path));
 
 const checks = [
-  ["Authored Product IDs are unique", ids.size === products.length, ids.size],
-  ["Authored SKUs are unique", skus.size === products.length, skus.size],
-  ["Repository resolves every authored Product ID", products.every((product) => registerIds.has(product.id)) && register.length === products.length, register.length],
+  ["Canonical Product IDs are unique", ids.size === products.length && products.length > 0, ids.size],
+  ["Canonical SKUs are unique", skus.size === products.length, skus.size],
+  ["Repository resolves every Product ID under test", products.every((product) => catalogRepository.find(product.id)?.id === product.id), register.length],
   ["Every Product references canonical taxonomy", register.every(checkTaxonomy), register.filter((product) => !checkTaxonomy(product)).length],
   ["Every Product passes universal validation", validationFailures.length === 0, validationFailures.length],
   ["Product Card and gallery resolve canonical Product Media files", mediaFailures.length === 0, mediaFailures.length],

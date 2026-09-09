@@ -1,9 +1,9 @@
 /**
  * PRATIKSHYA FASHON — Employee operations reads.
  *
- * Role portals read mall-floor mock data here. Customer checkout orders
- * are pulled from the existing order service when present so sales and
- * support are not working from a disconnected dataset.
+ * Role portals read live order / inventory / offer records here. Floor
+ * operations that have no backend yet (support cases, styling, walk-ins)
+ * return empty arrays — never demo customers or invented sales.
  */
 
 /* Floor operations are backend-owned. The mock constants below were removed;
@@ -276,12 +276,13 @@ export const defaultDashboardMetrics = (role) => {
   const warehouseTasks = getWarehouseTasks();
 
   if (role === "SALES_EXECUTIVE") {
+    const assisted = getAssistedOrders();
     return {
       primary: [
-        { label: "Today's sales", value: "₹1,24,850", hint: "Floor billed · demo" },
-        { label: "Orders assisted", value: "18", hint: "This month" },
-        { label: "Customers served", value: "42", hint: "This month" },
-        { label: "Pending follow-ups", value: "6", hint: "Open" },
+        { label: "Today's sales", value: "₹0", hint: "Floor billed · live orders only" },
+        { label: "Orders assisted", value: String(assisted.length), hint: "Canonical register" },
+        { label: "Customers served", value: "0", hint: "No floor-traffic API yet" },
+        { label: "Pending follow-ups", value: String(getFollowUps().length), hint: "Open" },
       ],
     };
   }
@@ -309,9 +310,9 @@ export const defaultDashboardMetrics = (role) => {
     return {
       primary: [
         { label: "Open cases", value: String(cases.filter((item) => item.status !== "Resolved").length), hint: "Care desk" },
-        { label: "Pending returns", value: "4", hint: "Awaiting review" },
-        { label: "Customers assisted", value: "27", hint: "This month" },
-        { label: "Response queue", value: "5", hint: "Unanswered" },
+        { label: "Pending returns", value: "0", hint: "Awaiting a returns API on this desk" },
+        { label: "Customers assisted", value: "0", hint: "No support-case API yet" },
+        { label: "Response queue", value: "0", hint: "Unanswered" },
       ],
     };
   }
@@ -320,17 +321,17 @@ export const defaultDashboardMetrics = (role) => {
       primary: [
         { label: "Appointments", value: String(appointments.length), hint: "This week" },
         { label: "Styling requests", value: String(styling.length), hint: "Open book" },
-        { label: "Bridal consultations", value: "3", hint: "Active" },
-        { label: "Recommendations", value: "16", hint: "This month" },
+        { label: "Bridal consultations", value: "0", hint: "No styling API yet" },
+        { label: "Recommendations", value: "0", hint: "No styling API yet" },
       ],
     };
   }
   if (role === "STORE_MANAGER") {
     return {
       primary: [
-        { label: "Store sales", value: "₹8,42,600", hint: "Today · demo" },
-        { label: "Team on floor", value: "14", hint: "Checked in" },
-        { label: "Conversion", value: "28%", hint: "This week" },
+        { label: "Store sales", value: "₹0", hint: "Live orders only" },
+        { label: "Team on floor", value: "0", hint: "Attendance is backend-owned" },
+        { label: "Conversion", value: "—", hint: "No floor-traffic API yet" },
         { label: "Low stock alerts", value: String(stock.low), hint: "Needs attention" },
       ],
     };

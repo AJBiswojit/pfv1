@@ -205,16 +205,15 @@ const desks = {
         Suggested <span className="italic text-accent">edits.</span>
       </>
     ),
-    rows: [
-      { customer: "Aisha Rahman", edit: "Ivory lehenga + polki set + blush dupatta", status: "Shared" },
-      { customer: "Meher Gill", edit: "Trousseau: three silk, one reception, everyday cotton", status: "Draft" },
-      { customer: "Radhika Bose", edit: "Banarasi heritage + temple bangles", status: "Follow-up" },
-    ],
+    description: "Styling recommendations are not invented on the client. This desk stays empty until the backend styling service exists.",
+    rows: [],
     columns: [
       { id: "customer", label: "Customer" },
       { id: "edit", label: "Edit" },
       { id: "status", label: "Status" },
     ],
+    empty: "No styling recommendations yet.",
+    note: "Later an AI styling assistant will read real styling requests. It is not on in this preview.",
   }),
   "/employee/styling/bridal": () => ({
     eyebrow: "Bridal desk",
@@ -238,16 +237,14 @@ const desks = {
         Wedding <span className="italic text-accent">collections.</span>
       </>
     ),
-    rows: [
-      { name: "Pheras ivory", pieces: "Lehenga, veil, jewellery pairing", availability: "Bridal suite" },
-      { name: "Reception champagne", pieces: "Saree + blouse + maang tikka", availability: "On request" },
-      { name: "Groom midnight", pieces: "Sherwani + stole", availability: "First floor" },
-    ],
+    description: "Wedding-collection availability is catalogue-owned. This desk does not invent floor locations or pairing lists.",
+    rows: [],
     columns: [
       { id: "name", label: "Collection" },
       { id: "pieces", label: "Includes" },
       { id: "availability", label: "Where" },
     ],
+    empty: "No wedding-collection operations yet.",
   }),
   "/employee/sales": () => ({
     eyebrow: "Sales",
@@ -256,20 +253,15 @@ const desks = {
         Store <span className="italic text-accent">sales.</span>
       </>
     ),
-    description: "₹8,42,600 billed today across the house — demo figures for leadership.",
-    rows: [
-      { department: "Women's Sarees", billed: 324850, tickets: 18 },
-      { department: "Bridal", billed: 286000, tickets: 4 },
-      { department: "Jewellery", billed: 124600, tickets: 9 },
-      { department: "Men + Groom", billed: 68400, tickets: 6 },
-      { department: "Kids", billed: 38750, tickets: 7 },
-    ],
+    description: "Departmental floor sales come from the order ledger. Nothing is billed here until real orders exist.",
+    rows: [],
     columns: [
       { id: "department", label: "Department" },
       { id: "billed", label: "Billed", render: (row) => formatINR(row.billed) },
       { id: "tickets", label: "Tickets" },
     ],
-    note: "Later AI sales insights will read this same departmental view.",
+    empty: "No departmental sales to show yet.",
+    note: "Later AI sales insights will read this same departmental view from live orders.",
   }),
 };
 

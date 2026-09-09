@@ -3,8 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { INITIAL_ADMINS } from "../src/data/admin/adminAccounts.js";
-import { INITIAL_EMPLOYEES } from "../src/data/employees/mockEmployees.js";
+import { INITIAL_ADMINS, INITIAL_EMPLOYEES } from "../tests/helpers/employeeManagementFixtures.js";
 import {
   ADMIN_PERMISSIONS,
   canManageEmployeeAccounts,

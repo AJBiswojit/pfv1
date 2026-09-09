@@ -27,6 +27,11 @@ import { PRODUCT_MEDIA_ROLES } from "../../config/mediaTypes";
 
 export const CATALOG_CHANGED_EVENT = "pf:catalog-changed";
 
+/** Page size used when hydrating the published storefront snapshot. */
+export const CATALOG_HYDRATE_PAGE_SIZE = 100;
+/** Safety cap so a broken total cannot loop forever. */
+export const CATALOG_HYDRATE_MAX_PAGES = 50;
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -166,7 +171,90 @@ export function toStorefrontProduct(product) {
     tags: [id, product.name, product.sku, product.category, product.subcategory,
            product.gender, product.fabric, product.material,
            ...(product.occasion ?? []), ...colors, ...(product.badges ?? []), ...(product.tags ?? [])].filter(Boolean),
+    searchText: [id, product.name, product.sku, product.slug, product.category, product.subcategory,
+           product.gender, product.fabric, product.material,
+           ...(product.occasion ?? []), ...colors, ...(product.badges ?? []), ...(product.tags ?? [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim(),
   };
+}
+
+/**
+ * Walk GET /products until `items.length >= total` (or a short last page).
+ *
+ * Contract: the backend MUST return an honest `total` for the published set.
+ * A missing total is treated as "this page is the last page" when the batch
+ * is smaller than pageSize — never as a silent drop of later pages.
+ */
+export async function fetchAllPublishedProducts(listFn) {
+  const pageSize = CATALOG_HYDRATE_PAGE_SIZE;
+  const items = [];
+  let total = null;
+  let page = 1;
+  let lastBatchSize = 0;
+  const list = typeof listFn === "function" ? listFn : (params) => apiListProducts(params);
+
+  while (page <= CATALOG_HYDRATE_MAX_PAGES) {
+    const result = await list({ page, pageSize, sort: "recommended" });
+    if (!result?.ok) {
+      return {
+        ok: false,
+        error: result?.error ?? "Catalogue page failed.",
+        items,
+        total: Number.isFinite(total) ? total : undefined,
+        partial: items.length > 0,
+      };
+    }
+    const batch = Array.isArray(result.items) ? result.items : [];
+    const reported = Number(result.total);
+    if (Number.isFinite(reported) && reported >= 0) total = reported;
+    items.push(...batch);
+    lastBatchSize = batch.length;
+    if (Number.isFinite(total) && items.length >= total) break;
+    if (batch.length < pageSize) break;
+    page += 1;
+  }
+
+  if (Number.isFinite(total) && items.length < total) {
+    return {
+      ok: false,
+      error: "Catalogue hydrate stopped before covering the reported total.",
+      items,
+      total,
+      partial: true,
+    };
+  }
+  if (!Number.isFinite(total) && lastBatchSize >= pageSize) {
+    return {
+      ok: false,
+      error: "GET /products omitted total; hydrate cannot confirm the catalogue is complete.",
+      items,
+      total: undefined,
+      partial: true,
+    };
+  }
+
+  return { ok: true, items, total: Number.isFinite(total) ? total : items.length };
+}
+
+/**
+ * Replace the in-memory storefront snapshot (tests/audits and hydrate).
+ * Unpublished records must not be passed here.
+ */
+export function applyCatalogSnapshot({
+  products = [],
+  categories = [],
+  collections = [],
+  subcategories = {},
+} = {}) {
+  applySnapshot(products, categories, collections, subcategories);
+  state.status = "ready";
+  state.error = null;
+  emit();
+  return state;
 }
 
 function applySnapshot(products, categories, collections, subcategories = {}) {
@@ -202,7 +290,7 @@ export async function hydrateCatalog({ force = false } = {}) {
 
   hydratePromise = (async () => {
     const [productsResult, categoriesResult, collectionsResult, homeResult, offersResult] = await Promise.all([
-      apiListProducts({ page: 1, pageSize: 100, sort: "recommended" }),
+      fetchAllPublishedProducts(),
       apiListCategories({ status: "ACTIVE" }),
       apiListCollections({ status: "ACTIVE" }),
       apiGetHome(),

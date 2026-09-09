@@ -29,7 +29,8 @@ export const matchesSearch = (product, term) => {
   if (!term) return true;
   const words = normaliseSearchText(term).split(" ").filter(Boolean);
   if (words.length === 0) return true;
-  return words.every((word) => product.searchText.includes(word));
+  const haystack = String(product.searchText ?? product.tags?.join(" ") ?? `${product.id} ${product.name} ${product.sku ?? ""}`);
+  return words.every((word) => haystack.includes(word));
 };
 
 /** Friendly Explore / share URLs (`women`, `price-low`) map onto taxonomy ids. */
