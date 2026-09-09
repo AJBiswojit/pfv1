@@ -343,20 +343,28 @@ export async function hydrateCatalog({ force = false } = {}) {
       state.offersError = offersResult.error ?? "Offers could not be loaded from the server.";
     }
 
-    // If at least home succeeded, we are ready enough to render hero.
-    // If everything failed, keep error state but still emit so UI can show fallback.
-    if (homeResult.ok || productsResult.ok || categoriesResult.ok || collectionsResult.ok) {
+    // Hero/home must render independently of catalogue health.
+    // Catalogue failure must remain observable — we do NOT report the whole
+    // catalogue as healthy merely because hero loaded.
+    const catalogueOk = productsResult.ok && categoriesResult.ok && collectionsResult.ok;
+    const anyOk = homeResult.ok || productsResult.ok || categoriesResult.ok || collectionsResult.ok;
+    const allOk = homeResult.ok && catalogueOk;
+
+    if (allOk) {
       state.status = "ready";
       state.error = null;
-      // Preserve partial errors for debugging but don't block rendering
-      if (!productsResult.ok || !categoriesResult.ok || !collectionsResult.ok) {
-        const errs = [
-          !productsResult.ok ? `products: ${productsResult.error}` : null,
-          !categoriesResult.ok ? `categories: ${categoriesResult.error}` : null,
-          !collectionsResult.ok ? `collections: ${collectionsResult.error}` : null,
-        ].filter(Boolean).join("; ");
-        if (errs) state.error = errs;
-      }
+    } else if (anyOk) {
+      // Partial/degraded: hero may render, but product-dependent sections are
+      // honestly empty. Error stays observable so UI/tests can detect the
+      // backend failure.
+      state.status = "partial";
+      const errs = [
+        !homeResult.ok ? `home: ${homeResult.error}` : null,
+        !productsResult.ok ? `products: ${productsResult.error}` : null,
+        !categoriesResult.ok ? `categories: ${categoriesResult.error}` : null,
+        !collectionsResult.ok ? `collections: ${collectionsResult.error}` : null,
+      ].filter(Boolean).join("; ");
+      state.error = errs || null;
     } else {
       state.status = "error";
       state.error = homeResult.error || productsResult.error || categoriesResult.error || collectionsResult.error || "Catalogue hydrate failed";
