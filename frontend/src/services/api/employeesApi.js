@@ -203,10 +203,16 @@ export async function apiEmployeeGetMe() {
   } catch (err) { return handleError(err); }
 }
 
-/** GET /employee/me/assigned-products */
+/** GET /employee/me/assigned-products — backend currently placeholder [] TODO product service (B-14) */
 export async function apiEmployeeGetAssignedProducts() {
   try {
     const data = await apiClient.get("/employee/me/assigned-products", { scope: "employee" });
+    // Backend verification 2026-09-09: employees.py returns {ok:true, data:[], message:"Assigned products endpoint — implementation pending product service."}
+    // Treat placeholder as honest BACKEND_GAP so employee inbox does not silently show zero assigned when backend stub.
+    const msg = (data.message ?? data.detail ?? "").toLowerCase();
+    if (msg.includes("implementation pending") || msg.includes("placeholder")) {
+      return { ok: false, code: "BACKEND_GAP", message: data.message ?? "Assigned-products pending product service (B-14)", items: [] };
+    }
     return { ok: true, items: data.data ?? data.items ?? [] };
   } catch (err) { return handleError(err); }
 }
