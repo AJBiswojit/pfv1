@@ -1,7 +1,8 @@
-# Backend blockers
+# Backend blockers — FINAL AUDIT 2026-09-09
 
 **Audience:** backend intern + reviewer.  
-**Rule:** these are gaps the **frontend already has UI or a typed client for**. Nothing here is a new product idea.
+**Rule:** these are gaps the **frontend already has UI or a typed client for**. Nothing here is a new product idea.  
+**This is the definitive list after full repo inspection — backend already exists in same repo, not assumed missing.**
 
 Status key:
 
@@ -9,173 +10,256 @@ Status key:
 - **BLOCKING P1** — admin/employee merchandising, orders, media register, analytics.
 - **SCHEMA / WIRING** — backend router may already mount a module; the **frontend client cannot use it** because the contract or columns are wrong.
 - **PHASE GAP** — UI exists; client is an honest stub (`unavailable()`, `BACKEND_GAP`, early `return fail`).
+- **VERIFIED:** after inspecting actual backend source (not just frontend labels).
 
 ---
 
-## B-01 — Inventory schema vs frontend client (SCHEMA / WIRING, P1)
+## B-01 — Inventory schema vs frontend client (SCHEMA / WIRING, P1) — VERIFIED EMPTY MODELS
 
 **Frontend:** `frontend/src/services/api/inventoryApi.js` — every call returns `{ ok: false }` because “existing server schema does NOT yet carry business columns on the `inventory_*` tables”.
 
-**Backend:** `backend/app/api/v1/router.py` already includes the inventory router. This is **not** a missing domain.
+**Backend verification:**
+- `backend/app/models/inventory/*.py` — 6 files (inventory_location, inventory_stock, inventory_movement, stock_reservation, stock_transfer, warehouse) — each only `__tablename__` + inherited id/created_at/updated_at from Base, NO business columns.
+- `backend/app/services/inventory/*` — inventory_service, reservation_service, transfer_service — empty class only `__init__`.
+- `backend/app/api/v1/inventory.py`, `warehouses.py`, `stock_transfers.py` — 8 lines each, only `/health`, NO real CRUD.
 
-**Why it blocks:** Admin Inventory, warehouses, transfers, low-stock, and employee inventory desks cannot show real stock. Admin dashboard `GET /analytics/inventory-summary` is a separate read and must not be treated as the stock ledger.
+So mounted ≠ usable is CONFIRMED: inventory is placeholder tables from initial schema move migration m001_move_tables_to_pratikshya_schema.
 
-**Frontend already expects (do not rename for fashion):**
+**Why it blocks:** Admin Inventory, warehouses, transfers, low-stock, employee inventory desks cannot show real stock. Admin dashboard `GET /analytics/inventory-summary` is separate read (aggregates from catalog_product.stock) and must not be treated as stock ledger — it returns note: "Aggregated from catalog_product stock fields; dedicated inventory tables do not yet carry business columns".
 
-| Client | Needed behaviour |
-|---|---|
-| `apiListStock` | Variant-level on-hand / reserved / available |
-| `apiGetStockItem` | One SKU/variant |
-| `apiAdjustStock` | Signed adjustment + reason |
-| `apiListMovements` | Movement history |
-| `apiListLowStock` | Below threshold |
-| `apiListReservations` | Cart/order reservations |
-| `apiListWarehouses` / `apiCreateWarehouse` | Locations |
-| `apiListTransfers` / `apiCreateTransfer` / `apiCompleteTransfer` | Warehouse-to-warehouse |
+**Frontend expects:**
+- `apiListStock` → Variant-level on-hand/reserved/available `{productId,variantId,sku,onHand,reserved,available}`
+- `apiGetStockItem` → one SKU/variant
+- `apiAdjustStock` → signed adjustment + reason
+- `apiListMovements` → movement history
+- `apiListLowStock` → below threshold
+- `apiListReservations` → cart/order reservations
+- `apiListWarehouses` / `apiCreateWarehouse` → locations
+- `apiListTransfers` / `apiCreateTransfer` / `apiCompleteTransfer` → warehouse-to-warehouse
 
-**Do not:** seed stock in the browser. Cart/order paths already validate stock **server-side** — keep that as the customer-facing authority until the ledger matches.
+**Do not:** seed stock in browser. Cart/order paths already validate stock server-side against catalog_product.stock — keep as customer authority until ledger matches.
 
-**HUMAN DECISION:** exact table columns. Stop rather than invent a second stock number on `products.stock` that disagrees with inventory.
+**HUMAN DECISION:** exact columns. Required migration: inventory_stock (product_id, variant_id, sku, warehouse_id, on_hand, reserved, available, low_threshold), inventory_movement (stock_id, delta, reason, actor), stock_reservation, warehouse (name, code, address), stock_transfer (from, to, status, lines).
+
+**Classification:** E MISSING BACKEND (stub D) — P1 BLOCKER — BACKEND ACTION REQUIRED
 
 ---
 
-## B-02 — Marketing media + media review API (PHASE GAP, P1)
+## B-02 — Marketing media + media review API (PHASE GAP, P1) — VERIFIED EMPTY MODELS
 
 **Frontend:** `apiListMarketingMedia`, `apiListMediaReviews`, `apiApproveMedia`, `apiRejectMedia` return `code: "BACKEND_GAP"`. Comment: `media_marketing_media` / `media_media_review` have no API.
 
-**Why it blocks:** Admin Marketing Media and Admin Media Review cannot assign hero/collection/editorial plates. Product-media upload/register **is live** and must stay a **different** pipeline.
+**Backend verification:**
+- `backend/app/models/media/marketing_media.py` — only `__tablename__ = "media_marketing_media"`, no columns.
+- `media_review.py` — same empty.
+- `backend/app/api/v1/media_reviews.py` — 8 lines health only.
+- `media_service.py` — object operations REAL, but media records for marketing missing.
 
-**Rule the API must enforce:** registering product media never promotes it to a marketing slot.
+**Why it blocks:** Admin Marketing Media and Admin Media Review cannot assign hero/collection/editorial plates. Product-media upload/register IS LIVE and must stay different pipeline.
+
+**Rule API must enforce:** registering product media never promotes to marketing slot.
+
+**HUMAN DECISION:** placement types (hero, collection, editorial, promotion), approval flow, target_id semantics.
+
+**Classification:** E MISSING BACKEND — P1 BLOCKER — BACKEND ACTION REQUIRED
 
 ---
 
-## B-03 — Employee self check-in / check-out (PHASE GAP, P1)
+## B-03 — Employee self check-in / check-out (PHASE GAP, P1) — VERIFIED STUB ROUTERS
 
-**Frontend:** `attendanceService.checkIn` / `checkOut` return immediately:
+**Frontend:** `attendanceService.checkIn` / `checkOut` return immediately: “Check-in is managed by the backend attendance service, which is not available in this phase. No local record was created.” Dead local-punch code after return unreachable.
 
-> “Check-in is managed by the backend attendance service, which is not available in this phase. No local record was created.”
+**Backend verification:**
+- `backend/app/models/employee/attendance.py` — REAL model: employee_id FK CASCADE, attendance_date, check_in, check_out, status PRESENT/ABSENT/LATE/HALF_DAY/LEAVE, notes.
+- `backend/app/api/v1/attendance.py` — 8 lines health only, NO real endpoints.
+- `backend/app/api/v1/performance.py` — same health only.
+- `backend/app/services/employee/attendance_service.py` — empty class only __init__.
+- `employees.py` router has admin attendance: POST /admin/employees/{id}/attendance, GET list, PATCH update — REAL admin side.
+- Missing for employee desk: employee-scoped punch + today + history (`POST /employee/attendance/check-in`, `POST /employee/attendance/check-out`, `GET /employee/attendance/today`, `GET /employee/attendance`).
 
-Dead local-punch code after those `return`s is unreachable.
+**Do not:** write punches to localStorage or deleted seedWorkforce dataset.
 
-**Backend:** attendance router is mounted; `employeesApi` already calls:
-
-- `GET /admin/attendance`
-- `POST /admin/attendance`
-- `GET /admin/attendance/summary`
-
-**Missing for the employee desk:** employee-scoped punch + today + history (`POST /employee/attendance/check-in`, `POST /employee/attendance/check-out`, `GET /employee/attendance/today`, `GET /employee/attendance`).
-
-**Do not:** write punches to `localStorage` or the deleted `seedWorkforce` dataset.
+**Classification:** E MISSING BACKEND (employee self) — P1 BLOCKER — BACKEND ACTION REQUIRED
 
 ---
 
 ## B-04 — Employee leave + performance self-service (PHASE GAP, P2)
 
-Admin clients exist (`GET/POST /admin/leave`, `POST /admin/leave/{id}/decision`, `GET /admin/performance`). Employee leave apply and performance views still read in-memory repositories (`leaveRepository`, `performanceRepository`) that no longer have a seed.
+**Backend verification:**
+- Leave: NO model file, no table, no migration — MISSING.
+- Performance: model exists `employee_performance`, admin CRUD via employees.py `/admin/employees/{id}/performance` REAL, but employee self-service GET /employee/performance missing (performance.py router stub health only).
+- Frontend: leaveRepository, performanceRepository empty in-memory after seedWorkforce.js deletion — empty tables honest.
 
-**Need:** employee-scoped leave list/apply and performance read that share the **same** records as admin.
+**Need:** employee-scoped leave list/apply and performance read sharing same records as admin + leave table.
 
----
-
-## B-05 — Catalogue hydrate `total` (BLOCKING P0 if `total` is missing or a later page fails silently)
-
-**Frontend:** `catalogStore.fetchAllPublishedProducts` walks `GET /products` at `pageSize: 100` until `items.length >= total` or a short last page. Shop listings paginate separately (`useCatalogueQuery` page size 12).
-
-First-page or later-page failure → hydrate `ok: false` (later-page also `partial: true`). The UI must error; it must not treat a truncated snapshot as the full published set.
-
-**Need:** `GET /products` **must** return an honest `total` for the published filter. `productsApi.normaliseProductList` no longer falls back to `items.length` when `total` is omitted (`undefined` instead). A full page without `total` fails hydrate rather than pretending the first page is the catalogue. Do not omit `total`. Do not invent a second hydrate endpoint.
-
-**HUMAN DECISION:** max published catalogue size vs browse pagination. Do not raise `pageSize` as a fake “load everything” without a backend cap. Safety cap on the frontend is 50 pages (not a catalogue size claim).
+**Classification:** E MISSING BACKEND — P2 GAP — BACKEND ACTION REQUIRED if UI required now
 
 ---
 
-## B-06 — Explore offers wiring (WIRING, P1)
+## B-05 — Catalogue hydrate `total` (BLOCKING P0 if `total` missing)
 
-`searchApi` already has `GET /explore` and `GET /explore/offers`. `Explore.jsx` still uses `getExploreOffers()`. Storefront offers must come from the offers register, not a second hardcoded list.
+**Frontend:** `catalogStore.fetchAllPublishedProducts` walks `GET /products` at pageSize 100 until items.length >= total or short last page. Shop listings paginate separately page size 12. First-page or later-page failure → ok:false (later also partial:true). UI must error not treat truncated as complete.
+
+**Backend verification:**
+- `backend/app/api/v1/products.py` GET /products → ProductService.list_storefront_products returns dict with total from count query (SELECT COUNT), not len(items). So contract is HONEST in code.
+- `frontend/src/services/api/productsApi.js` normaliseProductList no longer does total ?? items.length — omitted total stays undefined, full page without total fails hydrate (ok:false GET /products omitted total). So client fails loudly.
+
+**Need:** live DB with seeded products to prove HTTP. In this workspace no postgres/redis, cannot run real HTTP smoke test. Previous in-memory audit proved publish-visibility.
+
+**HUMAN DECISION:** max published catalogue size vs browse pagination. Safety cap frontend 50 pages.
+
+**Classification:** A COMPLETE in code, needs integration verification with live DB — P0 CONTRACT (not a blocker if backend runs)
+
+---
+
+## B-06 — Explore offers wiring (WIRING, P1) — VERIFIED STATIC
+
+**Backend verification:**
+- `backend/app/api/v1/explore.py` GET /explore/offers returns ExploreOffersResponse with static list _EXPLORE_OFFERS (3 offers: FIRST10, free shipping, FESTIVE40) — NOT DB-backed, comment says BACKEND DECISION REQUIRED.
+- `backend/app/services/catalog/explore_service.py` _EXPLORE_OFFERS static, _PROMO_CARDS, _EDITORIAL_CARDS static (CMS future).
+- Public offers GET /offers returns DB coupons where is_active true — REAL DB-backed.
+- Frontend: searchApi.apiGetExploreOffers calls /explore/offers — wiring fixed (previously Explore.jsx used getExploreOffers()), but data still static not from offers register.
+
+**Need:** Make /explore/offers query CouponModel active not expired, or keep static but document.
+
+**Classification:** C PARTIAL — P1 WIRING — BACKEND ACTION REQUIRED (make DB-backed)
 
 ---
 
 ## B-07 — Support / styling / floor-sales desks (PHASE GAP, P2)
 
-Employee routes exist (`/employee/support/*`, `/employee/styling/*`, `/employee/sales`). After cleanup they render **empty** tables. There is no live client.
+Employee routes exist (/employee/support/*, /employee/styling/*, /employee/sales). After cleanup they render empty tables. No live client, no backend models.
 
-**Need (only because the UI exists):**
-
+**Need (only because UI exists):**
 - Support cases list/create/update
 - Styling appointments + requests
-- Departmental floor sales **derived from orders**, not a parallel sales DB
+- Departmental floor sales derived from orders, not parallel sales DB
 
-**Do not** invent named customers to fill the desks.
+**Do not** invent named customers.
+
+**HUMAN DECISION:** if required now or future. Sales MUST derive from orders.
+
+**Classification:** E MISSING BACKEND — P2 GAP
 
 ---
 
 ## B-08 — AI assistants still local (PHASE GAP, P3)
 
-Customer AI Shopping, AI Mirror, Admin Insights/AI, employee “later AI” notes. Frontend uses brand-voice / local helpers. Backend chatbot router is mounted but **not consumed**.
+Customer AI Shopping, AI Mirror, Admin Insights/AI, employee later AI notes. Frontend uses brand-voice / local helpers. Backend chatbot router mounted but only health, no AI endpoints. No models (knowledge_document etc empty).
 
-Production AI is P3. Until then the UI must say it is preview, never pretend a model answered from live orders.
+Production AI is P3. Until then UI must say preview, never pretend model answered from live orders.
+
+**Classification:** H FUTURE — NOT REQUIRED NOW
 
 ---
 
 ## B-09 — Activity diary split (WIRING, P2)
 
-`activityService` is a shared in-session diary. Admin product history has API (`GET /admin/products/{id}/history`, `/activity`). House-wide activity (`GET /admin/activity`, `GET /employee/activity`) must not fork a second log.
+`activityService` is shared in-session diary. Admin product history has API (GET /admin/products/{id}/history? Actually history field on product, plus /audit/logs, /admin/activity). House-wide activity (GET /admin/activity, GET /employee/activity) must not fork second log.
+
+**Backend verification:**
+- GET /audit/logs — REAL with filters action, actor, targetProductId, targetEmployeeId, targetOrderId, q, pagination
+- GET /admin/activity — REAL latest 200 from audit_activity_log
+- GET /employee/activity missing? Not in router list — may need same table if required.
+
+**Classification:** C PARTIAL — P2 WIRING — verify employee activity uses same audit table
 
 ---
 
 ## B-10 — Notifications inbox (DO NOT INVENT)
 
-Admin header copy: notifications are **not available in this phase**. Customer/admin **settings** already persist notification *preferences* via `/admin/settings` and customer preferences.
+Admin header copy: notifications not available in this phase. Customer/admin settings already persist notification preferences via /admin/settings/notifications and customer preferences.
 
-**Do not** build a notification inbox API unless a screen consumes it. Backend `notifications` router being mounted is not a frontend requirement by itself.
+Backend notifications router only has GET/PATCH /admin/settings/notifications — REAL for preferences, not inbox. No inbox endpoint, no model columns — correctly not invented.
+
+**Classification:** H NOT REQUIRED — DO NOT INVENT
 
 ---
 
 ## B-11 — Customer product-review writes (DO NOT INVENT)
 
-Storefront displays `rating` / `reviewCount` on the product record. There is **no** write-review form.
+Storefront displays rating/reviewCount on product record. No write-review form. GET /products/{id}/reviews exists on client as read but backend uses product fields — OK.
 
-`GET /products/{id}/reviews` exists on the client as a read. Do not add `POST /reviews` until a customer UI exists.
-
----
-
-## B-12 — Secrets / auth hygiene (SECURITY, P0)
-
-- Frontend talks JWT via `authApi` (`access` + `refresh`). No hardcoded passwords were found in login screens.
-- Docs must never copy `.env` secret values. If a secret is seen: `SECRET FOUND — VALUE REDACTED`.
-- Employee/admin/customer tokens are **scoped**. Do not accept an employee JWT on `/admin/*`.
-- `EmployeeLogin` leftover `fill()` was removed; it never shipped passwords.
+**Classification:** H NOT REQUIRED — DO NOT INVENT
 
 ---
 
-## B-13 — Duplicate systems (ARCHITECTURE — already forbidden)
+## B-12 — Secrets / auth hygiene (SECURITY, P0) — VERIFIED REAL
+
+- JWT creation with jti, blacklist in Redis, HS256, 30min access 7d refresh — REAL
+- Validation via decode_token + blacklist check — REAL
+- Scope isolation: get_current_customer/employee/admin check user_type 403 — REAL
+- Admin permission: require_admin_permission checks roles/permissions, fallback for unassigned admin (compat path, only admin) — documented narrow
+- No hardcoded passwords in frontend src — verified
+- Docs must never copy .env secret values — rule
+- EmployeeLogin fill() removed — verified
+- CORS configured via ALLOWED_ORIGINS CSV
+- /docs only when DEBUG true
+
+**Classification:** A COMPLETE — P0 SECURITY OK
+
+---
+
+## B-13 — Duplicate systems (ARCHITECTURE — already forbidden) — VERIFIED
 
 The frontend already encodes these. Backend must not reopen them:
 
-| Rule | Meaning |
-|---|---|
-| One product register | No admin-catalogue vs storefront-catalogue |
-| One media register | Product media ≠ marketing media |
-| One auth | JWT; no demo users |
-| One workflow | Commands in `productWorkflow`; APPROVE ≠ PUBLISH |
-| Kids | Category/department + ID prefix `PF-K-*`, not a side catalogue |
-| IDs | Never regenerate `PF-*` from filenames or clocks |
+| Rule | Meaning | Verified |
+|---|---|---|
+| One product register | No admin-catalogue vs storefront-catalogue | YES catalog_product single |
+| One media register | Product media ≠ marketing media | YES asset+mapping vs marketing empty distinct |
+| One auth | JWT; no demo users | YES |
+| One workflow | Commands in productWorkflow; APPROVE ≠ PUBLISH | YES service enforces |
+| Kids | Category/department + ID prefix PF-K-*, not side catalogue | YES same lifecycle |
+| IDs | Never regenerate PF-* from filenames or clocks | YES next-id deterministic |
+
+**Classification:** A COMPLETE — architecture rule enforced
 
 ---
 
-## Priority rollup
+## B-14 — Employee assigned-products placeholder (NEW P0 found in audit)
 
-| ID | Title | Priority | Kind |
-|---|---|---|---|
-| B-05 | Hydrate walk + honest `total` | P0 | Contract |
-| B-12 | Auth scopes / no secrets in docs | P0 | Security |
-| B-01 | Inventory schema | P1 | Schema/wiring |
-| B-02 | Marketing media API | P1 | Phase gap |
-| B-03 | Employee punch | P1 | Phase gap |
-| B-06 | Explore offers wiring | P1 | Wiring |
-| B-04 | Leave/performance employee | P2 | Phase gap |
-| B-07 | Support/styling desks | P2 | Phase gap |
-| B-09 | Activity diary | P2 | Wiring |
-| B-08 | AI | P3 | Phase gap |
-| B-10 | Notifications inbox | — | Do not invent |
-| B-11 | Review writes | — | Do not invent |
+**Frontend:** F-EMP-PRODUCTS, F-EMP-DASHBOARD need GET /employee/me/assigned-products
+
+**Backend verification:**
+- `backend/app/api/v1/employees.py` GET /employee/me/assigned-products returns `{ok:true, data:[], message:"Assigned products endpoint — implementation pending product service."}` — STUB placeholder TODO.
+
+**Why it blocks:** Employee products inbox empty even when admin assigns product via POST /admin/products/{id}/assign (which sets assigned_employee_id). Employee should see assigned work.
+
+**Need:** Implement ProductService.list_assigned_products(employee_code) where assigned_employee_id == code, wire to employees.py.
+
+**Classification:** D STUB — P0 BLOCKER (employee P0) — BACKEND ACTION REQUIRED
+
+---
+
+## B-15 — Employee forgot-password + session sid gaps (NEW)
+
+- API-AUTH-15 POST /auth/employee/forgot-password missing — frontend EmployeeForgotPassword.jsx honest says contact admin, sends no email — HUMAN DECISION if admin-only reset (API-EMP-06) only or separate employee token flow (must not reuse customer tokens).
+- Session sid missing: token has jti but no sid claim, so POST /customers/me/sessions/revoke-others revokes ALL including current, and GET /customers/me returns isCurrent false for all — documented BACKEND_GAP in customers.py. Needs sid claim at token issue.
+
+**Classification:** E MISSING + C PARTIAL — P1/P2
+
+---
+
+## Priority rollup — FINAL
+
+| ID | Title | Priority | Kind | Classification |
+|---|---|---|---|---|
+| B-05 | Hydrate walk + honest total | P0 | Contract | A in code, needs live DB proof |
+| B-14 | Employee assigned-products placeholder | P0 | Stub | D — BACKEND ACTION REQUIRED |
+| B-12 | Auth scopes / no secrets | P0 | Security | A COMPLETE |
+| B-01 | Inventory schema (6 empty models, 3 stub routers) | P1 | Schema/wiring | E — BACKEND ACTION REQUIRED |
+| B-02 | Marketing media + review (2 empty models, stub router) | P1 | Phase gap | E — BACKEND ACTION REQUIRED |
+| B-03 | Employee punch (model real, routers stub, service empty) | P1 | Phase gap | E — BACKEND ACTION REQUIRED |
+| B-06 | Explore offers static not DB | P1 | Wiring | C — BACKEND ACTION REQUIRED |
+| B-15 | Employee forgot-password missing + sid gap | P1 | Gap | E/C + HUMAN DECISION |
+| B-04 | Leave/performance employee self | P2 | Phase gap | E — BACKEND ACTION REQUIRED if UI now |
+| B-07 | Support/styling/floor-sales | P2 | Phase gap | E — HUMAN DECISION if now |
+| B-09 | Activity diary employee side | P2 | Wiring | C — verify |
+| B-08 | AI | P3 | Phase gap | H FUTURE |
+| B-10 | Notifications inbox | — | Do not invent | H NOT REQUIRED |
+| B-11 | Review writes | — | Do not invent | H NOT REQUIRED |
+| B-13 | Duplicate systems | — | Architecture | A COMPLETE |
+
+**Total blockers P0: 2 (B-05 needs proof, B-14 needs impl) — P1: 5 (B-01,B-02,B-03,B-06,B-15) — P2: 3 — P3: 1**
+
