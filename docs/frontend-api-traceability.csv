@@ -1,0 +1,314 @@
+feature_id,feature_name,portal,feature_priority,feature_surface,api_id,api_name,method,endpoint,api_priority,api_status,auth,domain
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-SRCH-04,Home,GET,/home,P0,exists,none,Search / home / explore
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-PROD-01,List products,GET,/products,P0,exists,none,Products (public)
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-COL-01,List collections,GET,/collections,P0,exists,none,Collections
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-OFF-01,List public offers,GET,/offers,P1,exists,none,Offers
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-MED-02,Resolve references,POST,/media/references/resolve,P0,exists,none,Product media
+F-CUS-HOME,Home / Atelier,customer,P0,GET /,API-MMED-01,List marketing media,GET,/admin/marketing-media,P1,stub,admin,Marketing media (gap)
+F-CUS-NAV,Taxonomy mega-menu,customer,P0,Header,API-CAT-01,List categories,GET,/categories,P0,exists,none,Categories / taxonomy
+F-CUS-NAV,Taxonomy mega-menu,customer,P0,Header,API-CAT-03,List subcategories,GET,/categories/{categoryId}/subcategories,P0,exists,none,Categories / taxonomy
+F-CUS-SHOP,Shop listing,customer,P0,/shop,API-PROD-01,List products,GET,/products,P0,exists,none,Products (public)
+F-CUS-SHOP,Shop listing,customer,P0,/shop,API-SRCH-01,Search,GET,/search,P0,exists,none,Search / home / explore
+F-CUS-EXPLORE,Explore,customer,P1,/explore,API-SRCH-02,Explore,GET,/explore,P1,exists,none,Search / home / explore
+F-CUS-EXPLORE,Explore,customer,P1,/explore,API-SRCH-03,Explore offers,GET,/explore/offers,P1,exists,none,Search / home / explore
+F-CUS-SEARCH,Search,customer,P0,/search,API-SRCH-01,Search,GET,/search,P0,exists,none,Search / home / explore
+F-CUS-CATEGORY,Category listing,customer,P0,/category/:slug,API-CAT-02,Get category,GET,/categories/{idOrSlug},P0,exists,none,Categories / taxonomy
+F-CUS-CATEGORY,Category listing,customer,P0,/category/:slug,API-CAT-03,List subcategories,GET,/categories/{categoryId}/subcategories,P0,exists,none,Categories / taxonomy
+F-CUS-CATEGORY,Category listing,customer,P0,/category/:slug,API-PROD-01,List products,GET,/products,P0,exists,none,Products (public)
+F-CUS-COLLECTION,Collection listing,customer,P0,/collection/:slug,API-COL-02,Get collection,GET,/collections/{idOrSlug},P0,exists,none,Collections
+F-CUS-COLLECTION,Collection listing,customer,P0,/collection/:slug,API-PROD-04,Collection products,GET,/collections/{collectionId}/products,P0,exists,none,Products (public)
+F-CUS-KIDS,Kids department browse,customer,P0,taxonomy kids,API-PROD-01,List products,GET,/products,P0,exists,none,Products (public)
+F-CUS-KIDS,Kids department browse,customer,P0,taxonomy kids,API-CAT-01,List categories,GET,/categories,P0,exists,none,Categories / taxonomy
+F-CUS-KIDS,Kids department browse,customer,P0,taxonomy kids,API-CAT-03,List subcategories,GET,/categories/{categoryId}/subcategories,P0,exists,none,Categories / taxonomy
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-PROD-02,Get product,GET,/products/{idOrSlug},P0,exists,none,Products (public)
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-MED-04,Product media set,GET,/media/products/{id}/media-set,P0,exists,none,Product media
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-MED-02,Resolve references,POST,/media/references/resolve,P0,exists,none,Product media
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-PROD-03,Recommendations,GET,/products/{id}/recommendations,P1,exists,none,Products (public)
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-CART-02,Add cart item,POST,/cart/items,P0,exists,customer,Cart
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-WISH-02,Add wishlist,POST,/wishlist/{productId},P0,exists,customer,Wishlist
+F-CUS-PDP,Product detail + gallery,customer,P0,/product/:productId,API-PROD-06,Recently viewed add,POST,/products/recently-viewed,P2,exists,customer,Products (public)
+F-CUS-RECS,PDP recommendations,customer,P1,PDP rail,API-PROD-03,Recommendations,GET,/products/{id}/recommendations,P1,exists,none,Products (public)
+F-CUS-RECENT,Recently viewed,customer,P2,account/home rails,API-PROD-05,Recently viewed get,GET,/products/recently-viewed,P2,exists,customer (or none if guest stored server-side — follow existing auth),Products (public)
+F-CUS-RECENT,Recently viewed,customer,P2,account/home rails,API-PROD-06,Recently viewed add,POST,/products/recently-viewed,P2,exists,customer,Products (public)
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-01,Get cart,GET,/cart,P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-02,Add cart item,POST,/cart/items,P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-03,Update cart item,PATCH,/cart/items/{lineId},P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-04,Remove cart item,DELETE,/cart/items/{lineId},P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-05,Clear cart,DELETE,/cart,P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-06,Apply coupon,POST,/cart/coupon,P0,exists,customer,Cart
+F-CUS-CART,Cart,customer,P0,/cart,API-CART-07,Remove coupon,DELETE,/cart/coupon,P0,exists,customer,Cart
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-CART-08,Cart totals,GET,/cart/totals,P0,exists,customer,Cart
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-OFF-02,Validate offer code,POST,/offers/validate,P0,exists,none,Offers
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-CUS-04,List addresses,GET,/customers/me/addresses,P0,exists,customer,Customers
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-ORD-01,Place order,POST,/orders,P0,exists,customer (guest allowed),Orders / returns / fulfillment
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-PAY-01,Create payment session,POST,/payments/session,P0,exists,customer,Payments
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-PAY-02,Get payment session,GET,/payments/session/{sessionId},P0,exists,customer,Payments
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-PAY-03,Cancel payment session,POST,/payments/session/{sessionId}/cancel,P1,exists,customer,Payments
+F-CUS-CHECKOUT,Checkout + payments,customer,P0,/checkout,API-PAY-04,Verify payment,POST,/payments/verify,P0,exists,customer,Payments
+F-CUS-ORDER-SUCCESS,Order success,customer,P0,/order-success,API-ORD-03,Get order,GET,/orders/{orderId},P0,exists,customer,Orders / returns / fulfillment
+F-CUS-ORDER-SUCCESS,Order success,customer,P0,/order-success,API-PAY-02,Get payment session,GET,/payments/session/{sessionId},P0,exists,customer,Payments
+F-CUS-WISHLIST,Wishlist,customer,P0,/wishlist,API-WISH-01,Get wishlist,GET,/wishlist,P0,exists,customer,Wishlist
+F-CUS-WISHLIST,Wishlist,customer,P0,/wishlist,API-WISH-02,Add wishlist,POST,/wishlist/{productId},P0,exists,customer,Wishlist
+F-CUS-WISHLIST,Wishlist,customer,P0,/wishlist,API-WISH-03,Remove wishlist,DELETE,/wishlist/{productId},P0,exists,customer,Wishlist
+F-CUS-WISHLIST,Wishlist,customer,P0,/wishlist,API-WISH-04,Toggle wishlist,POST,/wishlist/{productId}/toggle,P0,exists,customer,Wishlist
+F-CUS-SIGNIN,Customer sign-in,customer,P0,/signin,API-AUTH-02,Customer sign-in,POST,/auth/customer/sign-in,P0,exists,none,Auth
+F-CUS-SIGNUP,Customer sign-up,customer,P0,/signup,API-AUTH-01,Customer sign-up,POST,/auth/customer/sign-up,P0,exists,none,Auth
+F-CUS-FORGOT,Forgot password,customer,P0,/forgot-password,API-AUTH-04,Customer forgot password,POST,/auth/customer/forgot-password,P0,exists,none,Auth
+F-CUS-RESET,Reset password,customer,P0,/reset-password,API-AUTH-05,Customer reset password,POST,/auth/customer/reset-password,P0,exists,none,Auth
+F-CUS-SIGNOUT,Sign out,customer,P0,account,API-AUTH-03,Customer sign-out,POST,/auth/customer/sign-out,P0,exists,customer,Auth
+F-CUS-ACCOUNT,Account dashboard,customer,P0,/account,API-AUTH-13,Restore customer profile,GET,/customers/me,P0,exists,customer,Auth
+F-CUS-ACCOUNT,Account dashboard,customer,P0,/account,API-ORD-02,List my orders,GET,/orders,P0,exists,customer,Orders / returns / fulfillment
+F-CUS-ACCOUNT,Account dashboard,customer,P0,/account,API-WISH-01,Get wishlist,GET,/wishlist,P0,exists,customer,Wishlist
+F-CUS-PROFILE,Profile,customer,P0,/account/profile,API-AUTH-13,Restore customer profile,GET,/customers/me,P0,exists,customer,Auth
+F-CUS-PROFILE,Profile,customer,P0,/account/profile,API-CUS-01,Update profile,PATCH,/customers/me,P0,exists,customer,Customers
+F-CUS-ADDRESSES,Addresses,customer,P0,/account/addresses,API-CUS-04,List addresses,GET,/customers/me/addresses,P0,exists,customer,Customers
+F-CUS-ADDRESSES,Addresses,customer,P0,/account/addresses,API-CUS-05,Add address,POST,/customers/me/addresses,P0,exists,customer,Customers
+F-CUS-ADDRESSES,Addresses,customer,P0,/account/addresses,API-CUS-06,Update address,PATCH,/customers/me/addresses/{addressId},P0,exists,customer,Customers
+F-CUS-ADDRESSES,Addresses,customer,P0,/account/addresses,API-CUS-07,Delete address,DELETE,/customers/me/addresses/{addressId},P0,exists,customer,Customers
+F-CUS-ADDRESSES,Addresses,customer,P0,/account/addresses,API-CUS-08,Default address,POST,/customers/me/addresses/{addressId}/default,P0,exists,customer,Customers
+F-CUS-ORDERS,Orders list,customer,P0,/account/orders,API-ORD-02,List my orders,GET,/orders,P0,exists,customer,Orders / returns / fulfillment
+F-CUS-ORDERS,Orders list,customer,P0,/account/orders,API-ORD-08,Claim guest orders,POST,/orders/claim-guest,P1,exists,customer,Orders / returns / fulfillment
+F-CUS-ORDER-DETAIL,Order detail / cancel,customer,P0,/account/orders/:id,API-ORD-03,Get order,GET,/orders/{orderId},P0,exists,customer,Orders / returns / fulfillment
+F-CUS-ORDER-DETAIL,Order detail / cancel,customer,P0,/account/orders/:id,API-ORD-05,Cancel order,POST,/orders/{orderId}/cancel,P0,exists,customer,Orders / returns / fulfillment
+F-CUS-TRACKING,Order tracking,customer,P1,.../track,API-ORD-04,Tracking,GET,/orders/{orderId}/tracking,P1,exists,customer,Orders / returns / fulfillment
+F-CUS-RETURN,Request return,customer,P1,.../return,API-ORD-06,Create return,POST,/orders/{orderId}/returns,P1,exists,customer,Orders / returns / fulfillment
+F-CUS-RETURN,Request return,customer,P1,.../return,API-ORD-07,Get return,GET,/orders/{orderId}/returns/{returnId},P1,exists,customer,Orders / returns / fulfillment
+F-CUS-SETTINGS,Account settings,customer,P1,/account/settings,API-AUTH-13,Restore customer profile,GET,/customers/me,P0,exists,customer,Auth
+F-CUS-SETTINGS,Account settings,customer,P1,/account/settings,API-CUS-01,Update profile,PATCH,/customers/me,P0,exists,customer,Customers
+F-CUS-SECURITY,Security,customer,P0,/account/security,API-AUTH-06,Customer change password,POST,/auth/change-password,P0,exists,customer,Auth
+F-CUS-SECURITY,Security,customer,P0,/account/security,API-CUS-03,Revoke other sessions,POST,/customers/me/sessions/revoke-others,P1,exists,customer,Customers
+F-CUS-PREFERENCES,Preferences,customer,P1,/account/preferences,API-CUS-02,Update preferences,PATCH,/customers/me/preferences,P1,exists,customer,Customers
+F-CUS-OFFERS,Offers / coupons,customer,P1,explore/home/checkout,API-OFF-01,List public offers,GET,/offers,P1,exists,none,Offers
+F-CUS-OFFERS,Offers / coupons,customer,P1,explore/home/checkout,API-OFF-02,Validate offer code,POST,/offers/validate,P0,exists,none,Offers
+F-CUS-OFFERS,Offers / coupons,customer,P1,explore/home/checkout,API-SRCH-03,Explore offers,GET,/explore/offers,P1,exists,none,Search / home / explore
+F-CUS-AI-MIRROR,AI Mirror,customer,P3,/account/ai-mirror,API-AI-02,AI Mirror,POST,/ai/mirror,P3,missing,customer,"AI (preview UI, no client)"
+F-CUS-AI-SHOPPING,AI Shopping assistant,customer,P3,/account/ai-shopping,API-AI-01,Shopping assistant,POST,/ai/shopping,P3,missing,customer,"AI (preview UI, no client)"
+F-ADM-LOGIN,Admin login/logout,admin,P0,/admin/login,API-AUTH-10,Admin sign-in,POST,/auth/admin/sign-in,P0,exists,none,Auth
+F-ADM-LOGIN,Admin login/logout,admin,P0,/admin/login,API-AUTH-11,Admin sign-out,POST,/auth/admin/sign-out,P0,exists,admin,Auth
+F-ADM-LOGIN,Admin login/logout,admin,P0,/admin/login,API-AUTH-12,Current session,GET,/auth/me,P0,exists,any JWT,Auth
+F-ADM-DASHBOARD,Admin dashboard,admin,P1,/admin/dashboard,API-AN-01,Analytics overview,GET,/analytics/overview,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-DASHBOARD,Admin dashboard,admin,P1,/admin/dashboard,API-AN-05,Analytics orders,GET,/analytics/orders,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-DASHBOARD,Admin dashboard,admin,P1,/admin/dashboard,API-AN-06,Inventory summary analytics,GET,/analytics/inventory-summary,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-DASHBOARD,Admin dashboard,admin,P1,/admin/dashboard,API-AORD-01,Admin list orders,GET,/admin/orders,P0,exists,admin,Orders / returns / fulfillment
+F-ADM-ACTIVITY,Admin activity / audit,admin,P1,/admin/activity,API-AUD-01,Audit logs,GET,/audit/logs,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-PROFILE,Admin profile,admin,P1,/admin/profile,API-AUTH-12,Current session,GET,/auth/me,P0,exists,any JWT,Auth
+F-ADM-EMPLOYEES,Employees directory,admin,P1,/admin/employees,API-EMP-01,List employees,GET,/admin/employees,P1,exists,admin,Employees / org
+F-ADM-EMPLOYEES,Employees directory,admin,P1,/admin/employees,API-EMP-08,Delete employee,DELETE,/admin/employees/{id},P2,exists,admin,Employees / org
+F-ADM-EMPLOYEES,Employees directory,admin,P1,/admin/employees,API-EMP-09,List departments,GET,/admin/employees/departments,P2,exists,admin,Employees / org
+F-ADM-EMPLOYEES,Employees directory,admin,P1,/admin/employees,API-EMP-13,List sections,GET,/admin/employees/sections,P2,exists,admin,Employees / org
+F-ADM-EMPLOYEE-CREATE,Create employee,admin,P1,/admin/employees/new,API-EMP-03,Create employee,POST,/admin/employees,P1,exists,admin,Employees / org
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-EMP-02,Get employee,GET,/admin/employees/{id},P1,exists,admin,Employees / org
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-ATT-01,Admin get employee attendance,GET,/admin/employees/{employeeId}/attendance,P1,exists,admin,"Attendance (admin exists, employee punch missing)"
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-ATT-02,Admin create attendance,POST,/admin/employees/{employeeId}/attendance,P1,exists,admin,"Attendance (admin exists, employee punch missing)"
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-ATT-03,Admin update attendance,PATCH,/admin/employees/attendance/{attendanceId},P1,exists,admin,"Attendance (admin exists, employee punch missing)"
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-LEV-03,Admin list leave,GET,/admin/leave,P2,missing,admin,"Leave / performance (UI, no client)"
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-LEV-04,Admin decide leave,POST,/admin/leave/{id}/decision,P2,missing,admin,"Leave / performance (UI, no client)"
+F-ADM-EMPLOYEE-DETAIL,Employee detail + attendance,admin,P1,/admin/employees/:id,API-PERF-02,Admin performance,GET,/admin/performance,P2,missing,admin,"Leave / performance (UI, no client)"
+F-ADM-EMPLOYEE-EDIT,Edit employee,admin,P1,.../edit,API-EMP-04,Update employee,PATCH,/admin/employees/{id},P1,exists,admin,Employees / org
+F-ADM-EMPLOYEE-EDIT,Edit employee,admin,P1,.../edit,API-EMP-05,Employee status,POST,/admin/employees/{id}/status,P1,exists,admin,Employees / org
+F-ADM-EMPLOYEE-EDIT,Edit employee,admin,P1,.../edit,API-EMP-06,Reset employee password,POST,/admin/employees/{id}/reset-password,P1,exists,admin,Employees / org
+F-ADM-EMPLOYEE-EDIT,Edit employee,admin,P1,.../edit,API-EMP-07,Employee permissions,PUT,/admin/employees/{id}/permissions,P2,exists,admin,Employees / org
+F-ADM-PRODUCTS,Admin products list,admin,P0,/admin/products,API-APROD-01,Admin list products,GET,/admin/products,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCTS,Admin products list,admin,P0,/admin/products,API-APROD-06,Admin product metrics,GET,/admin/products/metrics,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCTS,Admin products list,admin,P0,/admin/products,API-APROD-19,Bulk update,POST,/admin/products/bulk,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-CREATE,Create product draft,admin,P0,/admin/products/new,API-APROD-03,Admin create draft,POST,/admin/products/draft,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-CREATE,Create product draft,admin,P0,/admin/products/new,API-APROD-02,Admin create product,POST,/admin/products,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-CREATE,Create product draft,admin,P0,/admin/products/new,API-APROD-04,Next Product ID,GET,/admin/products/next-id,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-CREATE,Create product draft,admin,P0,/admin/products/new,API-APROD-05,Admin availability check,GET,/admin/products/availability,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-EDIT,Edit product,admin,P0,.../edit,API-APROD-07,Admin get product,GET,/admin/products/{id},P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-EDIT,Edit product,admin,P0,.../edit,API-APROD-08,Admin patch product,PATCH,/admin/products/{id},P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-EDIT,Edit product,admin,P0,.../edit,API-APROD-17,Change Product ID,POST,/admin/products/{id}/change-id,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-EDIT,Edit product,admin,P0,.../edit,API-APROD-18,Duplicate product,POST,/admin/products/{id}/duplicate,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-DETAIL,Product detail (admin),admin,P0,/admin/products/:id,API-APROD-07,Admin get product,GET,/admin/products/{id},P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-DETAIL,Product detail (admin),admin,P0,/admin/products/:id,API-APROD-16,Publish issues,GET,/admin/products/{id}/publish-issues,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-PROD-07,Submit product for review,POST,/products/{id}/submit-review,P0,exists,admin|employee,Products (public)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-10,Approve product,POST,/admin/products/{id}/approve,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-11,Reject/return product,POST,/admin/products/{id}/reject,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-12,Publish product,POST,/admin/products/{id}/publish,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-13,Unpublish product,POST,/admin/products/{id}/unpublish,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-14,Archive product,POST,/admin/products/{id}/archive,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-15,Restore product,POST,/admin/products/{id}/restore,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-16,Publish issues,GET,/admin/products/{id}/publish-issues,P0,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-WORKFLOW,Product workflow,admin,P0,review + commands,API-APROD-20,Clear review flags,POST,/admin/products/{id}/review-flags/clear,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-ASSIGN,Assign product to employee,admin,P1,product editor,API-APROD-09,Assign employee,POST,/admin/products/{id}/assign,P1,exists,admin,Products (admin/employee)
+F-ADM-PRODUCT-MEDIA,Product media manager,admin,P0,.../media,API-MED-05,Upload object,POST,/media/objects,P0,exists,admin,Product media
+F-ADM-PRODUCT-MEDIA,Product media manager,admin,P0,.../media,API-MED-06,Upload product-scoped object,POST,/media/products/{id}/objects,P0,exists,admin|employee as currently scoped,Product media
+F-ADM-PRODUCT-MEDIA,Product media manager,admin,P0,.../media,API-MED-08,Register media,POST,/media/register,P0,exists,admin,Product media
+F-ADM-PRODUCT-MEDIA,Product media manager,admin,P0,.../media,API-MED-04,Product media set,GET,/media/products/{id}/media-set,P0,exists,none,Product media
+F-ADM-PRODUCT-MEDIA,Product media manager,admin,P0,.../media,API-MED-09,List media assets,GET,/media/assets,P0,exists,admin,Product media
+F-ADM-MEDIA,Media library,admin,P0,/admin/media,API-MED-09,List media assets,GET,/media/assets,P0,exists,admin,Product media
+F-ADM-MEDIA,Media library,admin,P0,/admin/media,API-MED-01,Storage status,GET,/media/storage/status,P1,exists,none,Product media
+F-ADM-MEDIA,Media library,admin,P0,/admin/media,API-MED-07,Delete object,DELETE,/media/objects/{key},P1,exists,admin,Product media
+F-ADM-MEDIA-UPLOAD,Media upload,admin,P0,/admin/media/upload,API-MED-05,Upload object,POST,/media/objects,P0,exists,admin,Product media
+F-ADM-MEDIA-UPLOAD,Media upload,admin,P0,/admin/media/upload,API-MED-08,Register media,POST,/media/register,P0,exists,admin,Product media
+F-ADM-MEDIA-UPLOAD,Media upload,admin,P0,/admin/media/upload,API-MED-01,Storage status,GET,/media/storage/status,P1,exists,none,Product media
+F-ADM-MEDIA-REVIEW,Media review,admin,P1,/admin/media/review,API-MMED-02,List media reviews,GET,/admin/media-reviews,P1,stub,admin,Marketing media (gap)
+F-ADM-MEDIA-REVIEW,Media review,admin,P1,/admin/media/review,API-MMED-03,Approve media review,POST,/admin/media-reviews/{id}/approve,P1,stub,admin,Marketing media (gap)
+F-ADM-MEDIA-REVIEW,Media review,admin,P1,/admin/media/review,API-MMED-04,Reject media review,POST,/admin/media-reviews/{id}/reject,P1,stub,admin,Marketing media (gap)
+F-ADM-MARKETING-MEDIA,Marketing media,admin,P1,/admin/media/marketing,API-MMED-01,List marketing media,GET,/admin/marketing-media,P1,stub,admin,Marketing media (gap)
+F-ADM-MARKETING-MEDIA,Marketing media,admin,P1,/admin/media/marketing,API-MMED-02,List media reviews,GET,/admin/media-reviews,P1,stub,admin,Marketing media (gap)
+F-ADM-MEDIA-MAPPING,Media product mapping,admin,P1,/admin/media/product-mapping,API-MED-09,List media assets,GET,/media/assets,P0,exists,admin,Product media
+F-ADM-MEDIA-MAPPING,Media product mapping,admin,P1,/admin/media/product-mapping,API-MED-08,Register media,POST,/media/register,P0,exists,admin,Product media
+F-ADM-MEDIA-MAPPING,Media product mapping,admin,P1,/admin/media/product-mapping,API-MED-04,Product media set,GET,/media/products/{id}/media-set,P0,exists,none,Product media
+F-ADM-MEDIA-DETAIL,Media detail,admin,P1,/admin/media/:id,API-MED-03,Object meta,GET,/media/object-meta/{key},P1,exists,none,Product media
+F-ADM-MEDIA-DETAIL,Media detail,admin,P1,/admin/media/:id,API-MED-09,List media assets,GET,/media/assets,P0,exists,admin,Product media
+F-ADM-CATEGORIES,Categories manager,admin,P0,/admin/categories,API-CAT-04,Admin list categories,GET,/admin/categories,P0,exists,admin,Categories / taxonomy
+F-ADM-CATEGORIES,Categories manager,admin,P0,/admin/categories,API-COL-12,Taxonomy metrics,GET,/admin/taxonomy/metrics,P1,exists,admin,Collections
+F-ADM-CATEGORIES,Categories manager,admin,P0,/admin/categories,API-COL-13,Taxonomy product counts,GET,/admin/taxonomy/product-counts,P1,exists,admin,Collections
+F-ADM-CATEGORY-CREATE,Create category,admin,P1,/admin/categories/new,API-CAT-07,Create category,POST,/admin/categories,P1,exists,admin,Categories / taxonomy
+F-ADM-CATEGORY-EDIT,Edit/activate/archive category,admin,P1,.../edit,API-CAT-05,Admin get category,GET,/admin/categories/{idOrSlug},P0,exists,admin,Categories / taxonomy
+F-ADM-CATEGORY-EDIT,Edit/activate/archive category,admin,P1,.../edit,API-CAT-08,Update category,PATCH,/admin/categories/{id},P1,exists,admin,Categories / taxonomy
+F-ADM-CATEGORY-EDIT,Edit/activate/archive category,admin,P1,.../edit,API-CAT-09,Activate category,POST,/admin/categories/{id}/activate,P1,exists,admin,Categories / taxonomy
+F-ADM-CATEGORY-EDIT,Edit/activate/archive category,admin,P1,.../edit,API-CAT-10,Archive category,POST,/admin/categories/{id}/archive,P1,exists,admin,Categories / taxonomy
+F-ADM-CATEGORY-EDIT,Edit/activate/archive category,admin,P1,.../edit,API-CAT-11,Restore category,POST,/admin/categories/{id}/restore,P1,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-06,Admin list subcategories,GET,/admin/categories/{categoryId}/subcategories,P0,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-12,Create subcategory,POST,/admin/categories/{categoryId}/subcategories,P1,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-13,Update subcategory,PATCH,/admin/subcategories/{id},P1,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-14,Activate subcategory,POST,/admin/subcategories/{id}/activate,P1,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-15,Archive subcategory,POST,/admin/subcategories/{id}/archive,P1,exists,admin,Categories / taxonomy
+F-ADM-SUBCATEGORIES,Subcategories,admin,P1,.../subcategories,API-CAT-16,Restore subcategory,POST,/admin/subcategories/{id}/restore,P1,exists,admin,Categories / taxonomy
+F-ADM-COLLECTIONS,Collections manager,admin,P1,/admin/collections,API-COL-03,Admin list collections,GET,/admin/collections,P1,exists,admin,Collections
+F-ADM-COLLECTIONS,Collections manager,admin,P1,/admin/collections,API-COL-12,Taxonomy metrics,GET,/admin/taxonomy/metrics,P1,exists,admin,Collections
+F-ADM-COLLECTION-CREATE,Create collection,admin,P1,.../new,API-COL-05,Create collection,POST,/admin/collections,P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-04,Admin get collection,GET,/admin/collections/{id},P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-06,Update collection,PATCH,/admin/collections/{id},P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-07,Activate collection,POST,/admin/collections/{id}/activate,P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-08,Pause collection,POST,/admin/collections/{id}/pause,P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-09,Archive collection,POST,/admin/collections/{id}/archive,P1,exists,admin,Collections
+F-ADM-COLLECTION-EDIT,Edit collection lifecycle,admin,P1,.../edit,API-COL-10,Restore collection,POST,/admin/collections/{id}/restore,P1,exists,admin,Collections
+F-ADM-COLLECTION-PRODUCTS,Collection products,admin,P1,.../products,API-COL-11,Assign collection products,PUT,/admin/collections/{id}/products,P1,exists,admin,Collections
+F-ADM-OFFERS,Offers list,admin,P1,/admin/offers,API-OFF-03,Admin list offers,GET,/admin/offers,P1,exists,admin,Offers
+F-ADM-OFFER-CREATE,Create offer,admin,P1,.../new,API-OFF-05,Create offer,POST,/admin/offers,P1,exists,admin,Offers
+F-ADM-OFFER-EDIT,Edit/activate/pause/archive offer,admin,P1,.../edit,API-OFF-04,Admin get offer,GET,/admin/offers/{id},P1,exists,admin,Offers
+F-ADM-OFFER-EDIT,Edit/activate/pause/archive offer,admin,P1,.../edit,API-OFF-06,Update offer,PATCH,/admin/offers/{id},P1,exists,admin,Offers
+F-ADM-OFFER-EDIT,Edit/activate/pause/archive offer,admin,P1,.../edit,API-OFF-07,Activate offer,POST,/admin/offers/{id}/activate,P1,exists,admin,Offers
+F-ADM-OFFER-EDIT,Edit/activate/pause/archive offer,admin,P1,.../edit,API-OFF-08,Pause offer,POST,/admin/offers/{id}/pause,P1,exists,admin,Offers
+F-ADM-OFFER-EDIT,Edit/activate/pause/archive offer,admin,P1,.../edit,API-OFF-09,Archive offer,POST,/admin/offers/{id}/archive,P1,exists,admin,Offers
+F-ADM-OFFER-DETAIL,Offer detail,admin,P1,/admin/offers/:id,API-OFF-04,Admin get offer,GET,/admin/offers/{id},P1,exists,admin,Offers
+F-ADM-ORDERS,Orders list / status,admin,P0,/admin/orders,API-AORD-01,Admin list orders,GET,/admin/orders,P0,exists,admin,Orders / returns / fulfillment
+F-ADM-ORDERS,Orders list / status,admin,P0,/admin/orders,API-AORD-13,Admin cancel,POST,/admin/orders/{id}/cancel,P0,exists,admin,Orders / returns / fulfillment
+F-ADM-ORDERS,Orders list / status,admin,P0,/admin/orders,API-AORD-15,Apply status,POST,/admin/orders/{id}/status,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-ORDERS,Orders list / status,admin,P0,/admin/orders,API-AORD-16,Force status,POST,/admin/orders/{id}/force-status,P2,exists,admin,Orders / returns / fulfillment
+F-ADM-ORDER-DETAIL,Order detail + notes,admin,P0,/admin/orders/:id,API-AORD-02,Admin get order,GET,/admin/orders/{id},P0,exists,admin,Orders / returns / fulfillment
+F-ADM-ORDER-DETAIL,Order detail + notes,admin,P0,/admin/orders/:id,API-AORD-14,Add note,POST,/admin/orders/{id}/notes,P2,exists,admin,Orders / returns / fulfillment
+F-ADM-INVOICE,Invoice metadata,admin,P1,.../invoice,API-AORD-03,Admin invoice metadata,GET,/admin/orders/{id}/invoice,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-04,Allocate,POST,/admin/orders/{id}/allocate,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-05,Start picking,POST,/admin/orders/{id}/pick/start,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-06,Pick item,POST,/admin/orders/{id}/pick/item,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-07,Pack,POST,/admin/orders/{id}/pack,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-08,Ready,POST,/admin/orders/{id}/ready,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-09,Out for delivery,POST,/admin/orders/{id}/out-for-delivery,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-10,Deliver,POST,/admin/orders/{id}/deliver,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-11,Assign fulfillment,POST,/admin/orders/{id}/fulfillment,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-FULFILLMENT,Fulfillment pipeline,admin,P1,order actions,API-AORD-12,Dispatch,POST,/admin/orders/{id}/dispatch,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-CUSTOMERS,Customers list,admin,P1,/admin/customers,API-CUS-09,Admin list customers,GET,/admin/customers,P1,exists,admin,Customers
+F-ADM-CUSTOMER-DETAIL,Customer detail,admin,P1,/admin/customers/:id,API-CUS-10,Admin get customer,GET,/admin/customers/{customerId},P1,exists,admin,Customers
+F-ADM-CUSTOMER-DETAIL,Customer detail,admin,P1,/admin/customers/:id,API-AORD-01,Admin list orders,GET,/admin/orders,P0,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-01,Admin list returns,GET,/admin/returns,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-03,Approve return,POST,/admin/returns/{id}/approve,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-04,Reject return,POST,/admin/returns/{id}/reject,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-05,Schedule pickup,POST,/admin/returns/{id}/schedule-pickup,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-06,Receive return,POST,/admin/returns/{id}/receive,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-07,Inspect return,POST,/admin/returns/{id}/inspect,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-08,Initiate refund,POST,/admin/returns/{id}/refund/initiate,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURNS,Returns desk,admin,P1,/admin/returns,API-RET-09,Complete refund,POST,/admin/returns/{id}/refund/complete,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-RETURN-DETAIL,Return detail,admin,P1,/admin/returns/:id,API-RET-02,Admin get return,GET,/admin/returns/{id},P1,exists,admin,Orders / returns / fulfillment
+F-ADM-INVENTORY,Inventory dashboard,admin,P1,/admin/inventory,API-INV-01,List stock,GET,/admin/inventory/stock,P1,stub,admin,Inventory (schema stub)
+F-ADM-INVENTORY,Inventory dashboard,admin,P1,/admin/inventory,API-INV-02,Get stock item,GET,/admin/inventory/stock/{id},P1,stub,admin,Inventory (schema stub)
+F-ADM-INVENTORY,Inventory dashboard,admin,P1,/admin/inventory,API-INV-06,Reservations,GET,/admin/inventory/reservations,P1,stub,admin,Inventory (schema stub)
+F-ADM-INVENTORY,Inventory dashboard,admin,P1,/admin/inventory,API-AN-06,Inventory summary analytics,GET,/analytics/inventory-summary,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-INV-ADJUST,Inventory receive/adjust,admin,P1,receive/adjust,API-INV-03,Adjust stock,POST,/admin/inventory/adjust,P1,stub,admin,Inventory (schema stub)
+F-ADM-INV-TRANSFERS,Stock transfers,admin,P1,/admin/inventory/transfers,API-INV-09,List transfers,GET,/admin/inventory/transfers,P1,stub,admin,Inventory (schema stub)
+F-ADM-INV-TRANSFERS,Stock transfers,admin,P1,/admin/inventory/transfers,API-INV-10,Create transfer,POST,/admin/inventory/transfers,P1,stub,admin,Inventory (schema stub)
+F-ADM-INV-TRANSFERS,Stock transfers,admin,P1,/admin/inventory/transfers,API-INV-11,Complete transfer,POST,/admin/inventory/transfers/{id}/complete,P1,stub,admin,Inventory (schema stub)
+F-ADM-INV-MOVEMENTS,Stock movements,admin,P1,movements,API-INV-04,List movements,GET,/admin/inventory/movements,P1,stub,admin,Inventory (schema stub)
+F-ADM-INV-LOW,Low stock,admin,P1,low-stock,API-INV-05,Low stock,GET,/admin/inventory/low-stock,P1,stub,admin,Inventory (schema stub)
+F-ADM-WAREHOUSES,Warehouses,admin,P1,/admin/warehouses,API-INV-07,List warehouses,GET,/admin/warehouses,P1,stub,admin,Inventory (schema stub)
+F-ADM-WAREHOUSES,Warehouses,admin,P1,/admin/warehouses,API-INV-08,Create warehouse,POST,/admin/warehouses,P2,stub,admin,Inventory (schema stub)
+F-ADM-ANALYTICS,Analytics hub,admin,P1,/admin/analytics,API-AN-01,Analytics overview,GET,/analytics/overview,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-SALES,Analytics sales,admin,P1,/admin/analytics/sales,API-AN-02,Analytics sales,GET,/analytics/sales,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-PRODUCTS,Analytics products,admin,P1,/admin/analytics/products,API-AN-03,Analytics products,GET,/analytics/products,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-CUSTOMERS,Analytics customers,admin,P1,/admin/analytics/customers,API-AN-04,Analytics customers,GET,/analytics/customers,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-INVENTORY,Analytics inventory,admin,P1,/admin/analytics/inventory,API-AN-06,Inventory summary analytics,GET,/analytics/inventory-summary,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-RETURNS,Analytics returns,admin,P2,/admin/analytics/returns,API-RET-01,Admin list returns,GET,/admin/returns,P1,exists,admin,Orders / returns / fulfillment
+F-ADM-AN-RETURNS,Analytics returns,admin,P2,/admin/analytics/returns,API-AN-05,Analytics orders,GET,/analytics/orders,P1,exists,admin,Analytics / RBAC / audit
+F-ADM-AN-OFFERS,Analytics offers,admin,P2,/admin/analytics/offers,API-OFF-03,Admin list offers,GET,/admin/offers,P1,exists,admin,Offers
+F-ADM-AI,Admin AI assistant,admin,P3,/admin/ai-assistant,API-AI-03,Admin AI assistant,POST,/admin/ai/assistant,P3,missing,admin,"AI (preview UI, no client)"
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-SET-01,Get all settings,GET,/admin/settings,P1,exists,admin,Settings
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-SET-02,Get settings section,GET,/admin/settings/{section},P1,exists,admin,Settings
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-SET-03,Patch settings section,PATCH,/admin/settings/{section},P1,exists,admin,Settings
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-SET-04,Reset settings section,POST,/admin/settings/{section}/reset,P2,exists,admin,Settings
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-SET-05,Reset all settings,POST,/admin/settings/reset,P2,exists,admin,Settings
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-RBAC-01,List roles,GET,/roles,P2,exists,admin,Analytics / RBAC / audit
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-RBAC-02,Get role,GET,/roles/{roleId},P2,exists,admin,Analytics / RBAC / audit
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-RBAC-03,List permissions,GET,/permissions,P2,exists,admin,Analytics / RBAC / audit
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-RBAC-04,List users,GET,/users,P2,exists,admin,Analytics / RBAC / audit
+F-ADM-SETTINGS,Admin settings + RBAC,admin,P1,/admin/settings,API-RBAC-05,Get user,GET,/users/{userId},P2,exists,admin,Analytics / RBAC / audit
+F-EMP-LOGIN,Employee login/logout,employee,P0,/employee/login,API-AUTH-07,Employee sign-in,POST,/auth/employee/sign-in,P0,exists,none,Auth
+F-EMP-LOGIN,Employee login/logout,employee,P0,/employee/login,API-AUTH-09,Employee sign-out,POST,/auth/employee/sign-out,P0,exists,employee,Auth
+F-EMP-LOGIN,Employee login/logout,employee,P0,/employee/login,API-AUTH-14,Restore employee profile,GET,/employee/me,P0,exists,employee,Auth
+F-EMP-CHANGE-PW,Employee change/forgot password,employee,P0,change/forgot,API-AUTH-08,Employee change password,POST,/auth/employee/change-password,P0,exists,employee,Auth
+F-EMP-CHANGE-PW,Employee change/forgot password,employee,P0,change/forgot,API-AUTH-15,Employee forgot password,POST,/auth/employee/forgot-password,P1,missing,none,Auth
+F-EMP-DASHBOARD,Employee dashboard,employee,P1,/employee,API-EPROD-03,Assigned products,GET,/employee/me/assigned-products,P0,exists,employee,Products (admin/employee)
+F-EMP-DASHBOARD,Employee dashboard,employee,P1,/employee,API-ATT-06,Employee today,GET,/employee/attendance/today,P1,missing,employee,"Attendance (admin exists, employee punch missing)"
+F-EMP-DASHBOARD,Employee dashboard,employee,P1,/employee,API-AN-06,Inventory summary analytics,GET,/analytics/inventory-summary,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-PROFILE,Employee profile,employee,P1,/employee/profile,API-AUTH-14,Restore employee profile,GET,/employee/me,P0,exists,employee,Auth
+F-EMP-ATTENDANCE,Attendance punch + history,employee,P1,/employee/attendance,API-ATT-04,Employee check-in,POST,/employee/attendance/check-in,P1,missing,employee,"Attendance (admin exists, employee punch missing)"
+F-EMP-ATTENDANCE,Attendance punch + history,employee,P1,/employee/attendance,API-ATT-05,Employee check-out,POST,/employee/attendance/check-out,P1,missing,employee,"Attendance (admin exists, employee punch missing)"
+F-EMP-ATTENDANCE,Attendance punch + history,employee,P1,/employee/attendance,API-ATT-06,Employee today,GET,/employee/attendance/today,P1,missing,employee,"Attendance (admin exists, employee punch missing)"
+F-EMP-ATTENDANCE,Attendance punch + history,employee,P1,/employee/attendance,API-ATT-07,Employee attendance history,GET,/employee/attendance,P1,missing,employee,"Attendance (admin exists, employee punch missing)"
+F-EMP-ATTENDANCE,Attendance punch + history,employee,P1,/employee/attendance,API-ATT-01,Admin get employee attendance,GET,/admin/employees/{employeeId}/attendance,P1,exists,admin,"Attendance (admin exists, employee punch missing)"
+F-EMP-LEAVE,Leave,employee,P2,/employee/attendance/leave,API-LEV-01,Employee list leave,GET,/employee/leave,P2,missing,employee,"Leave / performance (UI, no client)"
+F-EMP-LEAVE,Leave,employee,P2,/employee/attendance/leave,API-LEV-02,Employee apply leave,POST,/employee/leave,P2,missing,employee,"Leave / performance (UI, no client)"
+F-EMP-LEAVE,Leave,employee,P2,/employee/attendance/leave,API-LEV-03,Admin list leave,GET,/admin/leave,P2,missing,admin,"Leave / performance (UI, no client)"
+F-EMP-PERFORMANCE,Performance,employee,P2,/employee/performance,API-PERF-01,Employee performance,GET,/employee/performance,P2,missing,employee,"Leave / performance (UI, no client)"
+F-EMP-PERFORMANCE,Performance,employee,P2,/employee/performance,API-PERF-02,Admin performance,GET,/admin/performance,P2,missing,admin,"Leave / performance (UI, no client)"
+F-EMP-PRODUCTS,Employee products inbox,employee,P0,/employee/products,API-EPROD-03,Assigned products,GET,/employee/me/assigned-products,P0,exists,employee,Products (admin/employee)
+F-EMP-PRODUCTS,Employee products inbox,employee,P0,/employee/products,API-EPROD-01,Employee get product,GET,/employee/products/{id},P0,exists,employee,Products (admin/employee)
+F-EMP-PRODUCT-CREATE,Employee new product,employee,P1,/employee/products/new,API-APROD-04,Next Product ID,GET,/admin/products/next-id,P0,exists,admin,Products (admin/employee)
+F-EMP-PRODUCT-CREATE,Employee new product,employee,P1,/employee/products/new,API-EPROD-02,Employee patch product,PATCH,/employee/products/{id},P0,exists,employee,Products (admin/employee)
+F-EMP-PRODUCT-EDIT,Employee edit/submit product,employee,P0,.../edit + review,API-EPROD-01,Employee get product,GET,/employee/products/{id},P0,exists,employee,Products (admin/employee)
+F-EMP-PRODUCT-EDIT,Employee edit/submit product,employee,P0,.../edit + review,API-EPROD-02,Employee patch product,PATCH,/employee/products/{id},P0,exists,employee,Products (admin/employee)
+F-EMP-PRODUCT-EDIT,Employee edit/submit product,employee,P0,.../edit + review,API-PROD-07,Submit product for review,POST,/products/{id}/submit-review,P0,exists,admin|employee,Products (public)
+F-EMP-MEDIA,Employee media library,employee,P1,/employee/media,API-MED-04,Product media set,GET,/media/products/{id}/media-set,P0,exists,none,Product media
+F-EMP-MEDIA,Employee media library,employee,P1,/employee/media,API-MED-09,List media assets,GET,/media/assets,P0,exists,admin,Product media
+F-EMP-MEDIA-UPLOAD,Employee media upload,employee,P1,/employee/media/upload,API-MED-06,Upload product-scoped object,POST,/media/products/{id}/objects,P0,exists,admin|employee as currently scoped,Product media
+F-EMP-MEDIA-UPLOAD,Employee media upload,employee,P1,/employee/media/upload,API-MED-08,Register media,POST,/media/register,P0,exists,admin,Product media
+F-EMP-CUSTOMERS,Employee customers,employee,P2,/employee/customers,API-CUS-09,Admin list customers,GET,/admin/customers,P1,exists,admin,Customers
+F-EMP-ORDERS,Employee orders,employee,P1,/employee/orders,API-AORD-01,Admin list orders,GET,/admin/orders,P0,exists,admin,Orders / returns / fulfillment
+F-EMP-ORDERS,Employee orders,employee,P1,/employee/orders,API-AORD-02,Admin get order,GET,/admin/orders/{id},P0,exists,admin,Orders / returns / fulfillment
+F-EMP-OFFERS,Employee offers,employee,P2,/employee/offers,API-OFF-03,Admin list offers,GET,/admin/offers,P1,exists,admin,Offers
+F-EMP-OFFERS,Employee offers,employee,P2,/employee/offers,API-OFF-04,Admin get offer,GET,/admin/offers/{id},P1,exists,admin,Offers
+F-EMP-INVENTORY,Employee inventory,employee,P1,/employee/inventory,API-INV-01,List stock,GET,/admin/inventory/stock,P1,stub,admin,Inventory (schema stub)
+F-EMP-INVENTORY,Employee inventory,employee,P1,/employee/inventory,API-INV-05,Low stock,GET,/admin/inventory/low-stock,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-ADJUST,Employee receive/adjust,employee,P1,receive/adjust,API-INV-03,Adjust stock,POST,/admin/inventory/adjust,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-MOVEMENTS,Employee movements,employee,P1,movements,API-INV-04,List movements,GET,/admin/inventory/movements,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-TRANSFERS,Employee transfers,employee,P1,transfers,API-INV-09,List transfers,GET,/admin/inventory/transfers,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-TRANSFERS,Employee transfers,employee,P1,transfers,API-INV-10,Create transfer,POST,/admin/inventory/transfers,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-TRANSFERS,Employee transfers,employee,P1,transfers,API-INV-11,Complete transfer,POST,/admin/inventory/transfers/{id}/complete,P1,stub,admin,Inventory (schema stub)
+F-EMP-INV-LOW,Employee low/out of stock,employee,P1,low/out,API-INV-05,Low stock,GET,/admin/inventory/low-stock,P1,stub,admin,Inventory (schema stub)
+F-EMP-WAREHOUSE,Warehouse desks,employee,P1,/employee/warehouse/*,API-INV-07,List warehouses,GET,/admin/warehouses,P1,stub,admin,Inventory (schema stub)
+F-EMP-WAREHOUSE,Warehouse desks,employee,P1,/employee/warehouse/*,API-AORD-05,Start picking,POST,/admin/orders/{id}/pick/start,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-WAREHOUSE,Warehouse desks,employee,P1,/employee/warehouse/*,API-AORD-06,Pick item,POST,/admin/orders/{id}/pick/item,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-WAREHOUSE,Warehouse desks,employee,P1,/employee/warehouse/*,API-AORD-07,Pack,POST,/admin/orders/{id}/pack,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-WAREHOUSE,Warehouse desks,employee,P1,/employee/warehouse/*,API-RET-06,Receive return,POST,/admin/returns/{id}/receive,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-RETURNS,Employee returns,employee,P1,/employee/returns,API-RET-01,Admin list returns,GET,/admin/returns,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-RETURNS,Employee returns,employee,P1,/employee/returns,API-RET-02,Admin get return,GET,/admin/returns/{id},P1,exists,admin,Orders / returns / fulfillment
+F-EMP-SUPPORT,Support desk,employee,P2,/employee/support/*,API-SUP-01,List support cases,GET,/employee/support/cases,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-SUPPORT,Support desk,employee,P2,/employee/support/*,API-SUP-02,Create support case,POST,/employee/support/cases,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-SUPPORT,Support desk,employee,P2,/employee/support/*,API-SUP-03,Update support case,PATCH,/employee/support/cases/{id},P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-STYLING,Styling desks,employee,P2,/employee/styling/*,API-STY-01,Styling appointments,GET,/employee/styling/appointments,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-STYLING,Styling desks,employee,P2,/employee/styling/*,API-STY-02,Styling requests,GET,/employee/styling/requests,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-SALES,Floor sales desk,employee,P2,/employee/sales,API-SALE-01,Departmental floor sales,GET,/employee/sales/departments,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-SALES,Floor sales desk,employee,P2,/employee/sales,API-AN-02,Analytics sales,GET,/analytics/sales,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-TEAM,Team,employee,P2,/employee/team,API-EMP-01,List employees,GET,/admin/employees,P1,exists,admin,Employees / org
+F-EMP-REPORTS-SALES,Employee sales report,employee,P2,/employee/reports/sales,API-AN-02,Analytics sales,GET,/analytics/sales,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-REPORTS-SALES,Employee sales report,employee,P2,/employee/reports/sales,API-SALE-01,Departmental floor sales,GET,/employee/sales/departments,P2,missing,employee,"Employee desks (UI empty, no client)"
+F-EMP-REPORTS-PRODUCTS,Employee products report,employee,P2,reports/products,API-AN-03,Analytics products,GET,/analytics/products,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-REPORTS-CUSTOMERS,Employee customers report,employee,P2,reports/customers,API-AN-04,Analytics customers,GET,/analytics/customers,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-REPORTS-INVENTORY,Employee inventory report,employee,P2,reports/inventory,API-AN-06,Inventory summary analytics,GET,/analytics/inventory-summary,P1,exists,admin,Analytics / RBAC / audit
+F-EMP-REPORTS-INVENTORY,Employee inventory report,employee,P2,reports/inventory,API-INV-01,List stock,GET,/admin/inventory/stock,P1,stub,admin,Inventory (schema stub)
+F-EMP-REPORTS-RETURNS,Employee returns report,employee,P2,reports/returns,API-RET-01,Admin list returns,GET,/admin/returns,P1,exists,admin,Orders / returns / fulfillment
+F-EMP-REPORTS-OFFERS,Employee offers report,employee,P2,reports/offers,API-OFF-03,Admin list offers,GET,/admin/offers,P1,exists,admin,Offers
+F-EMP-REPORTS-EMPLOYEES,Employee team report,employee,P2,reports/employees,API-ATT-01,Admin get employee attendance,GET,/admin/employees/{employeeId}/attendance,P1,exists,admin,"Attendance (admin exists, employee punch missing)"
+F-EMP-REPORTS-EMPLOYEES,Employee team report,employee,P2,reports/employees,API-PERF-02,Admin performance,GET,/admin/performance,P2,missing,admin,"Leave / performance (UI, no client)"

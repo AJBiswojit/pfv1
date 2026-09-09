@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { AtelierButton, Brand, Rule } from "../../design-system";
 import { EMPLOYEE_BRAND, sanitizeEmployeeReturnUrl } from "../../config/employeeNavigation";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
@@ -53,12 +53,6 @@ export default function EmployeeLogin() {
       setError(result.error || "Employee ID or password is not correct.");
       setIsSubmitting(false);
     }
-  };
-
-  const fill = (entry) => {
-    setEmployeeId(entry.employeeId);
-    setPassword(entry.password);
-    setError("");
   };
 
   return (
