@@ -1,3 +1,4 @@
+import { apiTrackProductInteraction } from "../../services/api/recommendationsApi";
 import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -45,6 +46,7 @@ export default function ProductRecommendations({
               product={product}
               as={Link}
               to={productHref(product)}
+              onClick={() => { void apiTrackProductInteraction(product.id, "CLICK"); }}
               showCategory
               showBadge
               showDiscount

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, AlertCircle } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useStorefrontProducts } from "../hooks/useCatalog";
 import { Link } from "react-router-dom";
 import {
@@ -14,7 +14,7 @@ import CartLineItem from "../components/cart/CartLineItem";
 import OrderSummary from "../components/cart/OrderSummary";
 import ProductRecommendations from "../components/product/ProductRecommendations";
 import { useCart } from "../context/CartContext";
-import { getCartRecommendations } from "../data/products/recommendations";
+import { useRecommendations } from "../hooks/useRecommendations";
 import { formatINR } from "../utils/shopping";
 import { cn } from "../utils/cn";
 
@@ -49,10 +49,8 @@ export default function Cart() {
     };
   }, []);
 
-  const recommendations = useMemo(
-    () => getCartRecommendations(cart.items.map((item) => item.product)),
-    [cart.items]
-  );
+  const { sections } = useRecommendations({ placement: "cart", cartIds: cart.items.map((item) => item.product?.id).filter(Boolean) });
+  const recommendations = sections.completeTheLook ?? [];
 
   if (cart.error && cart.items.length === 0) {
     return (
@@ -206,7 +204,7 @@ export default function Cart() {
         eyebrow="The Finishing Touches"
         title={
           <>
-            Complete your <span className="italic text-accent">collection</span>
+            Complete your <span className="italic text-accent">look</span>
           </>
         }
         description="Pieces chosen to sit naturally beside what your bag already holds."

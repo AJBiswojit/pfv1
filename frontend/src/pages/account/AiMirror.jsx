@@ -1,3 +1,5 @@
+import RecommendationSections from "../../components/product/RecommendationSections";
+import { apiTrackProductInteraction } from "../../services/api/recommendationsApi";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -94,6 +96,9 @@ export default function AiMirror() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [catalogueRevision, setCatalogueRevision] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
+  useEffect(() => {
+    if (user?.id && selectedId) void apiTrackProductInteraction(selectedId, "VIEW");
+  }, [user?.id, selectedId]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [visibleCount, setVisibleCount] = useState(INITIAL_PRODUCT_COUNT);
@@ -513,6 +518,8 @@ export default function AiMirror() {
             </aside>
           </div>
         )}
+
+        <RecommendationSections placement="mirror" productId={selectedProduct?.id} />
 
         <RecentTryOns products={recentProducts} onSelect={selectProduct} />
 

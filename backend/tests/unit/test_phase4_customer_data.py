@@ -27,7 +27,7 @@ Pattern follows tests/unit/test_phase2_checkout.py (IsolatedAsyncioTestCase
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from pydantic import ValidationError
 
@@ -206,6 +206,14 @@ class CartLineIdentityTests(unittest.TestCase):
 # ---------------------------------------------------------------------
 
 class WishlistServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        # This suite isolates wishlist relationship behavior with a DB double.
+        # Behavioral persistence/savepoint isolation is exercised with a real
+        # SQLAlchemy database in test_recommendations.py.
+        behavior = patch("app.services.commerce.wishlist_service.record_behavior_safely", new_callable=AsyncMock)
+        behavior.start()
+        self.addCleanup(behavior.stop)
+
     async def _service(self, results):
         db = make_db(results)
         return WishlistService(db), db
