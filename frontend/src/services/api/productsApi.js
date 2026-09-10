@@ -150,7 +150,7 @@ export function buildAdminProductPayload(record = {}) {
 // ---------------------------------------------------------------------------
 // Normalise a storefront product (backend snake_case → frontend camelCase)
 // ---------------------------------------------------------------------------
-function normaliseProduct(p) {
+export function normaliseProduct(p) {
   if (!p) return p;
   return {
     ...p,
@@ -363,7 +363,7 @@ export async function apiGetProduct(idOrSlug) {
  */
 export async function apiGetRecommendations(id, type = "related") {
   try {
-    const data = await apiClient.get(`/products/${id}/recommendations?type=${type}`, { scope: "none" });
+    const data = await apiClient.get(`/products/${encodeURIComponent(id)}/recommendations?type=${encodeURIComponent(type)}`, { scope: "none" });
     const items = (data.items ?? data.recommendations ?? data ?? []).map(normaliseProduct);
     return { ok: true, items };
   } catch (err) {

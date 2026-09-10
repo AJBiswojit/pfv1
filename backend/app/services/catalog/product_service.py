@@ -1352,35 +1352,8 @@ class ProductService:
     async def get_recommendations(
         self, product_id: str, rec_type: str = "related"
     ) -> List[StorefrontProduct]:
-        """
-        GET /products/{id}/recommendations
-        Simple category-affinity for now — same visibility gate applies.
-        """
-        source = await self._get_or_404(product_id)
-        stmt = select(ProductModel).where(
-            ProductModel.status == "PUBLISHED",
-            ProductModel.published.is_(True),
-            ProductModel.id != source.id,
-        )
-        if rec_type in ("related",):
-            stmt = stmt.where(ProductModel.category == source.category)
-        result = await self.db.execute(stmt.limit(12))
-        products = result.scalars().all()
-        category_status_map, subcategory_status_map = await self._visibility_maps()
-        products = [
-            p for p in products
-            if self._taxonomy_visible(p, category_status_map, subcategory_status_map)
-        ]
-        registered_map = await self._registered_media_map([p.id for p in products])
-        collection_map = await self._collection_membership_names(products)
-        return [
-            self._to_storefront(
-                p,
-                registered_map.get(p.id),
-                collection_map.get(str(p.id), []),
-            )
-            for p in products
-        ]
+        from app.services.catalog.recommendation_service import RecommendationService
+        return await RecommendationService(self.db, visibility=self._taxonomy_visible).contextual(product_id, rec_type)
 
     # ── Recently viewed ───────────────────────────────────────────────────────
 

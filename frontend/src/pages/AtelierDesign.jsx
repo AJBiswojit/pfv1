@@ -1,3 +1,4 @@
+import RecommendationSections from "../components/product/RecommendationSections";
 import { useMemo } from "react";
 import { useCatalog } from "../hooks/useCatalog";
 import { MARKETING_PLACEMENTS } from "../config/mediaTypes";
@@ -57,6 +58,8 @@ export default function AtelierDesign() {
       <ShopByCategory excludeIds={heroImageIds} />
 
       <NewArrivals />
+
+      <RecommendationSections placement="home" />
 
       <PlacementProductRail placementId={MARKETING_PLACEMENTS.KIDS_SECTION} />
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   apiGetProduct,
-  apiGetRecommendations,
   apiAdminGetProduct,
 } from "../services/api/productsApi";
 import { getAccessToken } from "../services/api/apiClient";
@@ -23,7 +22,7 @@ import {
 import ProductDetailsAccordion from "../components/product/ProductDetailsAccordion";
 import ProductGallery from "../components/product/ProductGallery";
 import ProductPurchasePanel from "../components/product/ProductPurchasePanel";
-import ProductRecommendations from "../components/product/ProductRecommendations";
+import RecommendationSections from "../components/product/RecommendationSections";
 import { imageRef } from "../data/mediaPlaceholder";
 
 function ProductNotFound() {
@@ -95,7 +94,6 @@ export default function ProductDetail() {
   const isPreview = searchParams.get("preview") === "1";
 
   const [product, setProduct] = useState(null);
-  const [recommendations, setRecommendations] = useState({ related: [], completeTheLook: [], recommended: [] });
   const [status, setStatus] = useState("loading"); // loading | ready | error | notfound
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
@@ -128,15 +126,7 @@ export default function ProductDetail() {
       setProduct(result.product);
       setStatus("ready");
 
-      const recResult = await apiGetRecommendations(result.product.id, "related");
-      if (!cancelled && recResult.ok && recResult.items?.length) {
-        const items = recResult.items;
-        setRecommendations({
-          related: items.slice(0, 4),
-          completeTheLook: items.slice(4, 8),
-          recommended: items.slice(8, 12),
-        });
-      }
+
     };
 
     load();
@@ -200,11 +190,7 @@ export default function ProductDetail() {
     return `${parts.join(", ")}.`;
   })();
 
-  const emptyRecommendation = () => ({
-    eyebrow: "More to Discover",
-    title: <>You may also <span className="italic text-accent">like</span></>,
-    description: "Similar pieces will appear here as more of the collection is catalogued.",
-  });
+
 
   return (
     <main className="pb-20 md:pb-0">
@@ -257,33 +243,8 @@ export default function ProductDetail() {
         </div>
       </AtelierSection>
 
-      <ProductRecommendations
-        id="related-products"
-        eyebrow="In the Same Story"
-        title={<>Related <span className="italic text-accent">pieces</span></>}
-        description="Selected through shared cloth, craft, collection and occasion — never at random."
-        products={recommendations.related}
-        empty={emptyRecommendation()}
-      />
+      {!isAtelierPreview && <RecommendationSections placement="product" productId={product.id} />}
 
-      <ProductRecommendations
-        id="complete-the-look"
-        eyebrow="The Styling Edit"
-        title={<>Complete the <span className="italic text-accent">look</span></>}
-        description="A composed edit of finishing pieces chosen to sit naturally beside this silhouette."
-        products={recommendations.completeTheLook}
-        tone="fade"
-        empty={emptyRecommendation()}
-      />
-
-      <ProductRecommendations
-        id="recommended-products"
-        eyebrow="More to Discover"
-        title={<>You may also <span className="italic text-accent">like</span></>}
-        description="Similar in occasion, palette and price — with no repetition from the edits above."
-        products={recommendations.recommended}
-        empty={emptyRecommendation()}
-      />
     </main>
   );
 }

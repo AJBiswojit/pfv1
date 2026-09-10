@@ -73,3 +73,6 @@ api_router.include_router(notifications_router)
 api_router.include_router(search_router)
 api_router.include_router(explore_router)
 api_router.include_router(marketing_media_router)
+
+from app.api.v1.recommendations import router as recommendations_router
+api_router.include_router(recommendations_router)
