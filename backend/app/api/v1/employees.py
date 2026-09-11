@@ -11,7 +11,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_admin, get_current_employee, get_user_roles_and_permissions, require_permission_for_user
+from app.dependencies import get_current_admin, get_current_employee, get_db, get_user_roles_and_permissions, require_admin_permission, require_permission_for_user
 from app.models.auth.user import UserModel
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.schemas.common import DataResponse, BaseResponse
@@ -105,6 +105,7 @@ async def create_employee(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.create")
     service = EmployeeService(db)
     user = await service.create_employee(req, creator_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message="Employee created successfully.")
@@ -125,6 +126,7 @@ async def list_employees(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     items, total = await service.list_employees(
         page=page, page_size=page_size, search=search, status=status, department_id=department_id
@@ -151,6 +153,7 @@ async def get_employee(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     user = await service.get_employee(employee_id)
     return DataResponse(data=_build_employee_response(user))
@@ -168,6 +171,7 @@ async def update_employee(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     user = await service.update_employee(employee_id, req)
     return DataResponse(data=_build_employee_response(user), message="Employee updated.")
@@ -190,6 +194,7 @@ async def update_employee_status(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     user = await service.update_employee_status(employee_id, req)
     return DataResponse(
@@ -211,6 +216,7 @@ async def update_employee_status_patch(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     user = await service.update_employee_status(employee_id, req)
     return DataResponse(data=_build_employee_response(user), message=f"Employee status set to {req.status}.")
@@ -231,6 +237,7 @@ async def reset_employee_password(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.resetPassword")
     service = EmployeeService(db)
     await service.reset_employee_password(employee_id, req)
     return BaseResponse(message="Password reset successfully.")
@@ -252,6 +259,7 @@ async def update_employee_permissions(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.managePermissions")
     service = EmployeeService(db)
     user = await service.update_employee_permissions(employee_id, req)
     return DataResponse(data=_build_employee_response(user), message="Permissions updated.")
@@ -268,6 +276,7 @@ async def delete_employee(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.delete")
     service = EmployeeService(db)
     await service.delete_employee(employee_id)
     return BaseResponse(message="Employee deleted.")
@@ -289,6 +298,7 @@ async def create_employee_legacy(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.create")
     service = EmployeeService(db)
     user = await service.create_employee(req, creator_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message="Employee created successfully.")
@@ -304,6 +314,7 @@ async def list_employees_legacy(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     items, total = await service.list_employees(page=page, page_size=page_size, search=search, status=status, department_id=department_id)
     params = PaginationParams(page=page, page_size=page_size)
@@ -434,6 +445,12 @@ async def create_department(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.delete")
+    await require_admin_permission(admin, db, "employees.resetPassword")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     dept = await service.create_department(req)
     return DataResponse(data=DepartmentResponse.model_validate(dept), message="Department created.")
@@ -448,6 +465,7 @@ async def list_departments(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     depts = await service.list_departments()
     return DataResponse(data=[DepartmentResponse.model_validate(d) for d in depts])
@@ -463,6 +481,7 @@ async def get_department(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     dept = await service.get_department(department_id)
     return DataResponse(data=DepartmentResponse.model_validate(dept))
@@ -479,6 +498,7 @@ async def update_department(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     dept = await service.update_department(department_id, req)
     return DataResponse(data=DepartmentResponse.model_validate(dept), message="Department updated.")
@@ -494,6 +514,7 @@ async def delete_department(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     await service.delete_department(department_id)
     return BaseResponse(message="Department deleted.")
@@ -550,6 +571,11 @@ async def create_section(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     section = await service.create_section(req)
     return DataResponse(data=SectionResponse.model_validate(section), message="Section created.")
@@ -565,6 +591,7 @@ async def list_sections(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     sections = await service.list_sections(department_id)
     return DataResponse(data=[SectionResponse.model_validate(s) for s in sections])
@@ -581,6 +608,7 @@ async def update_section(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     section = await service.update_section(section_id, req)
     return DataResponse(data=SectionResponse.model_validate(section), message="Section updated.")
@@ -596,6 +624,7 @@ async def delete_section(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     await service.delete_section(section_id)
     return BaseResponse(message="Section deleted.")
@@ -650,6 +679,11 @@ async def create_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.view")
     req.employee_id = employee_id
     service = EmployeeService(db)
     record = await service.create_attendance(req)
@@ -668,6 +702,7 @@ async def list_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "attendance.view")
     service = EmployeeService(db)
     items, total = await service.list_attendance(employee_id, page, page_size)
     params = PaginationParams(page=page, page_size=page_size)
@@ -690,6 +725,7 @@ async def update_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     record = await service.update_attendance(attendance_id, req)
     return DataResponse(data=AttendanceResponse.model_validate(record), message="Attendance updated.")
@@ -705,6 +741,7 @@ async def delete_attendance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
     await service.delete_attendance(attendance_id)
     return BaseResponse(message="Attendance record deleted.")
@@ -757,6 +794,11 @@ async def create_target(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
+    await require_admin_permission(admin, db, "attendance.view")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
+    await require_admin_permission(admin, db, "employees.edit")
     req.employee_id = employee_id
     service = EmployeeService(db)
     target = await service.create_target(req)
@@ -775,6 +817,7 @@ async def list_targets(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.view")
     service = EmployeeService(db)
     items, total = await service.list_targets(employee_id, page, page_size)
     params = PaginationParams(page=page, page_size=page_size)
@@ -796,6 +839,7 @@ async def update_target(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     target = await service.update_target(target_id, req)
     return DataResponse(data=TargetResponse.model_validate(target), message="Target updated.")
@@ -811,6 +855,7 @@ async def delete_target(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     await service.delete_target(target_id)
     return BaseResponse(message="Target deleted.")
@@ -864,6 +909,11 @@ async def create_performance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
+    await require_admin_permission(admin, db, "performance.review")
+    await require_admin_permission(admin, db, "performance.review")
+    await require_admin_permission(admin, db, "performance.review")
+    await require_admin_permission(admin, db, "performance.view")
     req.employee_id = employee_id
     service = EmployeeService(db)
     review = await service.create_performance(req, reviewer_id=admin.id)
@@ -882,6 +932,7 @@ async def list_performance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.view")
     service = EmployeeService(db)
     items, total = await service.list_performance(employee_id, page, page_size)
     params = PaginationParams(page=page, page_size=page_size)
@@ -903,6 +954,7 @@ async def update_performance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     review = await service.update_performance(performance_id, req)
     return DataResponse(data=PerformanceResponse.model_validate(review), message="Performance review updated.")
@@ -918,6 +970,7 @@ async def delete_performance(
     db: AsyncSession = Depends(get_db),
     admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     await service.delete_performance(performance_id)
     return BaseResponse(message="Performance review deleted.")
@@ -926,6 +979,7 @@ async def delete_performance(
 # Legacy performance routes (hidden)
 @router.post("/employees/{employee_id}/performance", response_model=DataResponse[PerformanceResponse], status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def create_performance_legacy(employee_id: str, req: PerformanceCreateRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+    await require_admin_permission(admin, db, "performance.review")
     req.employee_id = employee_id
     service = EmployeeService(db)
     review = await service.create_performance(req, reviewer_id=admin.id)
@@ -934,6 +988,7 @@ async def create_performance_legacy(employee_id: str, req: PerformanceCreateRequ
 
 @router.get("/employees/{employee_id}/performance", response_model=PaginatedResponse[PerformanceResponse], include_in_schema=False)
 async def list_performance_legacy(employee_id: str, page: int = Query(default=1, ge=1), page_size: int = Query(default=20, ge=1, le=100), db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+    await require_admin_permission(admin, db, "performance.view")
     service = EmployeeService(db)
     items, total = await service.list_performance(employee_id, page, page_size)
     params = PaginationParams(page=page, page_size=page_size)
@@ -942,6 +997,7 @@ async def list_performance_legacy(employee_id: str, page: int = Query(default=1,
 
 @router.patch("/employees/performance/{performance_id}", response_model=DataResponse[PerformanceResponse], include_in_schema=False)
 async def update_performance_legacy(performance_id: str, req: PerformanceUpdateRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     review = await service.update_performance(performance_id, req)
     return DataResponse(data=PerformanceResponse.model_validate(review))
@@ -949,6 +1005,7 @@ async def update_performance_legacy(performance_id: str, req: PerformanceUpdateR
 
 @router.delete("/employees/performance/{performance_id}", response_model=BaseResponse, include_in_schema=False)
 async def delete_performance_legacy(performance_id: str, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+    await require_admin_permission(admin, db, "performance.review")
     service = EmployeeService(db)
     await service.delete_performance(performance_id)
     return BaseResponse(message="Performance review deleted.")

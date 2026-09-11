@@ -1,3 +1,12 @@
+/**
+ * DEFERRED ADMIN SURFACE (Admin consolidation 2026-09).
+ *
+ * Standalone media detail rendered only the in-session media register and
+ * offered no unique durable capability beyond the Media Library and the
+ * per-product Product Media Manager. It is no longer routed
+ * (/admin/media/:mediaId redirects to the Media Library).
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AdminPage from "../../../components/admin/AdminPage";

@@ -791,3 +791,39 @@ Derived **only** from what the application actually implements and what the stor
 - API counts in §6 are derived from a live route dump of the running backend (285 ops; 125 under `/api/v1/admin/*`) and per-endpoint caller greps — not invented.
 - Every HIGH/CRITICAL finding cites file-and-line evidence; items not verifiable here are explicitly marked UNKNOWN.
 - Recommendations and decisions are separated: all final calls are `USER DECISION REQUIRED`.
+---
+
+## 30. Admin Consolidation — Final Implementation Status
+
+*Written after implementation (post-audit). Cross-references the hotspot (§24/§7), duplication (§20) and security (§16) IDs above. Full detail: `docs/admin-consolidation-report.md` (§18 A–M deliverable).*
+
+### 30.1 Shipped (verified: backend 703 passed/24 skipped/0 failed; frontend 408 pass/0 fail; vite build OK)
+
+| Audit ref | Outcome |
+|---|---|
+| HP-1 products full-scan | SQL pagination/filter/sort; page-only hydration; bounded membership read (5 cols). Pinned by `test_admin_consolidation_products` (real SQLite). |
+| HP-2 dashboard 7-fan-out | ONE `GET /analytics/admin/dashboard/summary` (analytics.view): metrics + series (portable `func.date`) + category revenue + recent orders (AdminOrderResponse projection) + stock summary + employee COUNTs. |
+| HP-3 `/admin/products/metrics` | single scan; count + conditional sums. |
+| HP-4 orders 100-snapshot | desk pages server-side; new SQL filters (paymentStatus / fulfillment stage / createdSince / valueBand / q over order number or customer identity); `status_counts` = one grouped query over the whole book; customer detail + AI off the snapshot. |
+| HP-5 `/media/assets` unbounded | DB-paginated envelope `{items,total,page,pageSize}` (≤200) end-to-end incl. UI controls. |
+| HP-7 /users N+1 | 3 bounded IN queries per page (profiles + roles). `/admin/customers` verified already batched. |
+| HP-8 duplicate employee fetch | eliminated via the consolidated summary; `syncEmployeesFromBackend` confirmed zero callers. |
+| HP-9 in-memory pagination | offers register fully SQL-side (CASE group-by tiles, honest counts, clamp ≤200); categories/subcategories: one grouped COUNT query per list. |
+| Returns derivation | desk reads `GET /admin/returns[/id]` (DB-paginated, order-number + customer-name enrichment via one bounded per-page lookup); mutation no longer refetches the order snapshot. |
+| AI mock in production | REPLACED by real `POST /ai/business/ask` (analytics.view, read-only bounded queries over existing models, truthful NO_DATA, client payload ignored). Mock kept only for the customer shopping surface/tests. |
+| S-1/S-2/S-3 guard-only routers | every admin handler in orders (25), employees (57), analytics, audit, users, roles, permissions now calls `require_admin_permission` with least-privilege perms; media reads → media.view. |
+| S-4 no-role bypass | secured: admins without role assignment are 403-denied once ANY roles exist; empty-directory bootstrap path preserved (no lockout on fresh installs). |
+| D-7 EmployeeService ×2 | shadowed first class deleted (~470 dead lines); its unique `update_employee_permissions` ported — FIXES `PUT /admin/employees/{id}/permissions`. |
+
+### 30.2 Deferred with reasons (not silent deletions)
+
+- Legacy hidden `/employees/*` (20 aliases, §16): kept pending external-contract review → recommend 308 redirects, then delete. Class B/C, not D.
+- `GET /admin/workflow/metrics` (D-6): kept as pinned compatibility alias (contract test asserts retention) — class C contract.
+- Activity log UI (§19): stays deferred behind Navigate redirects; zero writers still true.
+- Media review/mapping/detail UI (§11): stays deferred; durable registry + marketing flow (B-02) untouched.
+- Collections per-row resolved counts (HP-9 residual): REVIEW — semantics must not change.
+- Client `analyticsService` still powers the employee reports desk; the admin desk now reads the same engine off bounded server pages rather than the 100-order snapshot (D-2 disposition: consolidation of *definitions* done server-side; full client-engine retirement deferred until the employee portal migrates).
+
+### 30.3 Constraints honoured
+
+Query-shape + request-dedup only (no Redis/new infra); no migrations/models/lifecycle/media-ownership/HOME_HERO changes; no tests deleted or weakened (harness fakes extended, documented); localStorage never authoritative; no secrets or SQL to the frontend; portal isolation intact; docs updated (`admin-consolidation-report.md`, this section).

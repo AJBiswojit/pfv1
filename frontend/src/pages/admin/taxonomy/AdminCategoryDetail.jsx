@@ -192,8 +192,7 @@ export default function AdminCategoryDetail() {
         </div>
 
         <AdminPanel eyebrow="Activity" title="Taxonomy diary">
-          <p className="font-ui text-sm leading-relaxed text-taupe">Creates, updates, archives and restores are recorded in the shared activity log. Product records keep their IDs and are never deleted when a category is archived.</p>
-          <AtelierButton as={Link} to="/admin/activity" variant="outline" size="chip" className="mt-4">Open activity log</AtelierButton>
+          <p className="font-ui text-sm leading-relaxed text-taupe">Creates, updates, archives and restores are intended for the shared activity log. The log surface is deferred until the backend audit writer pipeline exists (blocker B-09) — product records keep their IDs and are never deleted when a category is archived.</p>
         </AdminPanel>
       </div>
     </AdminPage>

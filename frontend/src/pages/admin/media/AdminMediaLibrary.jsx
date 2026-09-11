@@ -103,25 +103,34 @@ const assignmentLine = (media) => {
    database (uploaded to object storage and persisted via the register API),
    distinct from the local review register staged on this page. Read-only
    here — uploads and assignments happen on the product media surface. */
+const DURABLE_PAGE_SIZE = 24;
+
 function DurableAssetsPanel() {
-  const [state, setState] = useState({ status: "loading", items: [], error: null });
+  const [state, setState] = useState({ status: "loading", items: [], error: null, total: 0, page: 1 });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let alive = true;
-    apiListMediaAssets()
+    apiListMediaAssets({ page, pageSize: DURABLE_PAGE_SIZE })
       .then((result) => {
         if (!alive) return;
         if (result?.ok) {
-          setState({ status: "ready", items: Array.isArray(result.items) ? result.items : [], error: null });
+          setState({
+            status: "ready",
+            items: Array.isArray(result.items) ? result.items : [],
+            total: result.total ?? result.items?.length ?? 0,
+            page: result.page ?? page,
+            error: null,
+          });
         } else {
-          setState({ status: "error", items: [], error: { message: result?.error, status: result?.status } });
+          setState({ status: "error", items: [], total: 0, page, error: { message: result?.error, status: result?.status } });
         }
       })
-      .catch((error) => alive && setState({ status: "error", items: [], error }));
+      .catch((error) => alive && setState({ status: "error", items: [], total: 0, page, error }));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [page]);
 
   if (state.status === "loading") {
     return (
@@ -153,14 +162,16 @@ function DurableAssetsPanel() {
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil((state.total || state.items.length) / DURABLE_PAGE_SIZE));
+
   return (
     <AdminPanel
       title={
         <span className="inline-flex items-center gap-2">
-          <Database size={14} className="text-sage" /> Durable media registry ({state.items.length})
+          <Database size={14} className="text-sage" /> Durable media registry ({state.total || state.items.length})
         </span>
       }
-      description="Persisted in the database — these are the real product assets, not browser records."
+      description="Persisted in the database — these are the real product assets, not browser records. Retrieved in bounded pages."
       className="mb-6"
     >
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -188,6 +199,31 @@ function DurableAssetsPanel() {
           </div>
         ))}
       </div>
+      {totalPages > 1 ? (
+        <div className="mt-4 flex items-center justify-between border-t border-ink-faint pt-3">
+          <p className="text-[11px] text-charcoal/55">
+            Page {state.page} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={state.page <= 1}
+              className="rounded-lg border border-ink-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              disabled={state.page >= totalPages}
+              className="rounded-lg border border-ink-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
     </AdminPanel>
   );
 }
@@ -271,15 +307,13 @@ export default function AdminMediaLibrary() {
       actions={
         <div className="flex flex-wrap items-center gap-2.5">
           {metrics.pendingReview > 0 ? (
-            <AtelierButton
-              as={Link}
-              to="/admin/media/review"
-              size="chip"
-              className="bg-amber-800 text-ivory hover:bg-amber-900 border border-amber-700"
+            <span
+              title="The dedicated media review queue is deferred until a durable backend review workflow exists. Approvals made here are session-local."
+              className="border border-amber-700 bg-amber-800 px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory"
             >
               <Clock size={12} className="mr-1 inline-block" />
-              Review Queue ({metrics.pendingReview})
-            </AtelierButton>
+              Pending review ({metrics.pendingReview}) · session-local
+            </span>
           ) : null}
           <AtelierButton as={Link} to="/admin/media/marketing" size="chip" variant="outline">
             Marketing Media
@@ -347,14 +381,9 @@ export default function AdminMediaLibrary() {
               </p>
             </div>
           </div>
-          <AtelierButton
-            as={Link}
-            to="/admin/media/review"
-            size="chip"
-            className="self-start sm:self-center bg-amber-900 text-ivory hover:bg-amber-950"
-          >
-            Open Review Queue
-          </AtelierButton>
+          <span className="self-start font-ui text-[10px] uppercase tracking-[.14em] text-amber-900 sm:self-center">
+            Approve or reject inline below — the dedicated queue is deferred.
+          </span>
         </div>
       ) : null}
 
@@ -504,17 +533,14 @@ export default function AdminMediaLibrary() {
             <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {filtered.map((item) => (
                 <li key={item.id} className="border border-mist/80 bg-canvas">
-                  <Link to={`/admin/media/${item.id}`} className="block">
+                  <span className="block">
                     <MediaThumb media={item} />
-                  </Link>
+                  </span>
                   <div className="space-y-2 p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <Link
-                        to={`/admin/media/${item.id}`}
-                        className="min-w-0 font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
-                      >
+                      <span className="min-w-0 font-ui text-sm text-ink">
                         <span className="line-clamp-2">{item.title}</span>
-                      </Link>
+                      </span>
                       <input
                         type="checkbox"
                         checked={selected.includes(item.id)}
@@ -565,24 +591,21 @@ export default function AdminMediaLibrary() {
                             Approve
                           </AtelierButton>
                           <AtelierButton
-                            as={Link}
-                            to={`/admin/media/review`}
                             size="chip"
                             variant="outline"
                             className="text-accent"
+                            onClick={() => actions.approve(item.id)}
                           >
-                            Review
+                            Quick approve
                           </AtelierButton>
                         </>
                       ) : (
-                        <AtelierButton
-                          as={Link}
-                          to={`/admin/media/${item.id}`}
-                          size="chip"
-                          variant="outline"
+                        <span
+                          title="Standalone media detail is deferred with the session register — durable assets live on their product's media manager."
+                          className="inline-block border border-mist/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe"
                         >
-                          Details
-                        </AtelierButton>
+                          Session record
+                        </span>
                       )}
                       {item.scope === MEDIA_SCOPES.PRODUCT && item.productId && ownerStatusOf(item.productId) !== null ? (
                         <AtelierButton

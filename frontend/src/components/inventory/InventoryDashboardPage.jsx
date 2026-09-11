@@ -1,3 +1,11 @@
+/**
+ * DEFERRED IN ADMIN PORTAL (Admin consolidation 2026-09): the Admin
+ * inventory suite runs on a browser-localStorage simulation while the
+ * backend inventory ledger is an empty stub (blocker B-01), so the Admin
+ * routes were removed and redirect to the dashboard. This component stays
+ * LIVE for the Employee portal (portal="employee"), which is unchanged.
+ */
+
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";

@@ -152,12 +152,21 @@ export async function apiClaimGuestOrders(email = null) {
 // ===========================================================================
 
 /** GET /admin/orders?status=&customerId=&q=&page=&pageSize= */
-export async function apiAdminListOrders({ status, customerId, q, page = 1, pageSize = 20 } = {}) {
+export async function apiAdminListOrders({
+  status, customerId, q, paymentStatus, fulfillment, createdSince, valueBand,
+  page = 1, pageSize = 20,
+} = {}) {
   try {
     const qs = new URLSearchParams({ page, pageSize });
-    if (status)     qs.set("status", status);
-    if (customerId) qs.set("customerId", customerId);
-    if (q)          qs.set("q", q);
+    if (status)         qs.set("status", status);
+    if (customerId)     qs.set("customerId", customerId);
+    if (q)              qs.set("q", q);
+    // Server-side desk filters (admin consolidation, HP-4) — the desk no
+    // longer fetches a 100-order snapshot and filters it in the browser.
+    if (paymentStatus)  qs.set("paymentStatus", paymentStatus);
+    if (fulfillment)    qs.set("fulfillment", fulfillment);
+    if (createdSince)   qs.set("createdSince", createdSince);
+    if (valueBand)      qs.set("valueBand", valueBand);
     const data = await apiClient.get(`/admin/orders?${qs}`, { scope: "admin" });
     const orders = (data.orders ?? data.items ?? data ?? []).map(normOrder);
     return {
@@ -166,6 +175,7 @@ export async function apiAdminListOrders({ status, customerId, q, page = 1, page
       total: data.total ?? orders.length,
       page: data.page ?? page,
       pageSize: data.page_size ?? data.pageSize ?? pageSize,
+      statusCounts: data.status_counts ?? data.statusCounts ?? null,
     };
   } catch (err) { return handleError(err); }
 }

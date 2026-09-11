@@ -4,11 +4,14 @@ import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
 import { AtelierButton, EmptyState } from "../../design-system";
 import { apiAdminGetCustomer } from "../../services/api/customersApi";
-import { useOrder } from "../../context/OrderContext";
+import { apiAdminListOrders } from "../../services/api/ordersApi";
 
 export default function AdminCustomerDetail() {
   const { customerId } = useParams();
-  const { allOrders = [] } = useOrder();
+  // BACKEND CONTRACT (admin consolidation, HP-4): this customer's orders are
+  // a bounded server query — never the global 100-order snapshot.
+  const [orders, setOrders] = useState([]);
+  const [ordersState, setOrdersState] = useState("loading");
   const [customer, setCustomer] = useState(null);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
@@ -31,6 +34,22 @@ export default function AdminCustomerDetail() {
     return () => { cancelled = true; };
   }, [customerId, attempt]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setOrdersState("loading");
+    apiAdminListOrders({ customerId, page: 1, pageSize: 20 }).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setOrders(result.orders ?? []);
+        setOrdersState("ready");
+      } else {
+        setOrders([]);
+        setOrdersState("error");
+      }
+    });
+    return () => { cancelled = true; };
+  }, [customerId, attempt]);
+
   if (status === "loading") {
     return <AdminPage title="Customer profile"><p role="status" className="font-ui text-sm text-taupe">Loading customer from the server…</p></AdminPage>;
   }
@@ -48,9 +67,6 @@ export default function AdminCustomerDetail() {
     );
   }
 
-  const orders = allOrders.filter(
-    (o) => o.customerId === customer.id || o.customer?.email === customer.email
-  );
   // Order aggregates come from the backend detail response (a real grouped
   // join over the order ledger) — never recomputed or hardcoded client-side.
   const orderCount = Number.isFinite(Number(customer.orderCount))
@@ -85,17 +101,21 @@ export default function AdminCustomerDetail() {
       </div>
       <AdminPanel title="Purchase history">
         <div className="space-y-3">
-          {orders.length ? (
+          {ordersState === "error" ? (
+            <p>Could not load this customer's orders right now.</p>
+          ) : orders.length ? (
             orders.map((o) => (
               <div className="flex justify-between border-b border-pearl py-3" key={o.id}>
                 <Link className="underline" to={`/admin/orders/${o.id}`}>
-                  {o.id}
+                  {o.orderNumber ?? o.id}
                 </Link>
                 <span>
                   {o.status} · ₹{Math.round(o.total || o.totalAmount || o.pricing?.total || 0).toLocaleString("en-IN")}
                 </span>
               </div>
             ))
+          ) : ordersState === "loading" ? (
+            <p role="status" aria-live="polite" aria-busy="true">Loading orders…</p>
           ) : (
             <p>No orders yet.</p>
           )}

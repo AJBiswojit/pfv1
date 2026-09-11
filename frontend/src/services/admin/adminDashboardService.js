@@ -1,23 +1,23 @@
 /**
  * PRATIKSHYA FASHON — Admin dashboard reads (backend-driven).
  *
- * Business figures come from the backend analytics/orders endpoints:
- *   GET /analytics/overview | /sales | /products | /customers | /orders
- *   GET /admin/orders
- *   GET /admin/employees
- * There are no static demo figures: if a fetch fails the caller shows
- * loading/error/empty states.
+ * The dashboard is fed by ONE consolidated request:
+ *
+ *   GET /admin/dashboard/summary
+ *     → metrics + sales series + revenue by category + recent orders
+ *       + stock summary + employee head-counts
+ *
+ * All figures are bounded backend aggregates. There are no static demo
+ * figures: if the fetch fails the dashboard shows an explicit error state.
+ *
+ * DB-load note (admin consolidation): this replaces the previous per-load
+ * fan-out (GET /analytics/overview + /analytics/sales + /analytics/products
+ * + /admin/employees?pageSize=100 TWICE + /admin/orders + inventory
+ * summary). The employee list is no longer read to count people — the
+ * summary returns two COUNTs instead.
  */
 
-import {
-  apiAnalyticsOverview,
-  apiAnalyticsSales,
-  apiAnalyticsTopProducts,
-  apiAnalyticsOrders,
-} from "../api/adminApi";
-import { apiAdminListOrders } from "../api/ordersApi";
-import { apiAdminListEmployees } from "../api/employeesApi";
-import { EMPLOYEE_STATUS } from "../../config/employeeStatus";
+import { apiAdminDashboardSummary } from "../api/adminApi";
 
 const zeroMetrics = () => ({
   todaysSales: 0,
@@ -33,78 +33,59 @@ const zeroMetrics = () => ({
   revenue: 0,
 });
 
-/** Headline metrics from GET /analytics/overview (+ employee directory). */
-export async function loadBusinessMetrics() {
-  const [overview, employeesResult] = await Promise.all([
-    apiAnalyticsOverview(),
-    apiAdminListEmployees({ pageSize: 100 }),
-  ]);
-  if (!overview.ok) {
-    return { ok: false, error: overview.error, metrics: zeroMetrics() };
+/** The whole dashboard in one request. */
+export async function loadDashboardSummary({ days = 7, recentLimit = 5 } = {}) {
+  const result = await apiAdminDashboardSummary({ days, recentLimit });
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error ?? "Could not load the dashboard.",
+      metrics: zeroMetrics(),
+      series: [],
+      categories: [],
+      orders: [],
+      inventorySummary: null,
+      employees: { total: 0, active: 0 },
+    };
   }
-  const metrics = { ...zeroMetrics(), ...overview.metrics };
-  if (employeesResult.ok) {
-    metrics.totalEmployees = (employeesResult.items ?? []).length;
-    metrics.employeesPresent = (employeesResult.items ?? []).filter(
-      (person) => person.status === EMPLOYEE_STATUS.ACTIVE
-    ).length;
-  }
-  return { ok: true, metrics };
-}
-
-/** Sales series from GET /analytics/sales. */
-export async function loadSalesSeries(days = 30) {
-  const result = await apiAnalyticsSales({ days });
-  if (!result.ok) return { ok: false, error: result.error, series: [] };
-  const series = result.series.map((point) => ({
+  const metrics = {
+    ...zeroMetrics(),
+    ...(result.metrics ?? {}),
+    totalEmployees: result.employees?.total ?? 0,
+    employeesPresent: result.employees?.active ?? 0,
+  };
+  const series = (result.salesSeries ?? []).map((point) => ({
     date: point.date,
     sales: point.revenue,
     orders: point.orders,
   }));
-  return { ok: true, series };
-}
-
-/** Category breakdown, derived from top products. */
-export async function loadSalesByCategory() {
-  const result = await apiAnalyticsTopProducts({ limit: 100 });
-  if (!result.ok) return { ok: false, error: result.error, categories: [] };
-  const map = new Map();
-  result.items.forEach((item) => {
-    const key = item.productId?.split("-")[0] || "Other";
-    map.set(key, (map.get(key) ?? 0) + item.revenue);
-  });
-  return {
-    ok: true,
-    categories: [...map.entries()].map(([name, revenue]) => ({ name, revenue })),
-  };
-}
-
-/** Order-status breakdown from GET /analytics/orders. */
-export async function loadOrderStatusBreakdown() {
-  const result = await apiAnalyticsOrders();
-  if (!result.ok) return { ok: false, error: result.error, items: [] };
-  return { ok: true, items: result.items };
-}
-
-/** Recent orders from GET /admin/orders (server data only, no demo rows). */
-export async function loadRecentOrders(limit = 5) {
-  const result = await apiAdminListOrders({ pageSize: limit });
-  if (!result.ok) return { ok: false, error: result.error, orders: [] };
-  const orders = (result.orders ?? []).map((order) => ({
+  const categories = (result.categories ?? []).map((entry) => ({
+    name: entry.name,
+    revenue: entry.revenue,
+  }));
+  const orders = (result.recentOrders ?? []).map((order) => ({
     id: order.id,
     customer: order.customer?.fullName || order.shippingAddress?.fullName || "Guest",
     items: (order.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0),
     amount: Number(order.total ?? order.pricing?.total ?? 0),
     status: order.status,
-    placedAt: order.createdAt,
+    placedAt: order.createdAt ?? order.created_at,
     isDemo: false,
   }));
-  return { ok: true, orders };
+  return {
+    ok: true,
+    metrics,
+    series,
+    categories,
+    orders,
+    inventorySummary: result.inventorySummary ?? null,
+    employees: result.employees ?? { total: 0, active: 0 },
+  };
 }
 
 /* ------------------------------------------------------------------ */
 /* Legacy sync-read exports (kept for compatibility; return empty).     */
-/* The dashboard page now uses the async `load*` functions above.       */
+/* The dashboard page uses the async `loadDashboardSummary` above.      */
 /* ------------------------------------------------------------------ */
 
 export const getBusinessMetrics = () => zeroMetrics();
@@ -117,11 +98,7 @@ export const getTopDepartments = () => [];
 export const getRecentOrders = () => [];
 
 export default {
-  loadBusinessMetrics,
-  loadSalesSeries,
-  loadSalesByCategory,
-  loadOrderStatusBreakdown,
-  loadRecentOrders,
+  loadDashboardSummary,
   getBusinessMetrics,
   getMetricTrends,
   getSalesSeries,

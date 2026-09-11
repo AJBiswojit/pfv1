@@ -39,9 +39,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, Query, File, Form, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, StreamingResponse
 
@@ -519,12 +519,42 @@ async def register_media_object(
     "/assets",
     response_model=MediaAssetListResponse,
     summary="List registered media assets",
-    responses=canonical_error_responses(401, 403, 500),
+    responses=canonical_error_responses(401, 403, 422, 500),
 )
-async def list_media_assets(db: AsyncSession = Depends(get_db), current_user: UserModel = Depends(get_current_admin)):
-    await require_admin_permission(current_user, db, "media.upload")
-    rows = (await db.execute(select(MediaAssetModel).order_by(MediaAssetModel.created_at.desc()))).scalars().all()
-    return {"ok": True, "items": [{"id": r.id, "objectKey": r.object_key, "url": MediaService(db).object_url(r.object_key), "status": r.status, "mimeType": r.mime_type} for r in rows]}
+async def list_media_assets(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200, alias="pageSize"),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """
+    List registered media assets — DB-side paginated.
+
+    DB-load note (admin consolidation): the registry read previously had no
+    LIMIT, so every library mount returned every asset ever registered. The
+    read is now a bounded page with the full filtered count, newest first.
+    """
+    # Reads use the view permission (least privilege); uploads stay on
+    # media.upload and deletion on media.delete.
+    await require_admin_permission(current_user, db, "media.view")
+    total = (
+        await db.execute(select(func.count()).select_from(MediaAssetModel))
+    ).scalar() or 0
+    rows = (
+        await db.execute(
+            select(MediaAssetModel)
+            .order_by(MediaAssetModel.created_at.desc(), MediaAssetModel.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+    return {
+        "ok": True,
+        "items": [{"id": r.id, "objectKey": r.object_key, "url": MediaService(db).object_url(r.object_key), "status": r.status, "mimeType": r.mime_type} for r in rows],
+        "total": int(total),
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 @router.delete(

@@ -212,10 +212,16 @@ export async function apiRegisterMediaObject(
 }
 
 /** The durable registered asset library (admin). */
-export async function apiListMediaAssets({ scope = "admin" } = {}) {
+export async function apiListMediaAssets({ scope = "admin", page = 1, pageSize = 50 } = {}) {
   try {
-    const data = await apiClient.get("/media/assets", { scope });
-    return { ok: true, items: data?.items ?? [] };
+    const data = await apiClient.get(`/media/assets?page=${page}&pageSize=${pageSize}`, { scope });
+    return {
+      ok: true,
+      items: data?.items ?? [],
+      total: data?.total ?? (data?.items?.length ?? 0),
+      page: data?.page ?? page,
+      pageSize: data?.pageSize ?? pageSize,
+    };
   } catch (error) {
     return handleError(error, "The media asset library could not be loaded.");
   }

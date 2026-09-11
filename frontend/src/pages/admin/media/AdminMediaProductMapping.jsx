@@ -1,4 +1,15 @@
 /**
+ * DEFERRED ADMIN SURFACE (Admin consolidation 2026-09).
+ *
+ * The product-mapping desk overlapped the canonical Product Media Manager
+ * (Product → Product Media Manager → attach/register/reorder/primary/role)
+ * and operated only on the in-session media register. It is no longer
+ * routed in the Admin portal (/admin/media/product-mapping redirects to
+ * the Media Library). Keep ONE media-to-product workflow: the Product
+ * Media Manager.
+ */
+
+/**
  * PRATIKSHYA FASHON — Admin media product mapping workspace (Phase 21.6).
  *
  * Atelier admin design system.

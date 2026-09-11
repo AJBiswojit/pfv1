@@ -217,13 +217,23 @@ export function OrderProvider({ children }) {
       return { ok: false, orders: [], status: 401, error: "Please sign in to the admin desk." };
     }
     setIsLoadingOrders(true);
-    const result = await apiAdminListOrders({ pageSize: 100, ...params });
+    // HP-4 (admin consolidation): params flow straight through — the desk
+    // requests exactly the page it displays (filters included) instead of
+    // pulling a 100-order snapshot into memory. Callers that pass no params
+    // keep a bounded default page.
+    const result = await apiAdminListOrders({ pageSize: 20, ...params });
     setIsLoadingOrders(false);
     if (result.ok) {
       setOrders(result.orders ?? []);
       setOrdersError(null);
       setOrdersErrorStatus(null);
-      return { ok: true, orders: result.orders ?? [], total: result.total, status: 200 };
+      return {
+        ok: true,
+        orders: result.orders ?? [],
+        total: result.total,
+        statusCounts: result.statusCounts,
+        status: 200,
+      };
     }
     setOrdersError(result.error ?? "Could not load orders.");
     setOrdersErrorStatus(result.status ?? 500);
@@ -576,9 +586,13 @@ export function OrderProvider({ children }) {
     if (!result.ok) {
       return { ok: false, status: result.status, message: result.error };
     }
-    await refreshAdminOrders();
+    // DB-load note (admin consolidation): the previous behaviour re-read the
+    // whole 100-order snapshot after EVERY return action. The mutation
+    // response already carries the server-authoritative return record —
+    // callers refresh exactly what they display (the returns desk re-reads
+    // its own bounded /admin/returns page).
     return { ok: true, record: result.return_order, status: 200, message: "" };
-  }, [refreshAdminOrders]);
+  }, []);
 
   const approveReturn = useCallback(
     (id, opts) => applyReturnMutation(apiAdminApproveReturn, id, opts), [applyReturnMutation]);

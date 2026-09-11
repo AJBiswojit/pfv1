@@ -8,13 +8,13 @@
  * Actions: Approve, Reject, Schedule Pickup, Receive, Inspect, Initiate Refund, Complete Refund
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
-import { useOrder } from "../../context/OrderContext";
 import { useAdminAuth } from "../../context/AdminAuthContext";
+import { apiAdminGetReturn } from "../../services/api/ordersApi";
 import { RETURN_STATUS, RETURN_STATUSES } from "../../config/orderConfig";
 import {
   getReturnTimeline,
@@ -39,37 +39,40 @@ export default function AdminReturnDetail() {
   const { returnId } = useParams();
   const navigate = useNavigate();
   const { admin } = useAdminAuth();
-  const {
-    allOrders = [],
-    refreshAdminOrders,
-    isLoadingOrders,
-    approveReturn,
-    rejectReturn,
-    scheduleReturnPickup,
-    receiveReturn,
-    inspectReturn,
-    initiateReturnRefund,
-    completeReturnRefund,
-  } = useOrder();
 
-  // Server-backed: load the admin order list (returns travel with their
-  // order) before looking the return up.
-  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
+  // BACKEND CONTRACT (admin consolidation): the detail screen reads the REAL
+  // returns API — GET /admin/returns/{id} — instead of scanning the 100-order
+  // client snapshot (which only carried returns for orders that happened to
+  // be in the first page). The backend enriches the record with the owning
+  // order number and customer display name.
+  const [returnRecord, setReturnRecord] = useState(null);
+  const [loadState, setLoadState] = useState({ status: "loading", error: null });
+  const [attempt, setAttempt] = useState(0);
 
-  // Find the return record
-  const returnRecord = useMemo(() => {
-    let found = null;
-    allOrders.some((order) =>
-      (order.returns || []).some((record) => {
-        if (record.id === returnId) {
-          found = { ...record, order };
-          return true;
-        }
-        return false;
-      })
-    );
-    return found;
-  }, [allOrders, returnId]);
+  const refreshRecord = useCallback(async () => {
+    setLoadState({ status: "loading", error: null });
+    const result = await apiAdminGetReturn(returnId);
+    if (result.ok) {
+      setReturnRecord(result.return || null);
+      setLoadState({ status: "ready", error: null });
+    } else {
+      setLoadState({ status: "error", error: result.error ?? "Could not load this return." });
+    }
+  }, [returnId]);
+
+  useEffect(() => {
+    refreshRecord();
+  }, [refreshRecord, attempt]);
+
+  const retryLoad = useCallback(() => setAttempt((a) => a + 1), []);
+
+  const approveReturn = useOrder().approveReturn;
+  const rejectReturn = useOrder().rejectReturn;
+  const scheduleReturnPickup = useOrder().scheduleReturnPickup;
+  const receiveReturn = useOrder().receiveReturn;
+  const inspectReturn = useOrder().inspectReturn;
+  const initiateReturnRefund = useOrder().initiateReturnRefund;
+  const completeReturnRefund = useOrder().completeReturnRefund;
 
   // Action states
   const [showReject, setShowReject] = useState(false);
@@ -92,13 +95,33 @@ export default function AdminReturnDetail() {
   const [notice, setNotice] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  // Loading must win over not-found: the return list is fetched.
-  if (isLoadingOrders && !returnRecord) {
+  // Loading must win over not-found: the record is being fetched.
+  if (loadState.status === "loading" && !returnRecord) {
     return (
       <AdminPage eyebrow="Returns" title="Loading return…">
         <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
           Loading return…
         </p>
+      </AdminPage>
+    );
+  }
+
+  if (loadState.status === "error") {
+    return (
+      <AdminPage eyebrow="Returns" title="Return unavailable">
+        <div role="alert" className="font-ui text-sm text-graphite">
+          <p>{loadState.error}</p>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="mt-4 inline-block font-ui text-sm text-brass underline hover:text-accent"
+          >
+            Try again
+          </button>
+        </div>
+        <Link to="/admin/returns" className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+          Back to returns
+        </Link>
       </AdminPage>
     );
   }
@@ -116,7 +139,27 @@ export default function AdminReturnDetail() {
     );
   }
 
-  const { order } = returnRecord;
+  const orderId = returnRecord.orderId;
+  const orderNumber = returnRecord.orderNumber || returnRecord.orderId;
+  const customerName = returnRecord.customerName || "Customer";
+  const auditTrail = (returnRecord.timeline ?? [])
+    .filter((entry) => entry && (entry.event || entry.status))
+    .map((entry) => ({
+      label: String(entry.event || entry.status)
+        .replace(/^RETURN_/, "")
+        .replaceAll("_", " ")
+        .toLowerCase(),
+      at: entry.at ?? entry.created_at ?? null,
+      note: entry.note ?? null,
+    }));
+  const lineKey = (item) => item.orderItemId || item.lineId || item.id;
+  const itemMoney = (item) =>
+    item.refundAmount > 0
+      ? `Refund ${formatINR(item.refundAmount)}`
+      : item.price
+        ? formatINR(item.price * item.quantity)
+        : "";
+  const itemImage = (item) => item.image || item.productImage || null;
   const timeline = getReturnTimeline(returnRecord);
   const statusDef = RETURN_STATUSES[returnRecord.status];
   const isRejected = returnRecord.status === RETURN_STATUS.REJECTED;
@@ -132,6 +175,7 @@ export default function AdminReturnDetail() {
     setProcessing(false);
     if (result.ok) {
       setNotice("Return approved successfully.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to approve return.");
     }
@@ -152,6 +196,7 @@ export default function AdminReturnDetail() {
     if (result.ok) {
       setShowReject(false);
       setNotice("Return rejected.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to reject return.");
     }
@@ -170,6 +215,7 @@ export default function AdminReturnDetail() {
     if (result.ok) {
       setShowPickup(false);
       setNotice("Pickup scheduled successfully.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to schedule pickup.");
     }
@@ -186,6 +232,7 @@ export default function AdminReturnDetail() {
     if (result.ok) {
       setShowReceive(false);
       setNotice("Return marked as received.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to mark return as received.");
     }
@@ -193,26 +240,38 @@ export default function AdminReturnDetail() {
 
   const handleInspect = async () => {
     const items = returnRecord.items || [];
-    const inspectionList = items.map((item) => ({
-      lineId: item.lineId,
-      condition: inspections[item.lineId]?.condition || "SELLABLE",
-      notes: inspections[item.lineId]?.notes || "",
-    }));
-
-    if (inspectionList.length === 0) {
+    if (items.length === 0) {
       setNotice("No items to inspect.");
       return;
     }
 
+    // API contract: one package-level inspection condition + notes. Per-item
+    // conditions are aggregated (worst wins) so the request matches
+    // POST /admin/returns/{id}/inspect exactly.
+    const chosen = items.map(
+      (item) => inspections[lineKey(item)]?.condition || "SELLABLE"
+    );
+    const inspectionCondition = chosen.includes("QUARANTINE")
+      ? "QUARANTINE"
+      : chosen.includes("DAMAGED")
+        ? "DAMAGED"
+        : "SELLABLE";
+    const notes = items
+      .map((item) => inspections[lineKey(item)]?.notes)
+      .filter(Boolean)
+      .join(" | ");
+
     setProcessing(true);
     const result = await inspectReturn(returnRecord.id, {
       actor,
-      inspections: inspectionList,
+      inspectionCondition,
+      notes: notes || undefined,
     });
     setProcessing(false);
     if (result.ok) {
       setShowInspect(false);
       setNotice("Inspection completed successfully.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to complete inspection.");
     }
@@ -224,6 +283,7 @@ export default function AdminReturnDetail() {
     setProcessing(false);
     if (result.ok) {
       setNotice("Refund initiated successfully.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to initiate refund.");
     }
@@ -235,6 +295,7 @@ export default function AdminReturnDetail() {
     setProcessing(false);
     if (result.ok) {
       setNotice("Refund completed successfully.");
+      await refreshRecord();
     } else {
       setNotice(result.message || "Failed to complete refund.");
     }
@@ -254,7 +315,7 @@ export default function AdminReturnDetail() {
     <AdminPage
       title={returnRecord.id}
       eyebrow="Return Detail"
-      description={`Order ${order.id} · ${returnRecord.reasonLabel || returnRecord.reason}`}
+      description={`Order ${orderNumber} · ${returnRecord.reasonLabel || returnRecord.reason}`}
     >
       {notice ? (
         <div className="mb-6 border border-accent/40 bg-accent/5 px-5 py-4 font-ui text-xs text-accent">
@@ -313,10 +374,10 @@ export default function AdminReturnDetail() {
                   </dt>
                   <dd className="mt-1">
                     <Link
-                      to={`/admin/orders/${order.id}`}
+                      to={`/admin/orders/${orderId}`}
                       className="font-ui text-ink underline hover:text-accent"
                     >
-                      {order.id}
+                      {orderNumber}
                     </Link>
                   </dd>
                 </div>
@@ -325,7 +386,7 @@ export default function AdminReturnDetail() {
                     Customer
                   </dt>
                   <dd className="mt-1 font-ui text-ink">
-                    {order.customer?.fullName || "Customer"}
+                    {customerName}
                   </dd>
                 </div>
                 <div>
@@ -370,14 +431,21 @@ export default function AdminReturnDetail() {
             <div className="space-y-4">
               {(returnRecord.items || []).map((item) => (
                 <div
-                  key={item.lineId}
+                  key={lineKey(item)}
                   className="flex gap-4 border-b border-mist/70 pb-4 last:border-0 last:pb-0"
                 >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-20 w-20 shrink-0 bg-surface object-cover"
-                  />
+                  {itemImage(item) ? (
+                    <img
+                      src={itemImage(item)}
+                      alt={item.name}
+                      className="h-20 w-20 shrink-0 bg-surface object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="h-20 w-20 shrink-0 border border-mist/70 bg-surface"
+                      aria-hidden="true"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-base font-light text-ink">
                       {item.name}
@@ -386,17 +454,15 @@ export default function AdminReturnDetail() {
                       {[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"}
                     </p>
                     <p className="mt-1 font-ui text-xs text-ink">
-                      Qty: {item.quantity} · {formatINR(item.price)}
+                      Qty: {item.quantity}
+                      {itemMoney(item) ? ` · ${itemMoney(item)}` : ""}
                     </p>
-                    {item.inspectionResult ? (
+                    {item.inspectionCondition || item.inspection_condition ? (
                       <p className="mt-2 inline-block border border-accent/40 bg-accent/5 px-3 py-1 font-ui text-[10px] uppercase tracking-widest text-accent">
-                        {item.inspectionResult}
+                        {item.inspectionCondition || item.inspection_condition}
                       </p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 font-ui text-sm font-medium text-ink">
-                    {formatINR(item.price * item.quantity)}
-                  </p>
                 </div>
               ))}
             </div>
@@ -548,19 +614,16 @@ export default function AdminReturnDetail() {
             </div>
           </AdminPanel>
 
-          {/* Refund */}
-          {returnRecord.refund ? (
+          {/* Refund — fields come from the returns API record */}
+          {returnRecord.refundStatus && returnRecord.refundStatus !== "NOT_REQUESTED" ? (
             <AdminPanel title="Refund">
               <div className="space-y-3">
-                <p className="border border-accent/30 bg-accent/5 px-3 py-2 font-ui text-[10px] uppercase tracking-widest text-accent">
-                  Demo Refund · No Real Money Movement
-                </p>
                 <div>
                   <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
                     Amount
                   </p>
                   <p className="mt-1 font-display text-2xl font-light text-ink">
-                    {formatINR(returnRecord.refund.amount || 0)}
+                    {formatINR(returnRecord.refundAmount || 0)}
                   </p>
                 </div>
                 <div>
@@ -568,7 +631,7 @@ export default function AdminReturnDetail() {
                     Status
                   </p>
                   <p className="mt-1 font-ui text-xs text-ink">
-                    {returnRecord.refund.status || "Not requested"}
+                    {returnRecord.refundStatus}
                   </p>
                 </div>
                 <div>
@@ -576,23 +639,25 @@ export default function AdminReturnDetail() {
                     Method
                   </p>
                   <p className="mt-1 font-ui text-xs text-ink">
-                    {returnRecord.refund.method || "—"}
+                    {returnRecord.refundMethod || "Original payment method"}
                   </p>
                 </div>
               </div>
             </AdminPanel>
           ) : null}
 
-          {/* Pickup details */}
-          {returnRecord.pickupScheduledAt ? (
+          {/* Pickup details — pickup_method / pickup_scheduled_at from the API */}
+          {returnRecord.pickupScheduledAt || returnRecord.pickup_scheduled_at ? (
             <AdminPanel title="Pickup">
               <dl className="space-y-3 text-sm">
                 <div>
                   <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Date
+                    Scheduled
                   </dt>
                   <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.pickupDate || "—"}
+                    {formatOrderDate(
+                      returnRecord.pickupScheduledAt || returnRecord.pickup_scheduled_at
+                    ) || "—"}
                   </dd>
                 </div>
                 <div>
@@ -600,81 +665,51 @@ export default function AdminReturnDetail() {
                     Method
                   </dt>
                   <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.pickupMethod || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Reference
-                  </dt>
-                  <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.pickupReference || "—"}
+                    {returnRecord.pickupMethod || returnRecord.pickup_method || "—"}
                   </dd>
                 </div>
               </dl>
             </AdminPanel>
           ) : null}
 
-          {/* Receiving details */}
-          {returnRecord.receivedAt ? (
+          {/* Receiving details — package_condition from the API */}
+          {returnRecord.packageCondition || returnRecord.package_condition ? (
             <AdminPanel title="Receiving">
               <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Received
-                  </dt>
-                  <dd className="mt-1 font-ui text-ink">
-                    {formatOrderDate(returnRecord.receivedAt)}
-                  </dd>
-                </div>
                 <div>
                   <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
                     Package Condition
                   </dt>
                   <dd className="mt-1 font-ui text-ink capitalize">
-                    {returnRecord.packageCondition || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Received By
-                  </dt>
-                  <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.receivedBy || "—"}
+                    {returnRecord.packageCondition || returnRecord.package_condition || "—"}
                   </dd>
                 </div>
               </dl>
             </AdminPanel>
           ) : null}
 
-          {/* Inspection details */}
-          {returnRecord.inspectedAt ? (
+          {/* Inspection details — inspection_condition / _notes from the API */}
+          {returnRecord.inspectionCondition || returnRecord.inspection_condition ? (
             <AdminPanel title="Inspection">
               <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Inspected
-                  </dt>
-                  <dd className="mt-1 font-ui text-ink">
-                    {formatOrderDate(returnRecord.inspectedAt)}
-                  </dd>
-                </div>
                 <div>
                   <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
                     Result
                   </dt>
                   <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.inspectionResult || "—"}
+                    {returnRecord.inspectionCondition || returnRecord.inspection_condition}
                   </dd>
                 </div>
-                <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
-                    Inspected By
-                  </dt>
-                  <dd className="mt-1 font-ui text-ink">
-                    {returnRecord.inspectedBy || "—"}
-                  </dd>
-                </div>
+                {returnRecord.inspectionNotes || returnRecord.inspection_notes ? (
+                  <div>
+                    <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                      Notes
+                    </dt>
+                    <dd className="mt-1 font-ui text-ink">
+                      {returnRecord.inspectionNotes || returnRecord.inspection_notes}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </AdminPanel>
           ) : null}
@@ -907,13 +942,20 @@ export default function AdminReturnDetail() {
 
             <div className="space-y-6">
               {(returnRecord.items || []).map((item) => (
-                <div key={item.lineId} className="border border-mist/70 p-4">
+                <div key={lineKey(item)} className="border border-mist/70 p-4">
                   <div className="flex gap-3">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-16 w-16 shrink-0 bg-surface object-cover"
-                    />
+                    {itemImage(item) ? (
+                      <img
+                        src={itemImage(item)}
+                        alt={item.name}
+                        className="h-16 w-16 shrink-0 bg-surface object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="h-16 w-16 shrink-0 border border-mist/70 bg-surface"
+                        aria-hidden="true"
+                      />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="font-display text-sm font-light text-ink">{item.name}</p>
                       <p className="mt-0.5 font-ui text-[10px] uppercase tracking-widest text-taupe">
@@ -927,16 +969,19 @@ export default function AdminReturnDetail() {
                     <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
                       Condition
                     </label>
+                    <p className="mt-1 font-ui text-[10px] text-slate">
+                      Aggregated into the package-level result the backend records.
+                    </p>
                     <div className="mt-2 flex gap-2">
                       {INSPECTION_CONDITIONS.map((condition) => {
                         const selected =
-                          inspections[item.lineId]?.condition === condition.id ||
-                          (!inspections[item.lineId] && condition.id === "SELLABLE");
+                          inspections[lineKey(item)]?.condition === condition.id ||
+                          (!inspections[lineKey(item)] && condition.id === "SELLABLE");
                         return (
                           <button
                             key={condition.id}
                             type="button"
-                            onClick={() => updateInspection(item.lineId, "condition", condition.id)}
+                            onClick={() => updateInspection(lineKey(item), "condition", condition.id)}
                             className={cn(
                               "border px-3 py-1.5 font-ui text-[10px] uppercase tracking-widest",
                               selected
@@ -957,8 +1002,8 @@ export default function AdminReturnDetail() {
                     </label>
                     <input
                       type="text"
-                      value={inspections[item.lineId]?.notes || ""}
-                      onChange={(e) => updateInspection(item.lineId, "notes", e.target.value)}
+                      value={inspections[lineKey(item)]?.notes || ""}
+                      onChange={(e) => updateInspection(lineKey(item), "notes", e.target.value)}
                       placeholder="Inspection notes"
                       className="mt-1 w-full border border-mist bg-canvas px-3 py-1.5 font-ui text-xs text-ink focus:border-accent focus:outline-none"
                     />

@@ -13,7 +13,7 @@ from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -255,14 +255,16 @@ async def require_admin_permission(
     Contract:
       • An admin carrying at least one role must actually hold every
         requested permission (SUPER_ADMIN role or a `*` permission passes).
-      • An admin with NO role rows at all keeps the surface-level
-        authorization the admin portal has always had. This is the documented
-        compatibility path for databases where the RBAC directory has never
-        been provisioned (the roles table can be empty even though admin
-        accounts exist, because `register_admin` can only attach a role when
-        a `roles` row exists). It is deliberately narrow: it only applies to
-        `user_type == "admin"`, never to customer/employee surfaces, and it
-        disappears as soon as roles are assigned to that account.
+      • An admin with NO role rows is denied — UNLESS the RBAC directory
+        itself has never been provisioned (the roles table is empty), the
+        documented compatibility path for databases where `register_admin`
+        can only attach a role when a `roles` row exists. This keeps the
+        provisioning path open (an empty roles table means the portal has
+        no way to assign roles yet) while closing the hole: once ANY roles
+        exist, an admin without an assignment gets no unrestricted access —
+        every permission-gated call returns 403 until roles are attached.
+        The fallback only ever applies to `user_type == "admin"`, never to
+        customer/employee surfaces.
 
     This reuses the existing Phase-1 RBAC helpers (`users`/`roles`/
     `permissions` join models + the built-in role vocabulary fallback). It is
@@ -270,8 +272,18 @@ async def require_admin_permission(
     """
     roles, permissions = await get_user_roles_and_permissions(user, db)
     if not roles:
-        # Provisioned-but-unassigned fallback: only admins reach this point
-        # because every caller sits behind get_current_admin.
+        # Provisioned-but-unassigned admins are denied. Only an EMPTY roles
+        # table (RBAC directory never provisioned) keeps compatibility
+        # access — and only admins reach this point because every caller
+        # sits behind get_current_admin.
+        roles_table_empty = (
+            await db.execute(select(func.count()).select_from(RoleModel))
+        ).scalar_one() == 0
+        if not roles_table_empty:
+            raise ForbiddenException(
+                "Your admin account has no roles assigned. "
+                "Ask a SUPER_ADMIN to provision your role."
+            )
         return
     permission_set = set(permissions)
     if "SUPER_ADMIN" in roles or "*" in permission_set:

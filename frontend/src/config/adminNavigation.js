@@ -8,6 +8,18 @@
  *
  * This is the ONE centralized Admin navigation definition used by the
  * sidebar; there is no second Admin nav elsewhere.
+ *
+ * CONSOLIDATION (2026-09): simulated / non-durable Admin surfaces were
+ * removed from the visible production navigation and their routes now
+ * redirect safely (see App.jsx):
+ *   • Inventory suite (localStorage simulation — backend ledger is an empty
+ *     stub, blocker B-01)        → deferred, employee portal keeps its routes
+ *   • Media Review Queue (session-mirror only, no durable backend workflow)
+ *   • Media Product Mapping desk (overlaps the canonical Product Media Manager)
+ *   • Standalone Media detail page (session mirror; library stays canonical)
+ *   • Activity log (no backend audit writers exist yet — blocker B-09)
+ * The source files are retained as clearly-deferred code; nothing was
+ * deleted, so these surfaces can return behind real backends.
  */
 
 export const ADMIN_BRAND = {
@@ -53,13 +65,11 @@ export const ADMIN_NAV_GROUPS = [
       { id: "offers", label: "Offers", to: "/admin/offers", icon: "tag" },
       {
         id: "media",
-        label: "Media Management",
+        label: "Media",
         to: "/admin/media",
         icon: "image",
         children: [
-          { id: "media-review", label: "Review Queue", to: "/admin/media/review", icon: "check" },
-          { id: "marketing-media", label: "Marketing Media", to: "/admin/media/marketing", icon: "imagePlay" },
-          { id: "media-product-mapping", label: "Product Mapping", to: "/admin/media/product-mapping", icon: "layers" },
+          { id: "marketing-media", label: "Marketing / HOME_HERO", to: "/admin/media/marketing", icon: "imagePlay" },
         ],
       },
     ],
@@ -83,31 +93,10 @@ export const ADMIN_NAV_GROUPS = [
     ],
   },
   {
-    id: "inventory",
-    label: "Inventory & Operations",
-    icon: "boxes",
-    items: [
-      {
-        id: "inventory",
-        label: "Inventory",
-        to: "/admin/inventory",
-        icon: "boxes",
-        children: [
-          { id: "receive", label: "Receive", to: "/admin/inventory/receive", icon: "inbox" },
-          { id: "adjust", label: "Adjust", to: "/admin/inventory/adjust", icon: "sliders" },
-          { id: "transfers", label: "Transfers", to: "/admin/inventory/transfers", icon: "swap" },
-          { id: "movements", label: "Movements", to: "/admin/inventory/movements", icon: "list" },
-          { id: "low-stock", label: "Low Stock", to: "/admin/inventory/low-stock", icon: "alert" },
-        ],
-      },
-    ],
-  },
-  {
     id: "system",
     label: "System",
     icon: "sliders",
     items: [
-      { id: "activity", label: "Activity", to: "/admin/activity", icon: "list" },
       { id: "settings", label: "Settings", to: "/admin/settings", icon: "sliders" },
     ],
   },

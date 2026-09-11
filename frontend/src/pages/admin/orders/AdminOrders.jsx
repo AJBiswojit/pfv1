@@ -14,7 +14,6 @@ import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import OrderStatusBadge from "../../../components/orders/OrderStatusBadge";
 import { useOrder } from "../../../context/OrderContext";
-import { useInventory } from "../../../context/InventoryContext";
 import { ORDER_STATUS, ORDER_PAYMENT_STATUS, FULFILLMENT_STATUS } from "../../../config/orderConfig";
 import { formatINR } from "../../../utils/shopping";
 import { formatOrderDate } from "../../../utils/orders";
@@ -22,7 +21,6 @@ import { cn } from "../../../utils/cn";
 
 const METRIC_DEFS = [
   { id: "total", label: "Total Orders", icon: Boxes, key: "total" },
-  { id: "today", label: "Today", icon: Clock, key: "today" },
   { id: "pending", label: "Pending Payment", icon: Clock, statuses: [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PLACED] },
   { id: "confirmed", label: "Confirmed", icon: CheckCircle2, statuses: [ORDER_STATUS.ORDER_CONFIRMED, ORDER_STATUS.CONFIRMED, ORDER_STATUS.PAYMENT_CONFIRMED] },
   { id: "processing", label: "Processing", icon: Package, statuses: [ORDER_STATUS.PROCESSING] },
@@ -58,111 +56,137 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
   );
 }
 
+/** Map an order status onto its fulfillment-desk stage (matches the server's
+ * FULFILLMENT_STATUS_GROUPS so display and filtering agree). */
+const FULFILLMENT_STAGE_BY_STATUS = {
+  [ORDER_STATUS.PENDING_PAYMENT]: "PENDING",
+  [ORDER_STATUS.PLACED]: "PENDING",
+  [ORDER_STATUS.ORDER_CONFIRMED]: "PENDING",
+  [ORDER_STATUS.CONFIRMED]: "PENDING",
+  [ORDER_STATUS.PAYMENT_CONFIRMED]: "PENDING",
+  [ORDER_STATUS.PROCESSING]: "PENDING",
+  [ORDER_STATUS.ALLOCATED]: "ALLOCATED",
+  [ORDER_STATUS.PICKING]: "PICKING",
+  [ORDER_STATUS.PACKED]: "PACKED",
+  [ORDER_STATUS.READY_TO_DISPATCH]: "READY_TO_DISPATCH",
+  [ORDER_STATUS.SHIPPED]: "SHIPPED",
+  [ORDER_STATUS.OUT_FOR_DELIVERY]: "OUT_FOR_DELIVERY",
+  [ORDER_STATUS.DELIVERED]: "DELIVERED",
+  [ORDER_STATUS.CANCELLED]: "CANCELLED",
+};
+
 export default function AdminOrders() {
   /**
-   * PHASE 3: the desk now loads the admin order list from the backend on
-   * mount. It previously read `allOrders` from context, which only ever
-   * held the signed-in CUSTOMER's own orders — so in an admin session the
-   * desk rendered fourteen zeroed metric tiles and an empty table that
-   * looked like "no orders exist" rather than "nothing was ever fetched".
+   * BACKEND CONTRACT (admin consolidation, HP-4): the desk requests exactly
+   * the page it displays — search, status, payment, fulfillment stage, date
+   * window and value band all filter server-side against real columns, and
+   * the metric tiles read ONE grouped status count over the WHOLE order
+   * book. It no longer pulls a 100-order snapshot into memory and filters
+   * it in the browser.
    */
-  const { allOrders, refreshAdminOrders, isLoadingOrders, ordersError, ordersErrorStatus } = useOrder();
-  const inventory = useInventory();
+  const { refreshAdminOrders, isLoadingOrders, ordersError, ordersErrorStatus } = useOrder();
 
-  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
-
+  const PAGE_SIZE = 25;
+  const [page, setPage] = useState(1);
+  const [serverPage, setServerPage] = useState({ orders: [], total: 0, statusCounts: null });
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [fulfillmentFilter, setFulfillmentFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [valueFilter, setValueFilter] = useState("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Debounce the search box into the server query.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const metrics = useMemo(() => {
-    const todayCount = allOrders.filter((o) => (o.createdAt ?? "").slice(0, 10) === todayStr).length;
-    const byStatus = (statuses) => allOrders.filter((o) => statuses.includes(o.status)).length;
-    return {
-      total: allOrders.length,
-      today: todayCount,
-      pending: byStatus([ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PLACED]),
-      confirmed: byStatus([ORDER_STATUS.ORDER_CONFIRMED, ORDER_STATUS.CONFIRMED, ORDER_STATUS.PAYMENT_CONFIRMED]),
-      processing: byStatus([ORDER_STATUS.PROCESSING]),
-      allocated: byStatus([ORDER_STATUS.ALLOCATED]),
-      picking: byStatus([ORDER_STATUS.PICKING]),
-      packed: byStatus([ORDER_STATUS.PACKED]),
-      ready: byStatus([ORDER_STATUS.READY_TO_DISPATCH]),
-      shipped: byStatus([ORDER_STATUS.SHIPPED]),
-      out: byStatus([ORDER_STATUS.OUT_FOR_DELIVERY]),
-      delivered: byStatus([ORDER_STATUS.DELIVERED]),
-      cancelled: byStatus([ORDER_STATUS.CANCELLED]),
-      returns: byStatus([ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING, ORDER_STATUS.REFUNDED]),
-    };
-  }, [allOrders, todayStr]);
+  const createdSince = useMemo(() => {
+    if (dateFilter === "today") {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d.toISOString();
+    }
+    const days = dateFilter === "week" ? 7 : dateFilter === "month" ? 30 : null;
+    if (!days) return undefined;
+    return new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+  }, [dateFilter]);
 
-  const filtered = useMemo(() => {
-    return allOrders.filter((order) => {
-      // Search — includes the human-facing order number, which the desk
-      // previously omitted even though it is what staff are quoted.
-      if (search) {
-        const q = search.toLowerCase();
-        const hay = [
-          order.id,
-          order.orderNumber,
-          order.customer?.fullName,
-          order.customer?.email,
-          order.customer?.phone,
-          ...(order.items?.map((i) => i.name) || []),
-          ...(order.items?.map((i) => i.sku) || []),
-          ...(order.items?.map((i) => i.productId) || []),
-          order.tracking?.trackingNumber,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      // Status
-      if (statusFilter !== "all" && order.status !== statusFilter) return false;
-      // Payment
-      if (paymentFilter !== "all" && order.paymentStatus !== paymentFilter) return false;
-      // Fulfillment
-      if (fulfillmentFilter !== "all" && order.fulfillment?.status !== fulfillmentFilter) return false;
-      // Location
-      if (locationFilter !== "all") {
-        if (locationFilter === "store" && order.fulfillment?.fulfillmentType !== "STORE") return false;
-        if (locationFilter === "warehouse" && order.fulfillment?.fulfillmentType !== "WAREHOUSE") return false;
-        if (["loc-main-store", "loc-main-warehouse"].includes(locationFilter) && order.fulfillment?.sourceLocationId !== locationFilter) return false;
-      }
-      // Date
-      if (dateFilter !== "all") {
-        const created = new Date(order.createdAt);
-        const now = new Date();
-        if (dateFilter === "today" && created.toISOString().slice(0, 10) !== todayStr) return false;
-        if (dateFilter === "week" && now - created > 7 * 24 * 3600 * 1000) return false;
-        if (dateFilter === "month" && now - created > 30 * 24 * 3600 * 1000) return false;
-      }
-      // Value
-      if (valueFilter !== "all") {
-        const total = order.pricing?.total || 0;
-        if (valueFilter === "low" && total >= 5000) return false;
-        if (valueFilter === "mid" && (total < 5000 || total > 20000)) return false;
-        if (valueFilter === "high" && total <= 20000) return false;
-      }
-      return true;
+  const queryParams = useMemo(
+    () => ({
+      page,
+      pageSize: PAGE_SIZE,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      paymentStatus: paymentFilter !== "all" ? paymentFilter : undefined,
+      fulfillment: fulfillmentFilter !== "all" ? fulfillmentFilter : undefined,
+      createdSince,
+      valueBand: valueFilter !== "all" ? valueFilter : undefined,
+      q: search || undefined,
+    }),
+    [page, statusFilter, paymentFilter, fulfillmentFilter, createdSince, valueFilter, search]
+  );
+
+  useEffect(() => {
+    let alive = true;
+    refreshAdminOrders(queryParams).then((result) => {
+      if (!alive || !result.ok) return;
+      setServerPage({
+        orders: result.orders ?? [],
+        total: result.total ?? 0,
+        statusCounts: result.statusCounts ?? null,
+      });
     });
-  }, [allOrders, search, statusFilter, paymentFilter, fulfillmentFilter, locationFilter, dateFilter, valueFilter, todayStr]);
+    return () => { alive = false; };
+  }, [queryParams, attempt, refreshAdminOrders]);
 
-  const locationName = (order) => {
-    const id = order.fulfillment?.sourceLocationId;
-    if (!id) return "—";
-    const loc = inventory.locations.find((l) => l.id === id);
-    return loc?.name || id;
+  const retry = () => setAttempt((a) => a + 1);
+
+  const resetToFirstPage = (setter) => (value) => {
+    setter(value);
+    setPage(1);
   };
 
+  const orders = serverPage.orders;
+
+  // Tiles read the grouped status counts over the whole order book —
+  // exact numbers, never "whatever happened to be on the page".
+  const metrics = useMemo(() => {
+    const counts = serverPage.statusCounts ?? {};
+    const statusCount = (statuses) =>
+      statuses.reduce((sum, status) => sum + (Number(counts[status]) || 0), 0);
+    const total = Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    return {
+      total,
+      pending: statusCount([ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PLACED]),
+      confirmed: statusCount([ORDER_STATUS.ORDER_CONFIRMED, ORDER_STATUS.CONFIRMED, ORDER_STATUS.PAYMENT_CONFIRMED]),
+      processing: statusCount([ORDER_STATUS.PROCESSING]),
+      allocated: statusCount([ORDER_STATUS.ALLOCATED]),
+      picking: statusCount([ORDER_STATUS.PICKING]),
+      packed: statusCount([ORDER_STATUS.PACKED]),
+      ready: statusCount([ORDER_STATUS.READY_TO_DISPATCH]),
+      shipped: statusCount([ORDER_STATUS.SHIPPED]),
+      out: statusCount([ORDER_STATUS.OUT_FOR_DELIVERY]),
+      delivered: statusCount([ORDER_STATUS.DELIVERED]),
+      cancelled: statusCount([ORDER_STATUS.CANCELLED]),
+      returns: statusCount([ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING, ORDER_STATUS.REFUNDED]),
+    };
+  }, [serverPage.statusCounts]);
+
+  const filtered = orders;
+
+  const totalPages = Math.max(1, Math.ceil(serverPage.total / PAGE_SIZE));
+  const rangeStart = serverPage.total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(serverPage.total, page * PAGE_SIZE);
+
+  const fulfillmentStage = (order) =>
+    FULFILLMENT_STAGE_BY_STATUS[order.status] || order.fulfillment?.status || "PENDING";
   return (
     <AdminPage
       eyebrow="Sales / Orders"
@@ -183,7 +207,7 @@ export default function AdminOrders() {
       }
     >
       {/* Loading / error — never rendered as an empty order book. */}
-      {isLoadingOrders && allOrders.length === 0 ? (
+      {isLoadingOrders && serverPage.orders.length === 0 ? (
         <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
           Loading orders…
         </p>
@@ -236,7 +260,7 @@ export default function AdminOrders() {
             </div>
             <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
               Status
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
                 <option value="all">All statuses</option>
                 {Object.values(ORDER_STATUS).map((s) => (
                   <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
@@ -262,37 +286,34 @@ export default function AdminOrders() {
               </select>
             </label>
             <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
-              Location
-              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
-                <option value="all">All locations</option>
-                <option value="store">Main Store</option>
-                <option value="warehouse">Main Warehouse</option>
-                <option value="loc-main-store">Store (exact)</option>
-                <option value="loc-main-warehouse">Warehouse (exact)</option>
-              </select>
-            </label>
-            <div className="flex gap-2 lg:col-span-12">
-              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="h-8 border border-mist bg-canvas px-2 font-ui text-[11px] outline-none">
+              Placed
+              <select value={dateFilter} onChange={(e) => resetToFirstPage(setDateFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
                 <option value="all">All dates</option>
                 <option value="today">Today</option>
                 <option value="week">Last 7 days</option>
                 <option value="month">Last 30 days</option>
               </select>
-              <select value={valueFilter} onChange={(e) => setValueFilter(e.target.value)} className="h-8 border border-mist bg-canvas px-2 font-ui text-[11px] outline-none">
+            </label>
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+              Value
+              <select value={valueFilter} onChange={(e) => resetToFirstPage(setValueFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
                 <option value="all">All values</option>
                 <option value="low">Under ₹5k</option>
                 <option value="mid">₹5k–₹20k</option>
                 <option value="high">Above ₹20k</option>
               </select>
+            </label>
+            <div className="flex gap-2 lg:col-span-12">
               <button
                 onClick={() => {
+                  setSearchInput("");
                   setSearch("");
                   setStatusFilter("all");
                   setPaymentFilter("all");
                   setFulfillmentFilter("all");
-                  setLocationFilter("all");
                   setDateFilter("all");
                   setValueFilter("all");
+                  setPage(1);
                 }}
                 className="px-3 font-ui text-[10px] uppercase tracking-[.13em] text-accent hover:underline"
               >
@@ -308,13 +329,15 @@ export default function AdminOrders() {
           <div className="relative min-w-[200px]">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-taupe" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search orders"
               className="h-8 w-full border border-mist bg-canvas pl-7 pr-2 font-ui text-xs outline-none"
             />
           </div>
-          <span className="font-ui text-[11px] text-taupe self-center whitespace-nowrap">{filtered.length} orders</span>
+          <span className="font-ui text-[11px] text-taupe self-center whitespace-nowrap">
+            {serverPage.total} order{serverPage.total === 1 ? "" : "s"}
+          </span>
         </div>
 
         {/* Table desktop */}
@@ -341,8 +364,7 @@ export default function AdminOrders() {
                   <td className="px-4 py-3 font-ui text-sm">{formatINR(order.pricing?.total)}</td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.paymentStatus} kind="payment" /></td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3 font-ui text-[11px]">{order.fulfillment?.status || "PENDING"}</td>
-                  <td className="px-4 py-3 font-ui text-xs">{locationName(order)}</td>
+                  <td className="px-4 py-3 font-ui text-[11px]">{fulfillmentStage(order)}</td>
                   <td className="px-4 py-3 font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
                     <Link to={`/admin/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent">
@@ -353,7 +375,38 @@ export default function AdminOrders() {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && <p className="p-8 text-center font-ui text-sm text-taupe">No orders match these filters.</p>}
+          {filtered.length === 0 && !isLoadingOrders && !ordersError && (
+            <p className="p-8 text-center font-ui text-sm text-taupe">No orders match these filters.</p>
+          )}
+          {filtered.length === 0 && isLoadingOrders && (
+            <p role="status" aria-live="polite" aria-busy="true" className="p-8 text-center font-ui text-sm text-taupe">Loading orders…</p>
+          )}
+
+          {/* Server pagination (HP-4): one bounded page per request. */}
+          <div className="flex items-center justify-between border-t border-mist/60 px-4 py-3">
+            <p className="font-ui text-[11px] text-taupe" aria-live="polite">
+              {serverPage.total > 0 ? `Showing ${rangeStart}–${rangeEnd} of ${serverPage.total}` : "No orders"}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || isLoadingOrders}
+                className="border border-mist bg-canvas px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40"
+              >
+                Prev
+              </button>
+              <span className="font-ui text-[11px] text-ink">Page {page} of {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || isLoadingOrders}
+                className="border border-mist bg-canvas px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Cards mobile */}
@@ -370,7 +423,7 @@ export default function AdminOrders() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <OrderStatusBadge status={order.paymentStatus} kind="payment" />
-                <span className="font-ui text-[10px] px-2 py-1 border border-mist bg-surface text-taupe">{order.fulfillment?.status || "PENDING"} · {locationName(order)}</span>
+                <span className="font-ui text-[10px] px-2 py-1 border border-mist bg-surface text-taupe">{fulfillmentStage(order)}</span>
               </div>
               <p className="mt-2 font-ui text-[10px] text-taupe">{formatOrderDate(order.createdAt)} · {order.customer?.email}</p>
             </Link>
@@ -388,22 +441,22 @@ export default function AdminOrders() {
             </div>
             <div className="space-y-4">
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Search
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Order, customer, product" className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs" />
+                <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Order, customer" className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs" />
               </label>
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Status
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(ORDER_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Payment
-                <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                <select value={paymentFilter} onChange={(e) => resetToFirstPage(setPaymentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(ORDER_PAYMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Fulfillment
-                <select value={fulfillmentFilter} onChange={(e) => setFulfillmentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                <select value={fulfillmentFilter} onChange={(e) => resetToFirstPage(setFulfillmentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(FULFILLMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
