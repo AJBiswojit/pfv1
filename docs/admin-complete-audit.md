@@ -507,6 +507,24 @@ Authorized-path (403) behavior **requires a database** and was **not verifiable 
 
 Expected-behavior matrix (expected, per spec): unauthenticated → 401 ✅ (runtime-verified); authenticated-but-unauthorized → 403 ⚠️ only enforced via user_type + (partially) permissions; authorized → 200 ✅. Customer isolation: customer tokens rejected by `get_current_admin` (403) — code-verified; runtime 403 verification pending DB.
 
+### 16.3 Consolidation update (2026-09-11) — supersedes the static findings above where noted
+
+Unified authentication + 4-level RBAC landed; full reference:
+`docs/admin-rbac-authentication-architecture.md`.
+
+| # | Status after consolidation |
+|---|---|
+| S-1 | RESOLVED earlier (all admin order handlers call `require_admin_permission`) — still pinned by `tests/unit/test_admin_consolidation_rbac.py` |
+| S-2 | RESOLVED — `/admin/employees*` now runs on `get_current_account_manager` + `require_staff_permission` + the hierarchy ceiling (creation matrix, delegation, roster privacy); no-role/no-permission admin actions are 403 |
+| S-3 | RESOLVED for permission breadth — analytics/audit/users/roles/permissions keep `require_admin_permission` with canonical/legacy codes resolving through the shared expansion |
+| S-4 | TIGHTENED — the compat fallback applies only when an admin has NO roles AND no custom grants AND a derived non-blocking level; the ADMIN-gets-`"*"` leak in `AuthService._get_user_roles_and_permissions` is removed (delegates to the single cached resolver) |
+| S-5 | RESOLVED — one login (`/login` → `POST /auth/staff/sign-in`), server-derived workspace/level; the frontend guard admits SUPER_ADMIN **and** ADMIN (was SUPER_ADMIN-only — a UI lockout), capability filtering is UX over the same contract strings |
+| S-6 | RESOLVED — one catalogue (`app/core/rbac.py` role defs; `admin.py` re-exports; `/admin/roles` dedupes aliases); one expansion map; frontend mirrors it and a contract test fails on drift |
+| S-11 | PRESERVED — the new unified sign-in carries the same `@limiter.limit` decorator |
+| — | NEW pins: `tests/unit/test_unified_rbac_consolidation.py` (30 tests: matrix/ceiling/enumeration/cache-invalidation/DTO claims) and `frontend/tests/rbacContract.test.js` + `frontend/tests/unifiedLogin.test.js` |
+| 16.1 runtime note | 403-path runtime verification still requires a live DB run (unchanged); all logic paths are covered by unit/contract tests without one |
+
+
 ---
 
 ## 17. Admin State / Frontend Performance Audit

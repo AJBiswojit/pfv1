@@ -52,7 +52,9 @@ import { loadAttendanceSettings } from "./settings";
 
 const fail = (message, extras = {}) => ({ ok: false, message, record: null, ...extras });
 
-const evaluateTiming = (date, checkInIso, checkOutIso, settings) => {
+// exported for the backend-contract test (`tests/workforceRules.test.js`) only;
+// production code keeps using the action functions below.
+export const evaluateTiming = (date, checkInIso, checkOutIso, settings) => {
   const start = timeOnDate(date, settings.workingStartTime);
   const end = timeOnDate(date, settings.workingEndTime);
   const threshold = start
@@ -78,7 +80,7 @@ const evaluateTiming = (date, checkInIso, checkOutIso, settings) => {
   return { lateMinutes, workMinutes, earlyLeaveMinutes };
 };
 
-const statusAfterPunch = ({ date, checkIn, checkOut, settings, onLeave, calendar }) => {
+export const statusAfterPunch = ({ date, checkIn, checkOut, settings, onLeave, calendar }) => {
   if (onLeave) return ATTENDANCE_STATUS.LEAVE;
   if (calendar?.status === ATTENDANCE_STATUS.HOLIDAY || calendar?.status === ATTENDANCE_STATUS.WEEK_OFF) {
     return checkIn ? ATTENDANCE_STATUS.ON_DUTY : calendar.status;

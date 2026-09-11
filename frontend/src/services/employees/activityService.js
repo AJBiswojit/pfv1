@@ -114,7 +114,13 @@ export const ACTIVITY_ACTIONS = {
   LEAVE_REQUESTED: "LEAVE_REQUESTED",
   LEAVE_APPROVED: "LEAVE_APPROVED",
   LEAVE_REJECTED: "LEAVE_REJECTED",
+  LEAVE_CANCELLED: "LEAVE_CANCELLED",
   PERFORMANCE_REVIEWED: "PERFORMANCE_REVIEWED",
+  /* Written by the server (workforce hardening pass) — labels complete the
+     shared vocabulary so the desk never degrades these to a generic "Activity". */
+  PERFORMANCE_REVIEW_RECORDED: "PERFORMANCE_REVIEW_RECORDED",
+  PERFORMANCE_REVIEW_UPDATED: "PERFORMANCE_REVIEW_UPDATED",
+  ACCESS_DENIED: "ACCESS_DENIED",
 
   /* AI assistants — Phase 21.1. The demo shopping and business assistants
      note their use in this same diary, never a second log. */
@@ -236,7 +242,11 @@ const ACTION_LABELS = {
   [ACTIVITY_ACTIONS.LEAVE_REQUESTED]: "Leave requested",
   [ACTIVITY_ACTIONS.LEAVE_APPROVED]: "Leave approved",
   [ACTIVITY_ACTIONS.LEAVE_REJECTED]: "Leave rejected",
+  [ACTIVITY_ACTIONS.LEAVE_CANCELLED]: "Leave cancelled",
   [ACTIVITY_ACTIONS.PERFORMANCE_REVIEWED]: "Performance reviewed",
+  [ACTIVITY_ACTIONS.PERFORMANCE_REVIEW_RECORDED]: "Performance review recorded",
+  [ACTIVITY_ACTIONS.PERFORMANCE_REVIEW_UPDATED]: "Performance review updated",
+  [ACTIVITY_ACTIONS.ACCESS_DENIED]: "Access denied",
 };
 
 export const getActivityLabel = (action) => ACTION_LABELS[action] ?? "Activity";

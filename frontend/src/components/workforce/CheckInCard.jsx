@@ -4,7 +4,8 @@ import { ATTENDANCE_STATUS } from "../../config/attendanceConfig";
 import { PERMISSIONS } from "../../config/employeePermissions";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { useWorkforce } from "../../context/WorkforceContext";
-import { checkIn, checkOut, getTodayAttendance } from "../../services/workforce/attendanceService";
+import { getTodayAttendance } from "../../services/workforce/attendanceService";
+import { apiPunchIn, apiPunchOut } from "../../services/workforce/workforceApi";
 import { resolveEmployeeLocation } from "../../services/workforce/location";
 import { formatMinutes, formatTime } from "../../services/workforce/dateUtils";
 import { isEmployeeInactiveForOps } from "../../services/workforce/scope";
@@ -12,7 +13,7 @@ import { AttendanceStatusBadge } from "./WorkforceBadges";
 
 export default function CheckInCard({ employee: employeeOverride = null, compact = false }) {
   const { employee: sessionEmployee, hasPermission } = useEmployeeAuth();
-  const { revision } = useWorkforce();
+  const { revision, refresh } = useWorkforce();
   const employee = employeeOverride || sessionEmployee;
   const record = employee ? getTodayAttendance(employee.employeeId) : null;
   const location = employee ? resolveEmployeeLocation(employee) : null;
@@ -28,13 +29,19 @@ export default function CheckInCard({ employee: employeeOverride = null, compact
   const checkedOut = Boolean(record.checkOut);
   const onLeave = record.status === ATTENDANCE_STATUS.LEAVE;
 
+  // The SERVER owns punch legality (duplicate guards, leave, clock). The
+  // response carries the stored row back and the mirror is re-hydrated from
+  // it — the card never pretends a punch succeeded on a failed request.
   const run = async (action) => {
     setBusy(true);
-    const result = action === "in"
-      ? checkIn({ employeeId: employee.employeeId, actor: sessionEmployee })
-      : checkOut({ employeeId: employee.employeeId, actor: sessionEmployee });
+    const result = action === "in" ? await apiPunchIn() : await apiPunchOut();
+    if (result.ok) {
+      await refresh();
+      setMessage(result.message || (action === "in" ? "Checked in." : "Checked out."));
+    } else {
+      setMessage(result.error || result.message || "The punch could not be recorded.");
+    }
     setBusy(false);
-    setMessage(result.message || "");
   };
 
   void revision;

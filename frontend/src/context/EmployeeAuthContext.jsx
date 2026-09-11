@@ -27,18 +27,16 @@ import {
 } from "react";
 import { canAccessPath, hasPermission as permit } from "../services/employees/authorization";
 import {
-  apiSignInEmployee,
+  apiSignInStaff,
   apiChangePasswordEmployee,
   apiSignOutEmployee,
   apiRestoreEmployeeSession,
 } from "../services/api/authApi";
 import { writeStorage } from "../utils/shopping";
 import { clearTokens, getAccessToken } from "../services/api/apiClient";
-import {
-  checkIn as punchIn,
-  checkOut as punchOut,
-  getTodayAttendance,
-} from "../services/workforce/attendanceService";
+import { getTodayAttendance } from "../services/workforce/attendanceService";
+import { apiPunchIn as punchIn, apiPunchOut as punchOut } from "../services/workforce/workforceApi";
+import { hydrateAttendance } from "../services/workforce/workforceSync";
 
 const EmployeeAuthContext = createContext(null);
 
@@ -119,14 +117,24 @@ export function EmployeeAuthProvider({ children }) {
 
   const signIn = useCallback(async ({ employeeId, password }) => {
     setIsLoading(true);
-    const result = await apiSignInEmployee({ employeeId, password });
+    // Canonical unified flow (/auth/staff/sign-in): the backend resolves the
+    // account level from the credential; employee-domain levels establish the
+    // employee session. Admin-workspace credentials are refused here with
+    // guidance — the portals share ONE login page but keep isolated sessions.
+    const result = await apiSignInStaff({ identifier: employeeId, password });
     setIsLoading(false);
 
     if (!result.ok) return result;
+    if (result.workspace !== "employee") {
+      clearTokens("admin");
+      return {
+        ok: false,
+        error: "This credential belongs to an Admin workspace account. Continue from the unified sign-in page.",
+      };
+    }
 
-    // apiSignInEmployee already persisted the JWT under the employee-scoped
-    // keys (apiClient derives the scope from the request path), so customer
-    // and admin sessions are never clobbered.
+    // apiSignInStaff already persisted the JWT under the employee-scoped
+    // keys, so customer and admin sessions are never clobbered.
     setSession({ employee: result.employee, isAuthenticated: true });
     return result;
   }, []);
@@ -187,7 +195,7 @@ export function EmployeeAuthProvider({ children }) {
     [employee]
   );
 
-  // ── Attendance (still local until Phase J) ────────────────────────────────
+  // ── Attendance — server-authoritative (mirror re-read after each punch) ──
 
   const getAttendance = useCallback(() => {
     if (!employee) return null;
@@ -196,14 +204,18 @@ export function EmployeeAuthProvider({ children }) {
     return { ...record, checkedInAt: record.checkIn, checkedOutAt: record.checkOut };
   }, [employee]);
 
-  const checkIn = useCallback(() => {
+  const checkIn = useCallback(async () => {
     if (!employee) return { ok: false };
-    return punchIn({ employeeId: employee.employeeId ?? employee.id, actor: employee });
+    const result = await punchIn();
+    if (result.ok) await hydrateAttendance({ employeeCode: employee.employeeId ?? employee.id });
+    return result;
   }, [employee]);
 
-  const checkOut = useCallback(() => {
+  const checkOut = useCallback(async () => {
     if (!employee) return { ok: false };
-    return punchOut({ employeeId: employee.employeeId ?? employee.id, actor: employee });
+    const result = await punchOut();
+    if (result.ok) await hydrateAttendance({ employeeCode: employee.employeeId ?? employee.id });
+    return result;
   }, [employee]);
 
   // ── Context value ─────────────────────────────────────────────────────────

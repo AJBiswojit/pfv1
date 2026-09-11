@@ -41,12 +41,26 @@ class EmployeeCreateRequest(BaseModel):
     joiningDate: Optional[date] = Field(None, description="ISO date YYYY-MM-DD")
     shift: Optional[str] = Field(None, max_length=50, description="e.g. MORNING, EVENING")
 
+    # Account level (unified four-level model). Omitted == EMPLOYEE.
+    # The SERVER enforces the creation matrix and the delegation ceiling —
+    # ADMIN/SUPER_ADMIN targets require an admin creator, SUPER_EMPLOYEE
+    # targets require SUPER_ADMIN/ADMIN/SUPER_EMPLOYEE, and an EMPLOYEE
+    # creator is always rejected.
+    accountLevel: Optional[str] = Field(
+        None, description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE)"
+    )
+
     # Permission override
     permissionMode: Optional[str] = Field(
         None, description="role | custom — if custom, permissions[] is applied"
     )
     permissions: Optional[List[str]] = Field(
-        None, description="Custom permission list (used when permissionMode=custom)"
+        None,
+        description=(
+            "Capability assignment at creation. Accepts canonical capability codes "
+            "(catalogue.view, orders.manage, people.view …) or the legacy granular "
+            "codes; the backend maps both onto the same authorization model."
+        ),
     )
 
     # Designation (legacy / additional detail)
@@ -86,7 +100,11 @@ class EmployeeUpdateRequest(BaseModel):
     section_id: Optional[str] = None
     store: Optional[str] = Field(None, max_length=100)
     shift: Optional[str] = Field(None, max_length=50)
-    role: Optional[str] = None
+    role: Optional[str] = Field(None, description="Business role (canonical catalogue name or legacy alias)")
+    accountLevel: Optional[str] = Field(
+        None,
+        description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE — SUPER_ADMIN creators only",
+    )
     joiningDate: Optional[date] = None
 
     @model_validator(mode="after")
@@ -169,3 +187,13 @@ class EmployeeResponse(BaseModel):
     profile: Optional[EmployeeProfileDTO]
     roles: Optional[List[str]] = None
     permissions: Optional[List[str]] = None
+    # ── Unified account model (contract-aligned with the frontend) ─────────
+    account_level: Optional[str] = None
+    accountLevel: Optional[str] = None
+    business_role: Optional[str] = None
+    businessRole: Optional[str] = None
+    permission_mode: Optional[str] = None
+    permissionMode: Optional[str] = None
+    # Returned ONLY by the create call (one-time temporary credential);
+    # never persisted, never present on list/get responses.
+    temporaryPassword: Optional[str] = None

@@ -93,7 +93,7 @@ export default function EmployeeForgotPassword() {
           )}
 
           <div className="mt-8 border-t border-mist/70 pt-6">
-            <Link to="/employee/login" className="inline-flex items-center gap-1.5 font-ui text-xs text-graphite hover:text-accent">
+            <Link to="/login" className="inline-flex items-center gap-1.5 font-ui text-xs text-graphite hover:text-accent">
               <ArrowLeft size={13} aria-hidden="true" /> Back to employee sign in
             </Link>
           </div>

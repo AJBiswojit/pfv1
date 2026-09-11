@@ -41,7 +41,7 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
   const handleSignOut = () => {
     setMenuOpen(false);
     signOut();
-    navigate("/admin/login", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (

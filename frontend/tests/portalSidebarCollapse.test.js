@@ -72,7 +72,10 @@ test("Admin and Employee persist collapse independently", () => {
 test("both portals reuse PortalSidebar and PortalShell rather than a second nav tree", () => {
   assert.match(adminSidebar, /<PortalSidebar/);
   assert.match(employeeSidebar, /<PortalSidebar/);
-  assert.match(adminSidebar, /groups=\{ADMIN_NAV_GROUPS\}/);
+  // Admin nav is capability-FILTERED, but from the single ADMIN_NAV_GROUPS
+  // configuration — still one nav tree, not a parallel one.
+  assert.match(adminSidebar, /groups=\{groups\}/);
+  assert.match(adminSidebar, /filterAdminNav\(ADMIN_NAV_GROUPS/);
   assert.match(employeeSidebar, /groups=\{groups\}/);
   assert.match(employeeSidebar, /navigationForRole/);
   assert.match(adminLayout, /<PortalShell/);

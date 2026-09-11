@@ -8,7 +8,9 @@ import EmployeeField, { employeeInputClass } from "../../../components/employee/
 import StatusBadge from "../../../components/employee/StatusBadge";
 import { AtelierButton } from "../../../design-system";
 import { useEmployeeManagement } from "../../../context/EmployeeManagementContext";
+import { useEmployeesBase } from "./employeesBase";
 import { ROLE_OPTIONS, getRoleLabel } from "../../../config/employeeRoles";
+import { ACCOUNT_LEVEL_META } from "../../../config/rbacModel";
 import { DEPARTMENT_OPTIONS, getDepartmentLabel } from "../../../config/employeeDepartments";
 import { STATUS_OPTIONS, EMPLOYEE_STATUS, canEmployeeLogin } from "../../../config/employeeStatus";
 import { getPermissionLabel } from "../../../config/employeePermissions";
@@ -40,7 +42,8 @@ const permissionSummary = (person) => {
   return `${labels.join(", ")}${remaining > 0 ? ` +${remaining}` : ""}`;
 };
 
-export default function AdminEmployees() {
+export default function AdminEmployees({ basePath } = {}) {
+  const base = useEmployeesBase(basePath);
   const {
     employees,
     getEmployees,
@@ -93,7 +96,7 @@ export default function AdminEmployees() {
       title={<>Employee <span className="italic text-accent">accounts.</span></>}
       description="Create and administer employee access. Attendance, performance and day-to-day operations remain in the Employee Portal."
       actions={
-        <AtelierButton as={Link} to="/admin/employees/new" size="chip">
+        <AtelierButton as={Link} to={`${base}/new`} size="chip">
           Add employee
         </AtelierButton>
       }
@@ -154,14 +157,27 @@ export default function AdminEmployees() {
               label: "Employee",
               render: (row) => (
                 <div>
-                  <Link to={`/admin/employees/${row.employeeId}`} className="font-medium text-ink hover:text-accent">
+                  <Link to={`${base}/${row.employeeId}`} className="font-medium text-ink hover:text-accent">
                     {employeeFullName(row)}
                   </Link>
                   <p className="mt-1 text-[11px] text-taupe">{row.employeeId} · {row.email}</p>
                 </div>
               ),
             },
-            { id: "role", label: "Role", render: (row) => getRoleLabel(row.role) },
+            {
+              id: "role",
+              label: "Role",
+              render: (row) => (
+                <span className="flex flex-wrap items-center gap-2">
+                  {getRoleLabel(row.role)}
+                  {/* Account level from the unified hierarchy (mirrors the
+                      server-derived accountLevel on the DTO). */}
+                  <span className="border border-pearl px-2 py-0.5 font-ui text-[9px] uppercase tracking-[.14em] text-taupe">
+                    {ACCOUNT_LEVEL_META[row.accountLevel]?.label ?? "Employee"}
+                  </span>
+                </span>
+              ),
+            },
             { id: "department", label: "Department", render: (row) => getDepartmentLabel(row.department) },
             { id: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
             { id: "permissions", label: "Permissions", render: permissionSummary },
@@ -175,8 +191,8 @@ export default function AdminEmployees() {
               label: "Actions",
               render: (row) => (
                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-[12px]">
-                  <Link to={`/admin/employees/${row.employeeId}`} className="text-brass hover:text-accent">View</Link>
-                  <Link to={`/admin/employees/${row.employeeId}/edit`} className="text-brass hover:text-accent">Edit</Link>
+                  <Link to={`${base}/${row.employeeId}`} className="text-brass hover:text-accent">View</Link>
+                  <Link to={`${base}/${row.employeeId}/edit`} className="text-brass hover:text-accent">Edit</Link>
                   <button
                     type="button"
                     disabled={Boolean(busyId)}

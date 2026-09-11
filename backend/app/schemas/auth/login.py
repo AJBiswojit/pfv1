@@ -108,6 +108,35 @@ class AdminLoginRequest(BaseModel):
         return self
 
 
+class StaffLoginRequest(BaseModel):
+    """
+    UNIFIED staff sign-in (one login experience for all four account levels).
+
+    Body: { identifier, password } where identifier may be:
+      • email (SUPER_ADMIN / ADMIN / employee accounts)
+      • phone  (legacy staff accounts registered by phone)
+      • employee code PF-<PREFIX>-##### (employee-domain accounts)
+
+    The backend determines the account level and the authorized workspace —
+    the frontend never picks the login surface itself.
+    """
+    identifier: str = Field(..., min_length=1, description="Email, phone, or employee ID")
+    # aliases for the existing per-surface login bodies (documented compat)
+    adminId: Optional[str] = None
+    employeeId: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: str = Field(..., min_length=1)
+    remember: Optional[bool] = True
+
+    @model_validator(mode="after")
+    def resolve_identifier(self) -> "StaffLoginRequest":
+        if not self.identifier:
+            self.identifier = self.adminId or self.employeeId or self.email or ""
+        if not self.identifier:
+            raise ValueError("Enter your email or employee ID.")
+        return self
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 

@@ -5,7 +5,21 @@
  * Admin: CRUD, status, reset-password, permissions, departments, sections, attendance
  * Employee self-service: /employee/me, /employee/attendance
  */
-import { apiClient, ApiError, handleError } from "./apiClient";
+import { apiClient, ApiError, getAccessToken, handleError } from "./apiClient";
+
+/**
+ * Session-scope resolution for the canonical account-management API.
+ *
+ * Admin-workspace actors call /admin/employees with the admin-scoped token.
+ * SUPER_EMPLOYEE actors (Employee workspace) call the SAME endpoints with
+ * their employee-scoped token — one API, one authorization matrix, enforced
+ * server-side; the scope only selects which isolated token is attached.
+ */
+export const resolveAccountScope = () => {
+  if (getAccessToken("admin")) return "admin";
+  if (getAccessToken("employee")) return "employee";
+  return "admin";
+};
 
 function normEmployee(u) {
   if (!u) return u;
@@ -19,7 +33,10 @@ function normEmployee(u) {
     email:              u.email       ?? "",
     phone:              u.phone       ?? "",
     status:             u.status      ?? "ACTIVE",
-    role:               (u.roles ?? [])[0] ?? u.role ?? "EMPLOYEE",
+    role:               u.businessRole ?? u.business_role ?? (u.roles ?? [])[0] ?? u.role ?? "EMPLOYEE",
+    accountLevel:       u.accountLevel ?? u.account_level ?? "EMPLOYEE",
+    businessRole:       u.businessRole ?? u.business_role ?? null,
+    permissionMode:     u.permissionMode ?? u.permission_mode ?? "role",
     department:         profile.department ?? u.department ?? "",
     designation:        profile.designation ?? u.designation ?? "",
     permissions:        u.permissions ?? [],
@@ -40,7 +57,7 @@ export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, s
     if (search)       qs.set("search", search);
     if (status)       qs.set("status", status);
     if (departmentId) qs.set("department_id", departmentId);
-    const data = await apiClient.get(`/admin/employees?${qs}`, { scope: "admin" });
+    const data = await apiClient.get(`/admin/employees?${qs}`, { scope: resolveAccountScope() });
     const items = (data.items ?? data.data ?? data ?? []).map((e) => normEmployee(e.data ?? e));
     return { ok: true, items, total: data.total ?? items.length };
   } catch (err) { return handleError(err); }
@@ -49,7 +66,7 @@ export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, s
 /** GET /admin/employees/{id} */
 export async function apiAdminGetEmployee(id) {
   try {
-    const data = await apiClient.get(`/admin/employees/${id}`, { scope: "admin" });
+    const data = await apiClient.get(`/admin/employees/${id}`, { scope: resolveAccountScope() });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -57,15 +74,17 @@ export async function apiAdminGetEmployee(id) {
 /** POST /admin/employees */
 export async function apiAdminCreateEmployee(body) {
   try {
-    const data = await apiClient.post("/admin/employees", body, { scope: "admin" });
-    return { ok: true, employee: normEmployee(data.data ?? data) };
+    const data = await apiClient.post("/admin/employees", body, { scope: resolveAccountScope() });
+    const payload = data.data ?? data;
+    // The one-time temporary password surfaces here ONLY; it is never persisted client-side.
+    return { ok: true, employee: normEmployee(payload), temporaryPassword: payload.temporaryPassword ?? null };
   } catch (err) { return handleError(err); }
 }
 
 /** PATCH /admin/employees/{id} */
 export async function apiAdminUpdateEmployee(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/employees/${id}`, body, { scope: "admin" });
+    const data = await apiClient.patch(`/admin/employees/${id}`, body, { scope: resolveAccountScope() });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -73,7 +92,7 @@ export async function apiAdminUpdateEmployee(id, body) {
 /** POST /admin/employees/{id}/status  body: { status } */
 export async function apiAdminUpdateEmployeeStatus(id, status) {
   try {
-    const data = await apiClient.post(`/admin/employees/${id}/status`, { status }, { scope: "admin" });
+    const data = await apiClient.post(`/admin/employees/${id}/status`, { status }, { scope: resolveAccountScope() });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -81,15 +100,20 @@ export async function apiAdminUpdateEmployeeStatus(id, status) {
 /** POST /admin/employees/{id}/reset-password */
 export async function apiAdminResetEmployeePassword(id, body = {}) {
   try {
-    const data = await apiClient.post(`/admin/employees/${id}/reset-password`, body, { scope: "admin" });
-    return { ok: true, message: data.message ?? "Password reset." };
+    const data = await apiClient.post(`/admin/employees/${id}/reset-password`, body, { scope: resolveAccountScope() });
+    return {
+      ok: true,
+      message: data.message ?? "Password reset.",
+      // Server returns the one-time value only here (data.data on the ApiResponse envelope).
+      temporaryPassword: (data.data ?? {}).temporaryPassword ?? data.temporaryPassword ?? null,
+    };
   } catch (err) { return handleError(err); }
 }
 
 /** PUT /admin/employees/{id}/permissions  body: { permissionMode, permissions } */
 export async function apiAdminUpdateEmployeePermissions(id, { permissionMode, permissions }) {
   try {
-    const data = await apiClient.put(`/admin/employees/${id}/permissions`, { permissionMode, permissions }, { scope: "admin" });
+    const data = await apiClient.put(`/admin/employees/${id}/permissions`, { permissionMode, permissions }, { scope: resolveAccountScope() });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
@@ -97,7 +121,7 @@ export async function apiAdminUpdateEmployeePermissions(id, { permissionMode, pe
 /** DELETE /admin/employees/{id} */
 export async function apiAdminDeleteEmployee(id) {
   try {
-    await apiClient.delete(`/admin/employees/${id}`, { scope: "admin" });
+    await apiClient.delete(`/admin/employees/${id}`, { scope: resolveAccountScope() });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }
@@ -108,7 +132,7 @@ export async function apiAdminDeleteEmployee(id) {
 
 export async function apiAdminListDepartments() {
   try {
-    const data = await apiClient.get("/admin/employees/departments", { scope: "admin" });
+    const data = await apiClient.get("/admin/employees/departments", { scope: resolveAccountScope() });
     const items = data.data ?? data.items ?? data ?? [];
     return { ok: true, items };
   } catch (err) { return handleError(err); }
@@ -116,21 +140,21 @@ export async function apiAdminListDepartments() {
 
 export async function apiAdminCreateDepartment(body) {
   try {
-    const data = await apiClient.post("/admin/employees/departments", body, { scope: "admin" });
+    const data = await apiClient.post("/admin/employees/departments", body, { scope: resolveAccountScope() });
     return { ok: true, department: data.data ?? data };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminUpdateDepartment(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/employees/departments/${id}`, body, { scope: "admin" });
+    const data = await apiClient.patch(`/admin/employees/departments/${id}`, body, { scope: resolveAccountScope() });
     return { ok: true, department: data.data ?? data };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminDeleteDepartment(id) {
   try {
-    await apiClient.delete(`/admin/employees/departments/${id}`, { scope: "admin" });
+    await apiClient.delete(`/admin/employees/departments/${id}`, { scope: resolveAccountScope() });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }
@@ -138,7 +162,7 @@ export async function apiAdminDeleteDepartment(id) {
 export async function apiAdminListSections(departmentId) {
   try {
     const qs = departmentId ? `?department_id=${departmentId}` : "";
-    const data = await apiClient.get(`/admin/employees/sections${qs}`, { scope: "admin" });
+    const data = await apiClient.get(`/admin/employees/sections${qs}`, { scope: resolveAccountScope() });
     const items = data.data ?? data.items ?? data ?? [];
     return { ok: true, items };
   } catch (err) { return handleError(err); }
@@ -146,21 +170,21 @@ export async function apiAdminListSections(departmentId) {
 
 export async function apiAdminCreateSection(body) {
   try {
-    const data = await apiClient.post("/admin/employees/sections", body, { scope: "admin" });
+    const data = await apiClient.post("/admin/employees/sections", body, { scope: resolveAccountScope() });
     return { ok: true, section: data.data ?? data };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminUpdateSection(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/employees/sections/${id}`, body, { scope: "admin" });
+    const data = await apiClient.patch(`/admin/employees/sections/${id}`, body, { scope: resolveAccountScope() });
     return { ok: true, section: data.data ?? data };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminDeleteSection(id) {
   try {
-    await apiClient.delete(`/admin/employees/sections/${id}`, { scope: "admin" });
+    await apiClient.delete(`/admin/employees/sections/${id}`, { scope: resolveAccountScope() });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }
@@ -171,7 +195,7 @@ export async function apiAdminDeleteSection(id) {
 
 export async function apiAdminGetEmployeeAttendance(employeeId, { page = 1, pageSize = 30 } = {}) {
   try {
-    const data = await apiClient.get(`/admin/employees/${employeeId}/attendance?page=${page}&page_size=${pageSize}`, { scope: "admin" });
+    const data = await apiClient.get(`/admin/employees/${employeeId}/attendance?page=${page}&page_size=${pageSize}`, { scope: resolveAccountScope() });
     const items = data.items ?? data.data ?? data ?? [];
     return { ok: true, items, total: data.total ?? items.length };
   } catch (err) { return handleError(err); }
@@ -179,14 +203,14 @@ export async function apiAdminGetEmployeeAttendance(employeeId, { page = 1, page
 
 export async function apiAdminCreateAttendance(employeeId, body) {
   try {
-    const data = await apiClient.post(`/admin/employees/${employeeId}/attendance`, { ...body, employee_id: employeeId }, { scope: "admin" });
+    const data = await apiClient.post(`/admin/employees/${employeeId}/attendance`, { ...body, employee_id: employeeId }, { scope: resolveAccountScope() });
     return { ok: true, record: data.data ?? data };
   } catch (err) { return handleError(err); }
 }
 
 export async function apiAdminUpdateAttendance(attendanceId, body) {
   try {
-    const data = await apiClient.patch(`/admin/employees/attendance/${attendanceId}`, body, { scope: "admin" });
+    const data = await apiClient.patch(`/admin/employees/attendance/${attendanceId}`, body, { scope: resolveAccountScope() });
     return { ok: true, record: data.data ?? data };
   } catch (err) { return handleError(err); }
 }

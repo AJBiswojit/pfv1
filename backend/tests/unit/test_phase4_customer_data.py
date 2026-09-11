@@ -527,5 +527,32 @@ class AdminCustomerAggregatesTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("CANCELLED", compiled)
 
 
+class AdminCustomersGuardTests(unittest.TestCase):
+    """Audit S-7 pin: the /admin/customers* surface keeps its documented
+    staff-scoped dual path (Admin workspace OR delegated employees) but must
+    authorize through the SHARED capability surface — never a hand-rolled
+    permission lookup that would skip the hardened admin-role semantics and
+    the central ACCESS_DENIED diary entry."""
+
+    def _handlers(self):
+        import inspect
+
+        from app.api.v1 import customers as customers_module
+
+        return {
+            name: inspect.getsource(member)
+            for name, member in inspect.getmembers(customers_module, inspect.iscoroutinefunction)
+        }
+
+    def test_list_and_detail_use_the_canonical_guard(self):
+        src = self._handlers()
+        for name in ("admin_list_customers", "admin_get_customer"):
+            body = src[name]
+            self.assertIn('require_staff_permission(current_user, db, "customers.view")', body, name)
+            self.assertNotIn("require_permission_for_user", body, name)
+            # Non-staff tokens are refused with 403 (contract unchanged).
+            self.assertIn('current_user.user_type not in ("admin", "employee")', body, name)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -569,16 +569,49 @@ async def delete_media_object(
     """
     Delete exactly one explicitly named object.
 
-    There is no cascade and no garbage collection in this phase: an object is
-    only removed when an administrator names it. The original
-    `frontend/public/images` assets are outside the storage root and can
-    never be reached from here.
+    There is no cascade and no garbage collection: an object is only removed
+    when an administrator names it AND nothing references it (audit S-9).
+    Usage is checked against the asset register, product media rows and
+    marketing placements; a referenced object returns 409 with the counts so
+    the caller can un-link it first. When the asset row is unreferenced it is
+    removed with the object, so the register can never hold a dangling key.
+    The original `frontend/public/images` assets are outside the storage root
+    and can never be reached from here.
     """
     await require_admin_permission(current_user, db, "media.delete")
 
     media = _get_media_service(db)
     key = _safe_key(media, object_key)
+
+    from app.models.media.marketing_media import MarketingMediaModel
+
+    asset = (
+        await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
+    ).scalars().first()
+    product_refs = 0
+    if asset is not None:
+        product_refs = (
+            await db.execute(
+                select(func.count()).select_from(ProductMediaModel).where(ProductMediaModel.media_id == asset.id)
+            )
+        ).scalar() or 0
+    marketing_refs = (
+        await db.execute(
+            select(func.count()).select_from(MarketingMediaModel).where(MarketingMediaModel.object_key == key)
+        )
+    ).scalar() or 0
+    if product_refs or marketing_refs:
+        raise ConflictException(
+            "Media object is in use: "
+            f"{product_refs} product media reference(s), {marketing_refs} marketing placement(s). "
+            "Remove the references first."
+        )
+
     deleted = await run_in_threadpool(media.delete_object, key)
-    if not deleted:
+    if asset is not None:
+        # Unreferenced register row goes with the object (or cleans up an
+        # object that vanished from storage ahead of this call).
+        await db.delete(asset)
+    if not deleted and asset is None:
         raise NotFoundException("Media object not found.")
     return {"ok": True, "deleted": True, "key": key}

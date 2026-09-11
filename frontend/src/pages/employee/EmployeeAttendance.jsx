@@ -15,7 +15,7 @@ import { formatMinutes, formatTime, monthKey, todayKey } from "../../services/wo
 
 export default function EmployeeAttendance() {
   const { employee, hasPermission } = useEmployeeAuth();
-  const { revision } = useWorkforce();
+  const { revision, syncError, refresh } = useWorkforce();
   const [month, setMonth] = useState(monthKey());
   const canManage = hasPermission(PERMISSIONS.ATTENDANCE_MANAGE);
   const team = useMemo(
@@ -42,6 +42,22 @@ export default function EmployeeAttendance() {
         ) : null
       }
     >
+      {syncError ? (
+        <p
+          role="status"
+          className="mb-4 border border-cocoa/30 bg-surface px-3 py-2 font-ui text-[11px] text-cocoa"
+        >
+          Server sync failed ({syncError}). Showing the last loaded state —{" "}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => refresh()}
+          >
+            retry
+          </button>
+          .
+        </p>
+      ) : null}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <CheckInCard />
         <AttendanceSummary employeeId={employee.employeeId} month={month} compact />

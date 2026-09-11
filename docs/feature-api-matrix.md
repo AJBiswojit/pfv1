@@ -108,9 +108,9 @@ One row per feature–API pair. Join keys match `frontend-feature-inventory.md` 
 | F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-ATT-01 | GET | `/admin/employees/{employeeId}/attendance` | exists |
 | F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-ATT-02 | POST | `/admin/employees/{employeeId}/attendance` | exists |
 | F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-ATT-03 | PATCH | `/admin/employees/attendance/{attendanceId}` | exists |
-| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-LEV-03 | GET | `/admin/leave` | missing |
-| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-LEV-04 | POST | `/admin/leave/{id}/decision` | missing |
-| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-PERF-02 | GET | `/admin/performance` | missing |
+| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-LEV-03 | GET | `/admin/leave` | exists (API implemented 2026-09) |
+| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-LEV-04 | POST | `/admin/leave/{id}/decision` | exists (API implemented 2026-09) |
+| F-ADM-EMPLOYEE-DETAIL | Employee detail + attendance | admin | P1 | API-PERF-02 | GET | `/admin/performance` | exists (API implemented 2026-09) |
 | F-ADM-EMPLOYEE-EDIT | Edit employee | admin | P1 | API-EMP-04 | PATCH | `/admin/employees/{id}` | exists |
 | F-ADM-EMPLOYEE-EDIT | Edit employee | admin | P1 | API-EMP-05 | POST | `/admin/employees/{id}/status` | exists |
 | F-ADM-EMPLOYEE-EDIT | Edit employee | admin | P1 | API-EMP-06 | POST | `/admin/employees/{id}/reset-password` | exists |
@@ -262,19 +262,19 @@ One row per feature–API pair. Join keys match `frontend-feature-inventory.md` 
 | F-EMP-CHANGE-PW | Employee change/forgot password | employee | P0 | API-AUTH-08 | POST | `/auth/employee/change-password` | exists |
 | F-EMP-CHANGE-PW | Employee change/forgot password | employee | P0 | API-AUTH-15 | POST | `/auth/employee/forgot-password` | missing |
 | F-EMP-DASHBOARD | Employee dashboard | employee | P1 | API-EPROD-03 | GET | `/employee/me/assigned-products` | exists |
-| F-EMP-DASHBOARD | Employee dashboard | employee | P1 | API-ATT-06 | GET | `/employee/attendance/today` | missing |
+| F-EMP-DASHBOARD | Employee dashboard | employee | P1 | API-ATT-06 | GET | `/employee/attendance/today` | exists (API implemented 2026-09) |
 | F-EMP-DASHBOARD | Employee dashboard | employee | P1 | API-AN-06 | GET | `/analytics/inventory-summary` | exists |
 | F-EMP-PROFILE | Employee profile | employee | P1 | API-AUTH-14 | GET | `/employee/me` | exists |
-| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-04 | POST | `/employee/attendance/check-in` | missing |
-| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-05 | POST | `/employee/attendance/check-out` | missing |
-| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-06 | GET | `/employee/attendance/today` | missing |
-| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-07 | GET | `/employee/attendance` | missing |
+| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-04 | POST | `/employee/attendance/check-in` | exists (API implemented 2026-09) |
+| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-05 | POST | `/employee/attendance/check-out` | exists (API implemented 2026-09) |
+| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-06 | GET | `/employee/attendance/today` | exists (API implemented 2026-09) |
+| F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-07 | GET | `/employee/attendance` | exists (API implemented 2026-09) |
 | F-EMP-ATTENDANCE | Attendance punch + history | employee | P1 | API-ATT-01 | GET | `/admin/employees/{employeeId}/attendance` | exists |
-| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-01 | GET | `/employee/leave` | missing |
-| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-02 | POST | `/employee/leave` | missing |
-| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-03 | GET | `/admin/leave` | missing |
-| F-EMP-PERFORMANCE | Performance | employee | P2 | API-PERF-01 | GET | `/employee/performance` | missing |
-| F-EMP-PERFORMANCE | Performance | employee | P2 | API-PERF-02 | GET | `/admin/performance` | missing |
+| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-01 | GET | `/employee/leave` | exists (API implemented 2026-09) |
+| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-02 | POST | `/employee/leave` | exists (API implemented 2026-09) |
+| F-EMP-LEAVE | Leave | employee | P2 | API-LEV-03 | GET | `/admin/leave` | exists (API implemented 2026-09) |
+| F-EMP-PERFORMANCE | Performance | employee | P2 | API-PERF-01 | GET | `/employee/performance` | exists (API implemented 2026-09) |
+| F-EMP-PERFORMANCE | Performance | employee | P2 | API-PERF-02 | GET | `/admin/performance` | exists (API implemented 2026-09) |
 | F-EMP-PRODUCTS | Employee products inbox | employee | P0 | API-EPROD-03 | GET | `/employee/me/assigned-products` | exists |
 | F-EMP-PRODUCTS | Employee products inbox | employee | P0 | API-EPROD-01 | GET | `/employee/products/{id}` | exists |
 | F-EMP-PRODUCT-CREATE | Employee new product | employee | P1 | API-APROD-04 | GET | `/admin/products/next-id` | exists |
@@ -323,7 +323,7 @@ One row per feature–API pair. Join keys match `frontend-feature-inventory.md` 
 | F-EMP-REPORTS-RETURNS | Employee returns report | employee | P2 | API-RET-01 | GET | `/admin/returns` | exists |
 | F-EMP-REPORTS-OFFERS | Employee offers report | employee | P2 | API-OFF-03 | GET | `/admin/offers` | exists |
 | F-EMP-REPORTS-EMPLOYEES | Employee team report | employee | P2 | API-ATT-01 | GET | `/admin/employees/{employeeId}/attendance` | exists |
-| F-EMP-REPORTS-EMPLOYEES | Employee team report | employee | P2 | API-PERF-02 | GET | `/admin/performance` | missing |
+| F-EMP-REPORTS-EMPLOYEES | Employee team report | employee | P2 | API-PERF-02 | GET | `/admin/performance` | exists (API implemented 2026-09) |
 
 _Pairs: 313. Features: 122. APIs: 225_.
 

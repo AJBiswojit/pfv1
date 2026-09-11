@@ -13,7 +13,9 @@ import { useEmployeeManagement } from "../../../context/EmployeeManagementContex
 import { getDepartmentLabel, getSectionLabel, getStoreLabel } from "../../../config/employeeDepartments";
 import { EMPLOYEE_STATUS } from "../../../config/employeeStatus";
 import { getRoleLabel } from "../../../config/employeeRoles";
+import { ACCOUNT_LEVELS, ACCOUNT_LEVEL_META, CAPABILITY_GROUPS } from "../../../config/rbacModel";
 import { employeeFullName, formatEmployeeDate, formatEmployeeDateTime } from "../../../utils/employee";
+import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
 
 const accessIsBlocked = (person) =>
   [EMPLOYEE_STATUS.INACTIVE, EMPLOYEE_STATUS.SUSPENDED].includes(person.status);
@@ -36,9 +38,10 @@ const actionCopy = {
   },
 };
 
-export default function AdminEmployeeDetail() {
+export default function AdminEmployeeDetail({ basePath } = {}) {
   const { employeeId } = useParams();
   const location = useLocation();
+  const base = basePath ?? (location.pathname.startsWith(EMPLOYEE_TEAM_ACCESS_BASE) ? EMPLOYEE_TEAM_ACCESS_BASE : "/admin/employees");
   const {
     getEmployee,
     getActivity,
@@ -55,7 +58,7 @@ export default function AdminEmployeeDetail() {
   if (!person) {
     return (
       <AdminPage eyebrow="People / Organization" title="Employee not found" description="That employee ID is not in the account register.">
-        <AtelierButton as={Link} to="/admin/employees" variant="outline" size="chip">All employees</AtelierButton>
+        <AtelierButton as={Link} to={base} variant="outline" size="chip">All employees</AtelierButton>
       </AdminPage>
     );
   }
@@ -83,13 +86,25 @@ export default function AdminEmployeeDetail() {
     }
   };
 
+  const accountLevel = person.accountLevel || ACCOUNT_LEVELS.EMPLOYEE;
+  const levelMeta = ACCOUNT_LEVEL_META[accountLevel];
+  const capabilityDriven = accountLevel !== ACCOUNT_LEVELS.EMPLOYEE;
+  const employeeDomain = !levelMeta || levelMeta.workspace === "employee";
   const profileRows = [
     ["Employee ID", person.employeeId],
-    ["Role", getRoleLabel(person.role)],
-    ["Department", getDepartmentLabel(person.department)],
-    ["Section / team", getSectionLabel(person.department, person.section)],
-    ["Store / location", getStoreLabel(person.store)],
-    ["Joined", formatEmployeeDate(person.joiningDate)],
+    ["Account level", levelMeta?.label ?? accountLevel],
+    ["Workspace", levelMeta?.workspace === "admin" ? "Admin Portal" : "Employee Portal"],
+    ["Business role", getRoleLabel(person.role)],
+    // Store assignment belongs to the employee domain; Admin-workspace
+    // accounts carry none.
+    ...(employeeDomain
+      ? [
+          ["Department", getDepartmentLabel(person.department)],
+          ["Section / team", getSectionLabel(person.department, person.section)],
+          ["Store / location", getStoreLabel(person.store)],
+          ["Joined", formatEmployeeDate(person.joiningDate)],
+        ]
+      : []),
   ];
   const accountRows = [
     ["Account status", <StatusBadge key="status" status={person.status} />],
@@ -97,7 +112,7 @@ export default function AdminEmployeeDetail() {
     ["Created", formatEmployeeDateTime(person.createdAt)],
     ["Updated", formatEmployeeDateTime(person.updatedAt)],
     ["Credential setup", person.mustChangePassword ? "Temporary password · change required" : "Password set"],
-    ["Permission source", person.permissionMode === "custom" ? "Custom operational access" : "Role defaults"],
+    ["Permission source", capabilityDriven ? "Delegated capability set" : person.permissionMode === "custom" ? "Custom operational access" : "Role defaults"],
   ];
 
   const rows = (items) => (
@@ -115,11 +130,11 @@ export default function AdminEmployeeDetail() {
     <AdminPage
       eyebrow="People / Organization / Account"
       title={employeeFullName(person)}
-      description={`${getRoleLabel(person.role)} · ${getDepartmentLabel(person.department)} · Administration profile`}
+      description={`${levelMeta?.label ?? "Employee"} · ${getRoleLabel(person.role)}${employeeDomain ? ` · ${getDepartmentLabel(person.department)}` : ""} · Administration profile`}
       actions={
         <>
-          <AtelierButton as={Link} to={`/admin/employees/${person.employeeId}/edit`} size="chip">Edit employee</AtelierButton>
-          <AtelierButton as={Link} to="/admin/employees" variant="outline" size="chip">All employees</AtelierButton>
+          <AtelierButton as={Link} to={`${base}/${person.employeeId}/edit`} size="chip">Edit employee</AtelierButton>
+          <AtelierButton as={Link} to={base} variant="outline" size="chip">All employees</AtelierButton>
         </>
       }
     >
@@ -163,8 +178,11 @@ export default function AdminEmployeeDetail() {
             <p className="flex items-center gap-3"><ShieldCheck size={14} className="text-accent" aria-hidden="true" /><span>No Admin Portal identity or authority.</span></p>
           </div>
         </AdminPanel>
-        <AdminPanel eyebrow={`${person.permissions.length} grants`} title="Operational permissions">
-          <PermissionMatrix permissions={person.permissions} />
+        <AdminPanel eyebrow={`${person.permissions.length} grants`} title={capabilityDriven ? "Effective capabilities" : "Operational permissions"}>
+          <PermissionMatrix
+            permissions={person.permissions}
+            catalogue={capabilityDriven ? CAPABILITY_GROUPS : undefined}
+          />
         </AdminPanel>
       </div>
 
