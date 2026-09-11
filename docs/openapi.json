@@ -5940,7 +5940,7 @@
           "Users \u2014 Customer Profile"
         ],
         "summary": "[Admin] Get a single customer with full detail",
-        "description": "Authorization: `customers.view` permission required.  \nReturns customer profile + addresses[] + derived stats.",
+        "description": "Authorization: staff token (Admin workspace or an employee holding `customers.view`); permission enforced through the shared capability surface.  \nReturns customer profile + addresses[] + derived stats.",
         "operationId": "admin_get_customer_api_v1_admin_customers__customer_id__get",
         "security": [
           {

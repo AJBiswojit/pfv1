@@ -4,7 +4,7 @@ Branch `arena/01a08e85-pfv1` (pushed; sits directly on the unified-auth commit `
 unified-auth/RBAC consolidation (no redesign; existing surfaces reused).
 
 ## A. Executive summary
-All twelve phases completed: S-8/S-9 fixed, real server-side admin audit logging wired
+All twelve phases completed: S-7/S-8/S-9 fixed, real server-side admin audit logging wired
 through ONE centralized writer on the EXISTING `audit_activity_log` table, SUPER_EMPLOYEE
 self-service extended to real attendance/leave/performance endpoints + a reused Admin-page
 surface in the Employee workspace, proven-safe dead surface removed, collection count
@@ -40,6 +40,14 @@ is left to you by design (see K/R/S).
 8. **S-9** — media object delete is usage-guarded: product-media + marketing-placement
    reference counts → 409; orphan asset-register row is removed with the object; 404
    only when neither row nor object exists.
+9. **S-7** — `/admin/customers` + `/admin/customers/{id}` kept their documented staff
+   scope (Admin workspace OR delegated employees — no consumer broken) but the
+   hand-rolled guard was replaced with the shared capability surface
+   (`require_staff_permission("customers.view")`): admins now face the same hardened
+   `require_admin_permission` semantics as every other admin read (provisioned-but-
+   unassigned = 403), employee behavior is unchanged, and both refusals land in the
+   ACCESS_DENIED diary. Endpoint descriptions updated; pinned by
+   `AdminCustomersGuardTests` (backend).
 9. **Duplicate-punch guarantee** — unique index `uq_employee_attendance_employee_date`
    + service upsert semantics on the Admin surface + 409 on the employee punch surface.
 
@@ -55,7 +63,8 @@ health kept), `app/api/v1/employees.py` (attendance guards, from/to, imports), `
 (attendance upsert/correction/audits), `app/repositories/employee/employee_repository.py`
 (id-or-PF-code resolution), `app/models/employee/{__init__,employee,attendance}.py`,
 `app/services/audit/audit_service.py`, `app/services/catalog/collection_service.py` (single-pass counts,
-dead `_label_match_product_ids` removed), `app/api/v1/media.py` (S-9), 3 test files (fake extensions only).
+dead `_label_match_product_ids` removed), `app/api/v1/media.py` (S-9), `app/api/v1/customers.py`
+(S-7 canonical guard), 4 test files (fake extensions + S-7 pin).
 **Backend — deleted:** `app/api/v1/notifications.py`.
 **Frontend — new:** `src/services/workforce/workforceApi.js`, `src/services/workforce/workforceSync.js`,
 `src/pages/admin/employees/employeesBase.js`, `tests/workforceRules.test.js`.
@@ -177,11 +186,11 @@ table. No other schema change; no destructive migration. `alembic heads` → exa
 No load metrics were measured (none invented here).
 
 ## M. Backend test results (full `pytest tests` on the final tree)
-**788 collected · 764 passed · 24 skipped · 0 failed** (+582 subtests, 4 pre-existing
+**789 collected · 765 passed · 24 skipped · 0 failed** (+582 subtests, 4 pre-existing
 warnings). Skips are the pre-existing dataset/environment-gated ones. New files:
-`test_workforce_rules.py` (16) and `test_workforce_api_wiring.py` (14). Baseline was
-757/734/24 → +31 net tests, nothing removed or weakened (three fakes were EXTENDED with
-`.all()`/db doubles; assertions untouched).
+`test_workforce_rules.py` (16) and `test_workforce_api_wiring.py` (14); +1 S-7 pin in
+`test_phase4_customer_data.py`. Baseline was 757/734/24 → +32 net tests, nothing removed
+or weakened (three fakes were EXTENDED with `.all()`/db doubles; assertions untouched).
 
 ## N. Frontend test results
 **430 tests · 429 passed · 1 skipped · 0 failed** (baseline 426/425/1; +4 from
@@ -230,6 +239,7 @@ surfaces shipped beyond the original IDs. This report: `docs/production-hardenin
 18. `GET /admin/activity` shows the new People-domain events with actor name + PF-code target.
 19. Settings change (`/admin/settings/attendance` lateThresholdMinutes=20) → next punch evaluated against 09:50 without redeploy.
 20. `GET /collections` + `/admin/taxonomy/product-counts` return the SAME counts as before the refactor (compare against a pre-upgrade snapshot), with ~1 query fewer per request (`PRAGMA`-style `pg_stat_statements` or `auto_explain` if enabled — optional).
+21. (S-7) `/admin/customers` matrix: ADMIN-role token → 200; admin account with roles provisioned but NO role assigned → 403 + `ACCESS_DENIED` diary row; employee token holding `customers.view` → 200; employee token without it → 403 (message may now read "Missing required permission: customers.view"); customer token → 403. Admin portal customer pages (`/admin/customers` UI) behave as before.
 
 ## S. Production readiness verdict
 **READY FOR MANUAL DB VERIFICATION.**
