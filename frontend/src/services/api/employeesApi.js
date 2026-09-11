@@ -71,20 +71,40 @@ export async function apiAdminGetEmployee(id) {
   } catch (err) { return handleError(err); }
 }
 
+function sanitizeEmployeePayload(body) {
+  if (!body || typeof body !== "object") return body;
+  const out = { ...body };
+  // joiningDate is optional — employee_profiles has no column for it.
+  // An empty string / whitespace from the form (or a hidden admin-domain
+  // block at adminDomain) must not be sent as "" because Pydantic
+  // Optional[date] rejects "" with 422 ("Input should be a valid date").
+  // Omit it instead; the backend validator also normalises whitespace → None.
+  const isEmptyDate = (v) => v === null || v === "" || (typeof v === "string" && !v.trim());
+  if (isEmptyDate(out.joiningDate)) {
+    delete out.joiningDate;
+  }
+  if (isEmptyDate(out.joining_date)) {
+    delete out.joining_date;
+  }
+  return out;
+}
+
 /** POST /admin/employees */
 export async function apiAdminCreateEmployee(body) {
   try {
-    const data = await apiClient.post("/admin/employees", body, { scope: resolveAccountScope() });
-    const payload = data.data ?? data;
+    const payload = sanitizeEmployeePayload(body);
+    const data = await apiClient.post("/admin/employees", payload, { scope: resolveAccountScope() });
+    const result = data.data ?? data;
     // The one-time temporary password surfaces here ONLY; it is never persisted client-side.
-    return { ok: true, employee: normEmployee(payload), temporaryPassword: payload.temporaryPassword ?? null };
+    return { ok: true, employee: normEmployee(result), temporaryPassword: result.temporaryPassword ?? null };
   } catch (err) { return handleError(err); }
 }
 
 /** PATCH /admin/employees/{id} */
 export async function apiAdminUpdateEmployee(id, body) {
   try {
-    const data = await apiClient.patch(`/admin/employees/${id}`, body, { scope: resolveAccountScope() });
+    const payload = sanitizeEmployeePayload(body);
+    const data = await apiClient.patch(`/admin/employees/${id}`, payload, { scope: resolveAccountScope() });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }

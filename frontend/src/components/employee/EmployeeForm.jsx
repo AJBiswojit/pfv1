@@ -126,7 +126,7 @@ export default function EmployeeForm({
           ))}
         </select>
       </EmployeeField>
-      <EmployeeField label="Joining date" required error={errors.joiningDate} id={`${idPrefix}-join`}>
+      <EmployeeField label="Joining date" error={errors.joiningDate} id={`${idPrefix}-join`}>
         <input
           id={`${idPrefix}-join`}
           type="date"

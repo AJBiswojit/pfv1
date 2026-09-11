@@ -56,7 +56,9 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
   const creatorLevel =
     creator?.accountLevel ?? (creator?.role === ACCOUNT_LEVELS.SUPER_ADMIN ? ACCOUNT_LEVELS.SUPER_ADMIN : null);
   const isSelf = Boolean(creator && person && creator.employeeId === person.employeeId);
-  const capabilityDriven = accountLevel !== ACCOUNT_LEVELS.EMPLOYEE;
+  // All four levels share the grouped CAPABILITY_GROUPS UI — EMPLOYEE is no
+  // longer an exception. Delegation ceiling + backend RBAC still apply.
+  const capabilityDriven = true;
   const adminDomain = workspaceForLevel(accountLevel) === "admin";
   const ceiling = useMemo(
     () => (creator ? delegableCapabilities(creator) : new Set()),
@@ -91,9 +93,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
   }
 
   const handleChange = (next) => {
-    if (next.role !== draft.role && !customPermissions && !capabilityDriven) {
-      setPermissions(getDefaultPermissions(next.role));
-    }
+    // Grouped capability mode is role-independent for every level now.
     setDraft(next);
     setErrors({});
     setNotice("");
@@ -101,7 +101,8 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
 
   const handleLevelChange = (level) => {
     setAccountLevel(level);
-    if (level !== ACCOUNT_LEVELS.EMPLOYEE) setCustomPermissions(true);
+    // Grouped mode uses permissionMode:custom for all levels (EMPLOYEE included).
+    setCustomPermissions(true);
   };
 
   const submit = async (event) => {

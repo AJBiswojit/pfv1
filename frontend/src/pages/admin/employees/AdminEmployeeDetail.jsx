@@ -88,7 +88,8 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
 
   const accountLevel = person.accountLevel || ACCOUNT_LEVELS.EMPLOYEE;
   const levelMeta = ACCOUNT_LEVEL_META[accountLevel];
-  const capabilityDriven = accountLevel !== ACCOUNT_LEVELS.EMPLOYEE;
+  // Detail view uses the single grouped catalogue for every level now.
+  const capabilityDriven = true;
   const employeeDomain = !levelMeta || levelMeta.workspace === "employee";
   const profileRows = [
     ["Employee ID", person.employeeId],
@@ -112,7 +113,7 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
     ["Created", formatEmployeeDateTime(person.createdAt)],
     ["Updated", formatEmployeeDateTime(person.updatedAt)],
     ["Credential setup", person.mustChangePassword ? "Temporary password · change required" : "Password set"],
-    ["Permission source", capabilityDriven ? "Delegated capability set" : person.permissionMode === "custom" ? "Custom operational access" : "Role defaults"],
+    ["Permission source", "Delegated capability set"],
   ];
 
   const rows = (items) => (

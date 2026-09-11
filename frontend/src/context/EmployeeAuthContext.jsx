@@ -148,21 +148,70 @@ export function EmployeeAuthProvider({ children }) {
   }, []);
 
   // ── Change Password ──────────────────────────────────────────────────────
-
+  // After a successful password change the backend revokes ALL refresh
+  // sessions and blacklists the current access token (see
+  // AuthService.change_password). For the initial forced-password flow the
+  // employee must remain authenticated: we re-establish the session with
+  // the new credential before returning, so navigation to /employee loads
+  // the profile/permissions with a valid token and never renders blank.
   const changePassword = useCallback(async ({ currentPassword, newPassword, confirmPassword }) => {
     if (!employee) return { ok: false, error: "You need to sign in first." };
     setIsLoading(true);
     const result = await apiChangePasswordEmployee({ currentPassword, newPassword, confirmPassword });
-    setIsLoading(false);
-    if (!result.ok) return result;
+    if (!result.ok) {
+      setIsLoading(false);
+      return result;
+    }
 
-    // Clear force_password_change flag on the local snapshot
+    // For voluntary changes the old token is blacklisted; for the initial
+    // forced-password flow the backend keeps it valid so navigation can
+    // complete before re-auth finishes (see AuthService.change_password
+    // was_forced branch). Either way we obtain a fresh employee-scoped
+    // session with the new password — same unified endpoint the login page
+    // uses, so account_level / workspace / permissions are canonically
+    // resolved. This keeps the flow inside the existing auth architecture
+    // without inventing a new token-refresh contract.
+    const identifier = (
+      employee.email ||
+      employee.phone ||
+      employee.employeeId ||
+      employee.employeeCode ||
+      employee.employee_code ||
+      ""
+    ).trim();
+    if (identifier && newPassword) {
+      try {
+        const reauth = await apiSignInStaff({ identifier, password: newPassword });
+        if (reauth.ok && reauth.workspace === "employee" && reauth.employee) {
+          // apiSignInStaff already persisted the new tokens under the
+          // employee scope; refresh the canonical profile (permissions,
+          // accountLevel) from the backend.
+          const restored = await apiRestoreEmployeeSession();
+          if (restored.ok) {
+            setSession({ employee: restored.employee, isAuthenticated: true });
+          } else {
+            setSession({ employee: reauth.employee, isAuthenticated: true });
+          }
+          setIsLoading(false);
+          return { ok: true };
+        }
+      } catch {
+        // fall through to local flag clear — the caller will still navigate
+        // but a subsequent 401 will correctly route to /login rather than
+        // rendering a blank page.
+      }
+    }
+
+    // Fallback when identifier is missing or re-auth is unavailable: at
+    // minimum clear the forced flag locally so the route guard does not
+    // loop back to /employee/change-password.
     setSession((prev) => ({
       ...prev,
       employee: prev.employee
         ? { ...prev.employee, mustChangePassword: false }
         : null,
     }));
+    setIsLoading(false);
     return { ok: true };
   }, [employee]);
 

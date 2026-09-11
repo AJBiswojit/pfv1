@@ -760,6 +760,7 @@ class AuthService:
         if not verify_password(old_password, user.hashed_password):
             raise BusinessLogicException("Current password is not correct.")
 
+        was_forced = bool(user.force_password_change)
         user.hashed_password = hash_password(new_password)
         user.force_password_change = False
 
@@ -774,12 +775,19 @@ class AuthService:
 
         await self.db.commit()
 
-        # Blacklist current access token + clear RBAC cache
-        if access_token:
+        # Blacklist current access token + clear RBAC cache.
+        # For the initial forced-password flow (SUPER_EMPLOYEE / EMPLOYEE
+        # first-time Set New Password) the current access token must stay
+        # valid so the employee can be routed to /employee and hydrated
+        # without a blank-page race. The frontend's re-auth (apiSignInStaff
+        # with the new password) still establishes a fresh session
+        # immediately after; keeping the old token for a few minutes only
+        # avoids a gap where the UI navigates before the re-auth completes.
+        if access_token and not was_forced:
             await self._blacklist_token(access_token, token_type="access")
         await self.invalidate_rbac_cache(user_id)
 
-        logger.info("Password changed user_id=%s", user_id)
+        logger.info("Password changed user_id=%s was_forced=%s", user_id, was_forced)
         return True
 
     # ── OTP ───────────────────────────────────────────────────────────────────

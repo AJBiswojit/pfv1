@@ -48,7 +48,12 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
   const creatorLevel =
     creator?.accountLevel ?? (creator?.role === ACCOUNT_LEVELS.SUPER_ADMIN ? ACCOUNT_LEVELS.SUPER_ADMIN : null);
   const creatableLevels = CREATABLE_LEVELS[creatorLevel] ?? [];
-  const capabilityDriven = accountLevel !== ACCOUNT_LEVELS.EMPLOYEE;
+  // EMPLOYEE now reuses the SAME grouped capability-control architecture as
+  // SUPER_EMPLOYEE / ADMIN / SUPER_ADMIN (CATALOGUE, PRODUCT_WORKFLOW, MEDIA
+  // … AI_ASSISTANT via CAPABILITY_GROUPS). No second permission system —
+  // the existing catalogue, storage, evaluation, delegation ceiling and
+  // backend RBAC enforcement are reused for every level.
+  const capabilityDriven = true;
   const adminDomain = workspaceForLevel(accountLevel) === "admin";
 
   // Ceiling for the delegation switches: the creator's own effective set.
@@ -73,18 +78,20 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
 
   const handleLevelChange = (level) => {
     setAccountLevel(level);
-    // Capability-driven levels never inherit the legacy operational set:
-    // their grants come from the matrix only.
-    if (level !== ACCOUNT_LEVELS.EMPLOYEE) {
-      setPermissions([]);
-      setCustomPermissions(false);
-    }
+    // All four levels share the grouped capability system; clearing the
+    // selection on level change prevents implying capabilities from the
+    // previous level's ceiling.
+    setPermissions([]);
+    setCustomPermissions(false);
   };
 
   const handleChange = (next) => {
-    if (next.role !== draft.role) {
-      setPermissions(next.role ? getDefaultPermissions(next.role) : []);
-    }
+    // In the grouped system permissions are capability codes independent of
+    // the business role (STORE_MANAGER, SALES_EXECUTIVE …). The legacy
+    // operational catalogue (PERMISSION_CATALOGUE) is no longer used for any
+    // level — EMPLOYEE included — so role changes do not auto-fill the
+    // capability selection; the delegation ceiling (decorated on each switch)
+    // remains the authority.
     setDraft(next);
     setErrors({});
     setSubmitError("");
