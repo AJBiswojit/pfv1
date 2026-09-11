@@ -1,6 +1,6 @@
 # Production Hardening & Remaining Features — Final Report (2026-09-11)
 
-Branch `arena/01a08e85-pfv1` · commit `5aa8aca` · controlled completion pass over the
+Branch `arena/01a08e85-pfv1` (pushed; sits directly on the unified-auth commit `ca9361e`) · controlled completion pass over the
 unified-auth/RBAC consolidation (no redesign; existing surfaces reused).
 
 ## A. Executive summary
@@ -207,7 +207,7 @@ surfaces shipped beyond the original IDs. This report: `docs/production-hardenin
    route (their section still serves `/admin/settings/notifications` semantics elsewhere);
    safe to delete in a later pass once you confirm no import-side scripts rely on it.
 4. **Timezone policy** — single-store IST wall clock is documented, not configurable per location.
-5. **GitHub push** — sandbox credential rejected; needs the GitHub connection re-linked in Arena.
+5. ~~GitHub push~~ — pushed successfully after the session rollback was reconciled (rebased onto `ca9361e`, fast-forward `ca9361e..f71e4af` on `arena/01a08e85-pfv1`).
 
 ## R. Manual PostgreSQL verification checklist (you run these; nothing below was done here)
 1. `alembic current` → `s2a3b4c5d6e7 (head)`; `alembic heads` shows exactly one head.
