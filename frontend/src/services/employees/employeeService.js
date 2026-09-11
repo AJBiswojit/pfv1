@@ -100,7 +100,7 @@ export const toPublicEmployee = (record) => {
 /**
  * Admin/Employee boundary — the employee repository holds employees only.
  * Admin identities (SUPER_ADMIN, PF-ADM-…) live in the isolated admin
- * account store and authenticate at /admin/login. Any admin record found
+ * account store and authenticate at /login (unified staff sign-in). Any admin record found
  * in employee storage (e.g. from an older seed) is dropped on read, so an
  * admin can never appear in the Employee Directory, demo logins or any
  * employee selector.

@@ -1,12 +1,15 @@
 /**
- * PRATIKSHYA FASHON — Admin authentication context.
+ * PRATIKSHYA FASHON — Admin workspace session context.
  *
- * Wired to the FastAPI backend (Phase B).
- * Calls /api/v1/auth/admin/* via authApi.js.
+ * UNIFIED AUTHENTICATION (2026-09): all four staff account levels sign in
+ * through the ONE /login page → POST /auth/staff/sign-in. This context owns
+ * the ADMIN-workspace session only (SUPER_ADMIN + ADMIN levels); it is the
+ * scope store for the separate admin portal, not a second authentication
+ * flow — authentication itself lives in authApi/apiClient.
  *
  * Token isolation: admin JWT is stored under SEPARATE localStorage keys
  * ("pf_admin_access_token" / "pf_admin_refresh_token") so admin sign-in
- * never clobbers a customer or employee session.
+ * never clobbers a customer or employee session (portal isolation).
  *
  * Session persistence:
  *   - JWT tokens → localStorage "pf_admin_access_token" / "pf_admin_refresh_token"
@@ -14,9 +17,10 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ADMIN_ROLES, hasAdminPermission } from "../config/adminAccess";
+import { hasAdminPermission, isAdminAccount } from "../config/adminAccess";
+import { ACCOUNT_LEVELS } from "../config/rbacModel";
 import {
-  apiSignInAdmin,
+  apiSignInStaff,
   apiSignOutAdmin,
   apiRestoreAdminSession,
 } from "../services/api/authApi";
@@ -102,16 +106,24 @@ export function AdminAuthProvider({ children }) {
 
   const signIn = useCallback(async ({ adminId, password }) => {
     setIsLoading(true);
-    // apiSignInAdmin calls apiClient which uses pf_access_token.
-    // We intercept the result and re-store under admin-specific keys.
-    const result = await apiSignInAdmin({ adminId, password });
+    // Canonical flow: the unified /auth/staff/sign-in endpoint authenticates
+    // the credential and the backend determines the account level. An
+    // employee-domain credential never opens the admin session — the token is
+    // not stored and a plain guidance error is returned instead.
+    const result = await apiSignInStaff({ identifier: adminId, password });
     setIsLoading(false);
 
     if (!result.ok) return result;
+    if (result.workspace !== "admin" || !isAdminAccount(result.admin)) {
+      // The unified endpoint issued an employee-workspace session for this
+      // credential — drop the token it stored and refuse the admin entry.
+      clearTokens("employee");
+      return {
+        ok: false,
+        error: "Employee credentials do not open the Admin Portal. Sign in from the unified /login page.",
+      };
+    }
 
-    // apiSignInAdmin now persists the JWT under the admin-scoped keys directly
-    // (apiClient derives the token scope from the request path), so customer
-    // and employee sessions are never clobbered.
     setSession({ admin: result.admin, isAuthenticated: true });
     return result;
   }, []);
@@ -156,8 +168,18 @@ export function AdminAuthProvider({ children }) {
   // ── RBAC helpers ──────────────────────────────────────────────────────────
 
   const isSuperAdmin = Boolean(
-    admin && (admin.role === ADMIN_ROLES.SUPER_ADMIN || admin.roles?.includes("SUPER_ADMIN"))
+    admin && (
+      admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN ||
+      (!admin.accountLevel && admin.roles?.includes("SUPER_ADMIN"))
+    )
   );
+  // Any admin-workspace level may enter the portal (SUPER_ADMIN or ADMIN);
+  // per-module access is capability-checked, never workspace-wide.
+  const hasAdminWorkspaceAccess = Boolean(admin && (
+    admin.accountLevel
+      ? admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN || admin.accountLevel === ACCOUNT_LEVELS.ADMIN
+      : admin.role === ACCOUNT_LEVELS.SUPER_ADMIN
+  ));
 
   const hasPermission = useCallback(
     (permission) => hasAdminPermission(admin, permission),
@@ -171,12 +193,13 @@ export function AdminAuthProvider({ children }) {
     isAuthenticated,
     isLoading,
     isSuperAdmin,
+    hasAdminWorkspaceAccess,
     hasPermission,
     signIn,
     signOut,
     refreshSession,
     updateProfile,
-  }), [admin, isAuthenticated, isLoading, isSuperAdmin, hasPermission, signIn, signOut, refreshSession, updateProfile]);
+  }), [admin, isAuthenticated, isLoading, isSuperAdmin, hasAdminWorkspaceAccess, hasPermission, signIn, signOut, refreshSession, updateProfile]);
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 }
@@ -190,6 +213,7 @@ const inertAdminAuth = {
   isAuthenticated: false,
   isLoading: false,
   isSuperAdmin: false,
+  hasAdminWorkspaceAccess: false,
   hasPermission:  () => false,
   signIn:         async () => ({ ok: false, error: "" }),
   signOut:        async () => {},

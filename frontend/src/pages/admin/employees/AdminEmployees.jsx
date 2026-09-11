@@ -9,6 +9,7 @@ import StatusBadge from "../../../components/employee/StatusBadge";
 import { AtelierButton } from "../../../design-system";
 import { useEmployeeManagement } from "../../../context/EmployeeManagementContext";
 import { ROLE_OPTIONS, getRoleLabel } from "../../../config/employeeRoles";
+import { ACCOUNT_LEVEL_META } from "../../../config/rbacModel";
 import { DEPARTMENT_OPTIONS, getDepartmentLabel } from "../../../config/employeeDepartments";
 import { STATUS_OPTIONS, EMPLOYEE_STATUS, canEmployeeLogin } from "../../../config/employeeStatus";
 import { getPermissionLabel } from "../../../config/employeePermissions";
@@ -161,7 +162,20 @@ export default function AdminEmployees() {
                 </div>
               ),
             },
-            { id: "role", label: "Role", render: (row) => getRoleLabel(row.role) },
+            {
+              id: "role",
+              label: "Role",
+              render: (row) => (
+                <span className="flex flex-wrap items-center gap-2">
+                  {getRoleLabel(row.role)}
+                  {/* Account level from the unified hierarchy (mirrors the
+                      server-derived accountLevel on the DTO). */}
+                  <span className="border border-pearl px-2 py-0.5 font-ui text-[9px] uppercase tracking-[.14em] text-taupe">
+                    {ACCOUNT_LEVEL_META[row.accountLevel]?.label ?? "Employee"}
+                  </span>
+                </span>
+              ),
+            },
             { id: "department", label: "Department", render: (row) => getDepartmentLabel(row.department) },
             { id: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
             { id: "permissions", label: "Permissions", render: permissionSummary },

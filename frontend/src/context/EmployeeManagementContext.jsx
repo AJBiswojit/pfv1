@@ -26,7 +26,7 @@ import {
   apiAdminResetEmployeePassword,
   apiAdminUpdateEmployeePermissions,
 } from "../services/api/employeesApi";
-import { canManageEmployeeAccounts } from "../config/adminAccess";
+import { canManageEmployeeAccounts, isSuperEmployeeAccount } from "../config/adminAccess";
 import { getRoleLabel } from "../config/employeeRoles";
 import { getDepartmentLabel, getSectionLabel, getStoreLabel } from "../config/employeeDepartments";
 import { getStatusLabel } from "../config/employeeStatus";
@@ -62,12 +62,25 @@ export function EmployeeManagementProvider({ children }) {
   const { employee: employeeActor, refreshSession } = useEmployeeAuth();
   const { admin } = useAdminAuth();
   const [employees, setEmployees] = useState(() => ensureSeeded());
+
+  /**
+   * Which isolated session may drive the account-management API right now?
+   * "admin" for Admin-workspace accounts, "employee" for a SUPER_EMPLOYEE
+   * (the SAME endpoints, the SAME hierarchy checks server-side), null when
+   * neither applies. Legacy local-store actions stay available for offline
+   * development exactly as before.
+   */
+  const resolveAccountScope = useCallback(() => {
+    if (getAccessToken("admin")) return "admin";
+    if (getAccessToken("employee") && isSuperEmployeeAccount(employeeActor)) return "employee";
+    return null;
+  }, [employeeActor]);
   const [activity, setActivity] = useState(() => loadActivity());
   const [isWorking, setIsWorking] = useState(false);
 
   // Sync employee list from backend. The server is authoritative — no seed.
   useEffect(() => {
-    if (!getAccessToken("admin")) return;
+    if (!resolveAccountScope()) return;
     let cancelled = false;
     apiAdminListEmployees({ pageSize: 100 }).then((result) => {
       if (cancelled) return;
@@ -153,14 +166,16 @@ export function EmployeeManagementProvider({ children }) {
     async (draft) => {
       setIsWorking(true);
       // Try backend first
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminCreateEmployee(draft);
         setIsWorking(false);
         if (result.ok) {
           setEmployees((current) => [...current, result.employee]);
           note(ACTIVITY_ACTIONS.EMPLOYEE_CREATED, result.employee,
             `Created employee ${employeeFullName(result.employee)} · ${result.employee.employeeId}`);
-          return { ok: true, employee: result.employee };
+          // temporaryPassword flows through for the one-time credential
+          // sheet only; nothing password-shaped is stored.
+          return { ok: true, employee: result.employee, temporaryPassword: result.temporaryPassword ?? null };
         }
         return { ok: false, message: result.error };
       }
@@ -179,7 +194,7 @@ export function EmployeeManagementProvider({ children }) {
   const updateEmployee = useCallback(
     async (employeeId, patch) => {
       setIsWorking(true);
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminUpdateEmployee(employeeId, patch);
         setIsWorking(false);
         if (result.ok) {
@@ -265,7 +280,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const updateEmployeePermissions = useCallback(
     async (employeeId, permissions) => {
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminUpdateEmployeePermissions(employeeId, {
           permissionMode: "custom",
           permissions: Array.isArray(permissions) ? permissions : (permissions.permissions ?? []),
@@ -290,7 +305,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const suspendEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "SUSPENDED");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -312,7 +327,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const activateEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "ACTIVE");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -334,7 +349,7 @@ export function EmployeeManagementProvider({ children }) {
 
   const deactivateEmployee = useCallback(
     async (employeeId) => {
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminUpdateEmployeeStatus(employeeId, "INACTIVE");
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
@@ -357,7 +372,7 @@ export function EmployeeManagementProvider({ children }) {
   const resetEmployeePassword = useCallback(
     async (employeeId) => {
       setIsWorking(true);
-      if (getAccessToken("admin")) {
+      if (resolveAccountScope()) {
         const result = await apiAdminResetEmployeePassword(employeeId);
         setIsWorking(false);
         if (result.ok) {
@@ -385,7 +400,7 @@ export function EmployeeManagementProvider({ children }) {
     [activity]
   );
 
-  const canManageEmployees = canManageEmployeeAccounts(admin);
+  const canManageEmployees = canManageEmployeeAccounts(admin) || isSuperEmployeeAccount(employeeActor);
 
   const value = useMemo(
     () => ({

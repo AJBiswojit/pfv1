@@ -39,6 +39,10 @@ const SignIn = lazy(() => import("./pages/auth/SignIn"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+// ONE canonical staff login for all four account levels (SUPER_ADMIN, ADMIN,
+// SUPER_EMPLOYEE, EMPLOYEE). The former Admin/Employee login routes now
+// redirect here — there is a single login experience, not two.
+const StaffLogin = lazy(() => import("./pages/auth/StaffLogin"));
 
 const AccountDashboard = lazy(() => import("./pages/account/AccountDashboard"));
 const AccountProfile = lazy(() => import("./pages/account/AccountProfile"));
@@ -179,6 +183,8 @@ export default function App() {
                     <WorkforceProvider>
                     <Suspense fallback={<LoadingState label="Opening PRATIKSHYA FASHON" />}>
                     <Routes>
+                      {/* Unified staff sign-in — all four account levels. */}
+                      <Route path="/login" element={<StaffLogin />} />
                       <Route path="/admin/login" element={<AdminLogin />} />
 
                       <Route element={<AdminProtectedRoute />}>

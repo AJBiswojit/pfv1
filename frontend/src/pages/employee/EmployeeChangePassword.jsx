@@ -146,7 +146,7 @@ export default function EmployeeChangePassword() {
             type="button"
             onClick={() => {
               signOut();
-              navigate("/employee/login", { replace: true });
+              navigate("/login", { replace: true });
             }}
             className="mt-6 font-ui text-xs text-taupe hover:text-accent"
           >

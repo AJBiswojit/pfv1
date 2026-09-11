@@ -24,6 +24,17 @@ URL mapping (spec → implementation):
   POST /auth/admin/sign-in         ← rate limited: 10/minute per IP
   POST /auth/admin/sign-out
 
+  Unified staff login (all four account levels — the /login page calls this)
+  ─────────────────────────────────────────────────────────
+  POST /auth/staff/sign-in     ← identifier = email | phone | PF-code; the
+                                  backend resolves the account level and
+                                  issues the matching admin/employee surface
+                                  response. The per-surface employee/admin
+                                  sign-ins above stay live as compatibility
+                                  endpoints for existing callers — there is
+                                  exactly ONE authentication service behind
+                                  all of them (AuthService).
+
   Shared
   ─────────────────────────────────────────────────────────
   POST /auth/refresh
@@ -59,6 +70,7 @@ from app.schemas.auth.login import (
     ForgotPasswordRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
+    StaffLoginRequest,
 )
 from app.schemas.auth.oauth import GoogleOAuthRequest, FacebookOAuthRequest
 from app.schemas.auth.token import (
@@ -286,6 +298,34 @@ async def employee_refresh_token(
     return await service.refresh_access_token(
         req.refresh_token, current_access_token=current_access_token
     )
+
+
+@router.post(
+    "/staff/sign-in",
+    response_model=TokenResponse,
+    summary="Unified staff sign-in (SUPER_ADMIN / ADMIN / SUPER_EMPLOYEE / EMPLOYEE)",
+    description=(
+        "Body: `{ identifier: 'email | phone | PF-<PREFIX>-#####', password }`.\n\n"
+        "The ONE canonical login for all four staff account levels. The backend\n"
+        "authenticates the credential, resolves the account level from the user\n"
+        "row and returns the surface-specific payload (`admin` for the Admin\n"
+        "workspace levels, `employee` for the Employee workspace levels) with\n"
+        "`account_level` / `workspace` on the DTO so the frontend can route.\n\n"
+        "Customer storefront sign-in remains `/auth/customer/sign-in`; the\n"
+        "legacy per-surface staff sign-ins remain as compatibility aliases.\n\n"
+        "Rate limited to 10 attempts per minute per IP address."
+    ),
+)
+@limiter.limit(_LOGIN_LIMIT)
+async def sign_in_staff(
+    req: StaffLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return await service.sign_in_staff(req, ip_address=client_ip, user_agent=user_agent)
 
 
 # ===========================================================================

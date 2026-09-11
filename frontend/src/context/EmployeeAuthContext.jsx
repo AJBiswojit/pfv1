@@ -27,7 +27,7 @@ import {
 } from "react";
 import { canAccessPath, hasPermission as permit } from "../services/employees/authorization";
 import {
-  apiSignInEmployee,
+  apiSignInStaff,
   apiChangePasswordEmployee,
   apiSignOutEmployee,
   apiRestoreEmployeeSession,
@@ -119,14 +119,24 @@ export function EmployeeAuthProvider({ children }) {
 
   const signIn = useCallback(async ({ employeeId, password }) => {
     setIsLoading(true);
-    const result = await apiSignInEmployee({ employeeId, password });
+    // Canonical unified flow (/auth/staff/sign-in): the backend resolves the
+    // account level from the credential; employee-domain levels establish the
+    // employee session. Admin-workspace credentials are refused here with
+    // guidance — the portals share ONE login page but keep isolated sessions.
+    const result = await apiSignInStaff({ identifier: employeeId, password });
     setIsLoading(false);
 
     if (!result.ok) return result;
+    if (result.workspace !== "employee") {
+      clearTokens("admin");
+      return {
+        ok: false,
+        error: "This credential belongs to an Admin workspace account. Continue from the unified sign-in page.",
+      };
+    }
 
-    // apiSignInEmployee already persisted the JWT under the employee-scoped
-    // keys (apiClient derives the scope from the request path), so customer
-    // and admin sessions are never clobbered.
+    // apiSignInStaff already persisted the JWT under the employee-scoped
+    // keys, so customer and admin sessions are never clobbered.
     setSession({ employee: result.employee, isAuthenticated: true });
     return result;
   }, []);

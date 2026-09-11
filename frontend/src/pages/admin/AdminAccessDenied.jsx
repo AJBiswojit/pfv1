@@ -36,7 +36,7 @@ export default function AdminAccessDenied() {
               Return to employee portal
             </AtelierButton>
           ) : (
-            <AtelierButton as={Link} to="/admin/login">
+            <AtelierButton as={Link} to="/login">
               Admin sign in
             </AtelierButton>
           )}

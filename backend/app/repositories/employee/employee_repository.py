@@ -32,6 +32,20 @@ class EmployeeRepository(BaseRepository[UserModel]):
         res = await self.session.execute(stmt)
         return res.scalars().first()
 
+    async def get_any_staff_by_id(self, user_id: str) -> Optional[UserModel]:
+        """
+        Staff-scoped load for the account-management API: employee-domain AND
+        admin-domain accounts (never customers). The account level stored on
+        the row decides what the caller may do with it (app.core.rbac).
+        """
+        stmt = (
+            select(UserModel)
+            .where(UserModel.id == user_id, UserModel.user_type.in_(["employee", "admin"]))
+            .options(selectinload(UserModel.employee_profile))
+        )
+        res = await self.session.execute(stmt)
+        return res.scalars().first()
+
     async def get_employee_by_code(self, code: str) -> Optional[UserModel]:
         stmt = (
             select(UserModel)
@@ -63,12 +77,37 @@ class EmployeeRepository(BaseRepository[UserModel]):
         search: Optional[str] = None,
         status: Optional[str] = None,
         department_id: Optional[str] = None,
+        include_admins: bool = False,
+        exclude_super_admins: bool = False,
     ) -> Tuple[List[UserModel], int]:
+        # Employee-domain by default; the account-management screen passes
+        # include_admins=True to see the whole staff roster (SUPER_ADMIN and
+        # ADMIN accounts included) in one canonical list — no second API.
+        user_types = ["employee", "admin"] if include_admins else ["employee"]
         base_query = (
             select(UserModel)
-            .where(UserModel.user_type == "employee")
+            .where(UserModel.user_type.in_(user_types))
             .options(selectinload(UserModel.employee_profile))
         )
+
+        # Rosters for anyone below SUPER_ADMIN never enumerate system-owner
+        # accounts: the ceiling that blocks managing them also hides them.
+        if exclude_super_admins:
+            from app.models.rbac.role import RoleModel
+            from app.models.rbac.user_role import UserRoleModel
+
+            super_admin_ids = (
+                select(UserRoleModel.user_id)
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(RoleModel.name == "SUPER_ADMIN")
+                .scalar_subquery()
+            )
+            base_query = base_query.where(
+                ~(
+                    (UserModel.account_level == "SUPER_ADMIN")
+                    | (UserModel.account_level.is_(None) & UserModel.id.in_(super_admin_ids))
+                )
+            )
 
         if status:
             base_query = base_query.where(UserModel.status == status)

@@ -15,6 +15,15 @@ class UserDTO(BaseModel):
     force_password_change: bool
     roles: List[str] = []
     permissions: List[str] = []
+    permission_mode: Optional[str] = None
+    # ── Account-level model (unified auth): ONE canonical field, never
+    # redundant is_admin/is_employee booleans. workspace drives the post-login
+    # destination; business_role is operational responsibility, not authority.
+    account_level: Optional[str] = None          # SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE
+    accountLevel: Optional[str] = None
+    business_role: Optional[str] = None
+    businessRole: Optional[str] = None
+    workspace: Optional[str] = None              # admin | employee | customer
     # Employee/admin profile aliases already present in existing models.
     employee_code: Optional[str] = None
     employeeCode: Optional[str] = None

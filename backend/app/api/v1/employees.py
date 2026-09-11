@@ -11,7 +11,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_admin, get_current_employee, get_db, get_user_roles_and_permissions, require_admin_permission, require_permission_for_user
+from app.dependencies import get_current_account_manager, get_current_admin, get_current_employee, get_db, get_user_roles_and_permissions, require_admin_permission, require_permission_for_user, require_staff_permission
 from app.models.auth.user import UserModel
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.schemas.common import DataResponse, BaseResponse
@@ -55,6 +55,8 @@ router = APIRouter(tags=["Employee Operations"])
 # =========================================================================== #
 
 def _build_employee_response(user: UserModel, roles: Optional[List[str]] = None, permissions: Optional[List[str]] = None) -> EmployeeResponse:
+    from app.core.rbac import canonical_role_name, derive_account_level
+
     profile_dto = None
     if user.employee_profile:
         p = user.employee_profile
@@ -66,6 +68,14 @@ def _build_employee_response(user: UserModel, roles: Optional[List[str]] = None,
             department_id=p.department_id,
             section_id=p.section_id,
         )
+    from app.core.rbac import BUSINESS_ROLE_NAMES
+
+    business_role = next(
+        (r for r in map(canonical_role_name, roles or []) if r in BUSINESS_ROLE_NAMES), None
+    )
+    account_level = (getattr(user, "account_level", None) or "").upper() or derive_account_level(
+        user.user_type, roles
+    )
     return EmployeeResponse(
         id=user.id,
         full_name=user.full_name,
@@ -80,42 +90,62 @@ def _build_employee_response(user: UserModel, roles: Optional[List[str]] = None,
         profile=profile_dto,
         roles=roles or [],
         permissions=permissions or [],
+        account_level=account_level,
+        accountLevel=account_level,
+        business_role=business_role,
+        businessRole=business_role,
+        permission_mode=getattr(user, "permission_mode", None),
+        permissionMode=getattr(user, "permission_mode", None) or "role",
     )
 
 
-# =========================================================================== #
-#  ADMIN — Employee CRUD                                                        #
-#  Prefix: /admin/employees                                                     #
-# =========================================================================== #
+# ===========================================================================
+#  ADMIN / SUPER-EMPLOYEE — Staff account CRUD  (canonical account-management API)
+#  Prefix: /admin/employees
+#
+#  ONE API for all four account levels: the server enforces the creation
+#  matrix and the delegation ceiling (app.core.rbac) — UI filtering is
+#  presentation, never security. Employee-domain actors (SUPER_EMPLOYEE)
+#  reach the same routes; their token stays in the employee session scope.
+#  ===========================================================================
 
 @router.post(
     "/admin/employees",
     response_model=DataResponse[EmployeeResponse],
     status_code=status.HTTP_201_CREATED,
-    summary="Onboard a new employee (admin)",
+    summary="Onboard a new staff account at an authorized account level",
     description=(
         "Body (spec): `{ firstName, lastName, email, phone, role, department, section?, "
-        "store, joiningDate, shift?, permissionMode?, permissions? }`  \n"
-        "Generates a unique Employee ID in format `PF-<ROLEPREFIX>-#####` and sets "
-        "`mustChangePassword = true`. Activity: `EMPLOYEE_CREATED`."
+        "store, joiningDate, shift?, permissionMode?, permissions?, accountLevel? }`  \n"
+        "`accountLevel` ∈ SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE). "
+        "Generates a unique Employee ID `PF-<ROLEPREFIX>-#####` for employee-domain accounts and "
+        "sets `mustChangePassword = true`. The one-time `temporaryPassword` is returned ONLY on "
+        "this response. Activity: `EMPLOYEE_CREATED`."
     ),
 )
 async def create_employee(
     req: EmployeeCreateRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.create")
+    await require_staff_permission(admin, db, "employees.create")
     service = EmployeeService(db)
-    user = await service.create_employee(req, creator_id=admin.id)
-    return DataResponse(data=_build_employee_response(user), message="Employee created successfully.")
+    user, temp_password = await service.create_employee(req, creator_id=admin.id)
+    response = _build_employee_response(user)
+    response.temporaryPassword = temp_password
+    return DataResponse(data=response, message="Account created successfully.")
 
 
 @router.get(
     "/admin/employees",
     response_model=PaginatedResponse[EmployeeResponse],
-    summary="List all employees (admin)",
-    description="Requires `employees.view` permission.",
+    summary="List staff accounts (people-domain)",
+    description=(
+        "Requires `employees.view` permission. Employee-domain roster by "
+        "default; `include_admins=true` returns the full staff roster "
+        "(SUPER_ADMIN / ADMIN accounts included) from the same endpoint — "
+        "no second account-management API."
+    ),
 )
 async def list_employees(
     page: int = Query(default=1, ge=1),
@@ -123,13 +153,16 @@ async def list_employees(
     search: Optional[str] = Query(default=None, description="Search by name, email, code, or designation"),
     status: Optional[str] = Query(default=None, description="Filter by status: ACTIVE | PENDING | ON_LEAVE | SUSPENDED | INACTIVE"),
     department_id: Optional[str] = Query(default=None),
+    include_admins: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.view")
+    await require_staff_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     items, total = await service.list_employees(
-        page=page, page_size=page_size, search=search, status=status, department_id=department_id
+        page=page, page_size=page_size, search=search, status=status,
+        department_id=department_id, include_admins=include_admins,
+        actor_id=admin.id,
     )
     params = PaginationParams(page=page, page_size=page_size)
     return PaginatedResponse.create(
@@ -142,18 +175,18 @@ async def list_employees(
 @router.get(
     "/admin/employees/{employee_id}",
     response_model=DataResponse[EmployeeResponse],
-    summary="Get employee by ID (admin)",
+    summary="Get staff account by ID (people-domain)",
     description=(
-        "Returns `PublicEmployee` — never exposes hashed_password. "
+        "Returns the account record — never exposes hashed_password. "
         "Requires `employees.view` permission."
     ),
 )
 async def get_employee(
     employee_id: str,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.view")
+    await require_staff_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     user = await service.get_employee(employee_id)
     return DataResponse(data=_build_employee_response(user))
@@ -162,25 +195,25 @@ async def get_employee(
 @router.patch(
     "/admin/employees/{employee_id}",
     response_model=DataResponse[EmployeeResponse],
-    summary="Update employee profile (admin)",
+    summary="Update staff account (people-domain)",
     description="Requires `employees.edit` permission. Activities: EMPLOYEE_UPDATED, ROLE_CHANGED, DEPARTMENT_CHANGED.",
 )
 async def update_employee(
     employee_id: str,
     req: EmployeeUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
+    await require_staff_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
-    user = await service.update_employee(employee_id, req)
+    user = await service.update_employee(employee_id, req, actor_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message="Employee updated.")
 
 
 @router.post(
     "/admin/employees/{employee_id}/status",
     response_model=DataResponse[EmployeeResponse],
-    summary="Change employee account status (admin)",
+    summary="Change staff account status (people-domain)",
     description=(
         "Body: `{ status: ACTIVE | PENDING | ON_LEAVE | SUSPENDED | INACTIVE }`  \n"
         "**SUSPENDED** and **INACTIVE** immediately deny all permissions on the next request, "
@@ -192,11 +225,11 @@ async def update_employee_status(
     employee_id: str,
     req: EmployeeStatusRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
+    await require_staff_permission(admin, db, "employees.suspend")
     service = EmployeeService(db)
-    user = await service.update_employee_status(employee_id, req)
+    user = await service.update_employee_status(employee_id, req, actor_id=admin.id)
     return DataResponse(
         data=_build_employee_response(user),
         message=f"Employee status set to {req.status}.",
@@ -214,20 +247,21 @@ async def update_employee_status_patch(
     employee_id: str,
     req: EmployeeStatusRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
+    await require_staff_permission(admin, db, "employees.suspend")
     service = EmployeeService(db)
-    user = await service.update_employee_status(employee_id, req)
+    user = await service.update_employee_status(employee_id, req, actor_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message=f"Employee status set to {req.status}.")
 
 
 @router.post(
     "/admin/employees/{employee_id}/reset-password",
-    response_model=BaseResponse,
-    summary="Admin reset of employee password",
+    response_model=DataResponse[dict],
+    summary="Reset staff account password (people-domain)",
     description=(
-        "Sets `mustChangePassword = true`. Generates a secure temp password if none is supplied.  \n"
+        "Sets `mustChangePassword = true`. Generates a secure temp password if none is supplied; "
+        "the one-time value is returned in `data.temporaryPassword`.  \n"
         "Requires `employees.resetPassword` permission. Activity: PASSWORD_RESET."
     ),
 )
@@ -235,21 +269,30 @@ async def reset_employee_password(
     employee_id: str,
     req: ResetEmployeePasswordRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.resetPassword")
+    await require_staff_permission(admin, db, "employees.resetPassword")
     service = EmployeeService(db)
-    await service.reset_employee_password(employee_id, req)
-    return BaseResponse(message="Password reset successfully.")
+    temp_password = await service.reset_employee_password(employee_id, req, actor_id=admin.id)
+    return DataResponse(
+        data={"temporaryPassword": temp_password} if temp_password else {},
+        message="Password reset successfully.",
+    )
 
 
 @router.put(
     "/admin/employees/{employee_id}/permissions",
     response_model=DataResponse[EmployeeResponse],
-    summary="Update employee permission mode and custom permissions (admin)",
+    summary="Assign capability set to a staff account (people-domain)",
     description=(
         "Body: `{ permissionMode: 'role'|'custom', permissions: string[] }`  \n"
-        "**SUPER_ADMIN always resolves to full access regardless of stored overrides.**  \n"
+        "`permissions` accepts canonical capability codes (catalogue.view, "
+        "orders.manage, people.security …) and legacy granular codes; both are "
+        "stored and expanded through the shared RBAC model.  \n"
+        "Delegation is enforced server-side: a creator can only assign "
+        "capabilities they are authorized to delegate, and a SUPER_EMPLOYEE can "
+        "never hand out admin-domain authority. **SUPER_ADMIN always resolves to "
+        "full access regardless of stored overrides.**  \n"
         "Requires `employees.managePermissions` permission. Activity: PERMISSIONS_CHANGED."
     ),
 )
@@ -257,34 +300,35 @@ async def update_employee_permissions(
     employee_id: str,
     req: EmployeePermissionsRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.managePermissions")
+    await require_staff_permission(admin, db, "employees.managePermissions")
     service = EmployeeService(db)
-    user = await service.update_employee_permissions(employee_id, req)
+    user = await service.update_employee_permissions(employee_id, req, actor_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message="Permissions updated.")
 
 
 @router.delete(
     "/admin/employees/{employee_id}",
     response_model=BaseResponse,
-    summary="Hard-delete an employee account (admin)",
+    summary="Hard-delete a staff account (people-domain)",
     description="Prefer `POST /admin/employees/{id}/status` with `status=INACTIVE` for soft removal.",
 )
 async def delete_employee(
     employee_id: str,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.delete")
+    await require_staff_permission(admin, db, "employees.delete")
     service = EmployeeService(db)
-    await service.delete_employee(employee_id)
+    await service.delete_employee(employee_id, actor_id=admin.id)
     return BaseResponse(message="Employee deleted.")
 
 
-# =========================================================================== #
-#  Backward-compat routes under /employees (legacy prefix)                      #
-# =========================================================================== #
+# ===========================================================================
+#  Backward-compat routes under /employees (legacy prefix)
+#  Same handlers, same authorization — no divergent copy.
+# ===========================================================================
 
 @router.post(
     "/employees",
@@ -296,12 +340,14 @@ async def delete_employee(
 async def create_employee_legacy(
     req: EmployeeCreateRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.create")
+    await require_staff_permission(admin, db, "employees.create")
     service = EmployeeService(db)
-    user = await service.create_employee(req, creator_id=admin.id)
-    return DataResponse(data=_build_employee_response(user), message="Employee created successfully.")
+    user, temp_password = await service.create_employee(req, creator_id=admin.id)
+    response = _build_employee_response(user)
+    response.temporaryPassword = temp_password
+    return DataResponse(data=response, message="Account created successfully.")
 
 
 @router.get("/employees", response_model=PaginatedResponse[EmployeeResponse], include_in_schema=False)
@@ -311,48 +357,54 @@ async def list_employees_legacy(
     search: Optional[str] = Query(default=None),
     status: Optional[str] = Query(default=None),
     department_id: Optional[str] = Query(default=None),
+    include_admins: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.view")
+    await require_staff_permission(admin, db, "employees.view")
     service = EmployeeService(db)
-    items, total = await service.list_employees(page=page, page_size=page_size, search=search, status=status, department_id=department_id)
+    items, total = await service.list_employees(page=page, page_size=page_size, search=search, status=status, department_id=department_id, include_admins=include_admins, actor_id=admin.id)
     params = PaginationParams(page=page, page_size=page_size)
     return PaginatedResponse.create(items=[_build_employee_response(u) for u in items], total=total, params=params)
 
 
 @router.get("/employees/{employee_id}", response_model=DataResponse[EmployeeResponse], include_in_schema=False)
-async def get_employee_legacy(employee_id: str, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+async def get_employee_legacy(employee_id: str, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_account_manager)):
+    await require_staff_permission(admin, db, "employees.view")
     service = EmployeeService(db)
     user = await service.get_employee(employee_id)
     return DataResponse(data=_build_employee_response(user))
 
 
 @router.patch("/employees/{employee_id}", response_model=DataResponse[EmployeeResponse], include_in_schema=False)
-async def update_employee_legacy(employee_id: str, req: EmployeeUpdateRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+async def update_employee_legacy(employee_id: str, req: EmployeeUpdateRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_account_manager)):
+    await require_staff_permission(admin, db, "employees.edit")
     service = EmployeeService(db)
-    user = await service.update_employee(employee_id, req)
+    user = await service.update_employee(employee_id, req, actor_id=admin.id)
     return DataResponse(data=_build_employee_response(user), message="Employee updated.")
 
 
 @router.patch("/employees/{employee_id}/status", response_model=DataResponse[EmployeeResponse], include_in_schema=False)
-async def update_employee_status_legacy(employee_id: str, req: EmployeeStatusRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+async def update_employee_status_legacy(employee_id: str, req: EmployeeStatusRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_account_manager)):
+    await require_staff_permission(admin, db, "employees.suspend")
     service = EmployeeService(db)
-    user = await service.update_employee_status(employee_id, req)
-    return DataResponse(data=_build_employee_response(user))
+    user = await service.update_employee_status(employee_id, req, actor_id=admin.id)
+    return DataResponse(data=_build_employee_response(user), message=f"Employee status set to {req.status}.")
 
 
 @router.post("/employees/{employee_id}/reset-password", response_model=BaseResponse, include_in_schema=False)
-async def reset_password_legacy(employee_id: str, req: ResetEmployeePasswordRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+async def reset_password_legacy(employee_id: str, req: ResetEmployeePasswordRequest, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_account_manager)):
+    await require_staff_permission(admin, db, "employees.resetPassword")
     service = EmployeeService(db)
-    await service.reset_employee_password(employee_id, req)
+    await service.reset_employee_password(employee_id, req, actor_id=admin.id)
     return BaseResponse(message="Password reset successfully.")
 
 
 @router.delete("/employees/{employee_id}", response_model=BaseResponse, include_in_schema=False)
-async def delete_employee_legacy(employee_id: str, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_admin)):
+async def delete_employee_legacy(employee_id: str, db: AsyncSession = Depends(get_db), admin: UserModel = Depends(get_current_account_manager)):
+    await require_staff_permission(admin, db, "employees.delete")
     service = EmployeeService(db)
-    await service.delete_employee(employee_id)
+    await service.delete_employee(employee_id, actor_id=admin.id)
     return BaseResponse(message="Employee deleted.")
 
 

@@ -13,6 +13,9 @@ export default function EmployeeForm({
   errors = {},
   onChange,
   idPrefix = "emp",
+  // Admin-workspace accounts (SUPER_ADMIN / ADMIN) have no store assignment;
+  // the employment block is hidden for them. The backend keeps its own guard.
+  adminDomain = false,
 }) {
   const sections = useMemo(
     () => sectionsForDepartment(values.department),
@@ -61,6 +64,8 @@ export default function EmployeeForm({
           className={employeeInputClass(Boolean(errors.phone))}
         />
       </EmployeeField>
+      {adminDomain ? null : (
+      <>
       <EmployeeField label="Role" required error={errors.role} id={`${idPrefix}-role`}>
         <select
           id={`${idPrefix}-role`}
@@ -130,6 +135,8 @@ export default function EmployeeForm({
           className={employeeInputClass(Boolean(errors.joiningDate))}
         />
       </EmployeeField>
+      </>
+      )}
       <EmployeeField label="Status" id={`${idPrefix}-status`}>
         <select
           id={`${idPrefix}-status`}

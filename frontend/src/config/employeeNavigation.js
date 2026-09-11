@@ -20,7 +20,7 @@ export const EMPLOYEE_BRAND = {
   portal: "Employee Portal",
   subtitle: "Retail Operations",
   home: "/employee",
-  login: "/employee/login",
+  login: "/login", // unified staff sign-in (all four account levels)
 };
 
 /**

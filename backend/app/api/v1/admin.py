@@ -183,77 +183,17 @@ class SettingsPatchRequest(BaseModel):
 
 # ---------------------------------------------------------------------------
 # STATIC ROLES (mirrors roles-permissions.json)
+#
+# CONSOLIDATION (2026-09): the catalog moved to `app.core.rbac` — the single
+# canonical role vocabulary shared by the RBAC fallback, the auth service and
+# the seed script. Business roles are keyed by their persisted canonical
+# names (STORE_MANAGER, SALES_EXECUTIVE, …); the former Admin-portal keys
+# (MANAGER, SALES, INVENTORY, WAREHOUSE, CS, STYLIST) remain as alias entries
+# pointing at the same definitions. Re-exported here so every existing
+# `from app.api.v1.admin import BUILT_IN_ROLES` import site keeps working.
 # ---------------------------------------------------------------------------
 
-BUILT_IN_ROLES = {
-    "SUPER_ADMIN": {
-        "id": "SUPER_ADMIN",
-        "name": "Super Admin",
-        "description": "Full unrestricted access to all features and settings.",
-        "permissions": ["*"],
-    },
-    "ADMIN": {
-        "id": "ADMIN",
-        "name": "Admin",
-        "description": "Full operational access excluding some destructive actions.",
-        "permissions": [
-            "products.view", "products.manage", "categories.view", "categories.create", "categories.edit", "categories.archive",
-            "collections.view", "collections.create", "collections.edit", "collections.assign", "collections.archive",
-            "media.view", "media.upload", "media.assign", "media.delete",
-            "orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "orders.cancel", "orders.manage",
-            "returns.view", "returns.manage",
-            "customers.view", "inventory.view", "inventory.manage", "inventory.receive", "inventory.adjust", "inventory.transfer",
-            "employees.view", "employees.create", "employees.edit", "employees.suspend", "employees.resetPassword", "employees.managePermissions", "employees.delete",
-            "analytics.view", "offers.view", "offers.create", "offers.edit",
-            "attendance.view", "leave.view", "leave.approve", "performance.view", "performance.review",
-            "audit.view", "users.view", "users.manage", "roles.view", "roles.manage",
-        ],
-    },
-    "MANAGER": {
-        "id": "MANAGER",
-        "name": "Manager",
-        "description": "Operational manager with broad but not absolute access.",
-        "permissions": [
-            "products.view", "products.manage", "categories.view", "collections.view",
-            "orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "orders.cancel",
-            "returns.view", "returns.manage",
-            "customers.view", "inventory.view", "inventory.receive", "inventory.adjust",
-            "employees.view", "analytics.view", "offers.view",
-            "audit.view", "users.view", "roles.view",
-            "attendance.view", "leave.view", "performance.view",
-        ],
-    },
-    "SALES": {
-        "id": "SALES",
-        "name": "Sales",
-        "description": "Sales-floor and customer-facing operations.",
-        "permissions": ["products.view", "orders.view", "customers.view", "offers.view"],
-    },
-    "INVENTORY": {
-        "id": "INVENTORY",
-        "name": "Inventory",
-        "description": "Inventory management and stock operations.",
-        "permissions": ["inventory.view", "inventory.manage", "inventory.receive", "inventory.adjust", "inventory.transfer", "products.view"],
-    },
-    "WAREHOUSE": {
-        "id": "WAREHOUSE",
-        "name": "Warehouse",
-        "description": "Warehouse operations including pick, pack and dispatch.",
-        "permissions": ["orders.view", "orders.fulfill", "orders.pick", "orders.pack", "orders.dispatch", "inventory.view"],
-    },
-    "CS": {
-        "id": "CS",
-        "name": "Customer Support",
-        "description": "Customer support — orders, returns and customer queries.",
-        "permissions": ["orders.view", "orders.manage", "returns.view", "returns.manage", "customers.view"],
-    },
-    "STYLIST": {
-        "id": "STYLIST",
-        "name": "Stylist",
-        "description": "Product content and catalogue editing.",
-        "permissions": ["products.view", "products.manage", "media.view", "media.upload"],
-    },
-}
+from app.core.rbac import BUILT_IN_ROLES  # noqa: E402  (re-export — compat seam)
 
 
 # ===========================================================================
@@ -441,18 +381,29 @@ async def get_activity_log(
 
 
 # ===========================================================================
-# ROLES
+# ROLES / CAPABILITIES
 # ===========================================================================
 
 @router.get(
     "/roles",
     summary="List built-in roles",
-    description="Returns all 8 built-in roles with their default permission sets.",
+    description=(
+        "Returns the consolidated role catalogue with its default permission "
+        "sets. Legacy Admin-portal aliases (MANAGER, SALES, …) resolve to the "
+        "canonical business-role entries and are not listed twice."
+    ),
 )
 async def list_roles(
     current_user: UserModel = Depends(get_current_admin),
 ):
-    return {"ok": True, "roles": list(BUILT_IN_ROLES.values())}
+    seen = set()
+    roles = []
+    for role in BUILT_IN_ROLES.values():
+        if role["id"] in seen:
+            continue
+        seen.add(role["id"])
+        roles.append(role)
+    return {"ok": True, "roles": roles}
 
 
 @router.get(
@@ -467,3 +418,25 @@ async def get_role(
     if not role:
         raise NotFoundException(f"Role '{role_id}' not found.")
     return {"ok": True, "role": role}
+
+
+@router.get(
+    "/capabilities",
+    summary="List capability groups + account hierarchy contract",
+    description=(
+        "The canonical authorization vocabulary shared with the frontend "
+        "(account levels, creation matrix, capability groups, business-role "
+        "defaults). Read-only; any authenticated admin surface account."
+    ),
+)
+async def list_capabilities(
+    current_user: UserModel = Depends(get_current_admin),
+):
+    from app.core.rbac import ACCOUNT_LEVELS, ALL_CAPABILITIES, CAPABILITY_GROUPS, CREATABLE_LEVELS
+    return {
+        "ok": True,
+        "accountLevels": list(ACCOUNT_LEVELS),
+        "creatableLevels": {level: sorted(levels) for level, levels in CREATABLE_LEVELS.items()},
+        "capabilities": list(ALL_CAPABILITIES),
+        "capabilityGroups": CAPABILITY_GROUPS,
+    }

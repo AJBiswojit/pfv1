@@ -17,9 +17,10 @@ export default function EmployeeProtectedRoute() {
 
   if (!isAuthenticated) {
     const intended = sanitizeEmployeeReturnUrl(location.pathname + location.search);
+    // Unified staff sign-in — one /login page for all four account levels.
     return (
       <Navigate
-        to={`/employee/login?returnTo=${encodeURIComponent(intended)}`}
+        to={`/login?returnTo=${encodeURIComponent(intended)}`}
         replace
       />
     );

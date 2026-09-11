@@ -66,9 +66,13 @@ function toEmployeeProfile(dto) {
     phone:              dto.phone ?? "",
     // The UI/backend workflow contract expects the employee code here, not a user UUID.
     employeeId:         dto.employee_code ?? dto.employeeCode ?? profile.employee_code ?? profile.employeeCode ?? "",
-    role:               dto.roles?.[0] ?? dto.role ?? "EMPLOYEE",
+    role:               dto.businessRole ?? dto.business_role ?? dto.roles?.[0] ?? dto.role ?? "EMPLOYEE",
     roles:              dto.roles ?? [],
+    // Backend-resolved: legacy granular codes ∪ canonical capability codes.
     permissions:        dto.permissions ?? [],
+    accountLevel:       dto.accountLevel ?? dto.account_level ?? "EMPLOYEE",
+    businessRole:       dto.businessRole ?? dto.business_role ?? null,
+    workspace:          dto.workspace ?? "employee",
     status:             dto.status ?? "ACTIVE",
     mustChangePassword: Boolean(dto.force_password_change ?? dto.mustChangePassword),
     // employee_profile extras if present
@@ -82,6 +86,9 @@ function toAdminProfile(dto) {
   // fall back to the UUID so the workflow principal resolver can match
   // against whichever identifier is stored in the admin register.
   const adminId = dto.admin_code ?? dto.adminId ?? dto.id;
+  const accountLevel =
+    dto.accountLevel ?? dto.account_level ??
+    (dto.roles?.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : "ADMIN");
   return {
     id:          dto.id,
     ...splitName(dto.full_name),
@@ -91,9 +98,13 @@ function toAdminProfile(dto) {
     // Expose the raw UUID separately so resolvePrincipal can match
     // JWT-authenticated sessions that don't have a legacy admin code.
     _uuid:       dto.id,
-    role:        dto.roles?.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : (dto.roles?.[0] ?? "ADMIN"),
+    role:        accountLevel === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN",
     roles:       dto.roles ?? [],
+    // Backend-resolved: legacy granular codes ∪ canonical capability codes.
     permissions: dto.permissions ?? [],
+    accountLevel,
+    businessRole: dto.businessRole ?? dto.business_role ?? null,
+    workspace:    dto.workspace ?? "admin",
     status:      dto.status ?? "ACTIVE",
   };
 }
@@ -271,6 +282,64 @@ export async function apiSignOutAdmin() {
     await apiClient.post("/auth/admin/sign-out", {}, { scope: "admin" });
   } catch { /* best-effort */ }
   clearTokens("admin");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// UNIFIED STAFF SIGN-IN — one login experience for all four account levels
+// (the /login page). The backend resolves the account level from the
+// credential; this layer only stores the token under the scope the account
+// level belongs to and hands the workspace decision to the caller.
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /auth/staff/sign-in
+ * identifier may be an email, a phone or a PF employee code.
+ * Returns { ok, accountLevel, workspace, admin?, employee? }.
+ * Tokens are stored under the workspace's isolated scope so admin and
+ * employee sessions never clobber each other (or the customer session).
+ */
+export async function apiSignInStaff({ identifier, password }) {
+  try {
+    const data = await apiClient.post("/auth/staff/sign-in", {
+      identifier,
+      password,
+    }, { scope: "none" });
+
+    const dto = data.admin ?? data.employee ?? data.user ?? {};
+    const workspace = dto.workspace ?? (data.admin ? "admin" : "employee");
+    const accountLevel = dto.accountLevel ?? dto.account_level ?? null;
+    if (workspace === "admin" && dto.user_type && dto.user_type !== "admin") {
+      return { ok: false, error: "Admin authentication privileges required." };
+    }
+    if (workspace === "employee" && dto.user_type && dto.user_type !== "employee") {
+      return { ok: false, error: "Employee authentication required." };
+    }
+
+    const scope = workspace === "admin" ? "admin" : "employee";
+    storeTokensFromResponse(data, scope);
+
+    if (scope === "admin") {
+      return { ok: true, workspace, accountLevel, admin: toAdminProfile(dto) };
+    }
+    const employee = toEmployeeProfile(dto);
+    employee.mustChangePassword = Boolean(data.mustChangePassword ?? data.force_password_change ?? employee.mustChangePassword);
+    return { ok: true, workspace, accountLevel, employee };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/** Sign out every staff scope (used by the shared /auth/logout surface). */
+export async function apiSignOutStaff() {
+  try {
+    await apiClient.post("/auth/logout", {}, { scope: "admin" });
+  } catch { /* best-effort */ }
+  clearTokens("admin");
+  try {
+    await apiClient.post("/auth/logout", {}, { scope: "employee" });
+  } catch { /* best-effort */ }
+  clearTokens("employee");
   return { ok: true };
 }
 
