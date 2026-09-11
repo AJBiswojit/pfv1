@@ -8,11 +8,8 @@ import AiConversationLog, { AiUserBubble } from "../../components/aiAssistants/A
 import AiQuickPrompts from "../../components/aiAssistants/AiQuickPrompts";
 import AiThinkingIndicator from "../../components/aiAssistants/AiThinkingIndicator";
 import { useAdminAuth } from "../../context/AdminAuthContext";
-import { useOrder } from "../../context/OrderContext";
-import { useInventory } from "../../context/InventoryContext";
-import { useWorkforce } from "../../context/WorkforceContext";
 import { AtelierButton } from "../../design-system";
-import aiService, { AI_PROVIDER_LABEL, isMockAiProvider } from "../../services/ai/aiService";
+import aiService, { AI_PROVIDER_LABEL } from "../../services/ai/aiService";
 import { AI_SESSION_SCOPES, clearAiSession, loadAiSession, saveAiSession } from "../../services/ai/aiSessionStore";
 import { buildBusinessResponse } from "../../services/ai/shared/aiResponseBuilder";
 import {
@@ -49,9 +46,6 @@ const greetingEnvelope = (name) =>
 
 export default function AiBusinessAssistant() {
   const { admin, isAuthenticated, isSuperAdmin } = useAdminAuth();
-  const { allOrders } = useOrder();
-  const inventory = useInventory();
-  const { revision: workforceRevision } = useWorkforce();
 
   const adminName = admin?.name || admin?.firstName || null;
   const adminKey = admin?.adminId ?? "admin";
@@ -112,13 +106,11 @@ export default function AiBusinessAssistant() {
       });
 
       try {
-        const response = await aiService.askBusinessAssistant({
-          question,
-          orders: allOrders,
-          periodInput: { preset },
-          access: { isAuthenticated, isSuperAdmin },
-          onStage: (progress) => setStage(progress?.message || ""),
-        });
+        // REAL assistant: the browser sends only the question + period —
+        // the backend reads the database through bounded read-only queries
+        // (POST /ai/business/ask, analytics.view gated).
+        const response = await aiService.askBusinessAssistant({ question, preset });
+        setStage("");
 
         recordActivity(loadActivity(), {
           ...describeActor(actor),
@@ -129,13 +121,17 @@ export default function AiBusinessAssistant() {
         setMessages((current) => [...current, response]);
       } catch (progress) {
         if (progress?.name === "AbortError") return;
-        setError("The insight could not be prepared. Please ask again.");
+        setError(
+          progress?.status === 403
+            ? "Your role does not include analytics access, so the assistant cannot answer."
+            : "The insight could not be prepared. Please ask again."
+        );
       } finally {
         setThinking(false);
         setStage("");
       }
     },
-    [thinking, isSuperAdmin, allOrders, preset, isAuthenticated, actor]
+    [thinking, isSuperAdmin, preset, isAuthenticated, actor]
   );
 
   const startNewConversation = useCallback(() => {
@@ -178,12 +174,7 @@ export default function AiBusinessAssistant() {
       description={`${AI_BUSINESS_BRAND.tagline}. Reads the live orders, inventory, returns, offers, customers and workforce registers — and never invents a number.`}
       actions={
         <>
-          {isMockAiProvider() ? (
-            <p className="border border-mist/80 bg-surface/40 px-3 py-2 font-ui text-[9px] uppercase tracking-[.16em] text-taupe">
-              Demo assistant · deterministic
-            </p>
-          ) : null}
-          <AtelierButton variant="outline" size="chip" onClick={startNewConversation}>
+            <AtelierButton variant="outline" size="chip" onClick={startNewConversation}>
             <RotateCcw size={11} aria-hidden="true" /> New conversation
           </AtelierButton>
         </>
@@ -260,7 +251,7 @@ export default function AiBusinessAssistant() {
 
           <p className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
             <BarChart3 size={12} aria-hidden="true" />
-            Insights refresh with the registers — inventory revision {inventory.revision}, workforce revision {workforceRevision}.
+            Every answer is read live from the database — figures are never invented or cached.
           </p>
         </section>
       </div>
