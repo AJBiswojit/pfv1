@@ -9,6 +9,7 @@ import usePortalDrawer from "../components/navigation/usePortalDrawer";
 import usePortalSidebarCollapse from "../components/navigation/usePortalSidebarCollapse";
 import { useEmployeeAuth } from "../context/EmployeeAuthContext";
 import { requiredPermissionForPath } from "../config/employeeNavigation";
+import EmployeeDeskErrorBoundary from "../components/employee/EmployeeDeskErrorBoundary";
 
 export default function EmployeeLayout() {
   const { pathname } = useLocation();
@@ -25,9 +26,11 @@ export default function EmployeeLayout() {
   }, []);
 
   const required = requiredPermissionForPath(pathname);
-  if (required && employee && !hasPermission(required) && pathname !== "/employee/access-denied") {
-    return <Navigate to="/employee/access-denied" replace />;
-  }
+  const denied =
+    Boolean(required) &&
+    Boolean(employee) &&
+    !hasPermission(required) &&
+    pathname !== "/employee/access-denied";
 
   return (
     <div className="min-h-screen bg-canvas text-ink font-display selection:bg-accent selection:text-white">
@@ -58,7 +61,9 @@ export default function EmployeeLayout() {
         <AnimatePresence mode="wait" initial={false}>
           <PageTransition key={pathname} className="min-w-0 w-full max-w-full">
             <Suspense fallback={<LoadingState label="Preparing this desk" />}>
-              <Outlet />
+              <EmployeeDeskErrorBoundary key={pathname}>
+                {denied ? <Navigate to="/employee/access-denied" replace /> : <Outlet />}
+              </EmployeeDeskErrorBoundary>
             </Suspense>
           </PageTransition>
         </AnimatePresence>

@@ -154,3 +154,43 @@ class Issue3ForcedPasswordBlankPageTests(unittest.TestCase):
         self.assertIn('"/change-password"', src)
         self.assertIn('"/employee/change-password"', src)
         self.assertIn("employee_change_password", src)
+
+
+class AdminDirectoryRosterTests(unittest.TestCase):
+    """Created ADMIN accounts must list and carry a PF staff code."""
+
+    def test_create_always_issues_an_employee_profile(self):
+        from app.services.employee.employee_service import EmployeeService
+
+        src = inspect.getsource(EmployeeService.create_employee)
+        self.assertIn("EmployeeProfileModel(", src)
+        self.assertNotIn(
+            "Admin-domain accounts do not carry an employee code.",
+            src,
+            "ADMIN / SUPER_ADMIN must receive a PF-ADM code like every other staff level",
+        )
+        self.assertNotIn("if is_employee_domain:", src)
+
+    def test_list_honors_include_admins_and_repairs_missing_profiles(self):
+        from app.services.employee.employee_service import EmployeeService
+
+        src = inspect.getsource(EmployeeService.list_employees)
+        self.assertIn("include_admins", src)
+        self.assertIn("_ensure_staff_profile", src)
+        # Repair must flush via the helper, not commit mid-request (that would
+        # expire rows before `_build_employee_response` can read them).
+        self.assertNotIn("await self.db.commit()", src)
+
+    def test_staff_lookup_resolves_pf_codes(self):
+        from app.repositories.employee.employee_repository import EmployeeRepository
+
+        src = inspect.getsource(EmployeeRepository.get_any_staff_by_id)
+        self.assertIn("EmployeeProfileModel.employee_code == user_id", src)
+        self.assertIn("employee", src)
+        self.assertIn("admin", src)
+
+    def test_employee_only_lookup_still_excludes_admin_user_type(self):
+        from app.repositories.employee.employee_repository import EmployeeRepository
+
+        src = inspect.getsource(EmployeeRepository.get_employee_by_id)
+        self.assertIn('UserModel.user_type == "employee"', src)

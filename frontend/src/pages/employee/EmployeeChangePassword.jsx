@@ -40,11 +40,10 @@ export default function EmployeeChangePassword() {
     setIsSubmitting(true);
     const result = await changePassword({ currentPassword, newPassword, confirmPassword });
     if (result.ok) {
-      // The post-reset destination is decided by the account level the
-      // freshly-hydrated session resolved — not by the page the user came
-      // from. Employee-domain levels land on /employee; the change-password
-      // surface is only reachable by that workspace today.
-      const home = homeForAccountLevel(employee?.accountLevel) || "/employee";
+      // Prefer the re-hydrated session (accountLevel + permissions) over the
+      // pre-change snapshot so SUPER_EMPLOYEE/EMPLOYEE both land on a real
+      // /employee shell instead of a chrome-less redirect.
+      const home = homeForAccountLevel(result.employee?.accountLevel || employee?.accountLevel) || "/employee";
       navigate(home, { replace: true });
     } else {
       setError(result.error || "The password could not be updated.");

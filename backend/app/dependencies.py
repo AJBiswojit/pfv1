@@ -26,6 +26,7 @@ from app.core.rbac import (
     ACCOUNT_LEVEL_SUPER_EMPLOYEE,
     derive_account_level,
     expand_effective_permissions,
+    with_employee_self_service,
 )
 from app.core.redis import get_redis
 from app.core.security import decode_token
@@ -250,7 +251,13 @@ async def get_user_roles_and_permissions(
         cached = await redis.get(cache_key)
         if cached:
             data = json.loads(cached)
-            return list(data["roles"]), list(data["permissions"])
+            roles = list(data["roles"])
+            # Union on cache-hit too so a pre-fix TTL entry cannot blank
+            # /employee for up to five minutes after deploy.
+            perms = with_employee_self_service(
+                getattr(user, "user_type", None), set(data["permissions"])
+            )
+            return roles, sorted(perms)
     except Exception:  # cache is an optimization, never an authority
         logger.debug("RBAC cache read failed", exc_info=True)
 
@@ -293,6 +300,7 @@ async def get_user_roles_and_permissions(
         logger.debug("Unable to load built-in RBAC fallback", exc_info=True)
 
     permissions = expand_effective_permissions(permissions)
+    permissions = with_employee_self_service(getattr(user, "user_type", None), permissions)
 
     try:
         await redis.setex(

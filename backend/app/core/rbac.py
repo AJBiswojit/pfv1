@@ -558,3 +558,29 @@ _KNOWN_OPERATIONAL: frozenset = frozenset({
     "audit.view", "users.view", "users.manage", "roles.view", "roles.manage",
     "settings.view", "settings.manage",
 })
+
+#: Subset actually injected onto every employee-domain session (EMPLOYEE and
+#: SUPER_EMPLOYEE). The capability UI has no Dashboard/Profile row, so without
+#: this union a newly created account authenticates then cannot open /employee.
+#: House-wide keys (attendance.manage, leave.approve, people.*, settings.*)
+#: stay assignment-only and are NOT in this set.
+EMPLOYEE_SELF_SERVICE_PERMISSIONS: frozenset = frozenset({
+    "dashboard.view", "profile.view", "profile.edit",
+    "attendance.view", "attendance.checkIn", "attendance.checkOut",
+    "leave.view", "leave.create",
+    "performance.view",
+})
+
+
+def with_employee_self_service(user_type: Optional[str], permissions: Set[str]) -> Set[str]:
+    """Union own-record keys onto employee-domain sessions only.
+
+    Admin-workspace accounts (SUPER_ADMIN / ADMIN) are unchanged — they do
+    not use the employee portal home, and injecting dashboard.view there
+    would not match how Admin authorization is evaluated.
+    """
+    if user_type != "employee":
+        return permissions
+    out = set(permissions)
+    out.update(EMPLOYEE_SELF_SERVICE_PERMISSIONS)
+    return out

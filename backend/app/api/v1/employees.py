@@ -120,7 +120,8 @@ def _build_employee_response(user: UserModel, roles: Optional[List[str]] = None,
         "Body (spec): `{ firstName, lastName, email, phone, role, department, section?, "
         "store, joiningDate, shift?, permissionMode?, permissions?, accountLevel? }`  \n"
         "`accountLevel` ∈ SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE). "
-        "Generates a unique Employee ID `PF-<ROLEPREFIX>-#####` for employee-domain accounts and "
+        "Generates a unique Employee ID `PF-<ROLEPREFIX>-#####` for every staff level "
+        "(admin-workspace uses the ADM prefix) and "
         "sets `mustChangePassword = true`. The one-time `temporaryPassword` is returned ONLY on "
         "this response. Activity: `EMPLOYEE_CREATED`."
     ),

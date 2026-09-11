@@ -154,7 +154,7 @@ export const syncEmployeesFromBackend = async () => {
   if (!getAccessToken("admin")) {
     return { ok: false, error: "Admin authentication required." };
   }
-  const result = await apiAdminListEmployees({ pageSize: 100 });
+  const result = await apiAdminListEmployees({ pageSize: 100, includeAdmins: true });
   if (!result.ok) return result;
   replaceServerEmployees(result.items ?? []);
   return { ok: true, employees: result.items ?? [] };

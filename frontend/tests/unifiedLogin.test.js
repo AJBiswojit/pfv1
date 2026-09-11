@@ -67,7 +67,7 @@ test("authApi posts to the ONE endpoint and stores tokens under the resolved sco
   assert.match(authApi, /export async function apiSignInStaff/);
   assert.match(authApi, /const scope = workspace === "admin" \? "admin" : "employee";/);
   // the request asks for NO fixed scope — the server resolves it
-  assert.match(authApi, /identifier,\n\s*password,/);
+  assert.match(authApi, /identifier,\r?\n\s*password,/);
 });
 
 test("both workspace contexts sign in through the unified endpoint only", () => {

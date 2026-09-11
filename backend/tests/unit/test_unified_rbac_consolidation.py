@@ -30,12 +30,14 @@ from app.core.rbac import (
     ADMIN_ONLY_CAPABILITIES,
     ALL_CAPABILITIES,
     CREATABLE_LEVELS,
+    EMPLOYEE_SELF_SERVICE_PERMISSIONS,
     LEGACY_TO_CAPABILITY,
     can_create,
     can_manage,
     check_delegation,
     expand_effective_permissions,
     normalize_grants,
+    with_employee_self_service,
 )
 
 ALL_LEVELS = [
@@ -216,6 +218,35 @@ class ExpansionCompatTests(unittest.TestCase):
         twice = normalize_grants(once)
         self.assertEqual(once, twice)
         self.assertEqual(len(once), len(set(once)))
+
+
+class EmployeeSelfServiceInjectionTests(unittest.TestCase):
+    """Capability-created employee sessions must still open /employee."""
+
+    def test_dashboard_view_is_injected_for_employee_user_type_only(self):
+        employee = with_employee_self_service("employee", {"catalogue.view"})
+        admin = with_employee_self_service("admin", {"catalogue.view"})
+        self.assertIn("dashboard.view", employee)
+        self.assertIn("profile.view", employee)
+        self.assertNotIn("dashboard.view", admin)
+        self.assertEqual(admin, {"catalogue.view"})
+
+    def test_self_service_does_not_grant_people_or_settings(self):
+        keys = EMPLOYEE_SELF_SERVICE_PERMISSIONS
+        self.assertIn("dashboard.view", keys)
+        self.assertNotIn("people.manage", keys)
+        self.assertNotIn("people.security", keys)
+        self.assertNotIn("settings.manage", keys)
+        self.assertNotIn("employees.view", keys)
+
+    def test_resolver_unions_self_service_after_expand(self):
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[2] / "app/dependencies.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("with_employee_self_service", source)
+        self.assertIn("expand_effective_permissions(permissions)", source)
 
 
 class UnifiedSignInWiringTests(unittest.TestCase):

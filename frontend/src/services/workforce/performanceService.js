@@ -85,12 +85,14 @@ export const scorePerformance = ({ targetAchievement, attendance, operationalQua
 };
 
 const decorate = (record, employee, { teamAverage = null } = {}) => {
-  if (!record || !employee) return record;
+  /* A missing review is an empty desk, not a crash. ManagerDashboard used
+     to read `row.status` on these nulls after the people list hydrated. */
+  if (!record || !employee) return null;
   const period = parsePeriodKey(record.period, record.periodType);
   const frozen = record.status === PERFORMANCE_STATUS.FINALIZED;
   const achievements = frozen && record.achievements?.length
     ? record.achievements
-    : resolveAchievements(employee, record.targets, period, teamAverage);
+    : resolveAchievements(employee, record.targets || [], period, teamAverage);
   const attendance = employeeAttendanceSummary(employee.employeeId, record.period);
   const targetPct = averageTargetPercent(achievements, METRIC_DEFINITIONS);
   const quality = operationalQualityFor(employee, achievements, attendance.attendancePercent);
@@ -101,6 +103,7 @@ const decorate = (record, employee, { teamAverage = null } = {}) => {
   });
   const override = record.review?.scoreOverride;
   const score = override == null ? breakdown.score : Number(override);
+  const metrics = Array.isArray(achievements) ? achievements : [];
 
   return {
     ...record,
@@ -110,15 +113,15 @@ const decorate = (record, employee, { teamAverage = null } = {}) => {
     departmentLabel: getDepartmentLabel(employee.department),
     periodLabel: period.label,
     periodRange: period,
-    achievements,
+    achievements: metrics,
     attendance,
     scoreBreakdown: breakdown,
     score,
     displayScore: clampDisplay(score),
     targetPercent: targetPct,
-    metrics: achievements.map((item) => {
+    metrics: metrics.map((item) => {
       const definition = getMetric(item.metric);
-      const percent = metricPercent(item.actualValue, item.targetValue, { invert: definition.invert });
+      const percent = metricPercent(item.actualValue, item.targetValue, { invert: Boolean(definition?.invert) });
       return {
         ...item,
         label: definition.label,
@@ -188,6 +191,7 @@ export const listVisiblePerformance = (actor, filters = {}) => {
       const record = ensurePeriodRecord(person, period);
       return decorate(record, person, { teamAverage });
     })
+    .filter(Boolean)
     .filter((row) => !filters.status || row.status === filters.status);
 };
 
@@ -200,7 +204,7 @@ export const performanceHistory = (employeeId, actor = null) => {
 };
 
 export const housePerformanceSummary = (actor, periodKey = periodFromDate().key) => {
-  const rows = listVisiblePerformance(actor, { period: periodKey });
+  const rows = listVisiblePerformance(actor, { period: periodKey }).filter(Boolean);
   const reviewed = rows.filter((row) =>
     [PERFORMANCE_STATUS.REVIEWED, PERFORMANCE_STATUS.FINALIZED].includes(row.status)
   );

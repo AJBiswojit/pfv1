@@ -133,9 +133,55 @@ test("Issue 3: EmployeeChangePassword routes to the account-level home after suc
   // The post-reset destination is derived from the freshly-hydrated
   // accountLevel (homeForAccountLevel), not hardcoded to the page the user
   // came from — SUPER_EMPLOYEE and EMPLOYEE both land on /employee.
-  assert.match(page, /homeForAccountLevel\(employee\?\.accountLevel\)/);
+  assert.match(page, /homeForAccountLevel\(result\.employee\?\.accountLevel \|\| employee\?\.accountLevel\)/);
   assert.match(page, /navigate\(home, \{ replace: true \}\)/);
   assert.match(page, /changePassword/);
+});
+
+test("Issue 4: employee home keeps portal chrome when a path is denied", () => {
+  const layout = src("layouts/EmployeeLayout.jsx");
+  // A missing dashboard.view must not unmount header/sidebar (white /employee).
+  assert.match(layout, /denied \? <Navigate to="\/employee\/access-denied"/);
+  assert.match(layout, /<EmployeeHeader/);
+  assert.match(layout, /EmployeeDeskErrorBoundary/);
+  assert.doesNotMatch(
+    layout,
+    /if \(required && employee && !hasPermission\(required\).*\) \{\s*return <Navigate/,
+  );
+});
+
+test("Issue 4: workforce attendance settings do not fetch admin-scoped sections", () => {
+  const settings = src("services/workforce/settings.js");
+  assert.doesNotMatch(settings, /from ["']\.\.\/settingsRepository["']/);
+  assert.doesNotMatch(settings, /getSection\(/);
+  assert.match(settings, /ATTENDANCE_DEFAULTS/);
+});
+
+test("Issue 4: performance list drops null reviews instead of crashing the house summary", () => {
+  const service = src("services/workforce/performanceService.js");
+  assert.match(service, /if \(!record \|\| !employee\) return null;/);
+  assert.match(service, /\.filter\(Boolean\)/);
+});
+
+test("Issue 4: SUPER_EMPLOYEE dashboard is not the Sales floor fallback", () => {
+  const dash = src("components/employee/dashboards/RoleDashboard.jsx");
+  assert.match(dash, /ACCOUNT_LEVELS\.SUPER_EMPLOYEE/);
+  assert.match(dash, /ManagerDashboard/);
+  assert.doesNotMatch(dash, /return <SalesDashboard \/>;\s*\}?\s*$/);
+});
+
+test("Issue 4: staff login refuses to open a blank portal when restore fails", () => {
+  const page = src("pages/auth/StaffLogin.jsx");
+  assert.match(page, /session\?\.isAuthenticated/);
+  assert.match(page, /admin profile could not be opened/);
+  assert.match(page, /employee profile could not be opened/);
+});
+
+test("Issue 4: toEmployeeProfile does not treat account levels as floor roles", () => {
+  const api = src("services/api/authApi.js");
+  assert.match(api, /function pickBusinessRole/);
+  assert.match(api, /SUPER_EMPLOYEE/);
+  assert.doesNotMatch(api, /dto\.roles\?\.\[0\] \?\? dto\.role \?\? "EMPLOYEE"/);
 });
 
 test("Issue 3: backend keeps access token valid for the initial forced-password flow", async () => {
@@ -146,4 +192,66 @@ test("Issue 3: backend keeps access token valid for the initial forced-password 
   assert.match(backendSrc, /was_forced = bool\(user\.force_password_change\)/);
   assert.match(backendSrc, /if access_token and not was_forced/);
   assert.match(backendSrc, /Password changed user_id=%s was_forced/);
+});
+
+test("Issue 4: EMPLOYEE without assigned capabilities still has dashboard.view", async () => {
+  const { hasPermission } = await import("../src/services/employees/authorization.js");
+  const employee = {
+    status: "ACTIVE",
+    accountLevel: "EMPLOYEE",
+    permissions: ["catalogue.view"],
+  };
+  assert.equal(hasPermission(employee, "dashboard.view"), true);
+  assert.equal(hasPermission(employee, "profile.view"), true);
+  assert.equal(hasPermission(employee, "employees.view"), false);
+  assert.equal(hasPermission(employee, "people.manage"), false);
+});
+
+test("Issue 4: SUPER_EMPLOYEE with people.manage can view team-access", async () => {
+  const { hasPermission } = await import("../src/services/employees/authorization.js");
+  const actor = {
+    status: "ACTIVE",
+    accountLevel: "SUPER_EMPLOYEE",
+    permissions: ["people.manage"],
+  };
+  assert.equal(hasPermission(actor, "dashboard.view"), true);
+  assert.equal(hasPermission(actor, "employees.view"), true);
+  assert.equal(hasPermission(actor, "employees.create"), true);
+  assert.equal(hasPermission(actor, "employees.managePermissions"), false);
+});
+
+test("Issue 4: SUPER_ADMIN home stays on /admin and is not employee-gated", async () => {
+  const { homeForAccountLevel, ACCOUNT_LEVELS } = await import("../src/config/rbacModel.js");
+  assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_ADMIN), "/admin");
+  const layout = src("layouts/AdminLayout.jsx");
+  assert.doesNotMatch(layout, /dashboard\.view/);
+  assert.doesNotMatch(layout, /requiredPermissionForPath/);
+});
+
+// ── Admin directory roster (created ADMIN missing from list / no PF code) ─
+
+test("Admin directory: list API sends include_admins only when asked", () => {
+  const api = src("services/api/employeesApi.js");
+  assert.match(api, /includeAdmins = false/);
+  assert.match(api, /if \(includeAdmins\) qs\.set\("include_admins", "true"\)/);
+});
+
+test("Admin directory: admin-workspace sync requests the full staff roster", () => {
+  const ctx = src("context/EmployeeManagementContext.jsx");
+  assert.match(ctx, /includeAdmins: scope === "admin"/);
+  const service = src("services/employees/employeeService.js");
+  assert.match(service, /includeAdmins: true/);
+});
+
+test("Admin directory: create form previews a PF-ADM id instead of a placeholder", () => {
+  const page = src("pages/admin/employees/AdminEmployeeCreate.jsx");
+  assert.doesNotMatch(page, /Assigned for Admin-workspace accounts/);
+  assert.match(page, /adminDomain \? accountLevel : draft\.role/);
+});
+
+test("Admin directory: ADM prefix is used for admin-workspace levels", async () => {
+  const { prefixForAssignment, generateEmployeeId } = await import("../src/services/employees/employeeId.js");
+  assert.equal(prefixForAssignment("ADMIN"), "ADM");
+  assert.equal(prefixForAssignment("SUPER_ADMIN"), "ADM");
+  assert.match(generateEmployeeId({ role: "ADMIN", existingIds: [] }), /^PF-ADM-\d{5}$/);
 });

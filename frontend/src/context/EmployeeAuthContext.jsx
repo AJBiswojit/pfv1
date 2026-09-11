@@ -193,7 +193,7 @@ export function EmployeeAuthProvider({ children }) {
             setSession({ employee: reauth.employee, isAuthenticated: true });
           }
           setIsLoading(false);
-          return { ok: true };
+          return { ok: true, employee: restored.ok ? restored.employee : reauth.employee };
         }
       } catch {
         // fall through to local flag clear — the caller will still navigate
@@ -205,14 +205,15 @@ export function EmployeeAuthProvider({ children }) {
     // Fallback when identifier is missing or re-auth is unavailable: at
     // minimum clear the forced flag locally so the route guard does not
     // loop back to /employee/change-password.
+    const fallbackEmployee = employee
+      ? { ...employee, mustChangePassword: false }
+      : null;
     setSession((prev) => ({
       ...prev,
-      employee: prev.employee
-        ? { ...prev.employee, mustChangePassword: false }
-        : null,
+      employee: fallbackEmployee,
     }));
     setIsLoading(false);
-    return { ok: true };
+    return { ok: true, employee: fallbackEmployee };
   }, [employee]);
 
   // ── Refresh local session (re-read from storage) ─────────────────────────

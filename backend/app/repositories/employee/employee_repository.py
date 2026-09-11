@@ -46,26 +46,17 @@ class EmployeeRepository(BaseRepository[UserModel]):
     async def get_any_staff_by_id(self, user_id: str) -> Optional[UserModel]:
         """
         Staff-scoped load for the account-management API: employee-domain AND
-        admin-domain accounts (never customers). The account level stored on
-        the row decides what the caller may do with it (app.core.rbac).
+        admin-domain accounts (never customers). Resolves ``users.id`` or the
+        PF employee code the Admin directory uses in URLs. The account level
+        stored on the row decides what the caller may do with it (app.core.rbac).
         """
         stmt = (
             select(UserModel)
-            .where(UserModel.id == user_id, UserModel.user_type.in_(["employee", "admin"]))
-            .options(selectinload(UserModel.employee_profile))
-        )
-        res = await self.session.execute(stmt)
-        return res.scalars().first()
-
-    async def get_any_staff_by_id(self, user_id: str) -> Optional[UserModel]:
-        """
-        Staff-scoped load for the account-management API: employee-domain AND
-        admin-domain accounts (never customers). The account level stored on
-        the row decides what the caller may do with it (app.core.rbac).
-        """
-        stmt = (
-            select(UserModel)
-            .where(UserModel.id == user_id, UserModel.user_type.in_(["employee", "admin"]))
+            .outerjoin(EmployeeProfileModel, EmployeeProfileModel.user_id == UserModel.id)
+            .where(
+                UserModel.user_type.in_(["employee", "admin"]),
+                or_(UserModel.id == user_id, EmployeeProfileModel.employee_code == user_id),
+            )
             .options(selectinload(UserModel.employee_profile))
         )
         res = await self.session.execute(stmt)

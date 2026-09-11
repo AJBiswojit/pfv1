@@ -1,11 +1,13 @@
 /**
  * PRATIKSHYA FASHON — Attendance settings (demo working hours + calendar).
  *
- * Stored separately so Phase 20 Settings can own this namespace later.
+ * Synchronous house defaults for workforce timing math. Live admin settings
+ * stay on the Admin Settings page; they are admin-token scoped and must not
+ * run during an employee-portal render. Super Employee sessions have no admin
+ * JWT — a render-time fetch 401'd and raced the dashboard unmount.
  */
 
 import { ATTENDANCE_DEFAULTS, HOUSE_HOLIDAYS } from "../../config/attendanceConfig";
-import { getSection, updateSection } from "../settingsRepository";
 
 const normaliseSettings = (raw) => {
   const source = raw && typeof raw === "object" ? raw : {};
@@ -29,15 +31,11 @@ const normaliseSettings = (raw) => {
   };
 };
 
-export const loadAttendanceSettings = () => {
-  const central = getSection("attendance");
-  const settings = normaliseSettings(central);
-  return { ...settings, holidays: getSection("holidays")?.items?.filter((item) => item.active !== false).map((item) => ({ date: item.date, name: item.name })) || settings.holidays };
-};
+export const loadAttendanceSettings = () =>
+  normaliseSettings({ ...ATTENDANCE_DEFAULTS, holidays: HOUSE_HOLIDAYS });
 
-export const saveAttendanceSettings = (patch = {}) => {
-  return normaliseSettings(updateSection("attendance", { ...loadAttendanceSettings(), ...patch }));
-};
+export const saveAttendanceSettings = (patch = {}) =>
+  normaliseSettings({ ...loadAttendanceSettings(), ...patch });
 
 export default {
   loadAttendanceSettings,

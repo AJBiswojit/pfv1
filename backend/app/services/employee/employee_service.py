@@ -251,24 +251,22 @@ class EmployeeService:
 
         business_role = canonical_role_name(req.role) if req.role else None
 
-        if is_employee_domain:
-            profile = EmployeeProfileModel(
-                user_id=user.id,
-                employee_code=req.employee_code or await _next_employee_code(
-                    self.db, business_role or target_level
-                ),
-                designation=req.designation or (business_role or "").replace("_", " ").title() or "Employee",
-                department=req.department,
-                department_id=req.department_id,
-                section_id=req.section_id,
-            )
-            self.db.add(profile)
-        elif req.employee_code:
-            from app.core.exceptions import BusinessLogicException
-
-            raise BusinessLogicException(
-                "Admin-domain accounts do not carry an employee code."
-            )
+        # Every staff level gets a PF-* identity so the People directory can
+        # list, link and manage the account. user_type stays admin/employee
+        # from LEVEL_USER_TYPE — workforce/attendance still resolve only
+        # employee-domain rows via get_employee_by_id.
+        profile = EmployeeProfileModel(
+            user_id=user.id,
+            employee_code=req.employee_code or await _next_employee_code(
+                self.db, business_role or target_level
+            ),
+            designation=req.designation or (business_role or target_level).replace("_", " ").title() or "Staff",
+            department=req.department,
+            department_id=req.department_id,
+            section_id=req.section_id,
+        )
+        self.db.add(profile)
+        user.employee_profile = profile
 
         # Role + capability assignment (hierarchy role is authoritative via
         # users.account_level; role rows carry the operational grants).
@@ -329,6 +327,7 @@ class EmployeeService:
         user = await self.repo.get_any_staff_by_id(user_id)
         if not user:
             raise NotFoundException("Employee not found.")
+        await self._ensure_staff_profile(user)
         return user
 
     async def list_employees(
@@ -356,7 +355,7 @@ class EmployeeService:
                     actor_level = _creator_account_level(actor, roles)
         if actor_level not in ("SUPER_ADMIN", "ADMIN"):
             include_admins = False
-        return await self.repo.list_employees(
+        items, total = await self.repo.list_employees(
             skip=skip,
             limit=page_size,
             search=search,
@@ -365,6 +364,14 @@ class EmployeeService:
             include_admins=include_admins,
             exclude_super_admins=include_admins and actor_level != "SUPER_ADMIN",
         )
+        # Repair admin-domain rows created before PF codes were issued — they
+        # already exist in `users` (so a retry 409s on email) but have no
+        # employee_profiles row to show in the directory. Flush only; the
+        # request session commits after the response is built (expire_on_commit
+        # must not run before `_build_employee_response`).
+        for user in items:
+            await self._ensure_staff_profile(user)
+        return items, total
 
     async def _audit(
         self, action: str, actor_id: Optional[str], target_user=None, target_code: Optional[str] = None, **details
@@ -1017,6 +1024,36 @@ class EmployeeService:
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                    #
     # ------------------------------------------------------------------ #
+
+    async def _ensure_staff_profile(self, user: UserModel) -> bool:
+        """Issue a PF staff code when a staff user has no employee_profiles row.
+
+        Additive only: does not change user_type, account_level or credentials,
+        so employee-domain services that filter ``user_type == employee`` are
+        unaffected. Returns True when a row was created.
+        """
+        if user is None or getattr(user, "user_type", None) not in ("employee", "admin"):
+            return False
+        if getattr(user, "employee_profile", None) is not None:
+            return False
+        existing = (
+            await self.db.execute(
+                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
+            )
+        ).scalars().first()
+        if existing is not None:
+            user.employee_profile = existing
+            return False
+        level = (getattr(user, "account_level", None) or "").upper() or "ADMIN"
+        profile = EmployeeProfileModel(
+            user_id=user.id,
+            employee_code=await _next_employee_code(self.db, level),
+            designation=level.replace("_", " ").title(),
+        )
+        self.db.add(profile)
+        await self.db.flush()
+        user.employee_profile = profile
+        return True
 
     async def _get_profile(self, employee_user_id: str) -> EmployeeProfileModel:
         """Resolve employee user_id → EmployeeProfileModel, raising 404 if not found."""

@@ -74,6 +74,16 @@ export const homeForAccountLevel = (level) => {
   }
 };
 
+/* Own-record keys every employee-domain session holds. Mirrors
+ * backend `EMPLOYEE_SELF_SERVICE_PERMISSIONS` — the capability UI has no
+ * Dashboard row, so these are injected rather than assigned. */
+export const EMPLOYEE_SELF_SERVICE_PERMISSIONS = Object.freeze([
+  "dashboard.view", "profile.view", "profile.edit",
+  "attendance.view", "attendance.checkIn", "attendance.checkOut",
+  "leave.view", "leave.create",
+  "performance.view",
+]);
+
 /* ---------------------------------------------------------------------------
  * Capability groups — the small assignment model (spec §4/§19).
  * `implies` mirrors the backend compatibility map: a capability grant covers
@@ -236,4 +246,5 @@ export default {
   expandEffectivePermissions,
   holdsCapability,
   delegableCapabilities,
+  EMPLOYEE_SELF_SERVICE_PERMISSIONS,
 };

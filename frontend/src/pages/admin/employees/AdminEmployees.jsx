@@ -14,7 +14,7 @@ import { ACCOUNT_LEVEL_META } from "../../../config/rbacModel";
 import { DEPARTMENT_OPTIONS, getDepartmentLabel } from "../../../config/employeeDepartments";
 import { STATUS_OPTIONS, EMPLOYEE_STATUS, canEmployeeLogin } from "../../../config/employeeStatus";
 import { getPermissionLabel } from "../../../config/employeePermissions";
-import { employeeFullName, formatEmployeeDateTime } from "../../../utils/employee";
+import { employeeFullName, formatEmployeeDateTime, staffHrefId } from "../../../utils/employee";
 
 const Metric = ({ icon: Icon, label, value, detail }) => (
   <div className="border border-mist/80 bg-surface/40 px-5 py-4">
@@ -74,11 +74,12 @@ export default function AdminEmployees({ basePath } = {}) {
   const changeAccess = async (person) => {
     if (busyId) return;
     const activating = accessIsBlocked(person);
-    setBusyId(person.employeeId);
+    const recordId = staffHrefId(person);
+    setBusyId(recordId);
     setNotice(null);
     const result = activating
-      ? await activateEmployee(person.employeeId)
-      : await deactivateEmployee(person.employeeId);
+      ? await activateEmployee(recordId)
+      : await deactivateEmployee(recordId);
     setBusyId(null);
     setNotice(
       result.ok
@@ -157,10 +158,10 @@ export default function AdminEmployees({ basePath } = {}) {
               label: "Employee",
               render: (row) => (
                 <div>
-                  <Link to={`${base}/${row.employeeId}`} className="font-medium text-ink hover:text-accent">
+                  <Link to={`${base}/${staffHrefId(row)}`} className="font-medium text-ink hover:text-accent">
                     {employeeFullName(row)}
                   </Link>
-                  <p className="mt-1 text-[11px] text-taupe">{row.employeeId} · {row.email}</p>
+                  <p className="mt-1 text-[11px] text-taupe">{row.employeeId || staffHrefId(row)} · {row.email}</p>
                 </div>
               ),
             },
@@ -191,15 +192,15 @@ export default function AdminEmployees({ basePath } = {}) {
               label: "Actions",
               render: (row) => (
                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-[12px]">
-                  <Link to={`${base}/${row.employeeId}`} className="text-brass hover:text-accent">View</Link>
-                  <Link to={`${base}/${row.employeeId}/edit`} className="text-brass hover:text-accent">Edit</Link>
+                  <Link to={`${base}/${staffHrefId(row)}`} className="text-brass hover:text-accent">View</Link>
+                  <Link to={`${base}/${staffHrefId(row)}/edit`} className="text-brass hover:text-accent">Edit</Link>
                   <button
                     type="button"
                     disabled={Boolean(busyId)}
                     onClick={() => changeAccess(row)}
                     className="text-brass hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {busyId === row.employeeId
+                    {busyId === staffHrefId(row)
                       ? accessIsBlocked(row) ? "Activating…" : "Deactivating…"
                       : accessIsBlocked(row) ? "Activate" : "Deactivate"}
                   </button>

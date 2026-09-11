@@ -81,3 +81,64 @@ test("statusAfterPunch cascade matches the backend (leave → calendar → work)
     ATTENDANCE_STATUS.ON_DUTY
   );
 });
+
+test("loadAttendanceSettings is synchronous house defaults and never fetches admin settings", async () => {
+  let fetches = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetches += 1;
+    throw new Error("workforce settings must not call the network");
+  };
+  try {
+    const { loadAttendanceSettings } = await import("../src/services/workforce/settings.js");
+    const settings = loadAttendanceSettings();
+    assert.equal(settings.workingStartTime, ATTENDANCE_DEFAULTS.workingStartTime);
+    assert.equal(settings.workingEndTime, ATTENDANCE_DEFAULTS.workingEndTime);
+    assert.equal(fetches, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("housePerformanceSummary does not throw when the team has no review records", async () => {
+  const { replaceServerEmployees, getServerEmployees } = await import("../src/services/employees/employeeService.js");
+  const { housePerformanceSummary } = await import("../src/services/workforce/performanceService.js");
+  const previous = getServerEmployees();
+  replaceServerEmployees([
+    {
+      id: "user-1",
+      employeeId: "PFSE01",
+      firstName: "Kiran",
+      lastName: "Rao",
+      role: "SALES_EXECUTIVE",
+      status: "ACTIVE",
+      department: "sales",
+      store: "floor-1",
+      accountLevel: "SUPER_EMPLOYEE",
+    },
+    {
+      id: "user-2",
+      employeeId: "PF0002",
+      firstName: "Asha",
+      lastName: "Patel",
+      role: "SALES_EXECUTIVE",
+      status: "ACTIVE",
+      department: "sales",
+      store: "floor-1",
+    },
+  ]);
+  try {
+    const actor = {
+      employeeId: "PFSE01",
+      status: "ACTIVE",
+      accountLevel: "SUPER_EMPLOYEE",
+      permissions: ["dashboard.view", "people.manage", "attendance.view"],
+    };
+    const summary = housePerformanceSummary(actor);
+    assert.equal(typeof summary.total, "number");
+    assert.equal(typeof summary.averageAchievement, "number");
+    assert.ok(Array.isArray(summary.rows));
+  } finally {
+    replaceServerEmployees(previous);
+  }
+});

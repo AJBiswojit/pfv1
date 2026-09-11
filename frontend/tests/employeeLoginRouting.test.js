@@ -134,7 +134,7 @@ test("Employee sign-out returns to /login", () => {
 test("forced password change routes SUPER_EMPLOYEE/EMPLOYEE to /employee via accountLevel", () => {
   // The post-reset destination is the freshly-hydrated session's account
   // level (homeForAccountLevel), not the page the user came from.
-  assert.match(changePassword, /homeForAccountLevel\(employee\?\.accountLevel\)/);
+  assert.match(changePassword, /homeForAccountLevel\(result\.employee\?\.accountLevel \|\| employee\?\.accountLevel\)/);
   assert.match(changePassword, /navigate\(home, \{ replace: true \}\)/);
   assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_EMPLOYEE), "/employee");
   assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.EMPLOYEE), "/employee");

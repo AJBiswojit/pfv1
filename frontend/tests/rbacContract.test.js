@@ -28,6 +28,7 @@ import {
   expandEffectivePermissions,
   holdsCapability,
   workspaceForLevel,
+  EMPLOYEE_SELF_SERVICE_PERMISSIONS,
 } from "../src/config/rbacModel.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +49,7 @@ print(json.dumps({
     "implies": {k: list(v) for k, v in r.CAPABILITY_IMPLIES.items()},
     "legacy": dict(r.LEGACY_TO_CAPABILITY),
     "admin_only": sorted(r.ADMIN_ONLY_CAPABILITIES),
+    "self_service": sorted(r.EMPLOYEE_SELF_SERVICE_PERMISSIONS),
     "expand": {
         sample: sorted(r.expand_effective_permissions(sample.split(",")))
         for sample in [
@@ -172,6 +174,13 @@ test("workspaces route exactly by account level", () => {
     assert.ok(ACCOUNT_LEVEL_META[level]?.label, `${level} needs a display label`);
   }
 });
+
+test("employee self-service keys match the backend injection set", withBackend((c) => {
+  assert.deepEqual([...EMPLOYEE_SELF_SERVICE_PERMISSIONS].sort(), c.self_service);
+  assert.ok(c.self_service.includes("dashboard.view"));
+  assert.ok(!c.self_service.includes("people.manage"));
+  assert.ok(!c.self_service.includes("settings.manage"));
+}));
 
 test("no legacy code that maps to a capability escapes the roll-up", withBackend((c) => {
   // Every value of LEGACY_TO_CAPABILITY is a real capability...

@@ -57,6 +57,19 @@ function toCustomerProfile(dto) {
   };
 }
 
+function pickBusinessRole(dto) {
+  // Account levels must never be treated as a floor role — that is what
+  // sent SUPER_EMPLOYEE sessions to the Sales dashboard.
+  const levels = new Set(["SUPER_ADMIN", "ADMIN", "SUPER_EMPLOYEE", "EMPLOYEE"]);
+  const explicit = dto.businessRole ?? dto.business_role;
+  if (explicit && !levels.has(String(explicit).toUpperCase())) return explicit;
+  const fromRoles = (dto.roles ?? []).find((name) => name && !levels.has(String(name).toUpperCase()));
+  if (fromRoles) return fromRoles;
+  const fallback = dto.role;
+  if (fallback && !levels.has(String(fallback).toUpperCase())) return fallback;
+  return null;
+}
+
 function toEmployeeProfile(dto) {
   const profile = dto.profile ?? {};
   return {
@@ -66,12 +79,12 @@ function toEmployeeProfile(dto) {
     phone:              dto.phone ?? "",
     // The UI/backend workflow contract expects the employee code here, not a user UUID.
     employeeId:         dto.employee_code ?? dto.employeeCode ?? profile.employee_code ?? profile.employeeCode ?? "",
-    role:               dto.businessRole ?? dto.business_role ?? dto.roles?.[0] ?? dto.role ?? "EMPLOYEE",
+    role:               pickBusinessRole(dto),
     roles:              dto.roles ?? [],
     // Backend-resolved: legacy granular codes ∪ canonical capability codes.
     permissions:        dto.permissions ?? [],
     accountLevel:       dto.accountLevel ?? dto.account_level ?? "EMPLOYEE",
-    businessRole:       dto.businessRole ?? dto.business_role ?? null,
+    businessRole:       dto.businessRole ?? dto.business_role ?? pickBusinessRole(dto),
     workspace:          dto.workspace ?? "employee",
     status:             dto.status ?? "ACTIVE",
     mustChangePassword: Boolean(dto.force_password_change ?? dto.mustChangePassword),

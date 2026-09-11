@@ -16,16 +16,37 @@ import StatusBadge from "../StatusBadge";
 import DashboardFrame from "./DashboardFrame";
 import { employeeFullName } from "../../../utils/employee";
 
+const EMPTY_ATTENDANCE = { presentToday: 0, lateToday: 0, onLeave: 0 };
+const EMPTY_PERFORMANCE = { averageAchievement: 0, pending: 0 };
+
 export default function ManagerDashboard() {
   const { employee } = useEmployeeAuth();
   const { revision } = useWorkforce();
   const { employees } = useEmployeeManagement();
-  const team = employees;
+  const team = Array.isArray(employees) ? employees : [];
   const floor = getAssistedOrders().slice(0, 5);
   const inventory = useInventory();
-  const attendance = useMemo(() => todayHouseSummary(employee), [employee, revision]);
-  const performance = useMemo(() => housePerformanceSummary(employee), [employee, revision]);
-  const leavePending = useMemo(() => pendingLeaveCount(employee), [employee, revision]);
+  const attendance = useMemo(() => {
+    try {
+      return todayHouseSummary(employee);
+    } catch {
+      return EMPTY_ATTENDANCE;
+    }
+  }, [employee, revision]);
+  const performance = useMemo(() => {
+    try {
+      return housePerformanceSummary(employee);
+    } catch {
+      return EMPTY_PERFORMANCE;
+    }
+  }, [employee, revision]);
+  const leavePending = useMemo(() => {
+    try {
+      return pendingLeaveCount(employee);
+    } catch {
+      return 0;
+    }
+  }, [employee, revision]);
   const metrics = {
     primary: [
       { label: "Team present", value: String(attendance.presentToday || 0), hint: "Checked in today" },
@@ -65,7 +86,7 @@ export default function ManagerDashboard() {
         </section>
       </div>
       <p className="mt-6 font-ui text-xs text-taupe">
-        Store stock: {inventory.metrics.storeStock || 0} units · {inventory.metrics.lowStock || 0} low-stock rows · {inventory.metrics.pendingTransfers || 0} pending transfers.
+        Store stock: {inventory.metrics?.storeStock || 0} units · {inventory.metrics?.lowStock || 0} low-stock rows · {inventory.metrics?.pendingTransfers || 0} pending transfers.
       </p>
       <div className="mt-4">
         <FutureNote title="Later · AI sales insights">

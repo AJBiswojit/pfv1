@@ -12,6 +12,7 @@ import { useEmployeesBase } from "./employeesBase";
 import { useEmployeeAuth } from "../../../context/EmployeeAuthContext";
 import { getDefaultPermissions } from "../../../config/employeeRoles";
 import { generateEmployeeId } from "../../../services/employees/employeeId";
+import { staffHrefId } from "../../../utils/employee";
 import {
   ACCOUNT_LEVELS,
   ACCOUNT_LEVEL_META,
@@ -64,16 +65,14 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
   );
 
   const generatedId = useMemo(
-    () => !adminDomain && draft.role
+    () => (adminDomain || draft.role)
       ? generateEmployeeId({
-          role: draft.role,
+          role: adminDomain ? accountLevel : draft.role,
           department: draft.department,
           existingIds: employees.map((person) => person.employeeId),
         })
-      : adminDomain
-        ? "Assigned for Admin-workspace accounts"
-        : "Assigned after a role is selected",
-    [draft.role, draft.department, employees, adminDomain]
+      : "Assigned after a role is selected",
+    [draft.role, draft.department, employees, adminDomain, accountLevel]
   );
 
   const handleLevelChange = (level) => {
@@ -130,7 +129,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
         <CredentialSheet
           employee={result.employee}
           temporaryPassword={result.temporaryPassword}
-          onDone={() => navigate(`${base}/${result.employee.employeeId}`)}
+          onDone={() => navigate(`${base}/${staffHrefId(result.employee)}`)}
         />
       </AdminPage>
     );

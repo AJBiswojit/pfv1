@@ -74,14 +74,22 @@ export default function StaffLogin() {
       : sanitizeEmployeeReturnUrl(searchParams.get("returnTo"));
 
     if (home === "/admin") {
-      await refreshAdminSession();
+      const session = await refreshAdminSession();
       setIsSubmitting(false);
+      if (!session?.isAuthenticated) {
+        setError("Signed in, but the admin profile could not be opened. Try again.");
+        return;
+      }
       navigate(returnTo, { replace: true });
       return;
     }
 
-    await refreshEmployeeSession();
+    const session = await refreshEmployeeSession();
     setIsSubmitting(false);
+    if (!session?.isAuthenticated) {
+      setError("Signed in, but the employee profile could not be opened. Try again.");
+      return;
+    }
     navigate(
       result.employee?.mustChangePassword ? "/employee/change-password" : returnTo,
       { replace: true }

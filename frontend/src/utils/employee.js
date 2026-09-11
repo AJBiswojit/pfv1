@@ -14,6 +14,10 @@ export const employeeFullName = (employee) => {
   return name || "Team member";
 };
 
+/** Directory/detail URL key: PF staff code, else the users.id fallback. */
+export const staffHrefId = (person) =>
+  String(person?.employeeId || person?.id || "").trim();
+
 export const employeeInitials = (employee) => {
   const first = employee?.firstName?.[0] ?? "";
   const last = employee?.lastName?.[0] ?? "";

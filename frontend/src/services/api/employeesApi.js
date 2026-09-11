@@ -50,13 +50,17 @@ function normEmployee(u) {
 // ADMIN — Employee CRUD
 // ===========================================================================
 
-/** GET /admin/employees?page=&page_size=&search=&status=&department_id= */
-export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, status, departmentId } = {}) {
+/** GET /admin/employees?page=&page_size=&search=&status=&department_id=&include_admins= */
+export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, status, departmentId, includeAdmins = false } = {}) {
   try {
     const qs = new URLSearchParams({ page, page_size: Math.min(pageSize, 100) }); // backend caps at 100
     if (search)       qs.set("search", search);
     if (status)       qs.set("status", status);
     if (departmentId) qs.set("department_id", departmentId);
+    // Admin-workspace account-management only. SUPER_EMPLOYEE callers must
+    // omit this flag so the employee-side roster cannot enumerate admins;
+    // the server also refuses the flag below ADMIN regardless.
+    if (includeAdmins) qs.set("include_admins", "true");
     const data = await apiClient.get(`/admin/employees?${qs}`, { scope: resolveAccountScope() });
     const items = (data.items ?? data.data ?? data ?? []).map((e) => normEmployee(e.data ?? e));
     return { ok: true, items, total: data.total ?? items.length };

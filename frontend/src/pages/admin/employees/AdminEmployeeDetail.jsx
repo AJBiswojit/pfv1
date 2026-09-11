@@ -14,7 +14,7 @@ import { getDepartmentLabel, getSectionLabel, getStoreLabel } from "../../../con
 import { EMPLOYEE_STATUS } from "../../../config/employeeStatus";
 import { getRoleLabel } from "../../../config/employeeRoles";
 import { ACCOUNT_LEVELS, ACCOUNT_LEVEL_META, CAPABILITY_GROUPS } from "../../../config/rbacModel";
-import { employeeFullName, formatEmployeeDate, formatEmployeeDateTime } from "../../../utils/employee";
+import { employeeFullName, formatEmployeeDate, formatEmployeeDateTime, staffHrefId } from "../../../utils/employee";
 import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
 
 const accessIsBlocked = (person) =>
@@ -69,9 +69,9 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
     setBusy(action);
     setNotice("");
     let result;
-    if (action === "activate") result = await activateEmployee(person.employeeId);
-    if (action === "deactivate") result = await deactivateEmployee(person.employeeId);
-    if (action === "reset") result = await resetEmployeePassword(person.employeeId);
+    if (action === "activate") result = await activateEmployee(staffHrefId(person));
+    if (action === "deactivate") result = await deactivateEmployee(staffHrefId(person));
+    if (action === "reset") result = await resetEmployeePassword(staffHrefId(person));
     setBusy(null);
     setConfirm(null);
     if (!result?.ok) {
@@ -134,7 +134,7 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
       description={`${levelMeta?.label ?? "Employee"} · ${getRoleLabel(person.role)}${employeeDomain ? ` · ${getDepartmentLabel(person.department)}` : ""} · Administration profile`}
       actions={
         <>
-          <AtelierButton as={Link} to={`${base}/${person.employeeId}/edit`} size="chip">Edit employee</AtelierButton>
+          <AtelierButton as={Link} to={`${base}/${staffHrefId(person)}/edit`} size="chip">Edit employee</AtelierButton>
           <AtelierButton as={Link} to={base} variant="outline" size="chip">All employees</AtelierButton>
         </>
       }

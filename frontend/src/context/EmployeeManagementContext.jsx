@@ -78,11 +78,18 @@ export function EmployeeManagementProvider({ children }) {
   const [activity, setActivity] = useState(() => loadActivity());
   const [isWorking, setIsWorking] = useState(false);
 
-  // Sync employee list from backend. The server is authoritative — no seed.
+  // Sync staff list from backend. The server is authoritative — no seed.
+  // Admin-workspace sessions ask for the full roster (ADMIN / SUPER_ADMIN
+  // included). SUPER_EMPLOYEE sessions omit include_admins so they cannot
+  // enumerate admin-domain accounts.
   useEffect(() => {
-    if (!resolveAccountScope()) return;
+    const scope = resolveAccountScope();
+    if (!scope) return;
     let cancelled = false;
-    apiAdminListEmployees({ pageSize: 100 }).then((result) => {
+    apiAdminListEmployees({
+      pageSize: 100,
+      includeAdmins: scope === "admin",
+    }).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         replaceServerEmployees(result.items ?? []);
@@ -376,7 +383,7 @@ export function EmployeeManagementProvider({ children }) {
         const result = await apiAdminResetEmployeePassword(employeeId);
         setIsWorking(false);
         if (result.ok) {
-          const emp = employees.find((e) => e.id === employeeId);
+          const emp = employees.find((e) => e.id === employeeId || e.employeeId === employeeId);
           if (emp) note(ACTIVITY_ACTIONS.PASSWORD_RESET, emp, `Reset password for ${employeeFullName(emp)}`);
           return { ok: true, message: result.message };
         }

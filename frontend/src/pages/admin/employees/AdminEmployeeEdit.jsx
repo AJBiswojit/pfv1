@@ -18,6 +18,7 @@ import {
   workspaceForLevel,
 } from "../../../config/rbacModel";
 import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
+import { staffHrefId } from "../../../utils/employee";
 
 const draftFrom = (person) => ({
   firstName: person.firstName,
@@ -110,7 +111,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
     if (isWorking) return;
     setErrors({});
     setNotice("");
-    const result = await updateEmployee(person.employeeId, {
+    const result = await updateEmployee(staffHrefId(person), {
       ...draft,
       // Only send the level when it actually changes — a no-op write would
       // still re-run the hierarchy check, but skipping keeps payloads small.
@@ -127,7 +128,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
       setNotice(result.message || result.errors?.authorization || "Please review the employee details.");
       return;
     }
-    navigate(`${base}/${person.employeeId}`, {
+    navigate(`${base}/${staffHrefId(result.employee || person)}`, {
       state: { notice: "Employee account saved." },
     });
   };
@@ -136,7 +137,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
     <AdminPage
       eyebrow="People / Organization / Edit"
       title={<>Edit <span className="italic text-accent">{person.firstName}.</span></>}
-      description={`${person.employeeId} is permanent. Account level and capabilities control workspace access; the server, not this form, is the authority.`}
+      description={`${staffHrefId(person)} is permanent. Account level and capabilities control workspace access; the server, not this form, is the authority.`}
     >
       {notice ? (
         <p role="alert" className="mb-6 border border-accent/40 bg-accent/5 px-4 py-3 font-ui text-sm text-accent">{notice}</p>
@@ -255,7 +256,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
 
         <div className="flex flex-wrap gap-3">
           <AtelierButton type="submit" disabled={isWorking}>{isWorking ? "Saving…" : "Save changes"}</AtelierButton>
-          <AtelierButton type="button" variant="outline" disabled={isWorking} onClick={() => navigate(`${base}/${person.employeeId}`)}>
+          <AtelierButton type="button" variant="outline" disabled={isWorking} onClick={() => navigate(`${base}/${staffHrefId(person)}`)}>
             Cancel
           </AtelierButton>
         </div>
