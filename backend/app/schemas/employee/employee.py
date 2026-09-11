@@ -1,7 +1,7 @@
 from datetime import date
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 # --------------------------------------------------------------------------- #
@@ -37,9 +37,20 @@ class EmployeeCreateRequest(BaseModel):
     # Store / floor assignment
     store: Optional[str] = Field(None, max_length=100, description="Store or floor assignment")
 
-    # Joining / shift
+    # Joining / shift — intentionally optional: the employee profile table
+    # carries no joining_date column (see app/models/employee/employee.py);
+    # the field is informational and must not block SUPER_ADMIN/ADMIN
+    # account creation where the employment block is hidden. Empty strings
+    # from the UI are normalised to None so Optional[date] does not 422.
     joiningDate: Optional[date] = Field(None, description="ISO date YYYY-MM-DD")
     shift: Optional[str] = Field(None, max_length=50, description="e.g. MORNING, EVENING")
+
+    @field_validator("joiningDate", mode="before")
+    @classmethod
+    def _coerce_empty_joining_date(cls, value):
+        if value == "" or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
 
     # Account level (unified four-level model). Omitted == EMPLOYEE.
     # The SERVER enforces the creation matrix and the delegation ceiling —
@@ -106,6 +117,13 @@ class EmployeeUpdateRequest(BaseModel):
         description="SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE — SUPER_ADMIN creators only",
     )
     joiningDate: Optional[date] = None
+
+    @field_validator("joiningDate", mode="before")
+    @classmethod
+    def _coerce_empty_joining_date_update(cls, value):
+        if value == "" or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
 
     @model_validator(mode="after")
     def resolve_full_name(self) -> "EmployeeUpdateRequest":

@@ -296,7 +296,10 @@ export const validateEmployeeDraft = (draft, employees, { isCreate = false } = {
   }
   if (!draft.department) errors.department = "Please choose a department.";
   if (!draft.store) errors.store = "Please choose a store or floor.";
-  if (!draft.joiningDate) errors.joiningDate = "Joining date is required.";
+  // joiningDate is intentionally optional — the employee profile table carries
+  // no joining_date column (see app/models/employee/employee.py); the form
+  // field is for informational completeness only and must not block account
+  // creation for any level (SUPER_ADMIN / ADMIN hide the entire block).
   if (draft.status && !EMPLOYEE_STATUSES[draft.status]) {
     errors.status = "Please choose a valid status.";
   }
