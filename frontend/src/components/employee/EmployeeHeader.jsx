@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { EMPLOYEE_BRAND } from "../../config/employeeNavigation";
 import { getDepartmentLabel } from "../../config/employeeDepartments";
@@ -13,10 +13,18 @@ import {
 import { cn } from "../../utils/cn";
 import { Brand, transition } from "../../design-system";
 
-export default function EmployeeHeader({ navOpen, onToggleNav }) {
+export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) {
   const { employee, signOut } = useEmployeeAuth();
+  const navigate = useNavigate();
   const role = getRole(employee?.role);
   const name = employeeFullName(employee);
+
+  // Signing out always returns to the ONE canonical staff sign-in page —
+  // never to a retired per-portal login URL.
+  const handleSignOut = () => {
+    signOut();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-mist/80 bg-canvas/95 backdrop-blur-sm">
@@ -76,7 +84,7 @@ export default function EmployeeHeader({ navOpen, onToggleNav }) {
           </Link>
           <button
             type="button"
-            onClick={signOut}
+            onClick={handleSignOut}
             className={cn(
               "inline-flex items-center gap-2 border border-pearl bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-accent hover:text-accent",
               transition.colors

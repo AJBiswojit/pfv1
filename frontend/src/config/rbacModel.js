@@ -47,6 +47,33 @@ export const canCreatorCreate = (creatorLevel, targetLevel) =>
 
 export const workspaceForLevel = (level) => ACCOUNT_LEVEL_META[level]?.workspace ?? null;
 
+/**
+ * Canonical post-authentication destination for an account level.
+ *
+ * One mapping for the whole frontend (used by /login after sign-in and by the
+ * forced-password-change page after a successful reset): the backend's
+ * `accountLevel` — never the typed identifier, the selected tab or the page
+ * the user came from — decides the workspace home.
+ *
+ *   SUPER_ADMIN    → /admin
+ *   ADMIN          → /admin
+ *   SUPER_EMPLOYEE → /employee
+ *   EMPLOYEE       → /employee
+ *   anything else  → null (caller falls back safely)
+ */
+export const homeForAccountLevel = (level) => {
+  switch (level) {
+    case ACCOUNT_LEVELS.SUPER_ADMIN:
+    case ACCOUNT_LEVELS.ADMIN:
+      return "/admin";
+    case ACCOUNT_LEVELS.SUPER_EMPLOYEE:
+    case ACCOUNT_LEVELS.EMPLOYEE:
+      return "/employee";
+    default:
+      return null;
+  }
+};
+
 /* ---------------------------------------------------------------------------
  * Capability groups — the small assignment model (spec §4/§19).
  * `implies` mirrors the backend compatibility map: a capability grant covers
@@ -201,6 +228,7 @@ export default {
   CREATABLE_LEVELS,
   canCreatorCreate,
   workspaceForLevel,
+  homeForAccountLevel,
   CAPABILITY_GROUPS,
   CAPABILITY_CODES,
   CAPABILITY_IMPLIES,

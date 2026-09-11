@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { AtelierButton, Brand, Rule } from "../../design-system";
 import { EMPLOYEE_BRAND } from "../../config/employeeNavigation";
+import { homeForAccountLevel } from "../../config/rbacModel";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { validateEmployeePasswordChange } from "../../services/employees/employeePassword";
 
@@ -39,7 +40,12 @@ export default function EmployeeChangePassword() {
     setIsSubmitting(true);
     const result = await changePassword({ currentPassword, newPassword, confirmPassword });
     if (result.ok) {
-      navigate("/employee", { replace: true });
+      // The post-reset destination is decided by the account level the
+      // freshly-hydrated session resolved — not by the page the user came
+      // from. Employee-domain levels land on /employee; the change-password
+      // surface is only reachable by that workspace today.
+      const home = homeForAccountLevel(employee?.accountLevel) || "/employee";
+      navigate(home, { replace: true });
     } else {
       setError(result.error || "The password could not be updated.");
       setIsSubmitting(false);
