@@ -74,28 +74,46 @@ async def list_users(
     stmt = stmt.order_by(UserModel.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     users = (await db.execute(stmt)).scalars().all()
 
-    items = []
-    for user in users:
-        customer = None
-        employee = None
-        roles: list = []
-        if user.user_type == "customer":
-            customer = (await db.execute(
-                select(CustomerProfileModel).where(CustomerProfileModel.user_id == user.id)
-            )).scalars().first()
-        if user.user_type == "employee":
-            employee = (await db.execute(
-                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
-            )).scalars().first()
-        role_rows = (
+    # Batch resolution for the page (admin consolidation, HP-7): the page's
+    # profiles and roles come back in THREE bounded IN queries instead of
+    # three queries per row.
+    page_ids = [user.id for user in users]
+    customer_by_user: dict = {}
+    employee_by_user: dict = {}
+    roles_by_user: dict = {}
+    if page_ids:
+        customer_rows = (
             await db.execute(
-                select(RoleModel.name)
-                .join(UserRoleModel, UserRoleModel.role_id == RoleModel.id)
-                .where(UserRoleModel.user_id == user.id)
+                select(CustomerProfileModel).where(CustomerProfileModel.user_id.in_(page_ids))
             )
         ).scalars().all()
-        roles = list(role_rows)
-        items.append(_user_dto(user, customer, employee, roles))
+        customer_by_user = {row.user_id: row for row in customer_rows}
+        employee_rows = (
+            await db.execute(
+                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id.in_(page_ids))
+            )
+        ).scalars().all()
+        employee_by_user = {row.user_id: row for row in employee_rows}
+        role_rows = (
+            await db.execute(
+                select(UserRoleModel.user_id, RoleModel.name)
+                .join(RoleModel, RoleModel.id == UserRoleModel.role_id)
+                .where(UserRoleModel.user_id.in_(page_ids))
+            )
+        ).all()
+        for row in role_rows:
+            roles_by_user.setdefault(row.user_id, []).append(row.name)
+
+    items = []
+    for user in users:
+        items.append(
+            _user_dto(
+                user,
+                customer_by_user.get(user.id),
+                employee_by_user.get(user.id),
+                roles_by_user.get(user.id, []),
+            )
+        )
 
     return {"items": items, "total": total, "page": page, "pageSize": page_size}
 

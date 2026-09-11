@@ -1,12 +1,18 @@
 /**
- * PRATIKSHYA FASHON — Admin Returns (Phase 16.1)
+ * PRATIKSHYA FASHON — Admin Returns (Phase 16.1, consolidation revision)
  *
  * Premium return operations dashboard with live metrics, search, and
- * context-sensitive action links. Reads the single order repository —
- * no second return data source.
+ * context-sensitive action links.
+ *
+ * BACKEND CONTRACT (admin consolidation): the desk reads the REAL returns
+ * API — GET /admin/returns — which is DB-paginated and enriched with the
+ * owning order number and customer display name. It no longer derives
+ * returns from a 100-order snapshot (bounded, incomplete data) and no
+ * longer re-reads the whole order list on every visit. Metrics are derived
+ * from the same real records the list renders — one data source.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -19,7 +25,7 @@ import {
 } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
-import { useOrder } from "../../context/OrderContext";
+import { apiAdminListReturns } from "../../services/api/ordersApi";
 import {
   RETURN_STATUS,
   RETURN_STATUSES,
@@ -28,6 +34,8 @@ import { getReturnMetrics } from "../../services/orders/returnService";
 import { formatOrderDate } from "../../utils/orders";
 import { cn } from "../../utils/cn";
 import { transition } from "../../design-system";
+
+const PAGE_SIZE = 100;
 
 /** Map a status to its next operational action. */
 const statusAction = (status) => {
@@ -72,25 +80,43 @@ const statusToneClass = (status) => {
   }
 };
 
+/** A display-ready return record: one shape for both table and cards. */
+const displayRecord = (record) => ({
+  id: record.id,
+  status: record.status,
+  orderNumber: record.orderNumber || record.orderId,
+  orderId: record.orderId,
+  customerName: record.customerName || "Customer",
+  reason: record.rejectionReason || record.rejection_reason || record.items?.[0]?.reason || "—",
+  items: record.items ?? [],
+  createdAt: record.createdAt,
+});
+
 export default function AdminReturns() {
-  /**
-   * PHASE 3: the desk now loads the admin order list (which carries each
-   * order's real `returns[]`) from the backend on mount. It previously
-   * projected returns out of `allOrders`, which in an admin session was
-   * always empty — so the desk showed "no returns" whether or not any
-   * existed.
-   */
-  const { allOrders = [], refreshAdminOrders, isLoadingOrders, ordersError } = useOrder();
-  useEffect(() => { refreshAdminOrders(); }, [refreshAdminOrders]);
+  const [state, setState] = useState({ status: "loading", returns: [], error: null });
   const [query, setQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    setState((current) => ({ ...current, status: "loading", error: null }));
+    apiAdminListReturns({ page: 1, pageSize: PAGE_SIZE }).then((result) => {
+      if (!alive) return;
+      if (result.ok) {
+        setState({ status: "ready", returns: result.returns ?? [], error: null });
+      } else {
+        setState({ status: "error", returns: [], error: result.error ?? "Could not load returns." });
+      }
+    });
+    return () => { alive = false; };
+  }, [attempt]);
+
+  const onRetry = useCallback(() => setAttempt((a) => a + 1), []);
 
   const allReturns = useMemo(
-    () =>
-      allOrders.flatMap((order) =>
-        (order.returns || []).map((record) => ({ ...record, order }))
-      ),
-    [allOrders]
+    () => (state.returns ?? []).map(displayRecord),
+    [state.returns]
   );
 
   const metrics = useMemo(() => getReturnMetrics(allReturns), [allReturns]);
@@ -103,18 +129,17 @@ export default function AdminReturns() {
         if (!term) return true;
         const haystack = [
           record.id,
-          record.returnNumber,
-          record.order.id,
-          record.order.orderNumber,
-          record.order.customer?.fullName || "",
+          record.orderNumber,
+          record.orderId,
+          record.customerName,
           (record.items || []).map((item) => item.name).join(" "),
-          record.reasonLabel || record.reason || "",
+          record.reason,
         ]
           .join(" ")
           .toLowerCase();
         return haystack.includes(term);
       })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
   }, [allReturns, query, filterStatus]);
 
   const metricCards = [
@@ -135,15 +160,18 @@ export default function AdminReturns() {
       description="From request through inspection to refund, on one connected order record."
     >
       {/* Loading / error — never presented as "no returns exist". */}
-      {isLoadingOrders && allReturns.length === 0 ? (
+      {state.status === "loading" && allReturns.length === 0 ? (
         <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
           Loading returns…
         </p>
       ) : null}
-      {ordersError ? (
-        <p role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
-          {ordersError}
-        </p>
+      {state.error ? (
+        <div role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+          <p>{state.error}</p>
+          <button type="button" onClick={onRetry} className="mt-2 font-ui text-[11px] underline">
+            Try again
+          </button>
+        </div>
       ) : null}
 
       {/* Metrics */}
@@ -245,16 +273,16 @@ export default function AdminReturns() {
                       {record.id}
                     </Link>
                     <Link
-                      to={`/admin/orders/${record.order.id}`}
+                      to={`/admin/orders/${record.orderId}`}
                       className="truncate font-ui text-xs text-ink hover:text-accent"
                     >
-                      {record.order.id}
+                      {record.orderNumber}
                     </Link>
                     <span className="truncate font-ui text-xs text-ink">
-                      {record.order.customer?.fullName || "Customer"}
+                      {record.customerName}
                     </span>
                     <span className="truncate font-ui text-xs text-taupe">
-                      {record.reasonLabel || record.reason}
+                      {record.reason}
                     </span>
                     <span
                       className={cn(
@@ -288,7 +316,9 @@ export default function AdminReturns() {
               })
             ) : (
               <p className="py-8 text-center font-ui text-xs text-slate">
-                No return requests match your search.
+                {state.status === "ready"
+                  ? "No return requests match your search."
+                  : "Returns will appear here once customers request them."}
               </p>
             )}
           </div>
@@ -309,7 +339,7 @@ export default function AdminReturns() {
                     <div className="min-w-0">
                       <p className="truncate font-ui text-xs font-medium text-ink">{record.id}</p>
                       <p className="mt-0.5 truncate font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
-                        {record.order.id} · {record.order.customer?.fullName || "Customer"}
+                        {record.orderNumber} · {record.customerName}
                       </p>
                     </div>
                     <span
@@ -322,7 +352,7 @@ export default function AdminReturns() {
                     </span>
                   </div>
                   <p className="mt-3 font-ui text-xs text-taupe">
-                    {record.reasonLabel || record.reason}
+                    {record.reason}
                   </p>
                   <p className="mt-2 font-ui text-[10px] uppercase tracking-[.14em] text-slate">
                     {formatOrderDate(record.createdAt)}
@@ -342,6 +372,10 @@ export default function AdminReturns() {
             </p>
           )}
         </div>
+
+        <p className="mt-4 px-1 font-ui text-[11px] text-taupe">
+          Reader: the backend returns register through GET /admin/returns (database-paginated).
+        </p>
       </AdminPanel>
     </AdminPage>
   );

@@ -20,13 +20,7 @@ import CategorySalesBars from "../../components/admin/CategorySalesBars";
 import DataTable from "../../components/employee/DataTable";
 import OrderStatusBadge from "../../components/orders/OrderStatusBadge";
 import { useAdminAuth } from "../../context/AdminAuthContext";
-import {
-  loadBusinessMetrics,
-  loadRecentOrders,
-  loadSalesByCategory,
-  loadSalesSeries,
-} from "../../services/admin/adminDashboardService";
-import { apiAnalyticsInventorySummary } from "../../services/api/adminApi";
+import { loadDashboardSummary } from "../../services/admin/adminDashboardService";
 import { adminFirstName, formatAdminNumber, formatCompactINR, greetingForAdmin } from "../../utils/admin";
 import { formatINR } from "../../utils/shopping";
 import { PRODUCTS_CHANGED_EVENT } from "../../services/catalogRepository";
@@ -56,26 +50,26 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
 
+  /**
+   * ONE consolidated request per dashboard load (DB-load consolidation):
+   * the previous implementation fired 7+ independent reads — including the
+   * employee list twice — and re-fired all of them on every product change.
+   * Every figure below now arrives from GET /admin/dashboard/summary.
+   */
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
     setError(null);
-    Promise.all([
-      loadBusinessMetrics(),
-      loadSalesSeries(7),
-      loadSalesByCategory(),
-      loadRecentOrders(5),
-      apiAnalyticsInventorySummary(),
-    ]).then(([m, s, c, o, inv]) => {
+    loadDashboardSummary({ days: 7, recentLimit: 5 }).then((result) => {
       if (cancelled) return;
-      if (!m.ok && !s.ok && !c.ok && !o.ok && !inv.ok) {
-        setError([m.error, s.error, c.error, o.error, inv.error].find(Boolean) ?? "Could not load the dashboard.");
+      if (!result.ok) {
+        setError(result.error ?? "Could not load the dashboard.");
       }
-      if (m.ok) setMetrics(m.metrics);
-      if (s.ok) setSeries(s.series);
-      if (c.ok) setCategories(c.categories);
-      if (o.ok) setOrders(o.orders);
-      if (inv.ok) setInventorySummary(inv);
+      setMetrics(result.metrics);
+      setSeries(result.series);
+      setCategories(result.categories);
+      setOrders(result.orders);
+      setInventorySummary(result.inventorySummary);
       setStatus("ready");
     });
     return () => { cancelled = true; };

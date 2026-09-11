@@ -1,3 +1,14 @@
+/**
+ * DEFERRED ADMIN SURFACE (Admin consolidation 2026-09).
+ *
+ * The media review queue was a session-mirror workflow: approvals lived in
+ * tab memory and never reached a durable backend record (media_reviews.py is
+ * a health-only stub). It is no longer routed in the Admin portal
+ * (/admin/media/review redirects to the canonical Media Library) and must
+ * NOT be re-routed until a durable backend review workflow exists.
+ * Employee media surfaces are unaffected.
+ */
+
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Check, CheckCircle2, Clock, Film, Image as ImageIcon, Package, X } from "lucide-react";

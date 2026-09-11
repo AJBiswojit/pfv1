@@ -1,3 +1,13 @@
+/**
+ * DEFERRED ADMIN SURFACE (Admin consolidation 2026-09).
+ *
+ * audit_activity_log has READERS but ZERO backend writers (blocker B-09):
+ * the page could only ever render an empty diary while implying a production
+ * audit trail. It is no longer routed (/admin/activity redirects to the
+ * dashboard). Restore it only when a backend audit writer pipeline exists:
+ *   business action → backend audit writer → audit_activity_log → this page.
+ */
+
 import { useEffect, useState } from "react";
 import AdminPage from "../../components/admin/AdminPage";
 import ActivityFeed from "../../components/employee/ActivityFeed";

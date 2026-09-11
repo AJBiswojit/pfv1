@@ -501,8 +501,8 @@ export default function AdminProductDetail() {
             eyebrow="Inventory"
             title="Stock summary"
             action={
-              <AtelierButton as={Link} to={`/admin/inventory?search=${encodeURIComponent(product.sku)}`} variant="outline" size="chip">
-                View inventory
+              <AtelierButton as={Link} to={`/admin/products?q=${encodeURIComponent(product.sku)}`} variant="outline" size="chip">
+                Find in catalogue
               </AtelierButton>
             }
           >

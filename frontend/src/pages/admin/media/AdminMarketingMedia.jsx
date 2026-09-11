@@ -292,12 +292,9 @@ function GenericPlacementPanel({ placement, media, actions, uploadFor, setUpload
             <li key={item.id} className="border border-mist/80 bg-canvas">
               <MediaThumb media={item} ratio="aspect-[3/2]" />
               <div className="space-y-2 p-3">
-                <Link
-                  to={`/admin/media/${item.id}`}
-                  className="block min-w-0 font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
-                >
+                <span className="block min-w-0 font-ui text-sm text-ink">
                   <span className="line-clamp-2">{item.title}</span>
-                </Link>
+                </span>
                 {item.campaign ? (
                   <p className="font-ui text-[11px] text-taupe">
                     {item.campaign}
@@ -325,9 +322,12 @@ function GenericPlacementPanel({ placement, media, actions, uploadFor, setUpload
                         Activate
                       </AtelierButton>
                     )}
-                    <AtelierButton as={Link} to={`/admin/media/${item.id}`} size="chip" variant="outline">
-                      Edit
-                    </AtelierButton>
+                    <span
+                      title="Standalone media editing is deferred with the session register — the durable HOME_HERO panel above is the production source of truth."
+                      className="inline-block border border-mist/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe"
+                    >
+                      Session record
+                    </span>
                   </div>
                 ) : null}
               </div>

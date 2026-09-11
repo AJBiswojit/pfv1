@@ -80,7 +80,6 @@ const EmployeeMediaDetail = lazy(() => import("./pages/employee/EmployeeMediaDet
 
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
 const AdminEmployees = lazy(() => import("./pages/admin/employees/AdminEmployees"));
 const AdminEmployeeCreate = lazy(() => import("./pages/admin/employees/AdminEmployeeCreate"));
 const AdminEmployeeDetail = lazy(() => import("./pages/admin/employees/AdminEmployeeDetail"));
@@ -93,16 +92,8 @@ const AdminProductDetail = lazy(() => import("./pages/admin/AdminProductDetail")
 const AdminProductReview = lazy(() => import("./pages/admin/AdminProductReview"));
 const AdminMediaLibrary = lazy(() => import("./pages/admin/media/AdminMediaLibrary"));
 const AdminMediaUpload = lazy(() => import("./pages/admin/media/AdminMediaUpload"));
-const AdminMediaReview = lazy(() => import("./pages/admin/media/AdminMediaReview"));
 const AdminMarketingMedia = lazy(() => import("./pages/admin/media/AdminMarketingMedia"));
-const AdminMediaDetail = lazy(() => import("./pages/admin/media/AdminMediaDetail"));
 const AdminProductMedia = lazy(() => import("./pages/admin/media/AdminProductMedia"));
-const AdminMediaProductMapping = lazy(() => import("./pages/admin/media/AdminMediaProductMapping"));
-const InventoryDashboardPage = lazy(() => import("./components/inventory/InventoryDashboardPage"));
-const InventoryOperationPage = lazy(() => import("./components/inventory/InventoryOperationPage"));
-const InventoryTransfersPage = lazy(() => import("./components/inventory/InventoryTransfersPage"));
-const InventoryMovementsPage = lazy(() => import("./components/inventory/InventoryMovementsPage"));
-const InventoryLowStockPage = lazy(() => import("./components/inventory/InventoryLowStockPage"));
 const AdminOrders = lazy(() => import("./pages/admin/orders/AdminOrders"));
 const AdminOrderDetail = lazy(() => import("./pages/admin/orders/AdminOrderDetail"));
 const AdminOrderInvoice = lazy(() => import("./pages/admin/orders/AdminOrderInvoice"));
@@ -122,6 +113,15 @@ const AdminCollectionForm = lazy(() => import("./pages/admin/taxonomy/AdminColle
 const AdminCollectionDetail = lazy(() => import("./pages/admin/taxonomy/AdminCollectionDetail"));
 const AdminAnalytics = lazy(() => import("./pages/admin/analytics/AdminAnalytics"));
 const AiBusinessAssistant = lazy(() => import("./pages/admin/AiBusinessAssistant"));
+
+/* Inventory screens remain LIVE for the Employee portal only. The Admin
+   inventory routes were deferred (localStorage simulation, blocker B-01);
+   see the redirect block in the admin route table below. */
+const InventoryDashboardPage = lazy(() => import("./components/inventory/InventoryDashboardPage"));
+const InventoryOperationPage = lazy(() => import("./components/inventory/InventoryOperationPage"));
+const InventoryTransfersPage = lazy(() => import("./components/inventory/InventoryTransfersPage"));
+const InventoryMovementsPage = lazy(() => import("./components/inventory/InventoryMovementsPage"));
+const InventoryLowStockPage = lazy(() => import("./components/inventory/InventoryLowStockPage"));
 
 const dedicatedPaths = new Set([
   "/explore",
@@ -193,7 +193,10 @@ export default function App() {
                             <Route path="/admin/employees/:employeeId" element={<AdminEmployeeDetail />} />
                           </Route>
 
-                          <Route path="/admin/activity" element={<AdminActivity />} />
+                          {/* Activity log deferred: audit_activity_log has no backend writers yet
+                              (blocker B-09) — the page could only ever show an empty
+                              diary. Safe redirect; restored when a writer pipeline lands. */}
+                          <Route path="/admin/activity" element={<Navigate to="/admin" replace />} />
                           <Route path="/admin/profile" element={<AdminProfile />} />
 
                           <Route path="/admin/products" element={<AdminProducts />} />
@@ -205,10 +208,13 @@ export default function App() {
 
                           <Route path="/admin/media" element={<AdminMediaLibrary />} />
                           <Route path="/admin/media/upload" element={<AdminMediaUpload />} />
-                          <Route path="/admin/media/review" element={<AdminMediaReview />} />
+                          {/* Media review queue + product-mapping desk + standalone media
+                              detail were session-mirror-only (no durable backend). They
+                              are deferred; legacy URLs redirect to the canonical library. */}
+                          <Route path="/admin/media/review" element={<Navigate to="/admin/media" replace />} />
+                          <Route path="/admin/media/product-mapping" element={<Navigate to="/admin/media" replace />} />
+                          <Route path="/admin/media/:mediaId" element={<Navigate to="/admin/media" replace />} />
                           <Route path="/admin/media/marketing" element={<AdminMarketingMedia />} />
-                          <Route path="/admin/media/product-mapping" element={<AdminMediaProductMapping />} />
-                          <Route path="/admin/media/:mediaId" element={<AdminMediaDetail />} />
                           <Route path="/admin/categories" element={<AdminCategories />} />
                           <Route path="/admin/categories/new" element={<AdminCategoryForm />} />
                           <Route path="/admin/categories/:categoryId/edit" element={<AdminCategoryForm />} />
@@ -231,22 +237,29 @@ export default function App() {
                           <Route path="/admin/customers/:customerId" element={<AdminCustomerDetail />} />
                           <Route path="/admin/returns" element={<AdminReturns />} />
                           <Route path="/admin/returns/:returnId" element={<AdminReturnDetail />} />
-                          <Route path="/admin/inventory" element={<InventoryDashboardPage portal="admin" />} />
-                          <Route path="/admin/inventory/receive" element={<InventoryOperationPage portal="admin" operation="receive" />} />
-                          <Route path="/admin/inventory/adjust" element={<InventoryOperationPage portal="admin" operation="adjust" />} />
-                          <Route path="/admin/inventory/transfers" element={<InventoryTransfersPage portal="admin" />} />
-                          <Route path="/admin/inventory/movements" element={<InventoryMovementsPage portal="admin" />} />
-                          <Route path="/admin/inventory/low-stock" element={<InventoryLowStockPage portal="admin" />} />
-                          <Route path="/admin/warehouses" element={<Navigate to="/admin/inventory?locationType=WAREHOUSE" replace />} />
-                          <Route path="/admin/stock-movements" element={<Navigate to="/admin/inventory/movements" replace />} />
+                          {/* Inventory suite deferred: the implementation is a browser-localStorage
+                              simulation and the backend inventory ledger is an empty stub
+                              (blocker B-01). Stock truth for admins lives on the product
+                              records (catalog_product.stock) — see the dashboard and the
+                              products desk. The Employee portal keeps its routes. */}
+                          <Route path="/admin/inventory" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/inventory/receive" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/inventory/adjust" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/inventory/transfers" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/inventory/movements" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/inventory/low-stock" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/warehouses" element={<Navigate to="/admin" replace />} />
+                          <Route path="/admin/stock-movements" element={<Navigate to="/admin" replace />} />
                           <Route path="/admin/analytics" element={<AdminAnalytics />} />
                           <Route path="/admin/ai-assistant" element={<AiBusinessAssistant />} />
-                          <Route path="/admin/analytics/sales" element={<AdminAnalytics />} />
-                          <Route path="/admin/analytics/products" element={<AdminAnalytics />} />
-                          <Route path="/admin/analytics/customers" element={<AdminAnalytics />} />
-                          <Route path="/admin/analytics/inventory" element={<AdminAnalytics />} />
-                          <Route path="/admin/analytics/returns" element={<AdminAnalytics />} />
-                          <Route path="/admin/analytics/offers" element={<AdminAnalytics />} />
+                          {/* Legacy analytics aliases — one canonical screen with internal
+                              tabs; old URLs redirect instead of re-registering the page. */}
+                          <Route path="/admin/analytics/sales" element={<Navigate to="/admin/analytics" replace />} />
+                          <Route path="/admin/analytics/products" element={<Navigate to="/admin/analytics" replace />} />
+                          <Route path="/admin/analytics/customers" element={<Navigate to="/admin/analytics" replace />} />
+                          <Route path="/admin/analytics/inventory" element={<Navigate to="/admin/analytics" replace />} />
+                          <Route path="/admin/analytics/returns" element={<Navigate to="/admin/analytics" replace />} />
+                          <Route path="/admin/analytics/offers" element={<Navigate to="/admin/analytics" replace />} />
                           <Route path="/admin/settings" element={<AdminSettings />} />
 
                           <Route path="/admin/*" element={<AdminNotFound />} />

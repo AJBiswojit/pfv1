@@ -121,6 +121,22 @@ export async function apiAnalyticsOrders() {
   } catch (err) { return handleError(err); }
 }
 
+/**
+ * GET /admin/dashboard/summary — ONE consolidated dashboard read.
+ *
+ * Replaces the dashboard's previous fan-out (overview + employees + sales +
+ * top-products + orders-status + orders + inventory-summary = 7+ requests,
+ * with the employee list fetched twice per load). Every figure is a bounded
+ * backend aggregate in a single response.
+ */
+export async function apiAdminDashboardSummary({ days = 7, recentLimit = 5 } = {}) {
+  try {
+    const qs = new URLSearchParams({ days: String(days), recentLimit: String(recentLimit) });
+    const data = await apiClient.get(`/admin/dashboard/summary?${qs}`, { scope: "admin" });
+    return { ok: true, ...data };
+  } catch (err) { return handleError(err); }
+}
+
 export async function apiAnalyticsInventorySummary() {
   try {
     const data = await apiClient.get("/analytics/inventory-summary", { scope: "admin" });

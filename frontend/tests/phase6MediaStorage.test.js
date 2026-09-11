@@ -364,7 +364,9 @@ test("the media register is now real HTTP; only marketing remains a BACKEND_GAP"
   const calls = mockFetch({ ok: true, items: [] });
   const listed = await apiListMedia();
   assert.equal(calls.length, 1, "the register is live — it must call the server");
-  assert.match(String(calls[0].url), /\/media\/assets$/);
+  // The registry read is DB-paginated now (admin consolidation): same
+  // endpoint, bounded page params.
+  assert.match(String(calls[0].url), /\/media\/assets(\?|$)/);
   assert.equal(listed.ok, true);
   assert.deepEqual(listed.items, []);
 

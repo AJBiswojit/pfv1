@@ -515,7 +515,9 @@ test("apiListMediaAssets reads the durable registry verbatim", async () => {
   });
   const result = await apiListMediaAssets();
   assert.equal(result.ok, true);
-  assert.match(calls[0].url, /\/media\/assets$/);
+  // Registry reads are DB-paginated now (admin consolidation): same
+  // endpoint, bounded page params.
+  assert.match(calls[0].url, /\/media\/assets(\?|$)/);
   assert.equal(result.items[0].objectKey, "products/PF-1/a.png");
 });
 

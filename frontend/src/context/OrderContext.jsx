@@ -576,9 +576,13 @@ export function OrderProvider({ children }) {
     if (!result.ok) {
       return { ok: false, status: result.status, message: result.error };
     }
-    await refreshAdminOrders();
+    // DB-load note (admin consolidation): the previous behaviour re-read the
+    // whole 100-order snapshot after EVERY return action. The mutation
+    // response already carries the server-authoritative return record —
+    // callers refresh exactly what they display (the returns desk re-reads
+    // its own bounded /admin/returns page).
     return { ok: true, record: result.return_order, status: 200, message: "" };
-  }, [refreshAdminOrders]);
+  }, []);
 
   const approveReturn = useCallback(
     (id, opts) => applyReturnMutation(apiAdminApproveReturn, id, opts), [applyReturnMutation]);
