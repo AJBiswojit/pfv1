@@ -8,6 +8,7 @@ import CredentialSheet from "../../../components/employee/CredentialSheet";
 import { AtelierButton } from "../../../design-system";
 import { useEmployeeManagement } from "../../../context/EmployeeManagementContext";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
+import { useEmployeesBase } from "./employeesBase";
 import { useEmployeeAuth } from "../../../context/EmployeeAuthContext";
 import { getDefaultPermissions } from "../../../config/employeeRoles";
 import { generateEmployeeId } from "../../../services/employees/employeeId";
@@ -26,8 +27,9 @@ import {
  * capabilities follow the single hierarchy matrix in config/rbacModel.js —
  * which is mirrored and ENFORCED by app/core/rbac.py on the server.
  */
-export default function AdminEmployeeCreate() {
+export default function AdminEmployeeCreate({ basePath } = {}) {
   const navigate = useNavigate();
+  const base = useEmployeesBase(basePath);
   const { employees, createEmployee, isWorking } = useEmployeeManagement();
   const { admin } = useAdminAuth();
   const { employee: employeeActor } = useEmployeeAuth();
@@ -121,7 +123,7 @@ export default function AdminEmployeeCreate() {
         <CredentialSheet
           employee={result.employee}
           temporaryPassword={result.temporaryPassword}
-          onDone={() => navigate(`/admin/employees/${result.employee.employeeId}`)}
+          onDone={() => navigate(`${base}/${result.employee.employeeId}`)}
         />
       </AdminPage>
     );
@@ -261,7 +263,7 @@ export default function AdminEmployeeCreate() {
           <AtelierButton type="submit" disabled={isWorking || creatableLevels.length === 0}>
             {isWorking ? "Creating…" : "Create account"}
           </AtelierButton>
-          <AtelierButton type="button" variant="outline" onClick={() => navigate("/admin/employees")} disabled={isWorking}>
+          <AtelierButton type="button" variant="outline" onClick={() => navigate(base)} disabled={isWorking}>
             Cancel
           </AtelierButton>
         </div>

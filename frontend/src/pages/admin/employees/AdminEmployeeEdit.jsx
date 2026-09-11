@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import EmployeeForm from "../../../components/employee/EmployeeForm";
@@ -17,6 +17,7 @@ import {
   delegableCapabilities,
   workspaceForLevel,
 } from "../../../config/rbacModel";
+import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
 
 const draftFrom = (person) => ({
   firstName: person.firstName,
@@ -31,9 +32,15 @@ const draftFrom = (person) => ({
   status: person.status,
 });
 
-export default function AdminEmployeeEdit() {
+export default function AdminEmployeeEdit({ basePath } = {}) {
   const { employeeId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Follow the workspace we were mounted from (Admin portal vs SUPER_EMPLOYEE
+  // self-service) — see employeesBase.js.
+  const base = basePath ?? (location.pathname.startsWith(EMPLOYEE_TEAM_ACCESS_BASE)
+    ? EMPLOYEE_TEAM_ACCESS_BASE
+    : "/admin/employees");
   const { getEmployee, updateEmployee, isWorking } = useEmployeeManagement();
   const { admin } = useAdminAuth();
   const { employee: employeeActor } = useEmployeeAuth();
@@ -78,7 +85,7 @@ export default function AdminEmployeeEdit() {
   if (!person || !draft) {
     return (
       <AdminPage eyebrow="People / Organization" title="Employee not found" description="That employee account is not in the register.">
-        <AtelierButton as={Link} to="/admin/employees" size="chip" variant="outline">All employees</AtelierButton>
+        <AtelierButton as={Link} to={base} size="chip" variant="outline">All employees</AtelierButton>
       </AdminPage>
     );
   }
@@ -119,7 +126,7 @@ export default function AdminEmployeeEdit() {
       setNotice(result.message || result.errors?.authorization || "Please review the employee details.");
       return;
     }
-    navigate(`/admin/employees/${person.employeeId}`, {
+    navigate(`${base}/${person.employeeId}`, {
       state: { notice: "Employee account saved." },
     });
   };
@@ -247,7 +254,7 @@ export default function AdminEmployeeEdit() {
 
         <div className="flex flex-wrap gap-3">
           <AtelierButton type="submit" disabled={isWorking}>{isWorking ? "Saving…" : "Save changes"}</AtelierButton>
-          <AtelierButton type="button" variant="outline" disabled={isWorking} onClick={() => navigate(`/admin/employees/${person.employeeId}`)}>
+          <AtelierButton type="button" variant="outline" disabled={isWorking} onClick={() => navigate(`${base}/${person.employeeId}`)}>
             Cancel
           </AtelierButton>
         </div>

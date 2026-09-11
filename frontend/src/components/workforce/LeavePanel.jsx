@@ -10,18 +10,14 @@ import {
 import { PERMISSIONS } from "../../config/employeePermissions";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { useWorkforce } from "../../context/WorkforceContext";
-import {
-  cancelLeave,
-  listVisibleLeave,
-  myLeave,
-  requestLeave,
-  reviewLeave,
-} from "../../services/workforce/leaveService";
+import { listVisibleLeave, myLeave } from "../../services/workforce/leaveService";
+import { apiCancelLeave, apiDecideLeave, apiRequestLeave } from "../../services/workforce/workforceApi";
 import { formatDateShort, inclusiveDayCount } from "../../services/workforce/dateUtils";
 import { getLeaveTypeLabel } from "../../config/attendanceConfig";
 import { LeaveStatusBadge } from "./WorkforceBadges";
 
 export function LeaveRequestForm({ actor, onCreated }) {
+  const { refresh } = useWorkforce();
   const [leaveType, setLeaveType] = useState("CASUAL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -31,16 +27,19 @@ export function LeaveRequestForm({ actor, onCreated }) {
 
   const days = startDate && endDate && endDate >= startDate ? inclusiveDayCount(startDate, endDate) : 0;
 
-  const submit = (event) => {
+  // Overlap/legality is the server's decision (single source of truth);
+  // the mirror is re-read afterwards so the desk never shows a phantom.
+  const submit = async (event) => {
     event.preventDefault();
-    const result = requestLeave({ actor, leaveType, startDate, endDate, reason });
+    const result = await apiRequestLeave({ leaveType, startDate, endDate, reason });
     if (!result.ok) {
-      setError(result.message);
+      setError(result.error || result.message || "The request could not be submitted.");
       setMessage("");
       return;
     }
+    await refresh();
     setError("");
-    setMessage(result.message);
+    setMessage(result.message || "Leave request submitted.");
     setReason("");
     onCreated?.(result.record);
   };
@@ -91,23 +90,25 @@ export function LeaveTable({ rows, actor, showEmployee = false, onChanged }) {
   const [rejectNote, setRejectNote] = useState("");
   const [reviewError, setReviewError] = useState("");
   const canReview = hasPermission(PERMISSIONS.LEAVE_APPROVE) || hasPermission(PERMISSIONS.LEAVE_REJECT) || hasPermission(PERMISSIONS.LEAVE_MANAGE);
+  const { refresh } = useWorkforce();
 
-  const confirm = () => {
+  const confirm = async () => {
     if (!pending) return;
+    // Transitions, the self-review ban and the reject-reason requirement are
+    // enforced by the backend; 409/422 messages surface verbatim.
     const result =
       pending.action === "cancel"
-        ? cancelLeave({ leaveId: pending.leaveId, actor })
-        : reviewLeave({
-            leaveId: pending.leaveId,
-            actor,
+        ? await apiCancelLeave(pending.leaveId)
+        : await apiDecideLeave(pending.leaveId, {
             decision: pending.action === "approve" ? LEAVE_STATUS.APPROVED : LEAVE_STATUS.REJECTED,
             reviewNote: rejectNote,
           });
     if (result && result.ok === false) {
       /* The desk keeps the request open so the reason can be supplied. */
-      setReviewError(result.message || "That decision could not be recorded.");
+      setReviewError(result.error || result.message || "That decision could not be recorded.");
       return;
     }
+    await refresh();
     setReviewError("");
     setPending(null);
     setRejectNote("");

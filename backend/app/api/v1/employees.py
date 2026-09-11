@@ -7,12 +7,14 @@ Employee self-service: /employee/me/...      (requires employee JWT)
 Spec source: API_CONTRACT.md §EMPLOYEE, AUTHORIZATION_MATRIX.md
 """
 
+from datetime import date as date_t
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_account_manager, get_current_admin, get_current_employee, get_db, get_user_roles_and_permissions, require_admin_permission, require_permission_for_user, require_staff_permission
+from app.dependencies import get_current_account_manager, get_current_admin, get_current_employee, get_db, get_user_roles_and_permissions, require_admin_permission, require_permission_for_user, require_staff_permission, require_staff_permission_any
 from app.models.auth.user import UserModel
+from app.core.exceptions import ValidationException
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.schemas.common import DataResponse, BaseResponse
 from app.schemas.employee.employee import (
@@ -729,16 +731,12 @@ async def create_attendance(
     employee_id: str,
     req: AttendanceCreateRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
-    await require_admin_permission(admin, db, "employees.edit")
-    await require_admin_permission(admin, db, "employees.edit")
-    await require_admin_permission(admin, db, "employees.edit")
-    await require_admin_permission(admin, db, "employees.view")
+    await require_staff_permission_any(admin, db, "attendance.correct", "employees.edit")
     req.employee_id = employee_id
     service = EmployeeService(db)
-    record = await service.create_attendance(req)
+    record = await service.create_attendance(req, actor=admin)
     return DataResponse(data=AttendanceResponse.model_validate(record), message="Attendance recorded.")
 
 
@@ -751,12 +749,21 @@ async def list_attendance(
     employee_id: str,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=30, ge=1, le=100),
+    date_from: Optional[str] = Query(default=None, alias="from", description="YYYY-MM-DD inclusive lower bound"),
+    date_to: Optional[str] = Query(default=None, alias="to", description="YYYY-MM-DD inclusive upper bound"),
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "attendance.view")
+    await require_staff_permission_any(admin, db, "attendance.view", "employees.view")
     service = EmployeeService(db)
-    items, total = await service.list_attendance(employee_id, page, page_size)
+    try:
+        parsed_from = date_t.fromisoformat(date_from) if date_from else None
+        parsed_to = date_t.fromisoformat(date_to) if date_to else None
+    except ValueError:
+        raise ValidationException("`from`/`to` must be YYYY-MM-DD")
+    items, total = await service.list_attendance(
+        employee_id, page, page_size, date_from=parsed_from, date_to=parsed_to
+    )
     params = PaginationParams(page=page, page_size=page_size)
     return PaginatedResponse.create(
         items=[AttendanceResponse.model_validate(r) for r in items],
@@ -775,11 +782,11 @@ async def update_attendance(
     attendance_id: str,
     req: AttendanceUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
+    await require_staff_permission_any(admin, db, "attendance.correct", "employees.edit")
     service = EmployeeService(db)
-    record = await service.update_attendance(attendance_id, req)
+    record = await service.update_attendance(attendance_id, req, actor=admin)
     return DataResponse(data=AttendanceResponse.model_validate(record), message="Attendance updated.")
 
 
@@ -791,11 +798,11 @@ async def update_attendance(
 async def delete_attendance(
     attendance_id: str,
     db: AsyncSession = Depends(get_db),
-    admin: UserModel = Depends(get_current_admin),
+    admin: UserModel = Depends(get_current_account_manager),
 ):
-    await require_admin_permission(admin, db, "employees.edit")
+    await require_staff_permission_any(admin, db, "attendance.manage", "employees.edit")
     service = EmployeeService(db)
-    await service.delete_attendance(attendance_id)
+    await service.delete_attendance(attendance_id, actor=admin)
     return BaseResponse(message="Attendance record deleted.")
 
 

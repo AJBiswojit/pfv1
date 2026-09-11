@@ -2425,7 +2425,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{record,lateMinutes,message}`
 - **Errors:** 409 already in; 403 on leave
 - **Priority:** P1
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-ATT-05 — Employee check-out
 
@@ -2437,7 +2437,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{record,workMinutes,message}`
 - **Errors:** 409 no check-in
 - **Priority:** P1
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-ATT-06 — Employee today
 
@@ -2449,7 +2449,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{record}`
 - **Errors:** 401
 - **Priority:** P1
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-ATT-07 — Employee attendance history
 
@@ -2461,7 +2461,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{"items","summary"}`
 - **Errors:** 401
 - **Priority:** P1
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ## Leave / performance (UI, no client)
 
@@ -2475,7 +2475,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{"items"}`
 - **Errors:** 401
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-LEV-02 — Employee apply leave
 
@@ -2487,7 +2487,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{leave}`
 - **Errors:** 422 overlap
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-LEV-03 — Admin list leave
 
@@ -2499,19 +2499,19 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{"items"}`
 - **Errors:** 401
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-LEV-04 — Admin decide leave
 
 - **Method / endpoint:** `POST /admin/leave/{id}/decision`
 - **Purpose:** approve|reject.
 - **Used by:** F-ADM-EMPLOYEE-DETAIL
-- **Auth:** admin
-- **Request:** `{"decision","notes"}`
+- **Auth:** admin (account-manager surface: Admin workspace or SUPER_EMPLOYEE holding `leave.approve`/`leave.reject`/`leave.manage`; self-review is 403)
+- **Request:** `{"decision","notes"}` (`notes` accepted alongside `reviewNote`; `decision`: APPROVED/REJECTED or approve/reject)
 - **Response:** `{leave}`
 - **Errors:** 409
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-PERF-01 — Employee performance
 
@@ -2523,7 +2523,7 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{reviews,summary}`
 - **Errors:** 401
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
 
 ### API-PERF-02 — Admin performance
 
@@ -2535,7 +2535,23 @@ List success typically `{ items, total, page, pageSize }` (orders also `{ orders
 - **Response:** `{"items"}`
 - **Errors:** 401
 - **Priority:** P2
-- **Status:** missing
+- **Status:** exists (implemented 2026-09 hardening pass)
+
+### Extra workforce surfaces shipped with the 2026-09 pass (beyond the original IDs)
+
+These complete the guarded flows the contract rows imply; all follow the same
+401/403/409/422 envelope and the shared capability codes.
+
+| Endpoint | Auth | Capability | Notes |
+| --- | --- | --- | --- |
+| `POST /employee/leave/{id}/cancel` | employee | owner (PENDING only) or leave reviewer | already-cancelled → idempotent 200; REJECTED → 409 |
+| `GET /admin/attendance/day?date=YYYY-MM-DD` | account manager | `attendance.view` | whole-house rows for one day; bounded (≤400), never fabricated rows |
+| `POST /admin/performance` | account manager | `performance.review` or `performance.manage` | `{employeeId (code or uuid), rating 1–5, reviewPeriod MONTHLY|QUARTERLY|ANNUAL, reviewDate?, comments?}` |
+| `PATCH /admin/performance/{id}` | account manager | same | reviewer recorded as the actor |
+| `POST /admin/employees/{employeeId}/attendance` etc. | account manager | `attendance.correct` (create/update) · `attendance.view` (list) · `attendance.manage` (delete) | previously mis-guarded with a repeated `employees.edit` — fixed this pass; `PATCH` requires `notes` as the correction reason (422) |
+
+The Admin attendance handlers accept the PF employee code or the user UUID in
+`{employeeId}` (`get_employee_by_id` resolves both, exact match only).
 
 ## Analytics / RBAC / audit
 

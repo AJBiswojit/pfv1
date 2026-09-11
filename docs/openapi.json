@@ -356,6 +356,48 @@
         }
       }
     },
+    "/api/v1/auth/staff/sign-in": {
+      "post": {
+        "tags": [
+          "Authentication & Identity"
+        ],
+        "summary": "Unified staff sign-in (SUPER_ADMIN / ADMIN / SUPER_EMPLOYEE / EMPLOYEE)",
+        "description": "Body: `{ identifier: 'email | phone | PF-<PREFIX>-#####', password }`.\n\nThe ONE canonical login for all four staff account levels. The backend\nauthenticates the credential, resolves the account level from the user\nrow and returns the surface-specific payload (`admin` for the Admin\nworkspace levels, `employee` for the Employee workspace levels) with\n`account_level` / `workspace` on the DTO so the frontend can route.\n\nCustomer storefront sign-in remains `/auth/customer/sign-in`; the\nlegacy per-surface staff sign-ins remain as compatibility aliases.\n\nRate limited to 10 attempts per minute per IP address.",
+        "operationId": "sign_in_staff_api_v1_auth_staff_sign_in_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/admin/sign-up": {
       "post": {
         "tags": [
@@ -1491,6 +1533,12 @@
             "in": "query",
             "required": false,
             "schema": {
+              "enum": [
+                "related",
+                "complete-the-look",
+                "recommended",
+                "cart"
+              ],
               "type": "string",
               "default": "related",
               "title": "Type"
@@ -5238,7 +5286,7 @@
           "Media Assets"
         ],
         "summary": "Delete one media object (admin)",
-        "description": "Delete exactly one explicitly named object.\n\nThere is no cascade and no garbage collection in this phase: an object is\nonly removed when an administrator names it. The original\n`frontend/public/images` assets are outside the storage root and can\nnever be reached from here.",
+        "description": "Delete exactly one explicitly named object.\n\nThere is no cascade and no garbage collection: an object is only removed\nwhen an administrator names it AND nothing references it (audit S-9).\nUsage is checked against the asset register, product media rows and\nmarketing placements; a referenced object returns 409 with the counts so\nthe caller can un-link it first. When the asset row is unreferenced it is\nremoved with the object, so the register can never hold a dangling key.\nThe original `frontend/public/images` assets are outside the storage root\nand can never be reached from here.",
         "operationId": "delete_media_object_api_v1_media_objects__object_key__delete",
         "security": [
           {
@@ -5561,7 +5609,38 @@
           "Media Assets"
         ],
         "summary": "List registered media assets",
+        "description": "List registered media assets \u2014 DB-side paginated.\n\nDB-load note (admin consolidation): the registry read previously had no\nLIMIT, so every library mount returned every asset ever registered. The\nread is now a bounded page with the full filtered count, newest first.",
         "operationId": "list_media_assets_api_v1_media_assets_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Pagesize"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5593,6 +5672,16 @@
               }
             }
           },
+          "422": {
+            "description": "Request validation or business-rule failure; returns the canonical error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server failure; returns the canonical error envelope.",
             "content": {
@@ -5603,12 +5692,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/media-reviews/health": {
@@ -7829,6 +7913,71 @@
             }
           },
           {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paymentstatus"
+            }
+          },
+          {
+            "name": "fulfillment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fulfillment"
+            }
+          },
+          {
+            "name": "createdSince",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Createdsince"
+            }
+          },
+          {
+            "name": "valueBand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Valueband"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -9281,8 +9430,8 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Onboard a new employee (admin)",
-        "description": "Body (spec): `{ firstName, lastName, email, phone, role, department, section?, store, joiningDate, shift?, permissionMode?, permissions? }`  \nGenerates a unique Employee ID in format `PF-<ROLEPREFIX>-#####` and sets `mustChangePassword = true`. Activity: `EMPLOYEE_CREATED`.",
+        "summary": "Onboard a new staff account at an authorized account level",
+        "description": "Body (spec): `{ firstName, lastName, email, phone, role, department, section?, store, joiningDate, shift?, permissionMode?, permissions?, accountLevel? }`  \n`accountLevel` \u2208 SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE). Generates a unique Employee ID `PF-<ROLEPREFIX>-#####` for employee-domain accounts and sets `mustChangePassword = true`. The one-time `temporaryPassword` is returned ONLY on this response. Activity: `EMPLOYEE_CREATED`.",
         "operationId": "create_employee_api_v1_admin_employees_post",
         "security": [
           {
@@ -9326,8 +9475,8 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "List all employees (admin)",
-        "description": "Requires `employees.view` permission.",
+        "summary": "List staff accounts (people-domain)",
+        "description": "Requires `employees.view` permission. Employee-domain roster by default; `include_admins=true` returns the full staff roster (SUPER_ADMIN / ADMIN accounts included) from the same endpoint \u2014 no second account-management API.",
         "operationId": "list_employees_api_v1_admin_employees_get",
         "security": [
           {
@@ -9409,6 +9558,16 @@
               ],
               "title": "Department Id"
             }
+          },
+          {
+            "name": "include_admins",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Admins"
+            }
           }
         ],
         "responses": {
@@ -9440,8 +9599,8 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Get employee by ID (admin)",
-        "description": "Returns `PublicEmployee` \u2014 never exposes hashed_password. Requires `employees.view` permission.",
+        "summary": "Get staff account by ID (people-domain)",
+        "description": "Returns the account record \u2014 never exposes hashed_password. Requires `employees.view` permission.",
         "operationId": "get_employee_api_v1_admin_employees__employee_id__get",
         "security": [
           {
@@ -9486,7 +9645,7 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Update employee profile (admin)",
+        "summary": "Update staff account (people-domain)",
         "description": "Requires `employees.edit` permission. Activities: EMPLOYEE_UPDATED, ROLE_CHANGED, DEPARTMENT_CHANGED.",
         "operationId": "update_employee_api_v1_admin_employees__employee_id__patch",
         "security": [
@@ -9542,7 +9701,7 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Hard-delete an employee account (admin)",
+        "summary": "Hard-delete a staff account (people-domain)",
         "description": "Prefer `POST /admin/employees/{id}/status` with `status=INACTIVE` for soft removal.",
         "operationId": "delete_employee_api_v1_admin_employees__employee_id__delete",
         "security": [
@@ -9590,7 +9749,7 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Change employee account status (admin)",
+        "summary": "Change staff account status (people-domain)",
         "description": "Body: `{ status: ACTIVE | PENDING | ON_LEAVE | SUSPENDED | INACTIVE }`  \n**SUSPENDED** and **INACTIVE** immediately deny all permissions on the next request, not just the next login. Requires `employees.suspend` permission.  \nActivities: STATUS_CHANGED, EMPLOYEE_SUSPENDED / EMPLOYEE_ACTIVATED / EMPLOYEE_DEACTIVATED.",
         "operationId": "update_employee_status_api_v1_admin_employees__employee_id__status_post",
         "security": [
@@ -9648,8 +9807,8 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Admin reset of employee password",
-        "description": "Sets `mustChangePassword = true`. Generates a secure temp password if none is supplied.  \nRequires `employees.resetPassword` permission. Activity: PASSWORD_RESET.",
+        "summary": "Reset staff account password (people-domain)",
+        "description": "Sets `mustChangePassword = true`. Generates a secure temp password if none is supplied; the one-time value is returned in `data.temporaryPassword`.  \nRequires `employees.resetPassword` permission. Activity: PASSWORD_RESET.",
         "operationId": "reset_employee_password_api_v1_admin_employees__employee_id__reset_password_post",
         "security": [
           {
@@ -9683,7 +9842,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseResponse"
+                  "$ref": "#/components/schemas/DataResponse_dict_"
                 }
               }
             }
@@ -9706,8 +9865,8 @@
         "tags": [
           "Employee Operations"
         ],
-        "summary": "Update employee permission mode and custom permissions (admin)",
-        "description": "Body: `{ permissionMode: 'role'|'custom', permissions: string[] }`  \n**SUPER_ADMIN always resolves to full access regardless of stored overrides.**  \nRequires `employees.managePermissions` permission. Activity: PERMISSIONS_CHANGED.",
+        "summary": "Assign capability set to a staff account (people-domain)",
+        "description": "Body: `{ permissionMode: 'role'|'custom', permissions: string[] }`  \n`permissions` accepts canonical capability codes (catalogue.view, orders.manage, people.security \u2026) and legacy granular codes; both are stored and expanded through the shared RBAC model.  \nDelegation is enforced server-side: a creator can only assign capabilities they are authorized to delegate, and a SUPER_EMPLOYEE can never hand out admin-domain authority. **SUPER_ADMIN always resolves to full access regardless of stored overrides.**  \nRequires `employees.managePermissions` permission. Activity: PERMISSIONS_CHANGED.",
         "operationId": "update_employee_permissions_api_v1_admin_employees__employee_id__permissions_put",
         "security": [
           {
@@ -10378,6 +10537,42 @@
               "default": 30,
               "title": "Page Size"
             }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD inclusive lower bound",
+              "title": "From"
+            },
+            "description": "YYYY-MM-DD inclusive lower bound"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD inclusive upper bound",
+              "title": "To"
+            },
+            "description": "YYYY-MM-DD inclusive upper bound"
           }
         ],
         "responses": {
@@ -10763,7 +10958,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PerformanceCreateRequest"
+                "$ref": "#/components/schemas/app__schemas__employee__performance__PerformanceCreateRequest"
               }
             }
           }
@@ -10888,7 +11083,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PerformanceUpdateRequest"
+                "$ref": "#/components/schemas/app__schemas__employee__performance__PerformanceUpdateRequest"
               }
             }
           }
@@ -10981,6 +11176,237 @@
         }
       }
     },
+    "/api/v1/employee/attendance/check-in": {
+      "post": {
+        "tags": [
+          "Employee Attendance"
+        ],
+        "summary": "Employee \u2014 punch in (self)",
+        "operationId": "employee_check_in_api_v1_employee_attendance_check_in_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PunchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PunchResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/employee/attendance/check-out": {
+      "post": {
+        "tags": [
+          "Employee Attendance"
+        ],
+        "summary": "Employee \u2014 punch out (self)",
+        "operationId": "employee_check_out_api_v1_employee_attendance_check_out_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PunchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PunchResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/employee/attendance/today": {
+      "get": {
+        "tags": [
+          "Employee Attendance"
+        ],
+        "summary": "Employee \u2014 today's attendance row",
+        "operationId": "employee_attendance_today_api_v1_employee_attendance_today_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayAttendanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/employee/attendance": {
+      "get": {
+        "tags": [
+          "Employee Attendance"
+        ],
+        "summary": "Employee \u2014 own monthly attendance history",
+        "operationId": "employee_attendance_history_api_v1_employee_attendance_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM; defaults to the store's current month",
+              "title": "Month"
+            },
+            "description": "YYYY-MM; defaults to the store's current month"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAttendanceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/attendance/day": {
+      "get": {
+        "tags": [
+          "Employee Attendance"
+        ],
+        "summary": "Supervisor/Admin \u2014 attendance rows for one day (bounded)",
+        "description": "Requires `attendance.view` and account-manager scope (Admin workspace or a SUPER_EMPLOYEE). Returns every recorded row for the date; empty means nobody has a row yet \u2014 never fabricated rows.",
+        "operationId": "admin_attendance_day_api_v1_admin_attendance_day_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD; defaults to the store's today",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD; defaults to the store's today"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAttendanceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/performance/health": {
       "get": {
         "tags": [
@@ -10994,6 +11420,556 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/employee/performance": {
+      "get": {
+        "tags": [
+          "Employee Performance"
+        ],
+        "summary": "Employee \u2014 own performance reviews",
+        "operationId": "my_performance_api_v1_employee_performance_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "MONTHLY | QUARTERLY | ANNUAL",
+              "title": "Period"
+            },
+            "description": "MONTHLY | QUARTERLY | ANNUAL"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceSelfResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/performance": {
+      "get": {
+        "tags": [
+          "Employee Performance"
+        ],
+        "summary": "Supervisor/Admin \u2014 performance reviews",
+        "operationId": "admin_list_performance_api_v1_admin_performance_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "PF code or user id",
+              "title": "Employee Id"
+            },
+            "description": "PF code or user id"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Employee Performance"
+        ],
+        "summary": "Supervisor/Admin \u2014 record a performance review",
+        "operationId": "admin_create_performance_api_v1_admin_performance_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__schemas__employee__workforce__PerformanceCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/performance/{performance_id}": {
+      "patch": {
+        "tags": [
+          "Employee Performance"
+        ],
+        "summary": "Supervisor/Admin \u2014 update a performance review",
+        "operationId": "admin_update_performance_api_v1_admin_performance__performance_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "performance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Performance Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__schemas__employee__workforce__PerformanceUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/employee/leave": {
+      "get": {
+        "tags": [
+          "Employee Leave"
+        ],
+        "summary": "Employee \u2014 own leave requests",
+        "operationId": "my_leave_api_v1_employee_leave_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Employee Leave"
+        ],
+        "summary": "Employee \u2014 apply for leave",
+        "operationId": "request_leave_api_v1_employee_leave_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaveCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/employee/leave/{leave_id}/cancel": {
+      "post": {
+        "tags": [
+          "Employee Leave"
+        ],
+        "summary": "Employee \u2014 cancel a leave request",
+        "description": "Own PENDING request; a leave reviewer may additionally withdraw an APPROVED one.",
+        "operationId": "cancel_leave_api_v1_employee_leave__leave_id__cancel_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "leave_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Leave Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/leave": {
+      "get": {
+        "tags": [
+          "Employee Leave"
+        ],
+        "summary": "Supervisor/Admin \u2014 leave queue",
+        "operationId": "admin_list_leave_api_v1_admin_leave_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "PF code or user id",
+              "title": "Employee Id"
+            },
+            "description": "PF code or user id"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/leave/{leave_id}/decision": {
+      "post": {
+        "tags": [
+          "Employee Leave"
+        ],
+        "summary": "Supervisor/Admin \u2014 approve or reject a leave request",
+        "operationId": "admin_decide_leave_api_v1_admin_leave__leave_id__decision_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "leave_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Leave Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaveDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -11225,7 +12201,7 @@
           "Admin Business Config"
         ],
         "summary": "List built-in roles",
-        "description": "Returns all 8 built-in roles with their default permission sets.",
+        "description": "Returns the consolidated role catalogue with its default permission sets. Legacy Admin-portal aliases (MANAGER, SALES, \u2026) resolve to the canonical business-role entries and are not listed twice.",
         "operationId": "list_roles_api_v1_admin_roles_get",
         "responses": {
           "200": {
@@ -11287,6 +12263,31 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/admin/capabilities": {
+      "get": {
+        "tags": [
+          "Admin Business Config"
+        ],
+        "summary": "List capability groups + account hierarchy contract",
+        "description": "The canonical authorization vocabulary shared with the frontend (account levels, creation matrix, capability groups, business-role defaults). Read-only; any authenticated admin surface account.",
+        "operationId": "list_capabilities_api_v1_admin_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     },
     "/api/v1/audit/health": {
@@ -11702,6 +12703,67 @@
         ]
       }
     },
+    "/api/v1/analytics/admin/dashboard/summary": {
+      "get": {
+        "tags": [
+          "Analytics & Reporting"
+        ],
+        "summary": "One consolidated admin-dashboard read (admin)",
+        "description": "Single request feeding the Admin dashboard: headline metrics, the 7-day sales series, revenue by product category, recent orders and the stock summary. Every figure is a bounded database aggregate \u2014 the dashboard no longer fans out into 7+ independent requests and no longer re-reads the employee list twice.  \nAuthorization: `analytics.view`.",
+        "operationId": "admin_dashboard_summary_api_v1_analytics_admin_dashboard_summary_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "default": 7,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "recent_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 5,
+              "title": "Recent Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chatbot/health": {
       "get": {
         "tags": [
@@ -11719,78 +12781,6 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/admin/settings/notifications": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "[Admin] Get notification channel settings",
-        "description": "Returns the per-event-family channel preferences stored in the `admin_setting` table under section `notifications`.  \n\nChannel values: `IN_APP`, `EMAIL`, `SMS`, `WHATSAPP`.  \nFalls back to defaults if the row has never been written:  \n`{ order: [\"IN_APP\"], returns: [\"IN_APP\"], employee: [\"IN_APP\"], lowStock: [\"IN_APP\"], offers: [\"IN_APP\"], marketing: [] }`.  \n\n**Authorization**: Admin or employee with `settings.view` privilege.",
-        "operationId": "get_notification_settings_api_v1_admin_settings_notifications_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationSettingsResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "[Admin] Update notification channel settings",
-        "description": "Deep-merges the supplied channel lists into the stored settings.  \nOnly keys present in the request body are updated; omitted keys keep their current values.  \n\n**Body** (all fields optional):  \n```json\n{\n  \"order\":    [\"IN_APP\", \"EMAIL\"],\n  \"returns\":  [\"IN_APP\"],\n  \"employee\": [\"IN_APP\"],\n  \"lowStock\": [\"IN_APP\", \"SMS\"],\n  \"offers\":   [\"IN_APP\"],\n  \"marketing\": []\n}\n```\n\nValid channel values: `IN_APP`, `EMAIL`, `SMS`, `WHATSAPP`.  \nPassing an unrecognised channel returns HTTP 422.  \n\n**Authorization**: Admin only (`settings.edit`).",
-        "operationId": "update_notification_settings_api_v1_admin_settings_notifications_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationSettingsUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationSettingsResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
       }
     },
     "/api/v1/search": {
@@ -12495,6 +13485,482 @@
         }
       }
     },
+    "/api/v1/admin/marketing/media": {
+      "get": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "List marketing media (admin)",
+        "operationId": "admin_list_marketing_media_api_v1_admin_marketing_media_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "placement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by placement, e.g. HOME_HERO",
+              "title": "Placement"
+            },
+            "description": "Filter by placement, e.g. HOME_HERO"
+          },
+          {
+            "name": "activeOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Activeonly"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "Create marketing media entry (admin)",
+        "operationId": "admin_create_marketing_media_api_v1_admin_marketing_media_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingMediaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/marketing/media/{media_id}": {
+      "get": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "Get one marketing media entry (admin)",
+        "operationId": "admin_get_marketing_media_api_v1_admin_marketing_media__media_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "media_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Media Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "Update marketing media entry (admin)",
+        "operationId": "admin_update_marketing_media_api_v1_admin_marketing_media__media_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "media_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Media Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingMediaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "Delete marketing media entry (admin)",
+        "operationId": "admin_delete_marketing_media_api_v1_admin_marketing_media__media_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "media_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Media Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/marketing/media/reorder": {
+      "put": {
+        "tags": [
+          "Admin Marketing Media"
+        ],
+        "summary": "Reorder marketing media entries (admin)",
+        "operationId": "admin_reorder_marketing_media_api_v1_admin_marketing_media_reorder_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingMediaReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaReorderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/marketing/placements/{placement}": {
+      "get": {
+        "tags": [
+          "Marketing Media"
+        ],
+        "summary": "Get active marketing media for a placement (public)",
+        "operationId": "public_list_placement_api_v1_marketing_placements__placement__get",
+        "parameters": [
+          {
+            "name": "placement",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Placement"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/marketing/hero": {
+      "get": {
+        "tags": [
+          "Marketing Media"
+        ],
+        "summary": "Get active HOME_HERO entries (public)",
+        "operationId": "public_get_home_hero_api_v1_marketing_hero_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMediaListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customers/me/product-interactions": {
+      "post": {
+        "tags": [
+          "Recommendations"
+        ],
+        "summary": "Record a customer product VIEW or CLICK",
+        "description": "Customer JWT required. Server-owned identity/time; optional UUID idempotencyKey. Repeated events are deduplicated. Business events cannot be submitted by clients.",
+        "operationId": "track_interaction_api_v1_customers_me_product_interactions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductInteractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/customers/me/recommendations": {
+      "get": {
+        "tags": [
+          "Recommendations"
+        ],
+        "summary": "Current customer's recommendations",
+        "description": "type=personalized requires sufficient real history; because-viewed uses the latest visible durable VIEW. Empty items means no meaningful results. No scores or private history returned. Never shared-cached.",
+        "operationId": "personal_recommendations_api_v1_customers_me_recommendations_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "personalized",
+                "because-viewed"
+              ],
+              "type": "string",
+              "default": "personalized",
+              "title": "Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "default": 4,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -13124,6 +14590,20 @@
             "type": "integer",
             "title": "Page Size",
             "default": 20
+          },
+          "status_counts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Counts"
           }
         },
         "type": "object",
@@ -14339,6 +15819,47 @@
           "updated_at"
         ],
         "title": "AttendanceResponse"
+      },
+      "AttendanceSummary": {
+        "properties": {
+          "present": {
+            "type": "integer",
+            "title": "Present",
+            "default": 0
+          },
+          "late": {
+            "type": "integer",
+            "title": "Late",
+            "default": 0
+          },
+          "halfDay": {
+            "type": "integer",
+            "title": "Halfday",
+            "default": 0
+          },
+          "onLeave": {
+            "type": "integer",
+            "title": "Onleave",
+            "default": 0
+          },
+          "absent": {
+            "type": "integer",
+            "title": "Absent",
+            "default": 0
+          },
+          "other": {
+            "type": "integer",
+            "title": "Other",
+            "default": 0
+          },
+          "totalWorkMinutes": {
+            "type": "integer",
+            "title": "Totalworkminutes",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "AttendanceSummary"
       },
       "AttendanceUpdateRequest": {
         "properties": {
@@ -16739,6 +18260,35 @@
         ],
         "title": "DataResponse[TargetResponse]"
       },
+      "DataResponse_dict_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "data": {
+            "type": "object",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "DataResponse[dict]"
+      },
       "DepartmentCreateRequest": {
         "properties": {
           "name": {
@@ -17055,6 +18605,18 @@
             "title": "Shift",
             "description": "e.g. MORNING, EVENING"
           },
+          "accountLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountlevel",
+            "description": "SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE (default EMPLOYEE)"
+          },
           "permissionMode": {
             "anyOf": [
               {
@@ -17080,7 +18642,7 @@
               }
             ],
             "title": "Permissions",
-            "description": "Custom permission list (used when permissionMode=custom)"
+            "description": "Capability assignment at creation. Accepts canonical capability codes (catalogue.view, orders.manage, people.view \u2026) or the legacy granular codes; the backend maps both onto the same authorization model."
           },
           "designation": {
             "anyOf": [
@@ -18119,6 +19681,83 @@
               }
             ],
             "title": "Permissions"
+          },
+          "account_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Level"
+          },
+          "accountLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountlevel"
+          },
+          "business_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Role"
+          },
+          "businessRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessrole"
+          },
+          "permission_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permission Mode"
+          },
+          "permissionMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissionmode"
+          },
+          "temporaryPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporarypassword"
           }
         },
         "type": "object",
@@ -18297,7 +19936,20 @@
                 "type": "null"
               }
             ],
-            "title": "Role"
+            "title": "Role",
+            "description": "Business role (canonical catalogue name or legacy alias)"
+          },
+          "accountLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountlevel",
+            "description": "SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE \u2014 SUPER_ADMIN creators only"
           },
           "joiningDate": {
             "anyOf": [
@@ -19040,6 +20692,679 @@
         "title": "InvoiceResponse",
         "description": "Invoice metadata for an order.\n\nThe existing schema stores only `invoice_number` / `invoice_issued_at`.\nThere is **no invoice document generator, no PDF pipeline and no\ninvoice file storage** in this system, so no download URL is ever\nreturned. `available` is `true` only when a real invoice number has\nactually been issued for the order; `document_available` is always\n`false` until an invoicing service exists."
       },
+      "LeaveCreateRequest": {
+        "properties": {
+          "leaveType": {
+            "type": "string",
+            "title": "Leavetype",
+            "default": "OTHER"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Startdate"
+          },
+          "endDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enddate"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "startDate"
+        ],
+        "title": "LeaveCreateRequest"
+      },
+      "LeaveDecisionRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "title": "Decision",
+            "description": "APPROVED | REJECTED (also accepts the contract spellings approve | reject)"
+          },
+          "reviewNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewnote"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "LeaveDecisionRequest"
+      },
+      "LeaveDto": {
+        "properties": {
+          "leaveId": {
+            "type": "string",
+            "title": "Leaveid"
+          },
+          "employeeId": {
+            "type": "string",
+            "title": "Employeeid",
+            "description": "PF employee code"
+          },
+          "employeeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employeename"
+          },
+          "leaveType": {
+            "type": "string",
+            "title": "Leavetype"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Startdate"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Enddate"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requestedat"
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewedat"
+          },
+          "reviewedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewedby"
+          },
+          "reviewNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewnote"
+          }
+        },
+        "type": "object",
+        "required": [
+          "leaveId",
+          "employeeId",
+          "leaveType",
+          "startDate",
+          "endDate",
+          "days",
+          "status",
+          "requestedAt"
+        ],
+        "title": "LeaveDto"
+      },
+      "LeaveListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveDto"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LeaveListResponse"
+      },
+      "MarketingMediaCreate": {
+        "properties": {
+          "placement": {
+            "type": "string",
+            "title": "Placement",
+            "description": "Marketing placement, e.g. HOME_HERO",
+            "default": "HOME_HERO"
+          },
+          "objectKey": {
+            "type": "string",
+            "title": "Objectkey",
+            "description": "Storage object key, e.g. hero/hero001.avif"
+          },
+          "mediaAssetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mediaassetid"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "ctaLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctalabel"
+          },
+          "ctaHref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctahref"
+          },
+          "altText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alttext"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "title": "Sortorder",
+            "default": 0
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "objectKey"
+        ],
+        "title": "MarketingMediaCreate",
+        "description": "POST /admin/marketing/media \u2014 create one entry."
+      },
+      "MarketingMediaListResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MarketingMediaResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          },
+          "placement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement"
+          }
+        },
+        "type": "object",
+        "title": "MarketingMediaListResponse"
+      },
+      "MarketingMediaReorderItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "title": "Sortorder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sortOrder"
+        ],
+        "title": "MarketingMediaReorderItem"
+      },
+      "MarketingMediaReorderRequest": {
+        "properties": {
+          "placement": {
+            "type": "string",
+            "title": "Placement",
+            "default": "HOME_HERO"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MarketingMediaReorderItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "MarketingMediaReorderRequest"
+      },
+      "MarketingMediaReorderResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MarketingMediaResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "MarketingMediaReorderResponse"
+      },
+      "MarketingMediaResponse": {
+        "properties": {
+          "placement": {
+            "type": "string",
+            "title": "Placement",
+            "description": "Marketing placement, e.g. HOME_HERO",
+            "default": "HOME_HERO"
+          },
+          "objectKey": {
+            "type": "string",
+            "title": "Objectkey",
+            "description": "Storage object key, e.g. hero/hero001.avif"
+          },
+          "mediaAssetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mediaassetid"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "ctaLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctalabel"
+          },
+          "ctaHref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctahref"
+          },
+          "altText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alttext"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "title": "Sortorder",
+            "default": 0
+          },
+          "isActive": {
+            "type": "boolean",
+            "title": "Isactive",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedby"
+          }
+        },
+        "type": "object",
+        "required": [
+          "objectKey",
+          "id"
+        ],
+        "title": "MarketingMediaResponse",
+        "description": "Single marketing media entry with DB identity and URLs."
+      },
+      "MarketingMediaUpdate": {
+        "properties": {
+          "placement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement"
+          },
+          "objectKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objectkey"
+          },
+          "mediaAssetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mediaassetid"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "ctaLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctalabel"
+          },
+          "ctaHref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctahref"
+          },
+          "altText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alttext"
+          },
+          "sortOrder": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortorder"
+          },
+          "isActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isactive"
+          }
+        },
+        "type": "object",
+        "title": "MarketingMediaUpdate",
+        "description": "PATCH /admin/marketing/media/{id} \u2014 partial update."
+      },
       "MeResponse": {
         "properties": {
           "ok": {
@@ -19121,6 +21446,21 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "default": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "title": "Pagesize",
+            "default": 50
           }
         },
         "type": "object",
@@ -19129,7 +21469,7 @@
           "items"
         ],
         "title": "MediaAssetListResponse",
-        "description": "Successful wire shape for ``GET /media/assets``."
+        "description": "Successful wire shape for ``GET /media/assets``.\n\nPagination fields (admin consolidation): the endpoint used to return\nEVERY registered asset with no limit \u2014 unbounded as the registry grows.\n``total``/``page``/``pageSize`` are additive; the default page keeps the\nresponse bounded."
       },
       "MediaObjectMetaResponse": {
         "properties": {
@@ -19515,6 +21855,26 @@
         "title": "MediaStorageStatusResponse",
         "description": "Non-secret provider summary."
       },
+      "MyAttendanceResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkforceAttendanceDto"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AttendanceSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "summary"
+        ],
+        "title": "MyAttendanceResponse"
+      },
       "NextIdResponse": {
         "properties": {
           "ok": {
@@ -19532,199 +21892,6 @@
           "nextId"
         ],
         "title": "NextIdResponse"
-      },
-      "NotificationChannelSettings": {
-        "properties": {
-          "order": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Order",
-            "description": "Channels for order confirmation, status updates and cancellations."
-          },
-          "returns": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Returns",
-            "description": "Channels for return approvals and refund notifications."
-          },
-          "employee": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Employee",
-            "description": "Channels for employee-facing operational alerts."
-          },
-          "lowStock": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Lowstock",
-            "description": "Channels for low-stock threshold alerts."
-          },
-          "offers": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Offers",
-            "description": "Channels for promotional offer notifications."
-          },
-          "marketing": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Marketing",
-            "description": "Channels for marketing broadcast messages."
-          }
-        },
-        "type": "object",
-        "title": "NotificationChannelSettings",
-        "description": "Per-event-family channel list.\nEach list may contain zero or more of: \"IN_APP\", \"EMAIL\", \"SMS\", \"WHATSAPP\"."
-      },
-      "NotificationSettingsResponse": {
-        "properties": {
-          "ok": {
-            "type": "boolean",
-            "title": "Ok",
-            "default": true
-          },
-          "section": {
-            "type": "string",
-            "title": "Section",
-            "default": "notifications"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/NotificationChannelSettings"
-          },
-          "updatedBy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updatedby",
-            "description": "User id of the last editor."
-          },
-          "updatedAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updatedat",
-            "description": "ISO-8601 UTC timestamp."
-          }
-        },
-        "type": "object",
-        "required": [
-          "settings"
-        ],
-        "title": "NotificationSettingsResponse",
-        "description": "Response body for GET /admin/settings/notifications."
-      },
-      "NotificationSettingsUpdate": {
-        "properties": {
-          "order": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Order"
-          },
-          "returns": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Returns"
-          },
-          "employee": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Employee"
-          },
-          "lowStock": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lowstock"
-          },
-          "offers": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Offers"
-          },
-          "marketing": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Marketing"
-          }
-        },
-        "type": "object",
-        "title": "NotificationSettingsUpdate",
-        "description": "Request body for PATCH /admin/settings/notifications.\nAll fields are optional \u2014 only supplied keys are merged."
       },
       "OkResponse": {
         "properties": {
@@ -20445,29 +22612,62 @@
         "title": "PaymentSessionData",
         "description": "Serialisable representation of a PaymentSessionModel."
       },
-      "PerformanceCreateRequest": {
+      "PerformanceDto": {
         "properties": {
-          "employee_id": {
+          "performanceId": {
             "type": "string",
-            "title": "Employee Id"
+            "title": "Performanceid"
           },
-          "review_date": {
+          "employeeId": {
+            "type": "string",
+            "title": "Employeeid",
+            "description": "PF employee code"
+          },
+          "employeeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employeename"
+          },
+          "reviewDate": {
             "type": "string",
             "format": "date",
-            "title": "Review Date"
+            "title": "Reviewdate"
           },
           "rating": {
             "type": "integer",
-            "maximum": 5.0,
-            "minimum": 1.0,
-            "title": "Rating",
-            "description": "Rating from 1 (poor) to 5 (excellent)"
+            "title": "Rating"
           },
-          "review_period": {
+          "reviewPeriod": {
             "type": "string",
-            "title": "Review Period",
-            "description": "MONTHLY | QUARTERLY | ANNUAL",
-            "default": "MONTHLY"
+            "title": "Reviewperiod"
+          },
+          "reviewerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewerid"
+          },
+          "reviewerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewername"
           },
           "comments": {
             "anyOf": [
@@ -20479,15 +22679,50 @@
               }
             ],
             "title": "Comments"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
           }
         },
         "type": "object",
         "required": [
-          "employee_id",
-          "review_date",
-          "rating"
+          "performanceId",
+          "employeeId",
+          "reviewDate",
+          "rating",
+          "reviewPeriod"
         ],
-        "title": "PerformanceCreateRequest"
+        "title": "PerformanceDto"
+      },
+      "PerformanceListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PerformanceDto"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "PerformanceListResponse"
       },
       "PerformanceResponse": {
         "properties": {
@@ -20559,46 +22794,26 @@
         ],
         "title": "PerformanceResponse"
       },
-      "PerformanceUpdateRequest": {
+      "PerformanceSelfResponse": {
         "properties": {
-          "rating": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 5.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rating"
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/PerformanceDto"
+            },
+            "type": "array",
+            "title": "Reviews"
           },
-          "review_period": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Review Period"
-          },
-          "comments": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comments"
+          "summary": {
+            "type": "object",
+            "title": "Summary"
           }
         },
         "type": "object",
-        "title": "PerformanceUpdateRequest"
+        "required": [
+          "reviews",
+          "summary"
+        ],
+        "title": "PerformanceSelfResponse"
       },
       "PickItemRequest": {
         "properties": {
@@ -22203,6 +24418,44 @@
         "title": "ProductDraftRequest",
         "description": "POST /admin/products/draft \u2014 create a DRAFT under a caller-supplied\npermanent ID.  The ID is the canonical `catalog_product.id`; the same\nvalue is mirrored into `product_id` (the stable UI label column)."
       },
+      "ProductInteractionRequest": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Productid"
+          },
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "VIEW",
+              "CLICK"
+            ],
+            "title": "Eventtype"
+          },
+          "idempotencyKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotencykey"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "productId",
+          "eventType"
+        ],
+        "title": "ProductInteractionRequest"
+      },
       "ProductListResponse": {
         "properties": {
           "ok": {
@@ -23202,6 +25455,56 @@
         "type": "object",
         "title": "PublishIssuesResponse"
       },
+      "PunchRequest": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "title": "PunchRequest",
+        "description": "Optional explicit timestamp (ISO). Absent \u2192 server store clock."
+      },
+      "PunchResult": {
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/WorkforceAttendanceDto"
+          },
+          "lateMinutes": {
+            "type": "integer",
+            "title": "Lateminutes",
+            "default": 0
+          },
+          "workMinutes": {
+            "type": "integer",
+            "title": "Workminutes",
+            "default": 0
+          },
+          "earlyLeaveMinutes": {
+            "type": "integer",
+            "title": "Earlyleaveminutes",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record",
+          "message"
+        ],
+        "title": "PunchResult"
+      },
       "ReceiveReturnRequest": {
         "properties": {
           "packageCondition": {
@@ -23847,6 +26150,28 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
           }
         },
         "type": "object",
@@ -24300,6 +26625,74 @@
           "subcategory"
         ],
         "title": "SingleSubcategoryResponse"
+      },
+      "StaffLoginRequest": {
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Identifier",
+            "description": "Email, phone, or employee ID"
+          },
+          "adminId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adminid"
+          },
+          "employeeId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employeeid"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Password"
+          },
+          "remember": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remember",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "title": "StaffLoginRequest",
+        "description": "UNIFIED staff sign-in (one login experience for all four account levels).\n\nBody: { identifier, password } where identifier may be:\n  \u2022 email (SUPER_ADMIN / ADMIN / employee accounts)\n  \u2022 phone  (legacy staff accounts registered by phone)\n  \u2022 employee code PF-<PREFIX>-##### (employee-domain accounts)\n\nThe backend determines the account level and the authorized workspace \u2014\nthe frontend never picks the login surface itself."
       },
       "StatusHistoryEntry": {
         "properties": {
@@ -25211,6 +27604,33 @@
         "title": "TaxonomyProductCountsResponse",
         "description": "Successful wire shape for ``GET /admin/taxonomy/product-counts``."
       },
+      "TodayAttendanceResponse": {
+        "properties": {
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkforceAttendanceDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "title": "TodayAttendanceResponse"
+      },
       "TokenResponse": {
         "properties": {
           "ok": {
@@ -25789,6 +28209,72 @@
             "title": "Permissions",
             "default": []
           },
+          "permission_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permission Mode"
+          },
+          "account_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Level"
+          },
+          "accountLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountlevel"
+          },
+          "business_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Role"
+          },
+          "businessRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessrole"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace"
+          },
           "employee_code": {
             "anyOf": [
               {
@@ -26075,6 +28561,300 @@
         "type": "object",
         "title": "WebhookAckResponse",
         "description": "Minimal 200 OK response for Razorpay webhooks."
+      },
+      "WorkforceAttendanceDto": {
+        "properties": {
+          "attendanceId": {
+            "type": "string",
+            "title": "Attendanceid"
+          },
+          "employeeId": {
+            "type": "string",
+            "title": "Employeeid",
+            "description": "PF employee code"
+          },
+          "employeeName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employeename"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "checkIn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin"
+          },
+          "checkOut": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "workMinutes": {
+            "type": "integer",
+            "title": "Workminutes",
+            "default": 0
+          },
+          "lateMinutes": {
+            "type": "integer",
+            "title": "Lateminutes",
+            "default": 0
+          },
+          "earlyLeaveMinutes": {
+            "type": "integer",
+            "title": "Earlyleaveminutes",
+            "default": 0
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attendanceId",
+          "employeeId",
+          "date",
+          "status"
+        ],
+        "title": "WorkforceAttendanceDto",
+        "description": "One attendance day, shaped for the frontend mirror."
+      },
+      "app__schemas__employee__performance__PerformanceCreateRequest": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "review_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Review Date"
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "description": "Rating from 1 (poor) to 5 (excellent)"
+          },
+          "review_period": {
+            "type": "string",
+            "title": "Review Period",
+            "description": "MONTHLY | QUARTERLY | ANNUAL",
+            "default": "MONTHLY"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "review_date",
+          "rating"
+        ],
+        "title": "PerformanceCreateRequest"
+      },
+      "app__schemas__employee__performance__PerformanceUpdateRequest": {
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "review_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Period"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          }
+        },
+        "type": "object",
+        "title": "PerformanceUpdateRequest"
+      },
+      "app__schemas__employee__workforce__PerformanceCreateRequest": {
+        "properties": {
+          "employeeId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employeeid",
+            "description": "PF code or user id; omitted on self routes"
+          },
+          "reviewDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewdate"
+          },
+          "rating": {
+            "type": "integer",
+            "title": "Rating"
+          },
+          "reviewPeriod": {
+            "type": "string",
+            "title": "Reviewperiod",
+            "description": "MONTHLY | QUARTERLY | ANNUAL",
+            "default": "MONTHLY"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rating"
+        ],
+        "title": "PerformanceCreateRequest"
+      },
+      "app__schemas__employee__workforce__PerformanceUpdateRequest": {
+        "properties": {
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "reviewPeriod": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewperiod"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "reviewDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewdate"
+          }
+        },
+        "type": "object",
+        "title": "PerformanceUpdateRequest"
       }
     },
     "securitySchemes": {

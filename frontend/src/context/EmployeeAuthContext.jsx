@@ -34,11 +34,9 @@ import {
 } from "../services/api/authApi";
 import { writeStorage } from "../utils/shopping";
 import { clearTokens, getAccessToken } from "../services/api/apiClient";
-import {
-  checkIn as punchIn,
-  checkOut as punchOut,
-  getTodayAttendance,
-} from "../services/workforce/attendanceService";
+import { getTodayAttendance } from "../services/workforce/attendanceService";
+import { apiPunchIn as punchIn, apiPunchOut as punchOut } from "../services/workforce/workforceApi";
+import { hydrateAttendance } from "../services/workforce/workforceSync";
 
 const EmployeeAuthContext = createContext(null);
 
@@ -197,7 +195,7 @@ export function EmployeeAuthProvider({ children }) {
     [employee]
   );
 
-  // ── Attendance (still local until Phase J) ────────────────────────────────
+  // ── Attendance — server-authoritative (mirror re-read after each punch) ──
 
   const getAttendance = useCallback(() => {
     if (!employee) return null;
@@ -206,14 +204,18 @@ export function EmployeeAuthProvider({ children }) {
     return { ...record, checkedInAt: record.checkIn, checkedOutAt: record.checkOut };
   }, [employee]);
 
-  const checkIn = useCallback(() => {
+  const checkIn = useCallback(async () => {
     if (!employee) return { ok: false };
-    return punchIn({ employeeId: employee.employeeId ?? employee.id, actor: employee });
+    const result = await punchIn();
+    if (result.ok) await hydrateAttendance({ employeeCode: employee.employeeId ?? employee.id });
+    return result;
   }, [employee]);
 
-  const checkOut = useCallback(() => {
+  const checkOut = useCallback(async () => {
     if (!employee) return { ok: false };
-    return punchOut({ employeeId: employee.employeeId ?? employee.id, actor: employee });
+    const result = await punchOut();
+    if (result.ok) await hydrateAttendance({ employeeCode: employee.employeeId ?? employee.id });
+    return result;
   }, [employee]);
 
   // ── Context value ─────────────────────────────────────────────────────────

@@ -1,17 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EmployeeField, { employeeInputClass } from "../employee/EmployeeField";
 import DataTable from "../employee/DataTable";
 import { ATTENDANCE_STATUS_OPTIONS } from "../../config/attendanceConfig";
 import { filterEmployeeHistory } from "../../services/workforce/attendanceService";
+import { hydrateAttendance } from "../../services/workforce/workforceSync";
+import { useWorkforce } from "../../context/WorkforceContext";
 import { formatDateShort, formatMinutes, formatTime, monthOptions } from "../../services/workforce/dateUtils";
 import { AttendanceStatusBadge } from "./WorkforceBadges";
 
 export default function AttendanceHistory({ employeeId, month: monthProp, onMonthChange }) {
   const [month, setMonth] = useState(monthProp || monthOptions(6)[0].id);
+  const { revision } = useWorkforce();
+  // Each month view is backed by the server list for that month (self rows);
+  // a failed fetch keeps whatever the mirror already had — never a wipe.
+  useEffect(() => {
+    let live = true;
+    if (employeeId) void hydrateAttendance({ employeeCode: employeeId, month }).catch(() => live && null);
+    return () => {
+      live = false;
+    };
+  }, [employeeId, month]);
   const [status, setStatus] = useState("");
   const rows = useMemo(
     () => filterEmployeeHistory(employeeId, { month, status }),
-    [employeeId, month, status]
+    // `revision` re-reads the mirror after hydration without re-fetching.
+    [employeeId, month, status, revision]
   );
 
   const changeMonth = (value) => {

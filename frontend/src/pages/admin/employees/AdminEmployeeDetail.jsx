@@ -15,6 +15,7 @@ import { EMPLOYEE_STATUS } from "../../../config/employeeStatus";
 import { getRoleLabel } from "../../../config/employeeRoles";
 import { ACCOUNT_LEVELS, ACCOUNT_LEVEL_META, CAPABILITY_GROUPS } from "../../../config/rbacModel";
 import { employeeFullName, formatEmployeeDate, formatEmployeeDateTime } from "../../../utils/employee";
+import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
 
 const accessIsBlocked = (person) =>
   [EMPLOYEE_STATUS.INACTIVE, EMPLOYEE_STATUS.SUSPENDED].includes(person.status);
@@ -37,9 +38,10 @@ const actionCopy = {
   },
 };
 
-export default function AdminEmployeeDetail() {
+export default function AdminEmployeeDetail({ basePath } = {}) {
   const { employeeId } = useParams();
   const location = useLocation();
+  const base = basePath ?? (location.pathname.startsWith(EMPLOYEE_TEAM_ACCESS_BASE) ? EMPLOYEE_TEAM_ACCESS_BASE : "/admin/employees");
   const {
     getEmployee,
     getActivity,
@@ -56,7 +58,7 @@ export default function AdminEmployeeDetail() {
   if (!person) {
     return (
       <AdminPage eyebrow="People / Organization" title="Employee not found" description="That employee ID is not in the account register.">
-        <AtelierButton as={Link} to="/admin/employees" variant="outline" size="chip">All employees</AtelierButton>
+        <AtelierButton as={Link} to={base} variant="outline" size="chip">All employees</AtelierButton>
       </AdminPage>
     );
   }
@@ -131,8 +133,8 @@ export default function AdminEmployeeDetail() {
       description={`${levelMeta?.label ?? "Employee"} · ${getRoleLabel(person.role)}${employeeDomain ? ` · ${getDepartmentLabel(person.department)}` : ""} · Administration profile`}
       actions={
         <>
-          <AtelierButton as={Link} to={`/admin/employees/${person.employeeId}/edit`} size="chip">Edit employee</AtelierButton>
-          <AtelierButton as={Link} to="/admin/employees" variant="outline" size="chip">All employees</AtelierButton>
+          <AtelierButton as={Link} to={`${base}/${person.employeeId}/edit`} size="chip">Edit employee</AtelierButton>
+          <AtelierButton as={Link} to={base} variant="outline" size="chip">All employees</AtelierButton>
         </>
       }
     >

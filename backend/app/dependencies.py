@@ -10,7 +10,7 @@ Token authentication flow:
 """
 
 import json
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Sequence
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -320,6 +320,31 @@ async def get_user_account_level(user: UserModel, db: AsyncSession) -> Optional[
     return derive_account_level(user.user_type, roles)
 
 
+async def _audit_permission_denial(user: UserModel, missing: Sequence[str], surface: str) -> None:
+    """Central ACCESS_DENIED diary write for capability refusals.
+
+    One writer (app.services.audit.audit_service) on a detached session: the
+    caller's transaction is about to roll back with the 403, so the entry is
+    committed independently. Failures are swallowed inside record_detached —
+    an audit problem must never mask the original 403.
+    """
+    if not isinstance(user, UserModel):  # test doubles / non-persistent callers
+        return
+    from app.services.audit.audit_service import record_detached
+
+    try:
+        await record_detached(
+            action="ACCESS_DENIED",
+            actor_id=user.id,
+            summary=f"{surface}: {getattr(user, 'full_name', user.id)} denied — missing {', '.join(missing)}",
+            details={"surface": surface, "missing": list(missing)},
+        )
+    except Exception:  # noqa: BLE001 — an audit failure never masks the 403
+        import logging
+
+        logging.getLogger("pfv.audit").exception("ACCESS_DENIED diary write failed")
+
+
 async def require_permission_for_user(
     user: UserModel,
     db: AsyncSession,
@@ -332,6 +357,7 @@ async def require_permission_for_user(
         return
     missing = [perm for perm in required_permissions if perm not in permission_set]
     if missing:
+        await _audit_permission_denial(user, missing, "staff-permission")
         raise ForbiddenException(f"Missing required permission: {', '.join(missing)}")
 
 
@@ -358,6 +384,22 @@ async def require_staff_permission(user: UserModel, db: AsyncSession, *required_
         await require_admin_permission(user, db, *required_permissions)
         return
     await require_permission_for_user(user, db, *required_permissions)
+
+
+async def require_staff_permission_any(user: UserModel, db: AsyncSession, *codes: str) -> None:
+    """Pass when the actor holds AT LEAST ONE of `codes` (delegated-People
+    surfaces + the consolidated Admin roles need the OR form; every
+    individual check is still the shared `require_staff_permission` engine —
+    no second resolver). Denial lands in the diary through the engine."""
+    last_error: Optional[ForbiddenException] = None
+    for code in codes:
+        try:
+            await require_staff_permission(user, db, code)
+            return
+        except ForbiddenException as exc:
+            last_error = exc
+    assert last_error is not None
+    raise last_error
 
 
 async def require_admin_permission(
@@ -414,6 +456,9 @@ async def require_admin_permission(
             await db.execute(select(func.count()).select_from(RoleModel))
         ).scalar_one() == 0
         if not roles_table_empty:
+            await _audit_permission_denial(
+                user, required_permissions, "admin-permission (no roles assigned)"
+            )
             raise ForbiddenException(
                 "Your admin account has no roles assigned. "
                 "Ask a SUPER_ADMIN to provision your role."
@@ -421,6 +466,7 @@ async def require_admin_permission(
         return
     missing = [perm for perm in required_permissions if perm not in permission_set]
     if missing:
+        await _audit_permission_denial(user, missing, "admin-permission")
         raise ForbiddenException(
             f"You do not have permission to perform this action. "
             f"Missing required permission: {', '.join(missing)}"
