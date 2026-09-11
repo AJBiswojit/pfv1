@@ -1072,15 +1072,31 @@ class AdminRbacTests(unittest.IsolatedAsyncioTestCase):
                 await require_admin_permission(user, AsyncMock(), "products.manage")
         self.assertIn("products.manage", str(ctx.exception))
 
-    async def test_zero_role_admin_keeps_surface_access(self):
-        # Documented bootstrap-compat path: admins exist before the role
-        # directory is provisioned; surface isolation is enforced by
-        # get_current_admin, not here.
+    async def test_zero_role_admin_denied_when_roles_exist(self):
+        # S-4 (admin consolidation): once the RBAC directory HAS roles, an
+        # admin without any assignment gets NO unrestricted access.
+        from app.core.exceptions import ForbiddenException
         from app.dependencies import require_admin_permission
         user = SimpleNamespace(id="u")
+        db = AsyncMock()
+        db.execute.return_value.scalar_one = lambda: 3  # roles table provisioned
         with patch("app.dependencies.get_user_roles_and_permissions",
                    AsyncMock(return_value=([], []))):
-            await require_admin_permission(user, AsyncMock(), "offers.create")
+            with self.assertRaises(ForbiddenException):
+                await require_admin_permission(user, db, "offers.create")
+
+    async def test_zero_role_admin_keeps_bootstrap_access_on_empty_directory(self):
+        # Documented bootstrap-compat path: admins exist before the role
+        # directory is provisioned (roles table EMPTY). Surface isolation is
+        # still enforced by get_current_admin; this only unlocks permission
+        # checks so the portal can be provisioned at all.
+        from app.dependencies import require_admin_permission
+        user = SimpleNamespace(id="u")
+        db = AsyncMock()
+        db.execute.return_value.scalar_one = lambda: 0  # roles table empty
+        with patch("app.dependencies.get_user_roles_and_permissions",
+                   AsyncMock(return_value=([], []))):
+            await require_admin_permission(user, db, "offers.create")
 
     async def test_admin_routes_are_wired_to_permission_checks(self):
         expectations = {

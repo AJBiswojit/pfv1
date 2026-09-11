@@ -48,6 +48,7 @@ async def analytics_overview(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     total_revenue = (
         await db.execute(
             select(func.coalesce(func.sum(OrderModel.total), 0)).where(
@@ -103,6 +104,7 @@ async def analytics_sales(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     since = datetime.now(timezone.utc) - timedelta(days=days)
     rows = (
         await db.execute(
@@ -131,6 +133,7 @@ async def analytics_top_products(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     rows = (
         await db.execute(
             select(
@@ -167,6 +170,7 @@ async def analytics_top_customers(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     rows = (
         await db.execute(
             select(
@@ -210,6 +214,7 @@ async def analytics_orders(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     rows = (
         await db.execute(
             select(OrderModel.status, func.count(OrderModel.id))
@@ -225,6 +230,7 @@ async def analytics_inventory_summary(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "analytics.view")
     totals = (
         await db.execute(
             select(

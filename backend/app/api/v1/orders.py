@@ -58,6 +58,7 @@ from app.dependencies import (
     get_current_customer,
     get_db,
     get_optional_user,
+    require_admin_permission,
 )
 from app.models.auth.user import UserModel
 from app.schemas.orders.order import (
@@ -356,6 +357,7 @@ async def admin_list_orders(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.view")
     service = OrderService(db)
     result = await service.admin_list_orders(
         status=status_filter,
@@ -392,6 +394,7 @@ async def admin_get_order(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.view")
     service = OrderService(db)
     order = await service.admin_get_order(order_id)
     return AdminSingleOrderResponse(order=order)
@@ -412,6 +415,7 @@ async def admin_allocate(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.allocate(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -433,6 +437,7 @@ async def admin_assign_fulfillment(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.assign_fulfillment(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -453,6 +458,7 @@ async def admin_start_picking(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.start_picking(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -474,6 +480,7 @@ async def admin_pick_item(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.pick_item(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -494,6 +501,7 @@ async def admin_pack(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.mark_packed(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -514,6 +522,7 @@ async def admin_ready(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.mark_ready(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -538,6 +547,7 @@ async def admin_dispatch(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.dispatch_order(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -558,6 +568,7 @@ async def admin_out_for_delivery(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.mark_out_for_delivery(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -578,6 +589,7 @@ async def admin_deliver(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.mark_delivered(order_id, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -602,6 +614,7 @@ async def admin_cancel_order(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.admin_cancel(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -626,6 +639,7 @@ async def admin_add_note(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.add_note(
         order_id, req,
@@ -655,6 +669,7 @@ async def admin_apply_status(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.apply_status(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -680,6 +695,7 @@ async def admin_force_status(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.manage")
     service = OrderService(db)
     order = await service.force_status(order_id, req, actor_id=current_user.id)
     return AdminSingleOrderResponse(order=order)
@@ -705,6 +721,7 @@ async def admin_get_invoice(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "orders.view")
     service = OrderService(db)
     data = await service.get_invoice(order_id)
     return InvoiceResponse(**data)
@@ -729,6 +746,7 @@ async def admin_list_returns(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.view")
     service = ReturnService(db)
     result = await service.list_returns(
         status=status_filter,
@@ -755,6 +773,7 @@ async def admin_get_return(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.view")
     service = ReturnService(db)
     ret = await service.get_return(return_id)
     return SingleReturnResponse(return_order=ret)
@@ -775,6 +794,7 @@ async def admin_approve_return(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.approve_return(return_id, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -801,6 +821,7 @@ async def admin_reject_return(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.reject_return(return_id, req, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -825,6 +846,7 @@ async def admin_schedule_pickup(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.schedule_pickup(return_id, req, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -849,6 +871,7 @@ async def admin_receive_return(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.receive_return(return_id, req, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -873,6 +896,7 @@ async def admin_inspect_return(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.inspect_return(return_id, req, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -893,6 +917,7 @@ async def admin_initiate_refund(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.initiate_refund(return_id, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)
@@ -913,6 +938,7 @@ async def admin_complete_refund(
     current_user: UserModel = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_admin_permission(current_user, db, "returns.manage")
     service = ReturnService(db)
     ret = await service.complete_refund(return_id, actor_id=current_user.id)
     return SingleReturnResponse(return_order=ret)

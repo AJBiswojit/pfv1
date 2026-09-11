@@ -15,7 +15,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, require_admin_permission
 from app.models.auth.user import UserModel
 from app.models.customer.customer import CustomerProfileModel
 from app.models.employee.employee import EmployeeProfileModel
@@ -61,6 +61,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "users.view")
     stmt = select(UserModel)
     if q:
         term = f"%{q}%"
@@ -124,6 +125,7 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     _admin: UserModel = Depends(get_current_admin),
 ):
+    await require_admin_permission(_admin, db, "users.view")
     user = (await db.execute(select(UserModel).where(UserModel.id == user_id))).scalars().first()
     if not user:
         raise NotFoundException(f"User '{user_id}' not found.")

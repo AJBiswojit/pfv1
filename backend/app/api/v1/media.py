@@ -534,7 +534,9 @@ async def list_media_assets(
     LIMIT, so every library mount returned every asset ever registered. The
     read is now a bounded page with the full filtered count, newest first.
     """
-    await require_admin_permission(current_user, db, "media.upload")
+    # Reads use the view permission (least privilege); uploads stay on
+    # media.upload and deletion on media.delete.
+    await require_admin_permission(current_user, db, "media.view")
     total = (
         await db.execute(select(func.count()).select_from(MediaAssetModel))
     ).scalar() or 0
