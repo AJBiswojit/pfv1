@@ -163,12 +163,22 @@ export function EmployeeAuthProvider({ children }) {
       return result;
     }
 
-    // The old token is now blacklisted — obtain a fresh employee-scoped
-    // session with the new password (same unified endpoint the login page
+    // For voluntary changes the old token is blacklisted; for the initial
+    // forced-password flow the backend keeps it valid so navigation can
+    // complete before re-auth finishes (see AuthService.change_password
+    // was_forced branch). Either way we obtain a fresh employee-scoped
+    // session with the new password — same unified endpoint the login page
     // uses, so account_level / workspace / permissions are canonically
-    // resolved). This keeps the flow inside the existing auth architecture
+    // resolved. This keeps the flow inside the existing auth architecture
     // without inventing a new token-refresh contract.
-    const identifier = (employee.email || employee.employeeId || "").trim();
+    const identifier = (
+      employee.email ||
+      employee.phone ||
+      employee.employeeId ||
+      employee.employeeCode ||
+      employee.employee_code ||
+      ""
+    ).trim();
     if (identifier && newPassword) {
       try {
         const reauth = await apiSignInStaff({ identifier, password: newPassword });
