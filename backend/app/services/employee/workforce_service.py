@@ -13,7 +13,7 @@ import logging
 from datetime import date as date_t, datetime, time as time_t
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect as sa_inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -54,10 +54,26 @@ class WorkforceService:
     # ------------------------------------------------------------------ #
 
     async def _profile_for_user(self, user: UserModel) -> EmployeeProfileModel:
-        profile = user.employee_profile
+        """Resolve ``user``'s EmployeeProfileModel without a synchronous lazy-load.
+
+        The auth dependency and ``EmployeeRepository`` eager-load
+        ``UserModel.employee_profile`` (``selectinload``) for the paths that feed
+        this method, so the relationship is normally already populated. When it
+        is not (a bare ``UserModel`` from any other loader), we issue ONE bounded,
+        indexed lookup through the async session instead of touching the
+        relationship — direct relationship access in an async context would
+        attempt IO via ``greenlet_spawn`` and raise ``MissingGreenlet``.
+        """
+        if "employee_profile" in sa_inspect(user).unloaded:
+            profile = (
+                await self.db.execute(
+                    select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
+                )
+            ).scalars().first()
+        else:
+            profile = user.employee_profile
         if profile is None:
-            # Relationship already eager-loaded by the auth dependency for
-            # employees; a missing profile is a data fault, not a 403.
+            # A missing profile is a data fault for an employee account, not a 403.
             raise NotFoundException("Employee profile not found for this account.")
         return profile
 

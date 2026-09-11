@@ -16,6 +16,7 @@ from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
 from app.core.exceptions import ForbiddenException, UnauthorizedException
@@ -108,7 +109,15 @@ async def get_current_user(
         logger.error("Malformed JWT claims — sub missing")
         raise UnauthorizedException("Malformed token claims.")
 
-    stmt = select(UserModel).where(UserModel.id == user_id)
+    stmt = (
+        select(UserModel)
+        .where(UserModel.id == user_id)
+        # Eager-load the 1:1 employee profile so employee-domain endpoints
+        # (attendance / leave / performance) can read ``user.employee_profile``
+        # without triggering a synchronous lazy-load — which would attempt IO
+        # outside the async session and raise ``MissingGreenlet``.
+        .options(selectinload(UserModel.employee_profile))
+    )
     res = await db.execute(stmt)
     user = res.scalars().first()
 
