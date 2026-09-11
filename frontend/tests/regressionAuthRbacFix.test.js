@@ -128,9 +128,13 @@ test("Issue 3: EmployeeAuthContext re-establishes session after forced password 
   assert.doesNotMatch(ctx, new RegExp(oldSnippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });
 
-test("Issue 3: EmployeeChangePassword navigates to /employee after successful re-auth", () => {
+test("Issue 3: EmployeeChangePassword routes to the account-level home after successful re-auth", () => {
   const page = src("pages/employee/EmployeeChangePassword.jsx");
-  assert.match(page, /navigate\("\/employee"/);
+  // The post-reset destination is derived from the freshly-hydrated
+  // accountLevel (homeForAccountLevel), not hardcoded to the page the user
+  // came from — SUPER_EMPLOYEE and EMPLOYEE both land on /employee.
+  assert.match(page, /homeForAccountLevel\(employee\?\.accountLevel\)/);
+  assert.match(page, /navigate\(home, \{ replace: true \}\)/);
   assert.match(page, /changePassword/);
 });
 

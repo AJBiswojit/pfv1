@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, Eye, EyeOff, KeyRound } from "lucide-react";
 import { AtelierButton, Brand, Rule } from "../../design-system";
 import { sanitizeAdminReturnUrl } from "../../config/adminNavigation";
 import { sanitizeEmployeeReturnUrl } from "../../config/employeeNavigation";
+import { homeForAccountLevel } from "../../config/rbacModel";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { apiSignInStaff } from "../../services/api/authApi";
@@ -61,13 +62,18 @@ export default function StaffLogin() {
 
     // Sync the owning workspace context with the freshly-issued, scoped
     // session (both contexts re-validate against the backend), then route
-    // to the server-determined destination — honoring returnTo only when it
-    // belongs to the resolved workspace.
-    const returnTo = result.workspace === "admin"
+    // to the destination the SERVER resolved. The workspace home comes from
+    // the authoritative accountLevel (SUPER_ADMIN/ADMIN → /admin,
+    // SUPER_EMPLOYEE/EMPLOYEE → /employee); `workspace` is only a fallback
+    // for sessions that predate the accountLevel field. returnTo is honored
+    // only when it belongs to the resolved workspace.
+    const home = homeForAccountLevel(result.accountLevel) ??
+      (result.workspace === "admin" ? "/admin" : "/employee");
+    const returnTo = home === "/admin"
       ? sanitizeAdminReturnUrl(searchParams.get("returnTo"))
       : sanitizeEmployeeReturnUrl(searchParams.get("returnTo"));
 
-    if (result.workspace === "admin") {
+    if (home === "/admin") {
       await refreshAdminSession();
       setIsSubmitting(false);
       navigate(returnTo, { replace: true });
