@@ -46,6 +46,7 @@ URL mapping (API_CONTRACT.md → implementation):
   POST /admin/returns/{id}/refund/complete  ← → REFUNDED
 """
 
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
@@ -346,6 +347,10 @@ async def admin_list_orders(
     status_filter: Optional[str] = Query(None, alias="status"),
     customer_id: Optional[str] = Query(None, alias="customerId"),
     q: Optional[str] = Query(None),
+    payment_status: Optional[str] = Query(None, alias="paymentStatus"),
+    fulfillment: Optional[str] = Query(None),
+    created_since: Optional[datetime] = Query(None, alias="createdSince"),
+    value_band: Optional[str] = Query(None, alias="valueBand"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: UserModel = Depends(get_current_admin),
@@ -358,12 +363,17 @@ async def admin_list_orders(
         q=q,
         page=page,
         page_size=page_size,
+        payment_status=payment_status,
+        fulfillment=fulfillment,
+        created_since=created_since,
+        value_band=value_band,
     )
     return AdminOrderListResponse(
         orders=result["orders"],
         total=result["total"],
         page=result["page"],
         page_size=result["page_size"],
+        status_counts=result.get("status_counts"),
     )
 
 

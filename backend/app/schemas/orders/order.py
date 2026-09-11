@@ -284,6 +284,9 @@ class AdminOrderListResponse(BaseModel):
     total: int
     page: int = 1
     page_size: int = 20
+    # Grouped status counts over the WHOLE order book (admin consolidation):
+    # the desk tiles read these instead of counting the fetched page.
+    status_counts: Optional[Dict[str, int]] = None
 
 
 # ── Place order ───────────────────────────────────────────────────────────────

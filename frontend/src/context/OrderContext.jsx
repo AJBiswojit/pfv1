@@ -217,13 +217,23 @@ export function OrderProvider({ children }) {
       return { ok: false, orders: [], status: 401, error: "Please sign in to the admin desk." };
     }
     setIsLoadingOrders(true);
-    const result = await apiAdminListOrders({ pageSize: 100, ...params });
+    // HP-4 (admin consolidation): params flow straight through — the desk
+    // requests exactly the page it displays (filters included) instead of
+    // pulling a 100-order snapshot into memory. Callers that pass no params
+    // keep a bounded default page.
+    const result = await apiAdminListOrders({ pageSize: 20, ...params });
     setIsLoadingOrders(false);
     if (result.ok) {
       setOrders(result.orders ?? []);
       setOrdersError(null);
       setOrdersErrorStatus(null);
-      return { ok: true, orders: result.orders ?? [], total: result.total, status: 200 };
+      return {
+        ok: true,
+        orders: result.orders ?? [],
+        total: result.total,
+        statusCounts: result.statusCounts,
+        status: 200,
+      };
     }
     setOrdersError(result.error ?? "Could not load orders.");
     setOrdersErrorStatus(result.status ?? 500);
