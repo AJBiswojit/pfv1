@@ -68,7 +68,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
       </h2>
       <Rule width="w-10" tone="gold" className="my-4" />
       <p className="font-ui text-xs leading-relaxed text-ash">
-        Share these once, then put the sheet away. The password change happens through the backend —
+        Share these once, then put the sheet away. The password change happens once you login —
         not a production secret store.
       </p>
 
