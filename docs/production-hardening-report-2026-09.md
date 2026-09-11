@@ -36,7 +36,7 @@ is left to you by design (see K/R/S).
    existing ceiling/matrix logic already honored the employee actor, so no new
    account API or component was needed.
 7. **S-8** — dead `/api/v1/notifications` router pair deleted (`git rm`); canonical
-   `GET/PUT /admin/settings/notifications` (generic settings surface) untouched.
+   `GET/PATCH /admin/settings/{section}` (notifications section) (generic settings surface) untouched.
 8. **S-9** — media object delete is usage-guarded: product-media + marketing-placement
    reference counts → 409; orphan asset-register row is removed with the object; 404
    only when neither row nor object exists.
