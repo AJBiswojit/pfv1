@@ -1,0 +1,69 @@
+/* ───────────────────────── Design tokens ─────────────────────────
+   Palette is the source of truth; every other tone is derived from it. */
+:root {
+  /* Core palette */
+  --c-bg: #F7EEED;          /* primary background */
+  --c-bg-2: #E9D0C1;        /* secondary background */
+  --c-muted: #CAAFA5;       /* muted accent */
+  --c-cocoa: #A0705C;       /* cocoa accent */
+  --c-espresso: #65081F;    /* brand accent — deep burgundy (token name kept for compatibility) */
+
+  /* Derived tonal variations */
+  --c-accent-deep: #420619;                 /* burgundy, deepened — accent hovers & accent gradients */
+  --c-accent-night: #2A0410;                /* darkest end of accent gradients */
+  --c-ink: #3A1806;                         /* espresso, deepened — body & headlines */
+  --c-ink-2: #5B3A2A;                       /* secondary text */
+  --c-ink-3: #8A6555;                       /* tertiary text / meta */
+  --c-night: #2B1105;                       /* bridal / jewellery depth (footer uses the accent darks) */
+  --c-night-2: #3F1907;
+  --c-bg-3: #F2E2DB;                        /* between bg and bg-2 */
+  --c-paper: #FBF6F5;
+  --c-line: rgba(101, 8, 31, 0.16);
+  --c-line-strong: rgba(101, 8, 31, 0.32);
+  --c-line-light: rgba(247, 238, 237, 0.2);
+  --c-on-dark: #F7EEED;
+  --c-on-dark-2: rgba(247, 238, 237, 0.68);
+
+  /* Type */
+  --f-serif: 'Cormorant Garamond', 'Cormorant', Georgia, 'Times New Roman', serif;
+  --f-sans: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-xs: 0.6875rem;   /* 11 */
+  --fs-sm: 0.8125rem;   /* 13 */
+  --fs-base: 0.9375rem; /* 15 */
+  --fs-md: 1.0625rem;
+  --fs-display-xl: clamp(3.1rem, 7.4vw, 7.2rem);
+  --fs-display-l: clamp(2.5rem, 5.2vw, 5rem);
+  --fs-display-m: clamp(2.1rem, 3.8vw, 3.6rem);
+  --fs-display-s: clamp(1.6rem, 2.4vw, 2.2rem);
+
+  --track-label: 0.22em;
+
+  /* Space & layout */
+  --gutter: clamp(16px, 3.6vw, 56px);
+  --maxw: 1440px;
+  --sec-y: clamp(56px, 7.5vw, 104px);
+  --sec-y-sm: clamp(40px, 5vw, 72px);
+  --header-h: 64px;
+  --radius: 2px;
+
+  /* Image ratios */
+  --r-portrait: 4 / 5;
+  --r-tall: 3 / 4;
+  --r-square: 1 / 1;
+  --r-wide: 16 / 7;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 0.25s;
+  --t-base: 0.5s;
+  --t-slow: 0.9s;
+
+  --shadow-soft: 0 10px 40px -18px rgba(58, 24, 6, 0.35);
+  --shadow-header: 0 8px 28px -20px rgba(58, 24, 6, 0.45);
+}
+
+@media (max-width: 899px) {
+  :root { --header-h: 56px; }
+}
