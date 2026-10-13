@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee authorization.
+ * PRATIKSHYA FASHION — Employee authorization.
  *
  * role → permissions → authorization
  *
@@ -16,7 +16,6 @@ import {
 } from "../../config/employeePermissions";
 import { requiredPermissionForPath } from "../../config/employeeNavigation";
 import {
-  ACCOUNT_LEVELS,
   EMPLOYEE_SELF_SERVICE_PERMISSIONS,
   holdsCapability,
 } from "../../config/rbacModel";
@@ -34,25 +33,16 @@ export const hasPermission = (employee, permission) => {
 
   const granted = Array.isArray(employee.permissions) ? employee.permissions : [];
 
-  /* People-admin keys are Admin-domain for a plain EMPLOYEE. SUPER_EMPLOYEE
-     may hold them through people.view / people.manage (backend ceiling). */
+  /* People-admin keys (employees.view, employees.create, etc.) are
+     Admin-domain only — no employee-domain account may hold them. */
   if (isEmployeeAccountPermission(permission)) {
-    if (employee.accountLevel !== ACCOUNT_LEVELS.SUPER_EMPLOYEE) return false;
-    if (holdsCapability(granted, permission)) return true;
-    if (
-      permission === PERMISSIONS.EMPLOYEES_VIEW &&
-      (holdsCapability(granted, "people.view") || holdsCapability(granted, "people.manage"))
-    ) {
-      return true;
-    }
     return false;
   }
 
   if (holdsCapability(granted, permission)) return true;
-  /* offers.manage is the house-wide offer desk and implies every offer key. */
+  /* offers.manage is the house-wide offer desk and implies every offer key & instagram reward key. */
   if (
-    String(permission).startsWith("offers.") &&
-    permission !== PERMISSIONS.OFFERS_MANAGE &&
+    (String(permission).startsWith("offers.") || String(permission).startswith?.("instagram_reward.") || String(permission).startsWith("instagram_reward.")) &&
     holdsCapability(granted, PERMISSIONS.OFFERS_MANAGE)
   ) {
     return true;

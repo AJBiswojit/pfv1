@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Shopping moves (pure orchestrators).
+ * PRATIKSHYA FASHION — Shopping moves (pure orchestrators).
  *
  * The cross-list moves between the bag and the wishlist, expressed as
  * dependency-injected steps so the sequencing rules are explicit and

@@ -14,7 +14,7 @@ import { cn } from "../../utils/cn";
 import { validateFile } from "../../services/media/uploadValidation";
 
 /**
- * PRATIKSHYA FASHON — Demo media upload.
+ * PRATIKSHYA FASHION — Demo media upload.
  *
  * Two honest ways to add media, side by side:
  *

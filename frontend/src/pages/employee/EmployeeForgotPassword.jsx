@@ -11,7 +11,7 @@ export default function EmployeeForgotPassword() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Reset Employee Access — PRATIKSHYA FASHON";
+    document.title = "Reset Employee Access — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };

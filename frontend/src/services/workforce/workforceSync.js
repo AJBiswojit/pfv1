@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Workforce hydration (server → session mirror).
+ * PRATIKSHYA FASHION — Workforce hydration (server → session mirror).
  *
  * The repositories in this folder keep a SESSION-memory mirror; this module
  * is the single place that fills it from the backend. Rules:

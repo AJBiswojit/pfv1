@@ -36,7 +36,10 @@ from app.core.rbac import (
     can_manage,
     check_delegation,
     expand_effective_permissions,
+    is_staff_login_blocked,
     normalize_grants,
+    resolve_stored_grants,
+    status_filter_values,
     with_employee_self_service,
 )
 
@@ -107,12 +110,29 @@ class DelegationCeilingTests(unittest.TestCase):
     def test_super_admin_is_unrestricted_but_level_must_be_known(self):
         check_delegation(
             ACCOUNT_LEVEL_SUPER_ADMIN,
-            ACCOUNT_LEVEL_SUPER_EMPLOYEE,
+            ACCOUNT_LEVEL_ADMIN,
             ["settings.manage", "people.security"],
             set(),
         )
         with self.assertRaises(BusinessLogicException):
             check_delegation(ACCOUNT_LEVEL_SUPER_ADMIN, "REGIONAL_BOSS", [], set())
+
+    def test_employee_domain_never_receives_admin_only_caps(self):
+        for creator in (ACCOUNT_LEVEL_SUPER_ADMIN, ACCOUNT_LEVEL_ADMIN, ACCOUNT_LEVEL_SUPER_EMPLOYEE):
+            with self.assertRaises(ForbiddenException):
+                check_delegation(
+                    creator,
+                    ACCOUNT_LEVEL_EMPLOYEE,
+                    ["settings.manage"],
+                    {"*", "settings.manage"},
+                )
+            with self.assertRaises(ForbiddenException):
+                check_delegation(
+                    creator,
+                    ACCOUNT_LEVEL_SUPER_EMPLOYEE,
+                    ["people.security"],
+                    {"*", "people.security"},
+                )
 
     def test_creating_a_forbidden_level_is_403(self):
         with self.assertRaises(ForbiddenException):
@@ -162,17 +182,22 @@ class DelegationCeilingTests(unittest.TestCase):
             ["catalogue.view", "product_workflow.review"],
         )
 
-    def test_wildcard_creator_delegates_anything_below_super(self):
-        # An ADMIN row that literally holds "*" behaves as the override —
-        # the SUPER_ADMIN path above (this is the leak-fix contract: the
-        # server-side resolver no longer adds "*" for ADMIN accounts, so in
-        # practice only SUPER_ADMIN holds it; the mechanism stays honest).
+    def test_wildcard_creator_delegates_employee_domain_sets(self):
+        # An ADMIN row that literally holds "*" behaves as the override
+        # for employee-domain grants, except admin-only codes.
         check_delegation(
             ACCOUNT_LEVEL_ADMIN,
             ACCOUNT_LEVEL_SUPER_EMPLOYEE,
-            list(ALL_CAPABILITIES),
+            sorted(set(ALL_CAPABILITIES) - ADMIN_ONLY_CAPABILITIES),
             {"*"},
         )
+        with self.assertRaises(ForbiddenException):
+            check_delegation(
+                ACCOUNT_LEVEL_ADMIN,
+                ACCOUNT_LEVEL_SUPER_EMPLOYEE,
+                list(ALL_CAPABILITIES),
+                {"*"},
+            )
 
     def test_legacy_grants_resolve_through_the_ceiling_expansion(self):
         # A creator holding only legacy granular codes can still delegate the
@@ -356,6 +381,67 @@ class ResolverIntegrityTests(unittest.TestCase):
                 body,
                 f"{name} must invalidate the shared rbac cache after writing grants",
             )
+
+
+class StaffStatusVocabularyTests(unittest.TestCase):
+    """Deactivate/suspend share one blocked set across login and list filters."""
+
+    def test_deactivated_and_inactive_both_block_login(self):
+        self.assertTrue(is_staff_login_blocked("DEACTIVATED"))
+        self.assertTrue(is_staff_login_blocked("INACTIVE"))
+        self.assertTrue(is_staff_login_blocked("SUSPENDED"))
+        self.assertFalse(is_staff_login_blocked("ACTIVE"))
+
+    def test_inactive_filter_includes_deactivated_rows(self):
+        self.assertEqual(set(status_filter_values("INACTIVE")), {"INACTIVE", "DEACTIVATED"})
+        self.assertEqual(set(status_filter_values("DEACTIVATED")), {"INACTIVE", "DEACTIVATED"})
+        self.assertEqual(status_filter_values("SUSPENDED"), ["SUSPENDED"])
+
+
+class CustomGrantReplaceTests(unittest.TestCase):
+    """Custom mode replaces role defaults; it must not union the ADMIN catalogue."""
+
+    def test_custom_empty_admin_has_no_people_manage(self):
+        grants = resolve_stored_grants(
+            account_level=ACCOUNT_LEVEL_ADMIN,
+            roles=["ADMIN"],
+            permission_mode="custom",
+            custom_permissions=[],
+            role_permission_codes=["employees.create", "employees.view"],
+        )
+        self.assertNotIn("*", grants)
+        self.assertEqual(grants, set())
+
+    def test_custom_selected_caps_do_not_keep_role_catalogue(self):
+        grants = resolve_stored_grants(
+            account_level=ACCOUNT_LEVEL_ADMIN,
+            roles=["ADMIN"],
+            permission_mode="custom",
+            custom_permissions=["catalogue.view"],
+            role_permission_codes=["employees.create", "employees.suspend"],
+        )
+        self.assertEqual(grants, {"catalogue.view"})
+
+    def test_role_mode_still_uses_built_in_admin_catalogue(self):
+        grants = resolve_stored_grants(
+            account_level=ACCOUNT_LEVEL_ADMIN,
+            roles=["ADMIN"],
+            permission_mode="role",
+            custom_permissions=None,
+            role_permission_codes=[],
+        )
+        self.assertIn("employees.create", grants)
+        self.assertNotIn("*", grants)
+
+    def test_super_admin_keeps_wildcard_in_custom_mode(self):
+        grants = resolve_stored_grants(
+            account_level=ACCOUNT_LEVEL_SUPER_ADMIN,
+            roles=["SUPER_ADMIN"],
+            permission_mode="custom",
+            custom_permissions=[],
+            role_permission_codes=[],
+        )
+        self.assertIn("*", grants)
 
 
 if __name__ == "__main__":  # pragma: no cover

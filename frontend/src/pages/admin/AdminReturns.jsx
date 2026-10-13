@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin Returns (Phase 16.1, consolidation revision)
+ * PRATIKSHYA FASHION — Admin Returns (Phase 16.1, consolidation revision)
  *
  * Premium return operations dashboard with live metrics, search, and
  * context-sensitive action links.
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 import { apiAdminListReturns } from "../../services/api/ordersApi";
 import {
   RETURN_STATUS,
@@ -93,6 +94,8 @@ const displayRecord = (record) => ({
 });
 
 export default function AdminReturns() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const [state, setState] = useState({ status: "loading", returns: [], error: null });
   const [query, setQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -267,13 +270,13 @@ export default function AdminReturns() {
                     className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-center gap-3 py-4"
                   >
                     <Link
-                      to={`/admin/returns/${record.id}`}
+                      to={`${prefix}/returns/${record.id}`}
                       className="truncate font-ui text-xs font-medium text-ink underline hover:text-accent"
                     >
                       {record.id}
                     </Link>
                     <Link
-                      to={`/admin/orders/${record.orderId}`}
+                      to={`${prefix}/orders/${record.orderId}`}
                       className="truncate font-ui text-xs text-ink hover:text-accent"
                     >
                       {record.orderNumber}
@@ -295,7 +298,7 @@ export default function AdminReturns() {
                     <span className="text-right">
                       {action ? (
                         <Link
-                          to={`/admin/returns/${record.id}`}
+                          to={`${prefix}/returns/${record.id}`}
                           className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-accent hover:underline"
                         >
                           {action.label}
@@ -303,7 +306,7 @@ export default function AdminReturns() {
                         </Link>
                       ) : (
                         <Link
-                          to={`/admin/returns/${record.id}`}
+                          to={`${prefix}/returns/${record.id}`}
                           className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:underline"
                         >
                           View
@@ -332,7 +335,7 @@ export default function AdminReturns() {
               return (
                 <Link
                   key={record.id}
-                  to={`/admin/returns/${record.id}`}
+                  to={`${prefix}/returns/${record.id}`}
                   className="block border border-mist/80 bg-surface/40 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">

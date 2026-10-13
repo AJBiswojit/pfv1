@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media ownership service (Phase 2, Step E).
+ * PRATIKSHYA FASHION — Media ownership service (Phase 2, Step E).
  *
  * The ONE safe command boundary for media ownership changes. Ordinary
  * callers must not perform dangerous cross-product reassignment directly;

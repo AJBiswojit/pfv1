@@ -1,23 +1,38 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../../utils/cn";
 
 export const ANALYTICS_TABS = [
-  { id: "overview", label: "Overview", to: "/admin/analytics", employeeTo: "/employee/reports", section: "overview" },
-  { id: "sales", label: "Sales", to: "/admin/analytics/sales", employeeTo: "/employee/reports/sales", section: "sales" },
-  { id: "products", label: "Products", to: "/admin/analytics/products", employeeTo: "/employee/reports/products", section: "products" },
-  { id: "customers", label: "Customers", to: "/admin/analytics/customers", employeeTo: "/employee/reports/customers", section: "customers" },
-  { id: "inventory", label: "Inventory", to: "/admin/analytics/inventory", employeeTo: "/employee/reports/inventory", section: "inventory" },
-  { id: "returns", label: "Returns", to: "/admin/analytics/returns", employeeTo: "/employee/reports/returns", section: "returns" },
-  { id: "offers", label: "Offers", to: "/admin/analytics/offers", employeeTo: "/employee/reports/offers", section: "offers" },
-  { id: "employees", label: "Employees", to: "/admin/analytics/employees", employeeTo: "/employee/reports/employees", section: "employees" },
+  { id: "overview", label: "Overview", section: "overview", path: "", employeePath: "" },
+  { id: "sales", label: "Sales", section: "sales", path: "/sales", employeePath: "/sales" },
+  { id: "products", label: "Products", section: "products", path: "/products", employeePath: "/products" },
+  { id: "customers", label: "Customers", section: "customers", path: "/customers", employeePath: "/customers" },
+  { id: "inventory", label: "Inventory", section: "inventory", path: "/inventory", employeePath: "/inventory" },
+  { id: "returns", label: "Returns", section: "returns", path: "/returns", employeePath: "/returns" },
+  { id: "offers", label: "Offers", section: "offers", path: "/offers", employeePath: "/offers" },
+  { id: "employees", label: "Employees", section: "employees", path: "/employees", employeePath: "/employees" },
 ];
 
+/**
+ * Derives the analytics base URL from the current pathname so tab links
+ * always resolve under the correct portal prefix (/admin, /super-admin, or
+ * /employee/reports) regardless of how the component is mounted.
+ */
+function useAnalyticsBase(portal) {
+  const { pathname } = useLocation();
+  if (portal === "employee") return "/employee/reports";
+  if (pathname.startsWith("/super-admin")) return "/super-admin/analytics";
+  return "/admin/analytics";
+}
+
 export default function AnalyticsNav({ portal = "admin", tabs = ANALYTICS_TABS }) {
+  const base = useAnalyticsBase(portal);
+
   return (
     <nav aria-label="Analytics sections" className="-mx-1 mb-6 overflow-x-auto">
       <ul className="flex min-w-max gap-1 border-b border-mist/80 px-1">
         {tabs.map((tab) => {
-          const to = portal === "employee" ? tab.employeeTo : tab.to;
+          const tabPath = portal === "employee" ? tab.employeePath : tab.path;
+          const to = `${base}${tabPath}`;
           return (
             <li key={tab.id}>
               <NavLink

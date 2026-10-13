@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Wishlist state (backend-authoritative).
+ * PRATIKSHYA FASHION — Wishlist state (backend-authoritative).
  *
  * Authenticated customers:   GET /wishlist, POST /wishlist/{id},
  *                            DELETE /wishlist/{id}, POST /wishlist/{id}/toggle

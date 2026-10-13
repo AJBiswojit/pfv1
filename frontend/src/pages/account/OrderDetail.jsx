@@ -123,8 +123,8 @@ export default function OrderDetail() {
   useEffect(() => {
     const previousTitle = document.title;
     document.title = order
-      ? `Order ${order.orderNumber ?? order.id} — PRATIKSHYA FASHON`
-      : "Order — PRATIKSHYA FASHON";
+      ? `Order ${order.orderNumber ?? order.id} — PRATIKSHYA FASHION`
+      : "Order — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

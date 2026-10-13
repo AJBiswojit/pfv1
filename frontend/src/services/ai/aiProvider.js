@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI provider interface (Phase 21.1).
+ * PRATIKSHYA FASHION — AI provider interface (Phase 21.1).
  *
  * The seam between PRATIKSHYA's UI and any AI capability.
  *

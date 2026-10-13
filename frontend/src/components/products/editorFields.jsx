@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product editor field primitives (Phase 13).
+ * PRATIKSHYA FASHION — Product editor field primitives (Phase 13).
  *
  * The complete merchandising workspace is built from these controls so
  * every section carries identical rhythm, hairlines and focus behaviour.

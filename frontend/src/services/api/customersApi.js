@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Customers & Addresses API
+ * PRATIKSHYA FASHION — Customers & Addresses API
  *
  * Maps to API_CONTRACT.md § USERS
  *

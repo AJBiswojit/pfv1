@@ -11,7 +11,6 @@ import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { useEmployeesBase } from "./employeesBase";
 import { useEmployeeAuth } from "../../../context/EmployeeAuthContext";
 import { getDefaultPermissions } from "../../../config/employeeRoles";
-import { generateEmployeeId } from "../../../services/employees/employeeId";
 import { staffHrefId } from "../../../utils/employee";
 import {
   ACCOUNT_LEVELS,
@@ -31,7 +30,7 @@ import {
 export default function AdminEmployeeCreate({ basePath } = {}) {
   const navigate = useNavigate();
   const base = useEmployeesBase(basePath);
-  const { employees, createEmployee, isWorking } = useEmployeeManagement();
+  const { createEmployee, isWorking } = useEmployeeManagement();
   const { admin } = useAdminAuth();
   const { employee: employeeActor } = useEmployeeAuth();
   const [draft, setDraft] = useState(emptyEmployeeDraft);
@@ -60,19 +59,8 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
   // Ceiling for the delegation switches: the creator's own effective set.
   // null = unrestricted (SUPER_ADMIN); the server re-checks either way.
   const ceiling = useMemo(
-    () => (creator ? delegableCapabilities(creator) : new Set()),
-    [creator]
-  );
-
-  const generatedId = useMemo(
-    () => (adminDomain || draft.role)
-      ? generateEmployeeId({
-          role: adminDomain ? accountLevel : draft.role,
-          department: draft.department,
-          existingIds: employees.map((person) => person.employeeId),
-        })
-      : "Assigned after a role is selected",
-    [draft.role, draft.department, employees, adminDomain, accountLevel]
+    () => (creator ? delegableCapabilities(creator, accountLevel) : new Set()),
+    [creator, accountLevel]
   );
 
   const handleLevelChange = (level) => {
@@ -102,14 +90,14 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
     setErrors({});
     setSubmitError("");
     const created = await createEmployee({
-      ...draft,
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      email: draft.email,
+      phone: draft.phone,
+      ...(adminDomain ? {} : { role: draft.role, department: draft.department }),
       accountLevel,
-      ...(capabilityDriven
-        ? { permissionMode: "custom", permissions }
-        : {
-            permissionMode: customPermissions ? "custom" : "role",
-            permissions: customPermissions ? permissions : getDefaultPermissions(draft.role),
-          }),
+      permissionMode: customPermissions ? "custom" : "role",
+      permissions: customPermissions ? permissions : [],
     });
     if (!created.ok) {
       setErrors(created.errors || {});
@@ -154,7 +142,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
           action={
             <div className="text-right">
               <p className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe">Employee ID</p>
-              <p className="mt-1 font-ui text-xs text-ink">{generatedId}</p>
+              <p className="mt-1 font-ui text-xs text-ink">Assigned when saved</p>
             </div>
           }
         >
@@ -198,15 +186,33 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
           eyebrow="Account identity"
           title={adminDomain ? "Account details" : "Employee details"}
         >
-          <EmployeeForm values={draft} errors={errors} onChange={handleChange} idPrefix="admin-create-employee" adminDomain={adminDomain} />
+          <EmployeeForm values={draft} errors={errors} onChange={handleChange} idPrefix="admin-create-employee" adminDomain={adminDomain} hideStatus />
           <p className="mt-5 border-l-2 border-accent pl-3 font-ui text-[11px] leading-relaxed text-taupe">
             A unique, deterministic employee ID and temporary password are generated when saved. The account holder must change that password on first sign-in.
           </p>
         </AdminPanel>
 
-        <AdminPanel eyebrow="Operational access" title={capabilityDriven ? "Delegated capabilities" : "Permissions"}>
+        <AdminPanel eyebrow="Operational access" title={capabilityDriven ? "Delegated capabilities" : "Permissions"} bodyClassName="max-h-[62vh] overflow-y-auto">
           {capabilityDriven ? (
             <>
+              <label className="mb-4 flex items-start gap-3 font-ui text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={customPermissions}
+                  onChange={(event) => {
+                    const custom = event.target.checked;
+                    setCustomPermissions(custom);
+                    if (!custom) setPermissions([]);
+                  }}
+                  className="mt-0.5 accent-ink"
+                />
+                <span>
+                  Assign a custom capability set
+                  <span className="mt-1 block text-[11px] text-taupe">
+                    Off, the account inherits its Admin or business-role defaults. On, only the switches below apply — they do not add on top of the role catalogue.
+                  </span>
+                </span>
+              </label>
               <p className="mb-4 font-ui text-[11px] leading-relaxed text-taupe">
                 {ceiling === null
                   ? "All capability groups are available to delegate."
@@ -216,12 +222,13 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
                 catalogue={CAPABILITY_GROUPS}
                 ceiling={ceiling ?? undefined}
                 permissions={permissions}
-                editable
-                onToggle={(key, allowed) =>
+                editable={customPermissions}
+                onToggle={(key, allowed) => {
+                  setCustomPermissions(true);
                   setPermissions((current) =>
                     allowed ? [...new Set([...current, key])] : current.filter((item) => item !== key)
-                  )
-                }
+                  );
+                }}
               />
             </>
           ) : (

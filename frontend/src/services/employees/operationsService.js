@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee operations reads.
+ * PRATIKSHYA FASHION — Employee operations reads.
  *
  * Role portals read live order / inventory / offer records here. Floor
  * operations that have no backend yet (support cases, styling, walk-ins)

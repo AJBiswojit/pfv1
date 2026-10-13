@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product Catalog Selector query.
+ * PRATIKSHYA FASHION — Product Catalog Selector query.
  *
  * Pure search + filter logic shared by the Product Catalog Selector and its
  * tests. The catalogue is the canonical source (`catalogRepository`), and

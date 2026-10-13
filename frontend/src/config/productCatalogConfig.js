@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product & merchandising vocabulary (Phase 13).
+ * PRATIKSHYA FASHION — Product & merchandising vocabulary (Phase 13).
  *
  * The single configuration the product editor, the review queue and the
  * admin tables read their option lists from. Categories and their labels
@@ -126,17 +126,100 @@ export { buildProductIdPrefix } from "./productIdPrefixes";
 
 const mergeUnique = (...lists) => [...new Set(lists.flat().filter(Boolean))];
 
-/** Product attributes are populated from the product data source, not frontend presets. */
-export const FABRIC_OPTIONS = [];
-export const MATERIAL_OPTIONS = [];
-export const COLOR_OPTIONS = [];
-export const SIZE_OPTIONS = [];
-export const PATTERN_OPTIONS = [];
-export const WORK_OPTIONS = [];
-export const SEASON_OPTIONS = [];
-export const OCCASION_OPTIONS = [];
+/*
+ * Editor palettes only. Storefront facets still come from live product data
+ * (`src/data/products/taxonomy.js`). These lists are the clickable choices
+ * on the product form so staff are not forced to type every attribute.
+ * Custom values remain allowed on the editor controls.
+ */
+export const FABRIC_OPTIONS = mergeUnique(fabrics, [
+  "Silk",
+  "Cotton",
+  "Linen",
+  "Chiffon",
+  "Georgette",
+  "Organza",
+  "Velvet",
+  "Banarasi Silk",
+  "Tussar",
+  "Chanderi",
+  "Tissue",
+  "Crepe",
+  "Net",
+  "Satin",
+]);
+export const MATERIAL_OPTIONS = mergeUnique(materials, [
+  "Zari",
+  "Handloom",
+  "Machine weave",
+  "Embroidery",
+  "Sequins",
+  "Stones",
+  "Beads",
+  "Gotapatti",
+]);
+export const COLOR_OPTIONS = mergeUnique(colors, [
+  "Red",
+  "Maroon",
+  "Gold",
+  "Ivory",
+  "Pink",
+  "Green",
+  "Blue",
+  "Black",
+  "Cream",
+  "Peach",
+  "Mustard",
+  "Navy",
+  "Wine",
+  "Silver",
+  "White",
+]);
+export const SIZE_OPTIONS = ["Free Size", "XS", "S", "M", "L", "XL", "XXL", "3XL"];
+export const PATTERN_OPTIONS = [
+  "Solid",
+  "Printed",
+  "Woven",
+  "Embroidered",
+  "Bandhani",
+  "Ikat",
+  "Floral",
+  "Paisley",
+  "Checks",
+  "Stripes",
+];
+export const WORK_OPTIONS = [
+  "Zari",
+  "Zardozi",
+  "Embroidery",
+  "Gota",
+  "Sequins",
+  "Mirror",
+  "Stone",
+  "Beadwork",
+  "Thread work",
+];
+export const SEASON_OPTIONS = ["All season", "Summer", "Festive", "Wedding", "Winter"];
+export const OCCASION_OPTIONS = mergeUnique(occasions, [
+  "Wedding",
+  "Festive",
+  "Reception",
+  "Sangeet",
+  "Mehendi",
+  "Party",
+  "Casual",
+  "Office",
+  "Puja",
+]);
 export const COLLECTION_OPTIONS = [];
-export const TAG_SUGGESTIONS = [];
+export const TAG_SUGGESTIONS = [
+  "New",
+  "Festive",
+  "Wedding",
+  "Handloom",
+  "Lightweight",
+  "Gift",
+];
 
 export const TAX_MODES = {
   INCLUSIVE: "INCLUSIVE",

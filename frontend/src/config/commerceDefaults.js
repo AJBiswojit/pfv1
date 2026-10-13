@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Default commerce values.
+ * PRATIKSHYA FASHION — Default commerce values.
  *
  * The single authored default for shipping and payment *business* numbers.
  * Runtime authority is Admin Settings (`pratikshya_settings`) via

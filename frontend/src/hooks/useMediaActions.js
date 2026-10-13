@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media actions.
+ * PRATIKSHYA FASHION — Media actions.
  *
  * Every media write an operator can make, in one hook, so that each one:
  *

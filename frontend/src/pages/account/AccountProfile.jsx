@@ -25,7 +25,7 @@ export default function AccountProfile() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Profile — PRATIKSHYA FASHON";
+    document.title = "Profile — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };

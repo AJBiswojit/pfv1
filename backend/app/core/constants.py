@@ -21,7 +21,7 @@ class UserType(str, Enum):
 
 
 class AccountLevel(str, Enum):
-    """Four-level staff account hierarchy (RBAC consolidation 2026-09).
+    """Three-level staff account hierarchy (RBAC consolidation 2026-09).
 
     Customers carry no account level. Authorization semantics and the
     creation matrix live in ``app.core.rbac`` (single canonical module).
@@ -29,7 +29,6 @@ class AccountLevel(str, Enum):
 
     SUPER_ADMIN = "SUPER_ADMIN"
     ADMIN = "ADMIN"
-    SUPER_EMPLOYEE = "SUPER_EMPLOYEE"
     EMPLOYEE = "EMPLOYEE"
 
 
@@ -72,11 +71,24 @@ class OrderStatus(str, Enum):
 
 
 class PaymentStatus(str, Enum):
-    PENDING = "PENDING"
+    CREATED = "CREATED"
     AUTHORIZED = "AUTHORIZED"
     CAPTURED = "CAPTURED"
     FAILED = "FAILED"
+    REFUND_PENDING = "REFUND_PENDING"
     REFUNDED = "REFUNDED"
+
+
+class OrderPaymentStatus(str, Enum):
+    PENDING_PAYMENT = "PENDING_PAYMENT"
+    PAYMENT_PROCESSING = "PAYMENT_PROCESSING"
+    PAID = "PAID"
+    PAYMENT_FAILED = "PAYMENT_FAILED"
+    PAYMENT_CANCELLED = "PAYMENT_CANCELLED"
+    PAYMENT_EXPIRED = "PAYMENT_EXPIRED"
+    REFUND_PENDING = "REFUND_PENDING"
+    REFUNDED = "REFUNDED"
+    PARTIALLY_REFUNDED = "PARTIALLY_REFUNDED"
 
 
 class ReturnStatus(str, Enum):

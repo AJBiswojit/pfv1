@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue repository (Phase 13).
+ * PRATIKSHYA FASHION — Catalogue repository (Phase 13).
  *
  * The ONE product repository. Customer storefront, admin portal, employee
  * portal, media, cart, wishlist, orders and (later) inventory, analytics
@@ -92,6 +92,29 @@ const emitProductsChanged = () => {
  * localStorage register, and no local authority. Write paths also call the
  * backend API; the cache is refreshed from the server after mutations.
  */
+export const CUSTOM_PRODUCTS_STORAGE_KEY = "pratikshya_custom_products";
+
+export const loadCustomProducts = () => {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem(CUSTOM_PRODUCTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveCustomProduct = (product) => {
+  try {
+    if (typeof localStorage === "undefined" || !product?.id) return;
+    const current = loadCustomProducts();
+    const updated = [product, ...current.filter((p) => String(p.id) !== String(product.id))];
+    localStorage.setItem(CUSTOM_PRODUCTS_STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    /* ignore storage errors */
+  }
+};
+
 let serverProducts = [];
 
 /** Fingerprint of the cached catalogue — invalidates read-only caches. */
@@ -99,7 +122,15 @@ export const catalogueSeedFingerprint = () => `${serverProducts.length}`;
 
 /** Replace the session cache with server records (called after API fetches). */
 export const replaceServerProducts = (items) => {
-  serverProducts = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
+  const base = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
+  const custom = loadCustomProducts();
+  const baseIds = new Set(base.map((p) => String(p.id)));
+  custom.forEach((cp) => {
+    if (!baseIds.has(String(cp.id))) {
+      base.unshift(cp);
+    }
+  });
+  serverProducts = base;
   productVersion += 1;
   emitProductsChanged();
   return serverProducts;
@@ -117,7 +148,21 @@ export const replaceServerProducts = (items) => {
 export const upsertServerProducts = (records) => {
   const incoming = Array.isArray(records) ? records.filter(Boolean) : [];
   if (!incoming.length) return serverProducts;
+
+  incoming.forEach((rec) => {
+    if (String(rec.id).startsWith("PF-CUST-") || rec.isCustom) {
+      saveCustomProduct(rec);
+    }
+  });
+
+  const custom = loadCustomProducts();
   const byId = new Map(incoming.map((record) => [String(record.id), record]));
+  custom.forEach((cp) => {
+    if (!byId.has(String(cp.id))) {
+      byId.set(String(cp.id), cp);
+    }
+  });
+
   let changed = false;
   const next = serverProducts.map((record) => {
     const replacement = byId.get(String(record.id));
@@ -414,7 +459,7 @@ export const normaliseProductRecord = (raw = {}, index = 0) => {
     name,
     slug,
     sku: raw.sku || "",
-    brand: raw.brand || "Pratikshya Fashon",
+    brand: raw.brand || "Pratikshya Fashion",
     productType: raw.productType || "fashion",
     productCode: raw.productCode || "",
     barcode: raw.barcode || "",

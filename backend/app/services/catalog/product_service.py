@@ -48,6 +48,8 @@ from app.models.catalog.category import CategoryModel, SubcategoryModel
 from app.models.catalog.collection import CollectionModel
 from app.models.catalog.product import ProductModel
 from app.models.employee.employee import EmployeeProfileModel
+from app.services.inventory.inventory_service import InventoryService as _InventoryService
+from app.models.media.product_media import ProductMediaModel
 from app.services.media.product_media_records import (
     gallery_urls,
     primary_item,
@@ -592,6 +594,7 @@ class ProductService:
     def _to_storefront(
         self, p: ProductModel, registered_media: Optional[List[Dict[str, Any]]] = None,
         collection_names: Optional[List[str]] = None,
+        subcategory_name_map: Optional[Dict[str, str]] = None,
     ) -> StorefrontProduct:
         """Project a ProductModel onto a StorefrontProduct DTO."""
         pricing = p.pricing or {}
@@ -600,16 +603,22 @@ class ProductService:
         effective_discount = computed.get("effectiveDiscountPercent", 0.0)
         original_price = p.original_price if (p.original_price and p.original_price > final_price) else None
         media_view = self._registered_media_view(registered_media or [])
+        # Resolve subcategory UUID → human-readable name so the storefront
+        # filter panel can display it directly without a secondary lookup.
+        raw_subcategory = p.subcategory or ""
+        resolved_subcategory = (
+            (subcategory_name_map or {}).get(raw_subcategory, raw_subcategory)
+        )
         return StorefrontProduct(
             id=p.id,
             productId=p.product_id or p.id,
             name=p.name or "",
             slug=p.slug or "",
             sku=p.sku or "",
-            brand=p.brand or "Pratikshya Fashon",
+            brand=p.brand or "Pratikshya Fashion",
             productType=p.product_type or "fashion",
             category=p.category or "",
-            subcategory=p.subcategory or "",
+            subcategory=resolved_subcategory,
             gender=p.gender or "Women",
             shortDescription=p.short_description or "",
             description=p.description or "",
@@ -659,7 +668,7 @@ class ProductService:
             image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
             additionalImages=media_view.get("additionalImages")
-            if media_view
+            if media_view.get("additionalImages") is not None
             else resolve_product_image_list(p.additional_images),
             primaryMediaId=media_view.get("primaryMediaId", p.primary_media_id),
             href=f"/products/{p.slug or p.id}",
@@ -704,7 +713,7 @@ class ProductService:
             name=p.name or "",
             slug=p.slug or "",
             sku=p.sku or "",
-            brand=p.brand or "Pratikshya Fashon",
+            brand=p.brand or "Pratikshya Fashion",
             productType=p.product_type or "fashion",
             productCode=p.product_code or "",
             barcode=p.barcode or "",
@@ -768,7 +777,7 @@ class ProductService:
             image=media_view.get("image") or resolve_product_image_reference(p.image),
             hoverImage=resolve_product_image_reference(p.hover_image),
             additionalImages=media_view.get("additionalImages")
-            if media_view
+            if media_view.get("additionalImages") is not None
             else resolve_product_image_list(p.additional_images),
             createdBy=p.created_by,
             createdAt=p.created_at.isoformat() if p.created_at else None,
@@ -834,6 +843,12 @@ class ProductService:
             if subcategory.name:
                 status_map[subcategory.name] = subcategory.status
         return status_map
+
+    async def _subcategory_name_map(self) -> Dict[str, str]:
+        """Map subcategory id → name for resolving UUID references to labels."""
+        result = await self.db.execute(select(SubcategoryModel))
+        rows = result.scalars().all()
+        return {sub.id: sub.name for sub in rows if sub.id and sub.name}
 
     # ── The storefront visibility gate (Phase 3 §10 — API-180 / PF3-N06) ──────
     #
@@ -1196,6 +1211,7 @@ class ProductService:
         # products without associations keep their legacy columns untouched.
         registered_map = await self._registered_media_map([p.id for p in all_products])
         collection_map = await self._collection_membership_names(all_products)
+        sub_name_map = await self._subcategory_name_map()
 
         # Convert to storefront DTOs for in-memory filtering. Collection
         # membership is read from collection-owned data; the legacy scalar is
@@ -1205,6 +1221,7 @@ class ProductService:
                 p,
                 registered_map.get(p.id),
                 collection_map.get(str(p.id), []),
+                sub_name_map,
             )
             for p in all_products
         ]
@@ -1456,10 +1473,12 @@ class ProductService:
 
         registered = await self._registered_media_items(p.id)
         collection_names = await self._collection_membership_names_for_product(p)
+        sub_name_map = await self._subcategory_name_map()
         dto = self._to_storefront(
             p,
             registered,
             collection_names,
+            sub_name_map,
         )
         await cache.set_json(cache_key, dto.model_dump(), TTL_PRODUCT_DETAIL)
         return dto
@@ -1521,6 +1540,7 @@ class ProductService:
 
         registered_map = await self._registered_media_map(list(product_map.keys()))
         collection_map = await self._collection_membership_names(list(product_map.values()))
+        sub_name_map = await self._subcategory_name_map()
 
         # Preserve recency order (product_ids is already newest-first)
         return [
@@ -1528,6 +1548,7 @@ class ProductService:
                 product_map[pid],
                 registered_map.get(pid),
                 collection_map.get(str(pid), []),
+                sub_name_map,
             )
             for pid in product_ids
             if pid in product_map
@@ -1655,7 +1676,7 @@ class ProductService:
         "name": "",
         "slug": "",
         "sku": "",
-        "brand": "Pratikshya Fashon",
+        "brand": "Pratikshya Fashion",
         "product_type": "fashion",
         "category": "",
         "gender": "Women",
@@ -1760,7 +1781,7 @@ class ProductService:
             if supplied_sku
             else await self._generate_unique_sku()
         )
-        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["brand"] = data.get("brand") or "Pratikshya Fashion"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
         self._derive_pricing(data)
@@ -1783,6 +1804,12 @@ class ProductService:
         )
         self.db.add(product)
         await self.db.flush()
+        await _InventoryService(self.db).create_stock_record(
+            product_id=new_id,
+            sku=product.sku or "",
+            on_hand=int(data.get("stock") or 0),
+            low_threshold=int(data.get("low_stock_threshold") or 5),
+        )
         await self.invalidate_product_cache(new_id, product.slug)
         return self._to_admin(product)
 
@@ -1824,7 +1851,7 @@ class ProductService:
             if supplied_sku
             else await self._generate_unique_sku(prefix=req.id)
         )
-        data["brand"] = data.get("brand") or "Pratikshya Fashon"
+        data["brand"] = data.get("brand") or "Pratikshya Fashion"
         data["product_type"] = data.get("product_type") or "fashion"
         data["currency"] = data.get("currency") or "INR"
         self._derive_pricing(data)
@@ -1847,6 +1874,12 @@ class ProductService:
         )
         self.db.add(product)
         await self.db.flush()
+        await _InventoryService(self.db).create_stock_record(
+            product_id=req.id,
+            sku=product.sku or "",
+            on_hand=int(data.get("stock") or 0),
+            low_threshold=int(data.get("low_stock_threshold") or 5),
+        )
         await self.invalidate_product_cache(req.id, product.slug)
         return self._to_admin(product)
 
@@ -2007,6 +2040,36 @@ class ProductService:
             self._append_price_history(p, old_price, data["price"], employee_id)
 
         p.updated_by = employee_id
+        await self.db.flush()
+        await self.invalidate_product_cache(p.id, p.slug)
+        return await self._to_employee_current(p)
+
+    async def create_employee_draft(
+        self,
+        req: EmployeeProductUpdateRequest,
+        actor: str,
+        employee_id: str,
+    ) -> EmployeeProduct:
+        """
+        POST /employee/products/draft — same catalogue create as admin draft,
+        with a server-allocated ID, then assigned to the creating employee so
+        PATCH and submit-review keep working on the whitelist path.
+        """
+        payload = req.model_dump(exclude_unset=True, by_alias=True)
+        name = str(payload.get("name") or "").strip()
+        category = str(payload.get("category") or "").strip()
+        if not name:
+            raise BusinessLogicException("Product name is required.")
+        if not category:
+            raise BusinessLogicException("Category is required.")
+
+        next_id = await self.get_next_id(category)
+        draft_req = ProductDraftRequest(id=next_id, **payload)
+        await self.create_draft(draft_req, actor=actor)
+
+        p = await self._get_or_404(next_id)
+        p.assigned_employee_id = employee_id
+        p.updated_by = actor
         await self.db.flush()
         await self.invalidate_product_cache(p.id, p.slug)
         return await self._to_employee_current(p)
@@ -2427,6 +2490,27 @@ class ProductService:
         )
         self.db.add(dup)
         await self.db.flush()
+
+        # Copy registered media associations from the original product.
+        # Legacy authored columns (image, hover_image, etc.) are already copied
+        # above; this covers the Phase 7 source-of-truth rows in media_product_media.
+        original_media = (
+            await self.db.execute(
+                select(ProductMediaModel).where(ProductMediaModel.product_id == p.id)
+            )
+        ).scalars().all()
+        for m in original_media:
+            self.db.add(ProductMediaModel(
+                product_id=dup.id,
+                media_id=m.media_id,
+                role=m.role,
+                sort_order=m.sort_order,
+                is_primary=m.is_primary,
+                assigned_by=actor,
+            ))
+        if original_media:
+            await self.db.flush()
+
         return self._to_admin(dup)
 
     # ── Bulk update ───────────────────────────────────────────────────────────

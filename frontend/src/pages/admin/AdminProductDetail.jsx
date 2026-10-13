@@ -60,7 +60,8 @@ const Term = ({ label, value }) => (
 export default function AdminProductDetail() {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
 
   const product = useProduct(productId);
@@ -135,7 +136,7 @@ export default function AdminProductDetail() {
             ? "The server has no product with this id."
             : fetchState.error ?? "That product could not be loaded from the server."}
         </p>
-        <AtelierButton as={Link} to="/admin/products" size="chip" variant="outline" className="mt-4">
+        <AtelierButton as={Link} to={`${prefix}/products`} size="chip" variant="outline" className="mt-4">
           Back to catalogue
         </AtelierButton>
       </AdminPage>
@@ -198,7 +199,7 @@ export default function AdminProductDetail() {
           >
             <ExternalLink size={12} aria-hidden="true" /> Preview as customer
           </AtelierButton>
-          <AtelierButton as={Link} to={`/admin/products/${product.id}/media`} size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/products/${product.id}/media`} size="chip" variant="outline">
             <Images size={12} aria-hidden="true" /> Manage media
           </AtelierButton>
           <AtelierButton
@@ -208,7 +209,7 @@ export default function AdminProductDetail() {
               const result = await runAction(product.id, "duplicate");
               if (result.ok && result.product) {
                 setNotice("Duplicated on the server — the copy opens as a fresh draft.");
-                navigate(`/admin/products/${result.product.id}/edit`);
+                navigate(`${prefix}/products/${result.product.id}/edit`);
               } else {
                 setNotice(formatAdminError(result, { entity: "product", action: "duplicated" }));
               }
@@ -216,7 +217,7 @@ export default function AdminProductDetail() {
           >
             <Copy size={12} aria-hidden="true" /> Duplicate
           </AtelierButton>
-          <AtelierButton as={Link} to={`/admin/products/${product.id}/edit`} size="chip">
+          <AtelierButton as={Link} to={`${prefix}/products/${product.id}/edit`} size="chip">
             <Pencil size={12} aria-hidden="true" /> Edit product
           </AtelierButton>
         </>
@@ -362,7 +363,7 @@ export default function AdminProductDetail() {
               )}
             </div>
             <Link
-              to={`/admin/products/${product.id}/media`}
+              to={`${prefix}/products/${product.id}/media`}
               className="mt-3 inline-block font-ui text-[11px] uppercase tracking-wider text-accent underline-offset-4 hover:underline"
             >
               Open Media Manager →
@@ -501,7 +502,7 @@ export default function AdminProductDetail() {
             eyebrow="Inventory"
             title="Stock summary"
             action={
-              <AtelierButton as={Link} to={`/admin/products?q=${encodeURIComponent(product.sku)}`} variant="outline" size="chip">
+              <AtelierButton as={Link} to={`${prefix}/products?q=${encodeURIComponent(product.sku)}`} variant="outline" size="chip">
                 Find in catalogue
               </AtelierButton>
             }

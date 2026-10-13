@@ -57,7 +57,7 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
             {greetingForNow()}, <span className="italic text-accent">{employee?.firstName}</span>
           </p>
           <p className="mt-0.5 font-ui text-[11px] text-taupe">
-            {role.label} · {getDepartmentLabel(employee?.department)} · {employee?.employeeId} ·{" "}
+            {employee?.designation || role.label} · {getDepartmentLabel(employee?.department)} · {employee?.employeeId} ·{" "}
             {formatTodayLong()}
           </p>
         </div>

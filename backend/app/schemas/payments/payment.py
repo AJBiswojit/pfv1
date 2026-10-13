@@ -74,9 +74,12 @@ class CreatePaymentSessionRequest(BaseModel):
     @field_validator("payment_method")
     @classmethod
     def validate_payment_method(cls, v: str) -> str:
-        allowed = {"upi", "card", "netbanking", "cod"}
+        allowed = {"upi", "card", "netbanking"}
         if v not in allowed:
-            raise ValueError(f"payment_method must be one of {allowed}")
+            raise ValueError(
+                f"payment_method must be one of {allowed}. "
+                "COD orders do not use a payment session."
+            )
         return v
 
     @field_validator("guest_email")
@@ -214,3 +217,101 @@ class WebhookAckResponse(BaseModel):
     """Minimal 200 OK response for Razorpay webhooks."""
     ok: bool = True
     message: str = "Webhook processed."
+
+
+class RefundPaymentRequest(BaseModel):
+    """
+    POST /payments/session/{sessionId}/refund
+    """
+    amount_paise: Optional[int] = Field(
+        None,
+        alias="amountPaise",
+        description="Amount in paise to refund. Omit for full refund.",
+    )
+    reason: Optional[str] = Field(None, description="Reason for refund")
+    idempotency_key: Optional[str] = Field(
+        None,
+        alias="idempotencyKey",
+        description="Client-supplied key for refund deduplication",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class RefundPaymentResponse(BaseModel):
+    ok: bool = True
+    message: str
+    refund_id: Optional[str] = Field(None, alias="refundId")
+    amount_paise: int = Field(..., alias="amountPaise")
+    status: str
+    order_payment_status: Optional[str] = Field(None, alias="orderPaymentStatus")
+
+    model_config = {"populate_by_name": True}
+
+
+class BatchReconcileRequest(BaseModel):
+    """
+    POST /payments/reconcile-batch
+    """
+    limit: int = Field(50, ge=1, le=500, description="Max session count to audit")
+    session_ids: Optional[list[str]] = Field(
+        None,
+        alias="sessionIds",
+        description="Optional list of specific session IDs to audit",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class BatchReconcileResponse(BaseModel):
+    ok: bool = True
+    total_audited: int = Field(..., alias="totalAudited")
+    reconciled: int
+    flagged_for_admin: int = Field(..., alias="flaggedForAdmin")
+    details: list[Dict[str, Any]]
+
+    model_config = {"populate_by_name": True}
+
+
+# ---------------------------------------------------------------------------
+# Admin — list payment sessions
+# ---------------------------------------------------------------------------
+
+class AdminPaymentSessionItem(BaseModel):
+    """Lightweight session row returned by GET /admin/payments."""
+    id: str
+    order_id: str = Field(..., alias="orderId")
+    order_number: Optional[str] = Field(None, alias="orderNumber")
+    customer_id: Optional[str] = Field(None, alias="customerId")
+    customer_name: Optional[str] = Field(None, alias="customerName")
+    customer_email: Optional[str] = Field(None, alias="customerEmail")
+    razorpay_order_id: Optional[str] = Field(None, alias="razorpayOrderId")
+    razorpay_payment_id: Optional[str] = Field(None, alias="razorpayPaymentId")
+    amount_paise: int = Field(..., alias="amountPaise")
+    amount_rupees: float = Field(..., alias="amountRupees")
+    refunded_amount_paise: int = Field(0, alias="refundedAmountPaise")
+    currency: str = "INR"
+    payment_method: str = Field(..., alias="paymentMethod")
+    status: str
+    paid_at: Optional[str] = Field(None, alias="paidAt")
+    cancelled_at: Optional[str] = Field(None, alias="cancelledAt")
+    failure_reason: Optional[str] = Field(None, alias="failureReason")
+    failure_code: Optional[str] = Field(None, alias="failureCode")
+    created_at: Optional[str] = Field(None, alias="createdAt")
+    updated_at: Optional[str] = Field(None, alias="updatedAt")
+    order_total: Optional[int] = Field(None, alias="orderTotal")
+
+    model_config = {"populate_by_name": True}
+
+
+class AdminPaymentListResponse(BaseModel):
+    ok: bool = True
+    sessions: list[AdminPaymentSessionItem]
+    total: int
+    page: int
+    page_size: int = Field(..., alias="pageSize")
+    status_counts: Optional[Dict[str, int]] = Field(None, alias="statusCounts")
+
+    model_config = {"populate_by_name": True}
+
+

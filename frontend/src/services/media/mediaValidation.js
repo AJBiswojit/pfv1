@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Managed media validation.
+ * PRATIKSHYA FASHION — Managed media validation.
  *
  * Read-only checks over the live register. Nothing here writes, and
  * nothing is deleted. The admin library and the test suite both read

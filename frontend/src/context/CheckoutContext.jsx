@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Checkout session state (Phase 2 — canonical flow).
+ * PRATIKSHYA FASHION — Checkout session state (Phase 2 — canonical flow).
  *
  * The single checkout session: customer, delivery address, delivery
  * method, payment method, current step and the in-flight payment. It
@@ -124,7 +124,7 @@ const freshState = ({ user, addresses = [] }) => {
     address: user && preferred ? preferred : null,
     addressId: user && preferred ? preferred.id : null,
     addressSource: user && preferred ? "account" : "guest",
-    deliveryMethod: "standard",
+    deliveryMethod: "normal",
     paymentMethod: null,
     stepIndex: 0,
     bagFingerprint: null,
@@ -497,13 +497,14 @@ export function CheckoutProvider({ children }) {
     // ----------------------------------------------------------------
     if (current.paymentMethod === "cod") {
       paymentStartingRef.current = true;
+      setState((s) => ({ ...s, paymentStatus: PAYMENT_STATUS.PENDING, paymentMessage: "" }));
       const placed = await orderApi.placeOrder(payload);
       paymentStartingRef.current = false;
       if (!placed?.ok) {
         setState((s) => ({
           ...s,
           paymentStatus: PAYMENT_STATUS.FAILURE,
-          paymentMessage: placed?.error || "Your order could not be placed. Please try again.",
+          paymentMessage: placed?.message || placed?.error || "Your order could not be placed. Please try again.",
         }));
         return;
       }
@@ -586,7 +587,7 @@ export function CheckoutProvider({ children }) {
         amount: sessionResult.amountPaise,
         currency: sessionResult.currency ?? "INR",
         order_id: sessionResult.razorpayOrderId,
-        name: "Pratikshya Fashon",
+        name: "Pratikshya Fashion",
         description: "Order Payment",
         prefill: {
           name: prefill.name ?? `${current.customer.firstName} ${current.customer.lastName}`.trim(),
@@ -610,6 +611,9 @@ export function CheckoutProvider({ children }) {
             };
             await cartRef.current.clearCart();
             clearPersistedCheckout();
+            // Refresh the order in OrderContext so the success page shows
+            // the correct payment_status (PAID) and actual payment method.
+            orderApi.getOrderById(pendingOrder.id).catch(() => {});
             setState((s) => ({
               ...s,
               paymentStatus: PAYMENT_STATUS.SUCCESS,

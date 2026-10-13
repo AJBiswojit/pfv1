@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # --- App ---
-    APP_NAME: str = "Pratikshya Fashon Backend"
+    APP_NAME: str = "Pratikshya Fashion Backend"
     APP_ENV: str = "development"
     DEBUG: bool = True
     SECRET_KEY: str = "your-super-secret-key-change-in-production-min-32-chars"
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     )
 
     # --- Database ---
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pratikshya_fashon"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pratikshya_fashion"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
@@ -82,8 +82,8 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: Optional[str] = "your-access-key"
     AWS_SECRET_ACCESS_KEY: Optional[str] = "your-secret-key"
     AWS_REGION: str = "ap-south-1"
-    AWS_BUCKET_NAME: str = "pratikshya-fashon-media"
-    CDN_BASE_URL: str = "https://cdn.pratikshyafashon.com"
+    AWS_BUCKET_NAME: str = "pratikshya-fashion-media"
+    CDN_BASE_URL: str = "https://cdn.pratikshyafashion.com"
 
     # --- Local object storage (Phase 6) ---
     # Root of the local object store. Relative paths resolve against the
@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # Mount prefix for the versioned API (main.py uses the same value, so the
     # media URL builder and the router can never drift apart).
     API_V1_PREFIX: str = "/api/v1"
+    # Punching machines (ADMS push, /iclock/*). Optional comma-separated source
+    # IPs allowed to push; empty = any IP (registered serial numbers still
+    # required). Behind a reverse proxy, allow the proxy's address instead.
+    ADMS_ALLOWED_IPS: str = ""
     # Optional CDN origin. When set, `url_for(key)` returns `{cdn}/{key}`
     # instead of the API media route — the CDN then fronts the object store
     # directly. Left empty in this phase: no CDN is provisioned.
@@ -109,7 +113,7 @@ class Settings(BaseSettings):
     # --- Local media import (Phase 6 migration tool) ---
     # Read-only source of the real product assets. The importer only ever
     # copies FROM here; it never writes, moves or deletes inside it.
-    LOCAL_MEDIA_IMPORT_SOURCE: str = "../frontend/public/images"
+    LOCAL_MEDIA_IMPORT_SOURCE: str = "../../frontend/pratikshya-frontend/public/images"
 
     # --- Payment (Razorpay) ---
     RAZORPAY_KEY_ID: Optional[str] = "your-razorpay-key-id"
@@ -117,9 +121,9 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = "your-webhook-secret"
 
     # --- Email ---
-    MAIL_USERNAME: Optional[str] = "noreply@pratikshyafashon.com"
+    MAIL_USERNAME: Optional[str] = "noreply@pratikshyafashion.com"
     MAIL_PASSWORD: Optional[str] = "your-mail-password"
-    MAIL_FROM: str = "noreply@pratikshyafashon.com"
+    MAIL_FROM: str = "noreply@pratikshyafashion.com"
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_PORT: int = 587
     MAIL_TLS: bool = True
@@ -179,6 +183,12 @@ class Settings(BaseSettings):
     ADMIN_SEED_EMAIL: Optional[str] = None
     ADMIN_SEED_PASSWORD: Optional[str] = None
     ADMIN_SEED_FULL_NAME: str = "Super Admin"
+
+    # ── Instagram Customer Reward Coupon ─────────────────────────────────────
+    # Discount percentage awarded to customers who post about their purchase
+    # on Instagram and tag the official Pratikshya Fashion account.
+    # Must be > 0 and ≤ 100. Never hardcode this value in service logic.
+    INSTAGRAM_REWARD_DISCOUNT_PERCENT: float = 10.0
 
     # ── Parsed list accessors ────────────────────────────────────────────────
     # Keep the raw fields as strings so .env files can use simple CSV values;
@@ -274,6 +284,21 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SECRET_KEY must be set to a strong secret in production. "
                 "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return v
+
+    @field_validator("INSTAGRAM_REWARD_DISCOUNT_PERCENT")
+    @classmethod
+    def validate_instagram_reward_discount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError(
+                "INSTAGRAM_REWARD_DISCOUNT_PERCENT must be greater than 0. "
+                "Set a positive percentage (e.g. 10 for 10% off)."
+            )
+        if v > 100:
+            raise ValueError(
+                "INSTAGRAM_REWARD_DISCOUNT_PERCENT cannot exceed 100. "
+                "Provide a value between 0 (exclusive) and 100 (inclusive)."
             )
         return v
 

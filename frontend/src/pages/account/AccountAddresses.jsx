@@ -26,7 +26,7 @@ export default function AccountAddresses() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Addresses — PRATIKSHYA FASHON";
+    document.title = "Addresses — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };

@@ -4,6 +4,7 @@ import { Eye, EyeOff, Sparkles, ArrowRight, AlertCircle, CheckCircle2 } from "lu
 import { AtelierButton, AtelierSection, Breadcrumb, Rule } from "../../design-system";
 import { useAuth } from "../../context/AuthContext";
 import { sanitizeReturnUrl } from "../../utils/validation";
+import GoogleSignInButton from "../../components/auth/GoogleSignInButton";
 
 /**
  * Customer Sign In — /signin
@@ -30,7 +31,7 @@ export default function SignIn() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Sign In — PRATIKSHYA FASHON";
+    document.title = "Sign In — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };
@@ -221,13 +222,36 @@ export default function SignIn() {
                   )}
                 </AtelierButton>
               </div>
+
+              {/* Social Login / Google SSO */}
+              <div className="relative my-6 text-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-mist/70" />
+                </div>
+                <div className="relative inline-block bg-surface/50 px-4 font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
+                  Or continue with
+                </div>
+              </div>
+
+              <div>
+                <GoogleSignInButton
+                  label="Sign in with Google"
+                  onSuccess={() => {
+                    setSuccess(true);
+                    setTimeout(() => {
+                      navigate(returnTo, { replace: true });
+                    }, 500);
+                  }}
+                  onError={(err) => setError(err)}
+                />
+              </div>
             </form>
 
             {/* Guest / Create Account Footers */}
             <div className="mt-8 border-t border-mist/70 pt-6 text-center space-y-4">
               <div>
                 <p className="font-ui text-xs text-graphite">
-                  New to PRATIKSHYA FASHON?{" "}
+                  New to PRATIKSHYA FASHION?{" "}
                   <Link
                     to={`/signup${rawReturnTo ? `?returnTo=${encodeURIComponent(rawReturnTo)}` : ""}`}
                     className="font-medium text-ink hover:text-accent transition-colors underline-offset-4 underline ml-1"

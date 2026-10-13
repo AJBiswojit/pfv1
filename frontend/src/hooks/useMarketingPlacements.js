@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Marketing placement hooks.
+ * PRATIKSHYA FASHION — Marketing placement hooks.
  *
  * Small subscriptions over `marketingPlacementRepository`, mirroring the
  * `useMedia` hooks: a page reads through one of these, so a curation made in

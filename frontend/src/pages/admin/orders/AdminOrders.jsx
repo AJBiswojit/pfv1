@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin Orders Management (Phase 15)
+ * PRATIKSHYA FASHION — Admin Orders Management (Phase 15)
  *
  * Premium operational dashboard for order lifecycle:
  * metrics, search, filters, table (desktop) / cards (mobile).
@@ -13,6 +13,7 @@ import { Search, Package, Clock, CheckCircle2, Truck, RotateCcw, Boxes, Filter, 
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import OrderStatusBadge from "../../../components/orders/OrderStatusBadge";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { useOrder } from "../../../context/OrderContext";
 import { ORDER_STATUS, ORDER_PAYMENT_STATUS, FULFILLMENT_STATUS } from "../../../config/orderConfig";
 import { formatINR } from "../../../utils/shopping";
@@ -84,6 +85,8 @@ export default function AdminOrders() {
    * book. It no longer pulls a 100-order snapshot into memory and filters
    * it in the browser.
    */
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const { refreshAdminOrders, isLoadingOrders, ordersError, ordersErrorStatus } = useOrder();
 
   const PAGE_SIZE = 25;
@@ -354,7 +357,7 @@ export default function AdminOrders() {
               {filtered.map((order) => (
                 <tr key={order.id} className="border-b border-mist/50 last:border-0 hover:bg-surface/30">
                   <td className="px-4 py-3 font-mono text-xs text-ink">
-                    <Link to={`/admin/orders/${order.id}`} className="text-brass hover:text-accent hover:underline">{order.orderNumber ?? order.id}</Link>
+                    <Link to={`${prefix}/orders/${order.id}`} className="text-brass hover:text-accent hover:underline">{order.orderNumber ?? order.id}</Link>
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-ui text-sm text-ink">{order.customer?.fullName}</p>
@@ -367,7 +370,7 @@ export default function AdminOrders() {
                   <td className="px-4 py-3 font-ui text-[11px]">{fulfillmentStage(order)}</td>
                   <td className="px-4 py-3 font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
-                    <Link to={`/admin/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent">
+                    <Link to={`${prefix}/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent">
                       <Eye size={12} /> View
                     </Link>
                   </td>
@@ -412,7 +415,7 @@ export default function AdminOrders() {
         {/* Cards mobile */}
         <div className="grid gap-3 p-3 md:hidden">
           {filtered.map((order) => (
-            <Link key={order.id} to={`/admin/orders/${order.id}`} className="border border-mist/70 bg-canvas p-4">
+            <Link key={order.id} to={`${prefix}/orders/${order.id}`} className="border border-mist/70 bg-canvas p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-mono text-xs text-ink">{order.orderNumber ?? order.id}</p>

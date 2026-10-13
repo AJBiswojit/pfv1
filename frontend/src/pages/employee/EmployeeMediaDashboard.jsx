@@ -86,7 +86,7 @@ export default function EmployeeMediaDashboard() {
     <EmployeePage
       eyebrow="Media Operations"
       title="Media Management"
-      description="Upload, track and manage product media assets for the PRATIKSHYA FASHON catalogue and lookbooks."
+      description="Upload, track and manage product media assets for the PRATIKSHYA FASHION catalogue and lookbooks."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {canUpload ? (

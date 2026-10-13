@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -19,7 +20,7 @@ class UserDTO(BaseModel):
     # ── Account-level model (unified auth): ONE canonical field, never
     # redundant is_admin/is_employee booleans. workspace drives the post-login
     # destination; business_role is operational responsibility, not authority.
-    account_level: Optional[str] = None          # SUPER_ADMIN | ADMIN | SUPER_EMPLOYEE | EMPLOYEE
+    account_level: Optional[str] = None          # SUPER_ADMIN | ADMIN | EMPLOYEE
     accountLevel: Optional[str] = None
     business_role: Optional[str] = None
     businessRole: Optional[str] = None
@@ -33,6 +34,8 @@ class UserDTO(BaseModel):
     section_id: Optional[str] = None
     admin_code: Optional[str] = None
     adminId: Optional[str] = None
+    created_at: Optional[datetime] = None
+    createdAt: Optional[datetime] = None
 
 
 class TokenResponse(BaseModel):

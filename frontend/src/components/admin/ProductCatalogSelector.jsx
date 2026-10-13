@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Package, Search, UploadCloud, X } from "lucide-react";
 import { AtelierButton } from "../../design-system";
 import StatusBadge from "../employee/StatusBadge";
 import PratikshyaImage from "../PratikshyaImage";
 import { useProducts } from "../../hooks/useProducts";
+import { upsertServerProducts } from "../../services/catalogRepository";
+import { addCustomProductToStore } from "../../services/catalog/catalogStore";
 import { getPlacement } from "../../config/mediaTypes";
 import { getProductStatusLabel } from "../../config/productCatalogConfig";
 import { categoryLabels } from "../../data/products/taxonomy";
@@ -17,7 +19,7 @@ import {
 import { cn } from "../../utils/cn";
 
 /**
- * PRATIKSHYA FASHON — Product Catalog Selector.
+ * PRATIKSHYA FASHION — Product Catalog Selector.
  *
  * The primary way a product-based marketing placement is curated. Instead of
  * uploading a product image again, the administrator browses the CANONICAL
@@ -210,6 +212,40 @@ export default function ProductCatalogSelector({
   const hasActiveFilter =
     department !== "ALL" || category !== "ALL" || subcategory !== "ALL" || Boolean(query.trim());
 
+  const handleDeviceUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageUrl = reader.result;
+      const stem = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Custom Product";
+      const name = stem.charAt(0).toUpperCase() + stem.slice(1);
+      const newProductId = `PF-CUST-${Date.now()}`;
+
+      const newProduct = {
+        id: newProductId,
+        name,
+        title: name,
+        department: placement?.recommendedDepartment || "Women",
+        category: placement?.recommendedCategory || "Sarees",
+        subcategory: placement?.recommendedSubcategory || null,
+        price: 1999,
+        originalPrice: 2499,
+        status: "PUBLISHED",
+        published: true,
+        image: imageUrl,
+        media: { primary: imageUrl },
+      };
+
+      upsertServerProducts([newProduct]);
+      addCustomProductToStore(newProduct);
+      setSelected((prev) => new Set([newProductId, ...prev]));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
   return (
     <div className="border border-mist/80 bg-surface/40">
       <header className="border-b border-mist/70 px-5 py-4 sm:px-6">
@@ -224,9 +260,16 @@ export default function ProductCatalogSelector({
               catalogue keeps supplying the name, taxonomy and imagery.
             </p>
           </div>
-          <span className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
-            {filtered.length} {filtered.length === 1 ? "product" : "products"}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 border border-ink/40 bg-surface px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink hover:bg-canvas">
+              <UploadCloud size={13} className="text-accent" />
+              Choose photo from device
+              <input type="file" accept="image/*" className="sr-only" onChange={handleDeviceUpload} />
+            </label>
+            <span className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+              {filtered.length} {filtered.length === 1 ? "product" : "products"}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -235,25 +278,32 @@ export default function ProductCatalogSelector({
         <label htmlFor="catalog-selector-search" className="sr-only">
           Search products
         </label>
-        <div className="flex items-center gap-3 border border-mist/80 bg-canvas px-3 py-2.5 focus-within:border-ink/50">
-          <Search size={15} className="shrink-0 text-taupe" aria-hidden="true" />
-          <input
-            id="catalog-selector-search"
-            value={query}
-            onChange={(event) => resetToPageZero(() => setQuery(event.target.value))}
-            placeholder="Search products…"
-            className="min-w-0 flex-1 bg-transparent font-ui text-sm text-ink outline-none placeholder:text-taupe/80"
-          />
-          {query ? (
-            <button
-              type="button"
-              onClick={() => resetToPageZero(() => setQuery(""))}
-              aria-label="Clear search"
-              className="text-taupe transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <X size={14} aria-hidden="true" />
-            </button>
-          ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3 border border-mist/80 bg-canvas px-3 py-2.5 focus-within:border-ink/50">
+            <Search size={15} className="shrink-0 text-taupe" aria-hidden="true" />
+            <input
+              id="catalog-selector-search"
+              value={query}
+              onChange={(event) => resetToPageZero(() => setQuery(event.target.value))}
+              placeholder="Search products…"
+              className="min-w-0 flex-1 bg-transparent font-ui text-sm text-ink outline-none placeholder:text-taupe/80"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => resetToPageZero(() => setQuery(""))}
+                aria-label="Clear search"
+                className="text-taupe transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 border border-ink/40 bg-surface px-3.5 py-2.5 font-ui text-[11px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink hover:bg-canvas">
+            <UploadCloud size={14} className="text-accent" />
+            Choose photo from device
+            <input type="file" accept="image/*" className="sr-only" onChange={handleDeviceUpload} />
+          </label>
         </div>
 
         {/* Filters */}

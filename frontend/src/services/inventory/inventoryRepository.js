@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Inventory & warehouse repository (Phase 14).
+ * PRATIKSHYA FASHION — Inventory & warehouse repository (Phase 14).
  *
  * This is the stock layer of the existing catalogue, never a product
  * catalogue of its own. Every row stores productId + optional variantId and

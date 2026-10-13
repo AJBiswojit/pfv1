@@ -1,10 +1,47 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import inventoryRepository, {
   INVENTORY_CHANGED_EVENT,
+  LOCATION_TYPES,
+  calculateStockStatus,
+  getInventoryMetrics,
 } from "../services/inventory/inventoryRepository";
 import { PRODUCTS_CHANGED_EVENT } from "../services/catalogRepository";
+import { apiListStock } from "../services/api/inventoryApi";
 
 const InventoryContext = createContext(null);
+
+/**
+ * Maps a backend stock item (from /admin/inventory/stock) to the shape that
+ * getInventoryMetrics() and the dashboard tiles expect.
+ */
+function mapBackendItem(item) {
+  const onHand     = item.quantity_on_hand  ?? 0;
+  const reserved   = item.quantity_reserved ?? 0;
+  const available  = item.quantity_available ?? Math.max(0, onHand - reserved);
+  const threshold  = item.low_threshold ?? 5;
+
+  // Treat records with a warehouse_id as WAREHOUSE, otherwise STORE
+  const locationType = item.warehouse_id ? LOCATION_TYPES.WAREHOUSE : LOCATION_TYPES.STORE;
+
+  return {
+    id: `backend::${item.id}`,
+    productId:  item.product_id  ?? "",
+    variantId:  item.variant_id  ?? null,
+    locationId: item.warehouse_id ?? "loc-main-store",
+    placement:  { department: "" },
+    location:   { id: item.warehouse_id ?? "loc-main-store", name: locationType === LOCATION_TYPES.WAREHOUSE ? "Main Warehouse" : "Main Store", type: locationType },
+    product:    null,
+    quantity:   { onHand, available, reserved, sold: 0, returned: 0, damaged: 0 },
+    lowStockThreshold: threshold,
+    maximumStock:      null,
+    active:     true,
+    estimatedValue: 0,
+    status: calculateStockStatus({ available, lowStockThreshold: threshold }),
+    createdAt: item.created_at ?? null,
+    updatedAt: item.updated_at ?? null,
+    lastMovementAt: null,
+  };
+}
 
 /**
  * Reactive read model over the single inventory repository. Mutations still
@@ -14,6 +51,9 @@ const InventoryContext = createContext(null);
 export function InventoryProvider({ children }) {
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+
+  // Backend stock records — fetched and merged into metrics
+  const [backendRecords, setBackendRecords] = useState([]);
 
   useEffect(() => {
     window.addEventListener(INVENTORY_CHANGED_EVENT, refresh);
@@ -28,17 +68,40 @@ export function InventoryProvider({ children }) {
     inventoryRepository.releaseExpiredReservations();
   }, []);
 
+  // Fetch real stock data from the backend whenever the revision changes
+  // (covers initial load + after any in-memory mutation triggers a refresh)
+  useEffect(() => {
+    let cancelled = false;
+    apiListStock({ pageSize: 500 }).then((result) => {
+      if (!cancelled && result.ok) {
+        setBackendRecords(result.items.map(mapBackendItem));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [revision]);
+
   const snapshot = useMemo(() => {
-    const records = inventoryRepository.query();
+    const memoryRecords = inventoryRepository.query();
+
+    // Merge: backend records are the source of truth for on-hand quantities.
+    // In-memory records (added by receive/adjust operations this session) take
+    // precedence when they share the same productId, so live UI ops reflect
+    // immediately without waiting for the next backend fetch.
+    const memoryProductIds = new Set(memoryRecords.map((r) => r.productId));
+    const merged = [
+      ...memoryRecords,
+      ...backendRecords.filter((r) => !memoryProductIds.has(r.productId)),
+    ];
+
     return {
-      records,
+      records: merged,
       locations: inventoryRepository.loadLocations(),
       movements: inventoryRepository.loadMovements().map(inventoryRepository.resolveMovement),
       transfers: inventoryRepository.loadTransfers().map(inventoryRepository.resolveTransfer),
-      metrics: inventoryRepository.metrics(records),
-      reports: inventoryRepository.reports(records),
+      metrics: getInventoryMetrics(merged),
+      reports: inventoryRepository.reports(merged),
     };
-  }, [revision]);
+  }, [revision, backendRecords]);
 
   const run = useCallback((method, payload, ...rest) => {
     const result = inventoryRepository[method](payload, ...rest);

@@ -30,7 +30,8 @@ function useTaxonomyVersion() {
 
 export default function AdminCategories() {
   const version = useTaxonomyVersion();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
@@ -97,7 +98,7 @@ export default function AdminCategories() {
       eyebrow="Business / Taxonomy"
       title={<>Category <span className="italic text-accent">management.</span></>}
       description="One managed category hierarchy feeds product classification, shop filters, category pages, search, offers and breadcrumbs."
-      actions={<AtelierButton as={Link} to="/admin/categories/new" size="chip"><Plus size={13} aria-hidden="true" /> Create category</AtelierButton>}
+      actions={<AtelierButton as={Link} to={`${prefix}/categories/new`} size="chip"><Plus size={13} aria-hidden="true" /> Create category</AtelierButton>}
     >
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <AdminMetricCard label="Total Categories" value={rows ? categories.length : "—"} hint="Every status, from the server" />
@@ -156,7 +157,7 @@ export default function AdminCategories() {
                 return (
                   <tr key={category.id} className="border-b border-mist/60 font-ui text-sm">
                     <td className="px-3 py-4">
-                      <Link to={`/admin/categories/${category.id}`} className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline">{category.name}</Link>
+                      <Link to={`${prefix}/categories/${category.id}`} className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline">{category.name}</Link>
                       <span className="block text-[11px] text-taupe">/{category.slug}</span>
                     </td>
                     <td className="px-3 py-4">{subcategories.length}</td>
@@ -166,9 +167,9 @@ export default function AdminCategories() {
                     <td className="px-3 py-4">{category.sortOrder}</td>
                     <td className="px-3 py-4">
                       <div className="flex items-center gap-2.5 text-taupe">
-                        <Link to={`/admin/categories/${category.id}`} title="View"><Eye size={15} /></Link>
-                        <Link to={`/admin/categories/${category.id}/edit`} title="Edit"><Pencil size={15} /></Link>
-                        <Link to={`/admin/categories/${category.id}/subcategories`} title="Manage subcategories"><Layers size={15} /></Link>
+                        <Link to={`${prefix}/categories/${category.id}`} title="View"><Eye size={15} /></Link>
+                        <Link to={`${prefix}/categories/${category.id}/edit`} title="Edit"><Pencil size={15} /></Link>
+                        <Link to={`${prefix}/categories/${category.id}/subcategories`} title="Manage subcategories"><Layers size={15} /></Link>
                         <button type="button" disabled={busyId === category.id} onClick={() => archiveOrRestore(category)} title={category.status === TAXONOMY_STATUS.ARCHIVED ? "Restore" : "Archive"} className="hover:text-accent">
                           {category.status === TAXONOMY_STATUS.ARCHIVED ? <RotateCcw size={15} /> : <Archive size={15} />}
                         </button>
@@ -186,7 +187,7 @@ export default function AdminCategories() {
             <article key={category.id} className="border border-mist/80 bg-canvas p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <Link to={`/admin/categories/${category.id}`} className="font-display text-xl text-ink">{category.name}</Link>
+                  <Link to={`${prefix}/categories/${category.id}`} className="font-display text-xl text-ink">{category.name}</Link>
                   <p className="font-ui text-[11px] text-taupe">/{category.slug}</p>
                 </div>
                 <StatusBadge label={category.status} tone={statusTone[category.status] || "quiet"} />
@@ -197,8 +198,8 @@ export default function AdminCategories() {
                 <div><dt className="uppercase tracking-widest text-taupe">Order</dt><dd>{category.sortOrder}</dd></div>
               </dl>
               <div className="mt-4 flex flex-wrap gap-2">
-                <AtelierButton as={Link} to={`/admin/categories/${category.id}`} size="chip" variant="outline">View</AtelierButton>
-                <AtelierButton as={Link} to={`/admin/categories/${category.id}/edit`} size="chip" variant="outline">Edit</AtelierButton>
+                <AtelierButton as={Link} to={`${prefix}/categories/${category.id}`} size="chip" variant="outline">View</AtelierButton>
+                <AtelierButton as={Link} to={`${prefix}/categories/${category.id}/edit`} size="chip" variant="outline">Edit</AtelierButton>
               </div>
             </article>
           ))}

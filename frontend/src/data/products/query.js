@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue query engine.
+ * PRATIKSHYA FASHION — Catalogue query engine.
  *
  * One pure module that turns (products, filters, search, sort) into a result
  * set. Every storefront route runs through it, which is what stops `/shop`,

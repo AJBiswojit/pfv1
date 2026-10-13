@@ -32,7 +32,7 @@ export default function EmployeeSidebar({ onNavigate, collapsed = false, onToggl
       storageKey={STORAGE_KEY}
       identity={{
         name: employeeFullName(employee),
-        roleLabel: role.label,
+        roleLabel: employee?.designation || role.label,
         avatar: employee?.avatar,
         initials: employeeInitials(employee),
       }}

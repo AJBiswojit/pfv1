@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee authentication context.
+ * PRATIKSHYA FASHION — Employee authentication context.
  *
  * Wired to the FastAPI backend (Phase B).
  * Calls /api/v1/auth/employee/* via authApi.js.
@@ -31,6 +31,7 @@ import {
   apiChangePasswordEmployee,
   apiSignOutEmployee,
   apiRestoreEmployeeSession,
+  apiUpdateOwnStaffProfile,
 } from "../services/api/authApi";
 import { writeStorage } from "../utils/shopping";
 import { clearTokens, getAccessToken } from "../services/api/apiClient";
@@ -218,6 +219,22 @@ export function EmployeeAuthProvider({ children }) {
 
   // ── Refresh local session (re-read from storage) ─────────────────────────
 
+  const updateOwnProfile = useCallback(
+    async (patch) => {
+      if (!employee) return { ok: false, error: "You need to sign in first." };
+      const result = await apiUpdateOwnStaffProfile(patch, "employee");
+      if (!result.ok) {
+        return {
+          ...result,
+          errors: result.details ? { phone: result.error } : { form: result.error },
+        };
+      }
+      setSession({ employee: result.employee, isAuthenticated: true });
+      return { ok: true, employee: result.employee };
+    },
+    [employee]
+  );
+
   const refreshSession = useCallback(async () => {
     if (!hasStoredEmployeeToken()) {
       const empty = { employee: null, isAuthenticated: false };
@@ -279,6 +296,7 @@ export function EmployeeAuthProvider({ children }) {
     signOut,
     changePassword,
     refreshSession,
+    updateOwnProfile,
     hasPermission,
     canAccess,
     getAttendance,
@@ -286,7 +304,7 @@ export function EmployeeAuthProvider({ children }) {
     checkOut,
   }), [
     employee, isAuthenticated, isLoading,
-    signIn, signOut, changePassword, refreshSession,
+    signIn, signOut, changePassword, refreshSession, updateOwnProfile,
     hasPermission, canAccess, getAttendance, checkIn, checkOut,
   ]);
 
@@ -308,6 +326,7 @@ const inertEmployeeAuth = {
   signOut:        async () => {},
   changePassword: async () => ({ ok: false, error: "" }),
   refreshSession: () => ({ employee: null, isAuthenticated: false }),
+  updateOwnProfile: async () => ({ ok: false, error: "" }),
   hasPermission:  () => false,
   canAccess:      () => false,
   getAttendance:  () => null,

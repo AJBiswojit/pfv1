@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Canonical storefront routing (Phase 21.7).
+ * PRATIKSHYA FASHION — Canonical storefront routing (Phase 21.7).
  *
  * Category and collection routes are derived from the managed taxonomy
  * records — never invented in a component. Every homepage, shop and

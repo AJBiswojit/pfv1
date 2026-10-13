@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media repository.
+ * PRATIKSHYA FASHION — Media repository.
  *
  * The one door to product and marketing media. Admin pages, the product
  * gallery, the landing page and the metrics tiles all read through this

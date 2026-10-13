@@ -75,8 +75,8 @@ export default function OrderTracking() {
   useEffect(() => {
     const previousTitle = document.title;
     document.title = order
-      ? `Tracking ${order.orderNumber ?? order.id} — PRATIKSHYA FASHON`
-      : "Order Tracking — PRATIKSHYA FASHON";
+      ? `Tracking ${order.orderNumber ?? order.id} — PRATIKSHYA FASHION`
+      : "Order Tracking — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

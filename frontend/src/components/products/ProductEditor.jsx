@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — The complete product & merchandising workspace.
+ * PRATIKSHYA FASHION — The complete product & merchandising workspace.
  *
  * One editor serves both portals: Admin wields it with publishing rights,
  * employees with `products.manage` use it to draft and submit for review.
@@ -15,15 +15,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, ArrowRight, RotateCcw, Archive } from "lucide-react";
 import { AtelierButton } from "../../design-system";
 import catalogRepository, { getPublishIssues } from "../../services/catalogRepository";
 import inventoryRepository from "../../services/inventory/inventoryRepository";
 import {
+  approveAndPublishProduct,
   checkAvailability,
-  fetchAdminProduct,
-  persistAdminProduct,
   runAction,
 } from "../../services/admin/productAdminService";
 import {
@@ -32,125 +31,24 @@ import {
   toVerdict,
 } from "../../services/admin/productIdentityPreflight";
 import { formatAdminError } from "../../services/admin/adminError";
-import { apiAdminGetNextId, apiAdminGetPublishIssues } from "../../services/api/productsApi";
+import { apiAdminGetPublishIssues, apiSubmitForReview } from "../../services/api/productsApi";
 import {
   archiveProduct,
-  createProduct,
   publishProduct,
   restoreProduct,
-  saveProductDraft,
-  submitProduct,
 } from "../../services/workflow/productWorkflowCommands";
 import {
   WORKFLOW_STAGES,
   getProductWorkflowState,
 } from "../../services/workflow/productWorkflowState";
 import { computePricing } from "../../utils/pricing";
-import { PRODUCT_STATUSES, REVIEW_STATES } from "../../config/productCatalogConfig";
-import { departmentForProduct } from "../../data/products/departments";
+import { PRODUCT_STATUSES } from "../../config/productCatalogConfig";
 import { SectionBasics, SectionAttributes } from "./editorSectionsBasics";
-import { SectionPricing, SectionVariants } from "./editorSectionsCommerce";
+import { draftFromProduct, emptyDraft } from "./productDraftModel";
+import { adminCreatedThisProduct, loadProductDraft, persistProductDraft } from "./persistProductDraft";
+import { SectionPricing } from "./editorSectionsCommerce";
 import { SectionContent, SectionMedia, SectionSeo, SectionPublishing } from "./editorSectionsContent";
 import { cn } from "../../utils/cn";
-
-/* ------------------------------------------------------------------ */
-/* Draft shape                                                         */
-/* ------------------------------------------------------------------ */
-
-const emptyDraft = () => ({
-  id: null,
-  exists: false,
-  department: "",
-  name: "",
-  sku: "",
-  brand: "Pratikshya Fashon",
-  productType: "fashion",
-  productCode: "",
-  barcode: "",
-  internalReference: "",
-  category: "",
-  subcategory: "",
-  gender: "Women",
-  shortDescription: "",
-  description: "",
-  highlights: [],
-  specifications: {},
-  careInstructions: [],
-  deliveryInfo: "",
-  returnInfo: "",
-  returnPolicy: { eligibility: "", window: "", notes: "" },
-  fabric: "",
-  material: "",
-  primaryColor: "",
-  secondaryColor: "",
-  colors: [],
-  patterns: [],
-  work: [],
-  occasion: [],
-  sizes: [],
-  season: "",
-  fit: "",
-  length: "",
-  collection: "",
-  collections: [],
-  tags: [],
-  image: "",
-  pricing: {
-    mrp: "",
-    sellingPrice: "",
-    discountType: "none",
-    discountValue: "",
-    taxMode: "INCLUSIVE",
-    taxRate: 0,
-    customTaxRate: false,
-  },
-  variants: [],
-  stock: 0,
-  availability: "in-stock",
-  inventoryTracked: false,
-  lowStockThreshold: 5,
-  seo: { title: "", description: "" },
-  slug: "",
-  status: PRODUCT_STATUSES.DRAFT,
-  review: { state: REVIEW_STATES.NONE, rejectionReason: "" },
-  isFeatured: false,
-  isBestseller: false,
-  isNew: false,
-  isLimitedEdition: false,
-  isTrending: false,
-});
-
-const draftFromProduct = (product) => ({
-  ...emptyDraft(),
-  ...product,
-  exists: true,
-  id: product.id,
-  department: departmentForProduct(product) || "",
-  image: product.image?.src || product.image || "",
-  pricing: {
-    mrp: product.pricing?.mrp ?? product.originalPrice ?? product.price ?? "",
-    sellingPrice: product.pricing?.sellingPrice ?? product.price ?? "",
-    discountType: product.pricing?.discountType || "none",
-    discountValue: product.pricing?.discountValue || "",
-    taxMode: product.pricing?.taxMode || "INCLUSIVE",
-    taxRate: product.pricing?.taxRate ?? 0,
-    customTaxRate: Boolean(product.pricing?.customTaxRate),
-  },
-  variants: (product.variants || []).map((variant) => ({
-    ...variant,
-    priceOverride: variant.priceOverride ?? "",
-  })),
-  highlights: Array.isArray(product.highlights) ? [...product.highlights] : [],
-  careInstructions: Array.isArray(product.careInstructions) ? [...product.careInstructions] : [],
-  specifications:
-    product.specifications && typeof product.specifications === "object"
-      ? { ...product.specifications }
-      : {},
-  returnPolicy:
-    product.returnPolicy && typeof product.returnPolicy === "object"
-      ? { ...product.returnPolicy }
-      : { eligibility: "", window: "", notes: "" },
-});
 
 /* ------------------------------------------------------------------ */
 /* Sections                                                            */
@@ -163,11 +61,14 @@ const draftFromProduct = (product) => ({
  */
 const IDENTITY_PROBE_DELAY_MS = 400;
 
+/*
+ * Variants stay out of the create/edit tabs until the backend persists them.
+ * The SectionVariants surface remains in editorSectionsCommerce for that phase.
+ */
 const SECTIONS = [
   { id: "basics", label: "Basic Information" },
-  { id: "attributes", label: "Category & Attributes" },
+  { id: "attributes", label: "Attributes" },
   { id: "pricing", label: "Pricing" },
-  { id: "variants", label: "Variants" },
   { id: "content", label: "Product Content" },
   { id: "media", label: "Media" },
   { id: "seo", label: "SEO" },
@@ -181,11 +82,16 @@ const SECTIONS = [
 export default function ProductEditor({
   productId = null,
   portal = "admin",
+  basePath = "/admin",
   actor = null,
   canPublish = false,
-  exitTo = "/admin/products",
+  exitTo = "/",
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /** True for both "admin" and "super-admin" portals — both use the admin API scope. */
+  const isAdminPortal = portal === "admin" || portal === "super-admin";
 
   /*
    * The server is the source of truth for an existing record. A hard
@@ -200,9 +106,10 @@ export default function ProductEditor({
 
   const [draft, setDraft] = useState(() => emptyDraft());
   const [baseline, setBaseline] = useState(() => JSON.stringify(emptyDraft()));
-  const [section, setSection] = useState("basics");
+  const [section, setSection] = useState(() => location.state?.section || "basics");
   const [feedback, setFeedback] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmPublish, setConfirmPublish] = useState(false);
   const tabRefs = useRef({});
 
   const dirty = JSON.stringify(draft) !== baseline;
@@ -221,7 +128,7 @@ export default function ProductEditor({
     }
     let cancelled = false;
     setLoadState("loading");
-    fetchAdminProduct(productId).then((result) => {
+    loadProductDraft(productId, portal).then((result) => {
       if (cancelled) return;
       if (result.ok && result.product) {
         const nextDraft = draftFromProduct(result.product);
@@ -236,7 +143,7 @@ export default function ProductEditor({
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [productId, portal]);
 
   /* --- unsaved changes -------------------------------------------- */
 
@@ -273,7 +180,7 @@ export default function ProductEditor({
   );
 
   useEffect(() => {
-    if (portal !== "admin" || !availabilityQuery) {
+    if (!isAdminPortal || !availabilityQuery) {
       setIdentityVerdict(null);
       return undefined;
     }
@@ -295,7 +202,6 @@ export default function ProductEditor({
   const errors = useMemo(() => {
     const next = {};
     if (!draft.name.trim()) next.name = "Product name is required.";
-    if (!draft.sku.trim()) next.sku = "SKU is required.";
     if (!draft.category) next.category = "Category is required.";
     if (!draft.description.trim() && !draft.shortDescription.trim()) {
       next.description = "A description is required.";
@@ -306,7 +212,7 @@ export default function ProductEditor({
      * the "required" checks so an empty field still reports as missing, and it
      * is the only source for product-level collisions — no local fallback.
      */
-    if (portal === "admin") {
+    if (isAdminPortal) {
       const identity = identityErrors(identityVerdict, availabilityQuery);
       if (identity.sku && draft.sku.trim()) next.sku = identity.sku;
       if (identity.slug) next.slug = identity.slug;
@@ -349,7 +255,7 @@ export default function ProductEditor({
   const [serverPublishIssues, setServerPublishIssues] = useState(null);
   const [serverIssuesError, setServerIssuesError] = useState(null);
   const refreshServerIssues = useCallback(() => {
-    if (portal !== "admin" || !draft.id || isNew) return;
+    if (!isAdminPortal || !draft.id || isNew) return;
     apiAdminGetPublishIssues(draft.id).then((result) => {
       if (result.ok) {
         setServerPublishIssues(result.issues ?? []);
@@ -359,169 +265,69 @@ export default function ProductEditor({
         setServerIssuesError(result.error ?? "Could not load the server publish checklist.");
       }
     });
-  }, [draft.id, isNew, portal]);
+  }, [draft.id, isNew, portal]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     refreshServerIssues();
   }, [refreshServerIssues, baseline]);
   const displayIssues =
-    portal === "admin" && serverPublishIssues ? serverPublishIssues : publishIssues;
+    isAdminPortal && serverPublishIssues ? serverPublishIssues : publishIssues;
 
   const sectionDot = (id) => {
-    if (id === "basics") return Boolean(errors.name || errors.sku || errors.category || errors.description);
+    if (id === "basics") return Boolean(errors.name || errors.sku || errors.category);
     if (id === "pricing") return pricingErrors.length > 0;
-    if (id === "variants") return Boolean(errors.variants);
+    if (id === "content") return Boolean(errors.description);
     if (id === "seo") return Boolean(errors.slug);
     return false;
   };
 
   /* --- persistence -------------------------------------------------- */
 
-  const buildPayload = () => {
-    const pricing = {
-      ...draft.pricing,
-      mrp: Number(draft.pricing.mrp) || 0,
-      sellingPrice: Number(draft.pricing.sellingPrice) || 0,
-      discountValue: Number(draft.pricing.discountValue) || 0,
-      taxRate: Number(draft.pricing.taxRate) || 0,
-    };
-
-    /* Product identity and lifecycle fields are command-owned. Normalized
-       records include them for display, but the editor must never send them
-       back as an editable patch. */
-    const commandOwnedFields = new Set([
-      "id",
-      "productId",
-      "exists",
-      "status",
-      "review",
-      "workflow",
-      "published",
-      "publishedAt",
-      "publishedBy",
-      "createdAt",
-      "createdBy",
-      "updatedAt",
-      "updatedBy",
-      "history",
-      "priceHistory",
-      // Collection membership is managed from the collection product
-      // assignment surface, never through a product write.
-      "collection",
-      "collections",
-      "collectionIds",
-    ]);
-    const editableDraft = Object.fromEntries(
-      Object.entries(draft).filter(([field]) => !commandOwnedFields.has(field))
-    );
-
-    return {
-      ...editableDraft,
-      pricing,
-      stock: Number(draft.stock) || 0,
-      lowStockThreshold: Number(draft.lowStockThreshold) || 0,
-      variants: draft.variants.map((variant) => ({
-        ...variant,
-        stock: Number(variant.stock) || 0,
-        priceOverride:
-          variant.priceOverride === "" || variant.priceOverride == null
-            ? null
-            : Number(variant.priceOverride) || null,
-      })),
-      /*
-       * Phase 3 Block 3: the slug is sent ONLY when the operator actually
-       * typed one. It used to be back-filled with a locally suggested slug
-       * derived from the session cache, which (now that a duplicate slug is a
-       * hard 409 instead of a silent `-1` rename) would turn a stale cache
-       * into a save the operator never asked for and cannot explain. Omitting
-       * it hands slug allocation to the server, which is the only party that
-       * can see the whole catalogue.
-       */
-      ...(draft.slug ? { slug: draft.slug } : {}),
-    };
-  };
-
   /**
-   * Persistence is AWAITED and server-first for the admin portal: the save
-   * only announces success after the backend response, and the editor
-   * re-baselines from the authoritative record the server returned — the
-   * next save therefore can never re-send a stale snapshot over newer data.
-   * A brand-new product is created through POST /admin/products/draft under
-   * the canonical ID allocated here over the current register.
-   *
-   * The employee portal keeps the local canonical command path (its writes
-   * sync through the same normalized payload layer); its lifecycle commands
-   * run on this machine's register until the employee API surface lands —
-   * recorded as a deferred limitation, not hidden.
+   * Persistence is AWAITED and server-first for both portals. Admin writes
+   * POST /admin/products/draft + PATCH. Employee writes POST
+   * /employee/products/draft + PATCH on the whitelist, assigned to the caller.
    */
   const [isSaving, setIsSaving] = useState(false);
 
   const persist = async () => {
-    const payload = buildPayload();
-
-    if (portal === "admin") {
-      setIsSaving(true);
-      try {
-        let id = draft.id;
-        if (!draft.exists && !id) {
-          // Server-authoritative product id: ask the backend, never derive one
-          // from the local session cache or a static taxonomy snapshot.
-          const nextId = await apiAdminGetNextId(draft.category);
-          if (!nextId.ok) {
-            setFeedback({
-              kind: "error",
-              message:
-                formatAdminError(nextId, { entity: "product", action: "allocated an ID for" }) ||
-                nextId.error ||
-                "The server could not allocate a Product ID.",
-            });
-            return null;
-          }
-          id = nextId.nextId;
-        }
-        const result = await persistAdminProduct({ ...payload, id: id ?? undefined }, { isNew: !draft.exists });
-        if (!result.ok) {
-          setFeedback({
-            kind: "error",
-            message:
-              formatAdminError(result, { entity: "product", action: "saved" }) ||
-              "The product could not be saved.",
-          });
-          return null;
-        }
-        const serverProduct = (await fetchAdminProduct(result.product?.id ?? id)).product ?? result.product;
-        const nextDraft = draftFromProduct({ ...(result.product ?? {}), ...(serverProduct ?? {}) });
-        setDraft(nextDraft);
-        setBaseline(JSON.stringify(nextDraft));
-        return nextDraft.exists ? { ...result.product, id: nextDraft.id } : result.product;
-      } finally {
-        setIsSaving(false);
+    setIsSaving(true);
+    try {
+      const result = await persistProductDraft({ draft, portal, actor });
+      if (!result.ok) {
+        setFeedback({
+          kind: "error",
+          message: result.error || "The product could not be saved.",
+        });
+        return null;
       }
+      setDraft(result.product);
+      setBaseline(JSON.stringify(result.product));
+      return result.product;
+    } finally {
+      setIsSaving(false);
     }
-
-    const result = draft.exists
-      ? saveProductDraft(draft.id, payload, actor)
-      : createProduct(payload, actor);
-    if (!result.ok) {
-      setFeedback({ kind: "error", message: result.error || "The product could not be saved." });
-      return null;
-    }
-    if (result.product.status === PRODUCT_STATUSES.PUBLISHED) {
-      inventoryRepository.ensureOpeningStock(result.product, actor);
-    }
-    const nextDraft = draftFromProduct(result.product);
-    setDraft(nextDraft);
-    setBaseline(JSON.stringify(nextDraft));
-    return result.product;
   };
 
   const announce = (message, kind = "success") => setFeedback({ kind, message });
 
   /* --- actions ------------------------------------------------------ */
 
+  const afterFirstSave = (product) => {
+    navigate(`${basePath}/products/${product.id}/edit`, {
+      replace: true,
+      state: { section: "media" },
+    });
+  };
+
   const handleSaveDraft = async () => {
     if (!draft.name.trim()) {
       setSection("basics");
       announce("Give the product a name before saving.", "error");
+      return;
+    }
+    if (isNew && !draft.category) {
+      setSection("basics");
+      announce("Choose a category before saving — it allocates the Product ID.", "error");
       return;
     }
     if (errors.sku) {
@@ -531,8 +337,8 @@ export default function ProductEditor({
     }
     const product = await persist();
     if (!product) return;
-    announce(portal === "admin" ? "Draft saved on the server." : "Draft saved successfully.");
-    if (isNew) navigate(`${portal === "admin" ? "/admin" : "/employee"}/products/${product.id}/edit`, { replace: true });
+    announce(isAdminPortal ? "Draft saved on the server." : "Draft saved successfully.");
+    if (isNew) afterFirstSave(product);
   };
 
   const handleSaveAndContinue = async () => {
@@ -541,6 +347,11 @@ export default function ProductEditor({
       announce("Give the product a name before saving.", "error");
       return;
     }
+    if (isNew && !draft.category) {
+      setSection("basics");
+      announce("Choose a category before saving — it allocates the Product ID.", "error");
+      return;
+    }
     if (errors.sku) {
       setSection("basics");
       announce(errors.sku, "error");
@@ -548,6 +359,11 @@ export default function ProductEditor({
     }
     const product = await persist();
     if (!product) return;
+    if (isNew) {
+      announce("Draft saved. Add a cover image next.");
+      afterFirstSave(product);
+      return;
+    }
     const currentIndex = SECTIONS.findIndex((s) => s.id === section);
     if (currentIndex < SECTIONS.length - 1) {
       setSection(SECTIONS[currentIndex + 1].id);
@@ -558,14 +374,18 @@ export default function ProductEditor({
   };
 
   const handleSubmitForReview = async () => {
-    const blocking = [errors.name, errors.sku, errors.category, errors.description, errors.variants, errors.slug].filter(Boolean);
+    const blocking = [errors.name, errors.sku, errors.category, errors.description, errors.slug].filter(Boolean);
     if (blocking.length || pricingErrors.length) {
+      if (errors.name || errors.sku || errors.category) setSection("basics");
+      else if (errors.description) setSection("content");
+      else if (pricingErrors.length) setSection("pricing");
+      else if (errors.slug) setSection("seo");
       announce("Complete the required fields before submitting for review.", "error");
       return;
     }
     const product = await persist();
     if (!product) return;
-    if (portal === "admin") {
+    if (isAdminPortal) {
       const result = await runAction(product.id ?? draft.id, "submitReview");
       if (!result.ok) {
         announce(formatAdminError(result, { entity: "product", action: "submitted for review" }) ?? "Submission failed.", "error");
@@ -578,7 +398,7 @@ export default function ProductEditor({
       setTimeout(() => navigate(exitTo), 900);
       return;
     }
-    const result = submitProduct(product.id, actor);
+    const result = await apiSubmitForReview(product.id, { scope: "employee" });
     if (!result.ok) {
       announce(result.error || "Submission failed.", "error");
       return;
@@ -587,6 +407,26 @@ export default function ProductEditor({
     setDraft(nextDraft);
     setBaseline(JSON.stringify(nextDraft));
     announce("Submitted for review. A manager or admin will approve it.");
+    setTimeout(() => navigate(exitTo), 900);
+  };
+
+  const runApproveAndPublish = async () => {
+    const product = await persist();
+    if (!product) return;
+    const result = await approveAndPublishProduct(product.id ?? draft.id);
+    if (!result.ok) {
+      announce(
+        formatAdminError(result, { entity: "product", action: "published" }) ||
+          result.error ||
+          "Approve & publish failed.",
+        "error"
+      );
+      return;
+    }
+    const nextDraft = draftFromProduct(result.product);
+    setDraft(nextDraft);
+    setBaseline(JSON.stringify(nextDraft));
+    announce("Published — this piece is now live in the storefront.");
     setTimeout(() => navigate(exitTo), 900);
   };
 
@@ -622,7 +462,7 @@ export default function ProductEditor({
       );
       return;
     }
-    if (portal === "admin") {
+    if (isAdminPortal) {
       await runServerAction("publish", "Published — the server has this piece live in the storefront.");
       return;
     }
@@ -640,7 +480,7 @@ export default function ProductEditor({
 
   const handleArchive = async () => {
     if (!draft.id) return;
-    if (portal === "admin") {
+    if (isAdminPortal) {
       await runServerAction("archive", "Product archived on the server — removed from every customer surface.");
       return;
     }
@@ -655,7 +495,7 @@ export default function ProductEditor({
 
   const handleRestore = async () => {
     if (!draft.id) return;
-    if (portal === "admin") {
+    if (isAdminPortal) {
       await runServerAction("restore", "Product restored to draft on the server.");
       return;
     }
@@ -723,6 +563,14 @@ export default function ProductEditor({
   const editorLocked = draft.exists && !workflowState.editable;
   const readyToPublish =
     canPublish && draft.exists && workflowState.stage === WORKFLOW_STAGES.APPROVED;
+  const canShortcutPublish =
+    canPublish &&
+    isAdminPortal &&
+    draft.exists &&
+    draft.status !== PRODUCT_STATUSES.PUBLISHED &&
+    draft.status !== PRODUCT_STATUSES.ARCHIVED &&
+    adminCreatedThisProduct(draft, actor);
+  const shortcutBlocked = displayIssues.length > 0;
 
   return (
     <div className="pb-24">
@@ -813,26 +661,13 @@ export default function ProductEditor({
         className="border border-mist/80 bg-surface/40 p-5 sm:p-7"
       >
         {section === "basics" ? <SectionBasics draft={draft} patch={patch} errors={errors} isNew={isNew} /> : null}
-        {section === "attributes" ? (
-          <SectionAttributes draft={draft} patch={patch} errors={errors} isNew={isNew} />
-        ) : null}
+        {section === "attributes" ? <SectionAttributes draft={draft} patch={patch} /> : null}
         {section === "pricing" ? <SectionPricing draft={draft} patch={patch} /> : null}
-        {section === "variants" ? (
-          <>
-            <p className="mb-4 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
-              Variant rows are a planning aid for this session: the backend product contract has
-              no variant table yet (BACKEND_GAP — future phase), so per-variant SKU, stock and
-              price overrides are not persisted. The product-level size list, unavailable
-              sizes/colours and pricing ARE saved server-side.
-            </p>
-            <SectionVariants draft={draft} patch={patch} errors={errors} />
-          </>
-        ) : null}
-        {section === "content" ? <SectionContent draft={draft} patch={patch} /> : null}
+        {section === "content" ? <SectionContent draft={draft} patch={patch} errors={errors} /> : null}
         {section === "media" ? <SectionMedia draft={draft} patch={patch} portal={portal} /> : null}
         {section === "seo" ? <SectionSeo draft={draft} patch={patch} errors={errors} /> : null}
         {section === "publishing" ? (
-          <SectionPublishing draft={draft} patch={patch} publishIssues={displayIssues} serverCheck={portal === "admin" ? (serverIssuesError ? `Server checklist unavailable — ${serverIssuesError}` : "Checklist is the server’s own publish gate.") : "Local pre-check — the server re-validates on publish."} />
+          <SectionPublishing draft={draft} patch={patch} publishIssues={displayIssues} serverCheck={isAdminPortal ? (serverIssuesError ? `Server checklist unavailable — ${serverIssuesError}` : "Checklist is the server’s own publish gate.") : "Local pre-check — the server re-validates on publish."} />
         ) : null}
 
         {/* Section stepping navigation */}
@@ -910,6 +745,16 @@ export default function ProductEditor({
               Submit for review
             </AtelierButton>
           ) : null}
+
+          {canShortcutPublish && !readyToPublish ? (
+            <AtelierButton
+              size="chip"
+              onClick={() => setConfirmPublish(true)}
+              disabled={shortcutBlocked || busyAction}
+            >
+              Approve &amp; publish
+            </AtelierButton>
+          ) : null}
         </div>
       </div>
 
@@ -949,6 +794,38 @@ export default function ProductEditor({
                 }}
               >
                 Discard &amp; leave
+              </AtelierButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmPublish ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Approve and publish this product?"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+          onClick={() => setConfirmPublish(false)}
+        >
+          <div className="w-full max-w-md border border-mist bg-ivory p-7" onClick={(event) => event.stopPropagation()}>
+            <p className="font-display text-2xl font-light text-ink">Approve and publish?</p>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+              Because you created this product, you can submit, approve and publish it in one step.
+              The server still runs the same publish checklist. The piece will appear on the storefront.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <AtelierButton
+                size="chip"
+                onClick={() => {
+                  setConfirmPublish(false);
+                  runApproveAndPublish();
+                }}
+              >
+                Publish now
+              </AtelierButton>
+              <AtelierButton variant="outline" size="chip" onClick={() => setConfirmPublish(false)}>
+                Cancel
               </AtelierButton>
             </div>
           </div>

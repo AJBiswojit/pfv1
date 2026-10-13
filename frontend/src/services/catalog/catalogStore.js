@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Backend-fed catalog store.
+ * PRATIKSHYA FASHION — Backend-fed catalog store.
  *
  * The single runtime source for storefront product, category and collection
  * data. It is hydrated once from the FastAPI backend:
@@ -257,11 +257,40 @@ export function applyCatalogSnapshot({
   return state;
 }
 
+export function addCustomProductToStore(product) {
+  if (!product?.id) return;
+  const storefrontProduct = toStorefrontProduct(product);
+  const current = state.products.filter((p) => String(p.id) !== String(product.id));
+  state.products = [storefrontProduct, ...current];
+  state.byId.set(String(product.id), storefrontProduct);
+  if (storefrontProduct.slug) state.bySlug.set(storefrontProduct.slug, storefrontProduct);
+  emit();
+}
+
 function applySnapshot(products, categories, collections, subcategories = {}) {
   state.categories = categories ?? [];
   state.collections = collections ?? [];
   state.subcategories = {};
-  state.products = (products ?? []).map(toStorefrontProduct);
+
+  const baseProducts = products ?? [];
+  let customProducts = [];
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem("pratikshya_custom_products");
+      if (raw) customProducts = JSON.parse(raw);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const mergedMap = new Map(baseProducts.map((p) => [String(p.id), p]));
+  customProducts.forEach((cp) => {
+    if (!mergedMap.has(String(cp.id))) {
+      mergedMap.set(String(cp.id), cp);
+    }
+  });
+
+  state.products = Array.from(mergedMap.values()).map(toStorefrontProduct);
   state.byId = new Map(state.products.map((p) => [String(p.id), p]));
   state.bySlug = new Map(state.products.filter((p) => p.slug).map((p) => [p.slug, p]));
   (state.categories ?? []).forEach((category) => {

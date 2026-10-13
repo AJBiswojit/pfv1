@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Base API client (Phase 1 Foundation).
+ * PRATIKSHYA FASHION — Base API client (Phase 1 Foundation).
  *
  * Single HTTP seam between the frontend and FastAPI backend.
  * Handles:

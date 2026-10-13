@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Performance repository.
+ * PRATIKSHYA FASHION — Performance repository.
  *
  * One store: `pratikshya_performance`. Records always reference a real
  * employeeId from the house register.

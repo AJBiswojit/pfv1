@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Marketing Media API (B-02)
+ * PRATIKSHYA FASHION — Marketing Media API (B-02)
  *
  * Backend-managed marketing placements including HOME_HERO.
  *

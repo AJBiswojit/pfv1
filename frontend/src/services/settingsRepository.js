@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Settings repository (backend-driven).
+ * PRATIKSHYA FASHION — Settings repository (backend-driven).
  *
  * Settings are server-owned (GET/PATCH /admin/settings/{section}). The
  * defaults below are UI configuration used only to shape forms when the
@@ -12,8 +12,8 @@ import { COMMERCE_DEFAULTS } from "../config/commerceDefaults";
 export const SETTINGS_KEY = "pratikshya_settings"; // legacy — unused
 
 export const SETTINGS_DEFAULTS = {
-  business: { name: "PRATIKSHYA FASHON", legalName: "", tagline: "", description: "", email: "", phone: "", website: "", address: "", city: "", state: "", country: "India", postalCode: "", logoMediaId: "", faviconMediaId: "" },
-  store: { name: "PRATIKSHYA FASHON", code: "PF-01", address: "", phone: "", email: "", status: "ACTIVE", openingTime: "09:30", closingTime: "18:30" },
+  business: { name: "PRATIKSHYA FASHION", legalName: "", tagline: "", description: "", email: "", phone: "", website: "", address: "", city: "", state: "", country: "India", postalCode: "", logoMediaId: "", faviconMediaId: "" },
+  store: { name: "PRATIKSHYA FASHION", code: "PF-01", address: "", phone: "", email: "", status: "ACTIVE", openingTime: "09:30", closingTime: "18:30" },
   locations: { warehouseName: "", warehouseCode: "", warehouseAddress: "", warehouseStatus: "ACTIVE", warehouseOpeningTime: "09:30", warehouseClosingTime: "18:30", contactPerson: "", contactPhone: "" },
   hours: { days: [{ day: "Monday", open: "09:30", close: "18:30", active: true }, { day: "Tuesday", open: "09:30", close: "18:30", active: true }, { day: "Wednesday", open: "09:30", close: "18:30", active: true }, { day: "Thursday", open: "09:30", close: "18:30", active: true }, { day: "Friday", open: "09:30", close: "18:30", active: true }, { day: "Saturday", open: "09:30", close: "18:30", active: true }, { day: "Sunday", open: "09:30", close: "18:30", active: false }] },
   attendance: { workingStartTime: "09:30", workingEndTime: "18:30", lateThresholdMinutes: 10, minimumHalfDayMinutes: 240, fullDayMinutes: 540 },

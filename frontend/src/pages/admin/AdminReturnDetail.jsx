@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin Return Detail (Phase 16.1)
+ * PRATIKSHYA FASHION — Admin Return Detail (Phase 16.1)
  *
  * Premium operational return management interface.
  * Shows return details, provides context-sensitive actions based on status,
@@ -14,6 +14,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import AdminPage from "../../components/admin/AdminPage";
 import AdminPanel from "../../components/admin/AdminPanel";
 import { useAdminAuth } from "../../context/AdminAuthContext";
+import { useOrder } from "../../context/OrderContext";
 import { apiAdminGetReturn } from "../../services/api/ordersApi";
 import { RETURN_STATUS, RETURN_STATUSES } from "../../config/orderConfig";
 import {
@@ -38,7 +39,8 @@ import { cn } from "../../utils/cn";
 export default function AdminReturnDetail() {
   const { returnId } = useParams();
   const navigate = useNavigate();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
 
   // BACKEND CONTRACT (admin consolidation): the detail screen reads the REAL
   // returns API — GET /admin/returns/{id} — instead of scanning the 100-order
@@ -66,13 +68,15 @@ export default function AdminReturnDetail() {
 
   const retryLoad = useCallback(() => setAttempt((a) => a + 1), []);
 
-  const approveReturn = useOrder().approveReturn;
-  const rejectReturn = useOrder().rejectReturn;
-  const scheduleReturnPickup = useOrder().scheduleReturnPickup;
-  const receiveReturn = useOrder().receiveReturn;
-  const inspectReturn = useOrder().inspectReturn;
-  const initiateReturnRefund = useOrder().initiateReturnRefund;
-  const completeReturnRefund = useOrder().completeReturnRefund;
+  const {
+    approveReturn,
+    rejectReturn,
+    scheduleReturnPickup,
+    receiveReturn,
+    inspectReturn,
+    initiateReturnRefund,
+    completeReturnRefund,
+  } = useOrder();
 
   // Action states
   const [showReject, setShowReject] = useState(false);
@@ -119,7 +123,7 @@ export default function AdminReturnDetail() {
             Try again
           </button>
         </div>
-        <Link to="/admin/returns" className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
           Back to returns
         </Link>
       </AdminPage>
@@ -132,7 +136,7 @@ export default function AdminReturnDetail() {
         <p className="font-ui text-sm text-graphite">
           No return exists with this reference, or it is not visible to your role.
         </p>
-        <Link to="/admin/returns" className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
           Back to returns
         </Link>
       </AdminPage>
@@ -325,7 +329,7 @@ export default function AdminReturnDetail() {
 
       {/* Back button */}
       <button
-        onClick={() => navigate("/admin/returns")}
+        onClick={() => navigate(`${prefix}/returns`)}
         className="mb-6 flex items-center gap-2 font-ui text-xs uppercase tracking-widest text-brass hover:text-accent"
       >
         <ArrowLeft size={14} />
@@ -374,7 +378,7 @@ export default function AdminReturnDetail() {
                   </dt>
                   <dd className="mt-1">
                     <Link
-                      to={`/admin/orders/${orderId}`}
+                      to={`${prefix}/orders/${orderId}`}
                       className="font-ui text-ink underline hover:text-accent"
                     >
                       {orderNumber}

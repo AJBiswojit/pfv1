@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI Business Assistant intelligence (Phase 21.1).
+ * PRATIKSHYA FASHION — AI Business Assistant intelligence (Phase 21.1).
  *
  * The assistant behaves like a business analyst: it reads the existing
  * analytics snapshot (which itself reads the order, catalogue, inventory,

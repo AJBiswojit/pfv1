@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product review flags (Phase 22.1).
+ * PRATIKSHYA FASHION — Product review flags (Phase 22.1).
  *
  * The single vocabulary for the review flags a product draft carries on
  * its way through the MEDIA → DRAFT → REVIEW → PUBLISH pipeline. Leaf

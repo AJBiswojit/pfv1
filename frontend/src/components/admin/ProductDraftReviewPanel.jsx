@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product draft review panel (Phase 22 + 22.1).
+ * PRATIKSHYA FASHION — Product draft review panel (Phase 22 + 22.1).
  *
  * The admin side of one DRAFT: the complete group preview (ProductPreview),
  * the canonical read-only Product ID, commercial fields (name, category,
@@ -37,8 +37,9 @@ import {
   setPrimaryMedia,
   updateMediaViewLabel,
 } from "../../services/productWorkflow";
-import { CATEGORY_OPTIONS, getProductStatusLabel } from "../../config/productCatalogConfig";
-import taxonomyRepository from "../../services/taxonomyRepository";
+import { getProductStatusLabel } from "../../config/productCatalogConfig";
+import { resolveTaxonomySelectValue } from "../../services/taxonomyLifecycle";
+import { useAssignableCategoryOptions, useAssignableSubcategories } from "../../hooks/useAssignableTaxonomy";
 import { employeeFullName } from "../../utils/employee";
 import { getEmployee, loadEmployees } from "../../services/employees/employeeService";
 import { reviewFlagLabel } from "../../services/productReviewFlags";
@@ -78,7 +79,8 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
   const view = useMemo(() => getProductWorkflowView(product), [product]);
   const conflicts = useMemo(() => view?.conflicts ?? [], [view]);
   const issues = useMemo(() => getPublishIssues(product), [product]);
-  const subcategoryOptions = useMemo(() => taxonomyRepository.subcategoryOptionsFor(category) ?? [], [category]);
+  const categoryOptions = useAssignableCategoryOptions();
+  const subcategoryItems = useAssignableSubcategories(category);
 
   const save = useCallback(async () => {
     if (busy) return;
@@ -267,8 +269,8 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
 
           <div><label htmlFor={`name-${product.id}`} className={labelClass}>Product name</label><input id={`name-${product.id}`} value={name} onChange={(event) => setName(event.target.value)} placeholder="Product name" className={fieldClass} /></div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div><label htmlFor={`cat-${product.id}`} className={labelClass}>Category</label><select id={`cat-${product.id}`} value={category} onChange={(event) => { setCategory(event.target.value); setSubcategory(""); }} className={fieldClass}><option value="">— Select category —</option>{CATEGORY_OPTIONS.map((option) => (<option key={option.id} value={option.id}>{option.label}</option>))}</select></div>
-            <div><label htmlFor={`sub-${product.id}`} className={labelClass}>Subcategory</label><select id={`sub-${product.id}`} value={subcategory} onChange={(event) => setSubcategory(event.target.value)} className={fieldClass}><option value="">— Select subcategory —</option>{subcategoryOptions.map((option) => (<option key={option} value={option}>{option}</option>))}</select></div>
+            <div><label htmlFor={`cat-${product.id}`} className={labelClass}>Category</label><select id={`cat-${product.id}`} value={resolveTaxonomySelectValue(categoryOptions, category)} onChange={(event) => { setCategory(event.target.value); setSubcategory(""); }} className={fieldClass}><option value="">— Select category —</option>{categoryOptions.map((option) => (<option key={option.id} value={option.id}>{option.label}</option>))}</select></div>
+            <div><label htmlFor={`sub-${product.id}`} className={labelClass}>Subcategory</label><select id={`sub-${product.id}`} value={resolveTaxonomySelectValue(subcategoryItems, subcategory)} onChange={(event) => setSubcategory(event.target.value)} className={fieldClass}><option value="">— Select subcategory —</option>{subcategoryItems.map((entry) => (<option key={entry.id} value={entry.id}>{entry.name}</option>))}</select></div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div><label htmlFor={`price-${product.id}`} className={labelClass}>Price (₹)</label><input id={`price-${product.id}`} type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="1290" className={fieldClass} /></div>

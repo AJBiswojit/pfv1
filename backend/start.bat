@@ -12,9 +12,10 @@ title PRATIKSHYA FASHON - Backend
 REM This script now lives inside the backend\ folder.
 REM %~dp0 resolves to that folder at runtime.
 set "BACKEND_DIR=%~dp0"
-set "VENV_DIR=%BACKEND_DIR%.venv"
-set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
-set "VENV_ACTIVATE=%VENV_DIR%\Scripts\activate.bat"
+REM Use the virtual environment inside this project folder
+set "VENV_DIR=%~dp0.venv"
+set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
+set "VENV_ACTIVATE=%~dp0.venv\Scripts\activate.bat"
 
 if not exist "%BACKEND_DIR%app\main.py" (
     echo [ERROR] Backend entrypoint not found: "%BACKEND_DIR%app\main.py"
@@ -54,12 +55,32 @@ if errorlevel 1 (
 )
 
 REM --- Dependency check ---
-python -c "import fastapi, uvicorn" >nul 2>&1
+"%VENV_PYTHON%" -c "import fastapi, uvicorn" >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Backend dependencies not installed - fastapi/uvicorn not found in .venv.
+    echo [ERROR] Backend dependencies not installed - fastapi/uvicorn not found in venv.
     echo [ERROR] Run:  pip install -r requirements.txt
     echo.
     exit /b 1
+)
+
+REM --- Python 3.12 compatibility check (razorpay requires pkg_resources from setuptools) ---
+"%VENV_PYTHON%" -c "import pkg_resources" >nul 2>&1
+if not errorlevel 1 goto deps_ready
+echo [INFO] Installing setuptools for Python 3.12 compatibility...
+python -m pip install setuptools
+if errorlevel 1 (
+    echo [ERROR] Failed to install setuptools. Please run: pip install setuptools
+    echo.
+    exit /b 1
+)
+:deps_ready
+
+REM --- Ensure storage\media is populated with centralized images ---
+if not exist "storage\media\hero\hero001.avif" (
+    if exist "..\..\frontend\pratikshya-frontend\public\images\hero\hero001.avif" (
+        echo [INFO] Syncing centralized images from frontend to storage\media...
+        xcopy /E /I /Y /Q "..\..\frontend\pratikshya-frontend\public\images" "storage\media" >nul 2>&1
+    )
 )
 
 REM --- Environment configuration hint ---
@@ -67,6 +88,19 @@ if not exist ".env" (
     echo [INFO] No backend\.env found - starting with built-in defaults.
     echo [INFO] Copy .env.example to .env and set DATABASE_URL and ALLOWED_ORIGINS for local dev.
     echo.
+)
+
+REM --- PostgreSQL Pre-flight check ---
+"%VENV_PYTHON%" -c "import socket; s = socket.create_connection(('127.0.0.1', 5432), timeout=1); s.close()" >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] ============================================================
+    echo [WARNING] PostgreSQL is NOT running or unreachable on localhost:5432!
+    echo [WARNING] Database queries will fail until PostgreSQL is started.
+    echo [WARNING] Please start PostgreSQL service or check DATABASE_URL in .env.
+    echo [WARNING] ============================================================
+    echo.
+) else (
+    echo [INFO] PostgreSQL connection verified on localhost:5432.
 )
 
 echo ============================================================

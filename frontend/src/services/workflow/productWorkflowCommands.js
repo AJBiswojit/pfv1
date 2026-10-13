@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Universal authorized lifecycle commands (Phase 2, Step D).
+ * PRATIKSHYA FASHION — Universal authorized lifecycle commands (Phase 2, Step D).
  *
  * THE ONE authoritative product workflow command layer. Every transition —
  * create, assign, employee save, submit, admin review, return, approve,
@@ -519,8 +519,8 @@ export const approveProduct = (productId, actor = null, options = {}) => {
     };
   }
 
-  const validation = runValidation(product, "approve");
-  if (!validation.ok) return validationFailure(validation, actor);
+  /* Approval matches the server: pending-review only. Publish checklist
+     (cover, pricing, description) is enforced on publish, not here. */
 
   const result = catalogRepository.updateProduct(
     productId,

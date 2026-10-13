@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Categories & Subcategories API
+ * PRATIKSHYA FASHION — Categories & Subcategories API
  * Maps to API_CONTRACT.md § CATEGORIES + SUBCATEGORIES
  */
 import { apiClient, ApiError, handleError } from "./apiClient";

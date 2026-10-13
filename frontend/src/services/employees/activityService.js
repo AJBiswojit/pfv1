@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Lightweight employee activity log.
+ * PRATIKSHYA FASHION — Lightweight employee activity log.
  *
  * Structured so the future Admin Portal can consume it. This is not an
  * enterprise audit trail — just a readable house diary of people events.

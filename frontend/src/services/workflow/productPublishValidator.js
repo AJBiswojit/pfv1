@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Universal publish validator (Phase 2, Step B).
+ * PRATIKSHYA FASHION — Universal publish validator (Phase 2, Step B).
  *
  * The ONE validation orchestration layer for publication. It determines the
  * ACTUAL current truth from the data — it does not copy legacy flags.
@@ -27,6 +27,7 @@ import taxonomyRepository from "../taxonomyRepository.js";
 import {
   DEPARTMENT_OPTIONS,
   categoriesForDepartment,
+  departmentForProduct,
   subcategoriesForDepartmentCategory,
 } from "../../data/products/departments.js";
 import mediaRepository from "../media/mediaRepository.js";
@@ -182,14 +183,15 @@ const priceStatus = (product) => {
 
 const taxonomyStatus = (product) => {
   const issues = [];
-  const departmentId = String(product.department ?? "").trim();
   const categoryId = String(product.category ?? "").trim();
   const subcategoryId = String(product.subcategory ?? "").trim();
+  /* Department is not a persisted catalogue column. Infer it from category
+     the same way the rest of the house does — never fail a Women / Sarees
+     product for a blank stored department. */
+  const departmentId = String(departmentForProduct(product) || product.department || "").trim();
 
   const department = DEPARTMENT_OPTIONS.find((entry) => entry.value === departmentId);
-  if (!departmentId) {
-    issues.push(error("DEPARTMENT_REQUIRED", "taxonomy", "Department is required."));
-  } else if (!department) {
+  if (departmentId && !department) {
     issues.push(
       error(
         "DEPARTMENT_INVALID",
@@ -233,9 +235,7 @@ const taxonomyStatus = (product) => {
         (entry) => entry.value === subcategoryId
       )
     : null;
-  if (!subcategoryId) {
-    issues.push(error("SUBCATEGORY_REQUIRED", "taxonomy", "Subcategory is required."));
-  } else if (category && !subcategory) {
+  if (subcategoryId && category && !subcategory) {
     issues.push(
       error(
         "SUBCATEGORY_INVALID",
@@ -254,12 +254,13 @@ const mediaStatus = (product) => {
   const set = getProductMediaSet(product);
   const claims = resolveProductMediaClaims(product, product.id);
 
-  /* Missing / missing-file / cross-product claims. */
+  /* Missing / missing-file / cross-product claims.
+     MEDIA_NOT_FOUND against the *session* media register is not a publish
+     blocker: server products carry media_product_media UUIDs that are never
+     mirrored into that register. Cover is still required below. */
   claims.conflicts.forEach((conflict) => {
     if (conflict.reason === "MEDIA_NOT_FOUND") {
-      issues.push(
-        error("MEDIA_NOT_FOUND", "media", `Claimed media ${conflict.mediaId} does not exist in the media register.`, ISSUE_SOURCES.MEDIA)
-      );
+      return;
     } else if (conflict.reason === "MEDIA_MISSING_FILE") {
       issues.push(
         error("MEDIA_MISSING_FILE", "media", `Claimed media ${conflict.mediaId} has no usable file.`, ISSUE_SOURCES.MEDIA)

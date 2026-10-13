@@ -21,8 +21,8 @@ export default function InventoryMovementsPage({ portal = "admin" }) {
   const { employee } = useEmployeeAuth();
   const [filters, setFilters] = useState({ search: "", type: "", locationId: "" });
   const [selected, setSelected] = useState(null);
-  const Page = portal === "admin" ? AdminPage : EmployeePage;
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const Page = portal === "employee" ? EmployeePage : AdminPage;
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
   const warehouseOnly = portal === "employee" && employee?.role === ROLES.WAREHOUSE_STAFF;
   const locations = inventory.locations.filter((location) => !warehouseOnly || location.type === "WAREHOUSE");
   const scopedMovements = inventory.movements.filter((movement) =>
@@ -43,7 +43,7 @@ export default function InventoryMovementsPage({ portal = "admin" }) {
 
   return (
     <Page
-      eyebrow={`${portal === "admin" ? "Business" : "Retail operations"} / Inventory`}
+      eyebrow={`${portal === "employee" ? "Retail operations" : "Business"} / Inventory`}
       title="Stock Movement History"
       description="The dedicated quantity ledger for receiving, adjustments, transfers, reservations, sales, returns and damage."
       actions={<AtelierButton as={Link} to={root} variant="outline" size="chip">Back to inventory</AtelierButton>}

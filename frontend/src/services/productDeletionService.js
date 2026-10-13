@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Safe product deletion service (Phase 3F).
+ * PRATIKSHYA FASHION — Safe product deletion service (Phase 3F).
  *
  * "Delete" in this architecture is a lifecycle decision, not a row drop.
  *

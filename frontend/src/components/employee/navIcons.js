@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 
 /**
- * PRATIKSHYA FASHON — Employee navigation icon map.
+ * PRATIKSHYA FASHION — Employee navigation icon map.
  *
  * Icons come from the project's single icon dependency (lucide-react).
  * Keys here are referenced by the employee navigation configuration. The

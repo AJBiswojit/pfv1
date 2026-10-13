@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employees API
+ * PRATIKSHYA FASHION — Employees API
  * Maps to API_CONTRACT.md § EMPLOYEE
  *
  * Admin: CRUD, status, reset-password, permissions, departments, sections, attendance
@@ -15,7 +15,11 @@ import { apiClient, ApiError, getAccessToken, handleError } from "./apiClient";
  * their employee-scoped token — one API, one authorization matrix, enforced
  * server-side; the scope only selects which isolated token is attached.
  */
-export const resolveAccountScope = () => {
+export const resolveAccountScope = (overrideScope = null) => {
+  if (overrideScope) return overrideScope;
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/employee")) {
+    if (getAccessToken("employee")) return "employee";
+  }
   if (getAccessToken("admin")) return "admin";
   if (getAccessToken("employee")) return "employee";
   return "admin";
@@ -41,6 +45,7 @@ function normEmployee(u) {
     designation:        profile.designation ?? u.designation ?? "",
     permissions:        u.permissions ?? [],
     mustChangePassword: Boolean(u.force_password_change ?? u.mustChangePassword ?? false),
+    lastLogin:          u.lastLogin ?? u.last_login ?? u.last_sign_in_at ?? null,
     createdAt:          u.created_at  ?? u.createdAt ?? new Date().toISOString(),
     updatedAt:          u.updated_at  ?? u.updatedAt ?? new Date().toISOString(),
   };
@@ -51,7 +56,7 @@ function normEmployee(u) {
 // ===========================================================================
 
 /** GET /admin/employees?page=&page_size=&search=&status=&department_id=&include_admins= */
-export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, status, departmentId, includeAdmins = false } = {}) {
+export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, status, departmentId, includeAdmins = false } = {}, scope = null) {
   try {
     const qs = new URLSearchParams({ page, page_size: Math.min(pageSize, 100) }); // backend caps at 100
     if (search)       qs.set("search", search);
@@ -61,43 +66,75 @@ export async function apiAdminListEmployees({ page = 1, pageSize = 20, search, s
     // omit this flag so the employee-side roster cannot enumerate admins;
     // the server also refuses the flag below ADMIN regardless.
     if (includeAdmins) qs.set("include_admins", "true");
-    const data = await apiClient.get(`/admin/employees?${qs}`, { scope: resolveAccountScope() });
+    const data = await apiClient.get(`/admin/employees?${qs}`, { scope: resolveAccountScope(scope) });
     const items = (data.items ?? data.data ?? data ?? []).map((e) => normEmployee(e.data ?? e));
     return { ok: true, items, total: data.total ?? items.length };
   } catch (err) { return handleError(err); }
 }
 
 /** GET /admin/employees/{id} */
-export async function apiAdminGetEmployee(id) {
+export async function apiAdminGetEmployee(id, scope = null) {
   try {
-    const data = await apiClient.get(`/admin/employees/${id}`, { scope: resolveAccountScope() });
+    const data = await apiClient.get(`/admin/employees/${id}`, { scope: resolveAccountScope(scope) });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
 
-function sanitizeEmployeePayload(body) {
-  if (!body || typeof body !== "object") return body;
-  const out = { ...body };
-  // joiningDate is optional — employee_profiles has no column for it.
-  // An empty string / whitespace from the form (or a hidden admin-domain
-  // block at adminDomain) must not be sent as "" because Pydantic
-  // Optional[date] rejects "" with 422 ("Input should be a valid date").
-  // Omit it instead; the backend validator also normalises whitespace → None.
-  const isEmptyDate = (v) => v === null || v === "" || (typeof v === "string" && !v.trim());
-  if (isEmptyDate(out.joiningDate)) {
-    delete out.joiningDate;
-  }
-  if (isEmptyDate(out.joining_date)) {
-    delete out.joining_date;
+/** Fields EmployeeCreateRequest actually persists or applies. */
+const EMPLOYEE_CREATE_FIELDS = [
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "role",
+  "department",
+  "department_id",
+  "accountLevel",
+  "permissionMode",
+  "permissions",
+  "designation",
+  "password",
+  "employee_code",
+  "full_name",
+];
+
+/** Fields EmployeeUpdateRequest accepts. Email / status / permissions are not PATCH. */
+const EMPLOYEE_UPDATE_FIELDS = [
+  "firstName",
+  "lastName",
+  "phone",
+  "full_name",
+  "role",
+  "department",
+  "department_id",
+  "designation",
+  "accountLevel",
+];
+
+function pickEmployeeFields(body, keys) {
+  const out = {};
+  for (const key of keys) {
+    if (body[key] !== undefined) out[key] = body[key];
   }
   return out;
 }
 
+function sanitizeEmployeePayload(body, { isUpdate = false } = {}) {
+  if (!body || typeof body !== "object") return body;
+  const out = pickEmployeeFields(body, isUpdate ? EMPLOYEE_UPDATE_FIELDS : EMPLOYEE_CREATE_FIELDS);
+  const isEmpty = (v) => v === null || v === undefined || (typeof v === "string" && !v.trim());
+  if (isEmpty(out.phone)) delete out.phone;
+  if (isEmpty(out.email)) delete out.email;
+  if (isEmpty(out.role)) delete out.role;
+  if (out.permissionMode !== "custom") delete out.permissions;
+  return out;
+}
+
 /** POST /admin/employees */
-export async function apiAdminCreateEmployee(body) {
+export async function apiAdminCreateEmployee(body, scope = null) {
   try {
     const payload = sanitizeEmployeePayload(body);
-    const data = await apiClient.post("/admin/employees", payload, { scope: resolveAccountScope() });
+    const data = await apiClient.post("/admin/employees", payload, { scope: resolveAccountScope(scope) });
     const result = data.data ?? data;
     // The one-time temporary password surfaces here ONLY; it is never persisted client-side.
     return { ok: true, employee: normEmployee(result), temporaryPassword: result.temporaryPassword ?? null };
@@ -105,26 +142,26 @@ export async function apiAdminCreateEmployee(body) {
 }
 
 /** PATCH /admin/employees/{id} */
-export async function apiAdminUpdateEmployee(id, body) {
+export async function apiAdminUpdateEmployee(id, body, scope = null) {
   try {
-    const payload = sanitizeEmployeePayload(body);
-    const data = await apiClient.patch(`/admin/employees/${id}`, payload, { scope: resolveAccountScope() });
+    const payload = sanitizeEmployeePayload(body, { isUpdate: true });
+    const data = await apiClient.patch(`/admin/employees/${id}`, payload, { scope: resolveAccountScope(scope) });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 /** POST /admin/employees/{id}/status  body: { status } */
-export async function apiAdminUpdateEmployeeStatus(id, status) {
+export async function apiAdminUpdateEmployeeStatus(id, status, scope = null) {
   try {
-    const data = await apiClient.post(`/admin/employees/${id}/status`, { status }, { scope: resolveAccountScope() });
+    const data = await apiClient.post(`/admin/employees/${id}/status`, { status }, { scope: resolveAccountScope(scope) });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 /** POST /admin/employees/{id}/reset-password */
-export async function apiAdminResetEmployeePassword(id, body = {}) {
+export async function apiAdminResetEmployeePassword(id, body = {}, scope = null) {
   try {
-    const data = await apiClient.post(`/admin/employees/${id}/reset-password`, body, { scope: resolveAccountScope() });
+    const data = await apiClient.post(`/admin/employees/${id}/reset-password`, body, { scope: resolveAccountScope(scope) });
     return {
       ok: true,
       message: data.message ?? "Password reset.",
@@ -135,17 +172,17 @@ export async function apiAdminResetEmployeePassword(id, body = {}) {
 }
 
 /** PUT /admin/employees/{id}/permissions  body: { permissionMode, permissions } */
-export async function apiAdminUpdateEmployeePermissions(id, { permissionMode, permissions }) {
+export async function apiAdminUpdateEmployeePermissions(id, { permissionMode, permissions }, scope = null) {
   try {
-    const data = await apiClient.put(`/admin/employees/${id}/permissions`, { permissionMode, permissions }, { scope: resolveAccountScope() });
+    const data = await apiClient.put(`/admin/employees/${id}/permissions`, { permissionMode, permissions }, { scope: resolveAccountScope(scope) });
     return { ok: true, employee: normEmployee(data.data ?? data) };
   } catch (err) { return handleError(err); }
 }
 
 /** DELETE /admin/employees/{id} */
-export async function apiAdminDeleteEmployee(id) {
+export async function apiAdminDeleteEmployee(id, scope = null) {
   try {
-    await apiClient.delete(`/admin/employees/${id}`, { scope: resolveAccountScope() });
+    await apiClient.delete(`/admin/employees/${id}`, { scope: resolveAccountScope(scope) });
     return { ok: true };
   } catch (err) { return handleError(err); }
 }

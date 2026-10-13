@@ -1,5 +1,5 @@
 """
-PRATIKSHYA FASHON — canonical account-level / business-role / capability model.
+PRATIKSHYA FASHION — canonical account-level / business-role / capability model.
 
 ONE module, imported by dependencies, services and the Admin API. This is the
 consolidation layer for the authorization vocabulary — it is deliberately NOT
@@ -27,13 +27,11 @@ from typing import Dict, Iterable, List, Optional, Set
 
 ACCOUNT_LEVEL_SUPER_ADMIN = "SUPER_ADMIN"
 ACCOUNT_LEVEL_ADMIN = "ADMIN"
-ACCOUNT_LEVEL_SUPER_EMPLOYEE = "SUPER_EMPLOYEE"
 ACCOUNT_LEVEL_EMPLOYEE = "EMPLOYEE"
 
 ACCOUNT_LEVELS: tuple = (
     ACCOUNT_LEVEL_SUPER_ADMIN,
     ACCOUNT_LEVEL_ADMIN,
-    ACCOUNT_LEVEL_SUPER_EMPLOYEE,
     ACCOUNT_LEVEL_EMPLOYEE,
 )
 
@@ -42,7 +40,7 @@ ACCOUNT_LEVEL_RANK: Dict[str, int] = {level: i for i, level in enumerate(ACCOUNT
 
 #: Levels that operate the Admin workspace vs the Employee workspace.
 ADMIN_WORKSPACE_LEVELS = frozenset({ACCOUNT_LEVEL_SUPER_ADMIN, ACCOUNT_LEVEL_ADMIN})
-EMPLOYEE_WORKSPACE_LEVELS = frozenset({ACCOUNT_LEVEL_SUPER_EMPLOYEE, ACCOUNT_LEVEL_EMPLOYEE})
+EMPLOYEE_WORKSPACE_LEVELS = frozenset({ACCOUNT_LEVEL_EMPLOYEE})
 
 
 def derive_account_level(user_type: Optional[str], roles: Optional[Iterable[str]] = None) -> Optional[str]:
@@ -52,23 +50,18 @@ def derive_account_level(user_type: Optional[str], roles: Optional[Iterable[str]
 
     • admin + SUPER_ADMIN role            → SUPER_ADMIN
     • admin                               → ADMIN
-    • employee + SUPER_EMPLOYEE marker    → SUPER_EMPLOYEE
     • employee                            → EMPLOYEE
     • customer / anything else            → None (no staff level)
     """
-    role_set = {str(r).upper() for r in (roles or [])}
     if user_type == "admin":
+        role_set = {str(r).upper() for r in (roles or [])}
         return (
             ACCOUNT_LEVEL_SUPER_ADMIN
             if ACCOUNT_LEVEL_SUPER_ADMIN in role_set
             else ACCOUNT_LEVEL_ADMIN
         )
     if user_type == "employee":
-        return (
-            ACCOUNT_LEVEL_SUPER_EMPLOYEE
-            if ACCOUNT_LEVEL_SUPER_EMPLOYEE in role_set
-            else ACCOUNT_LEVEL_EMPLOYEE
-        )
+        return ACCOUNT_LEVEL_EMPLOYEE
     return None
 
 
@@ -80,14 +73,44 @@ def account_rank(level: Optional[str]) -> int:
     return ACCOUNT_LEVEL_RANK.get(level or "", len(ACCOUNT_LEVELS))
 
 
+# Stored staff statuses. INACTIVE is a write/filter alias of DEACTIVATED.
+STAFF_STATUS_ACTIVE = "ACTIVE"
+STAFF_STATUS_SUSPENDED = "SUSPENDED"
+STAFF_STATUS_DEACTIVATED = "DEACTIVATED"
+STAFF_LOGIN_BLOCKED_STATUSES = frozenset({
+    STAFF_STATUS_SUSPENDED,
+    STAFF_STATUS_DEACTIVATED,
+    "INACTIVE",
+})
+
+
+def is_staff_login_blocked(status: Optional[str]) -> bool:
+    """True when a staff account must not receive a session."""
+    return (status or "").upper() in STAFF_LOGIN_BLOCKED_STATUSES
+
+
+def status_filter_values(status: Optional[str]) -> Optional[list]:
+    """INACTIVE and DEACTIVATED are one deactivation state for list filters."""
+    if not status:
+        return None
+    key = str(status).upper()
+    if key in {"INACTIVE", STAFF_STATUS_DEACTIVATED}:
+        return ["INACTIVE", STAFF_STATUS_DEACTIVATED]
+    return [key]
+
+
 # ===========================================================================
 # ACCOUNT CREATION HIERARCHY — server-side matrix (spec §6)
 # ===========================================================================
 
 CREATABLE_LEVELS: Dict[str, Set[str]] = {
-    ACCOUNT_LEVEL_SUPER_ADMIN: {ACCOUNT_LEVEL_SUPER_ADMIN, ACCOUNT_LEVEL_ADMIN, ACCOUNT_LEVEL_SUPER_EMPLOYEE, ACCOUNT_LEVEL_EMPLOYEE},
-    ACCOUNT_LEVEL_ADMIN: {ACCOUNT_LEVEL_ADMIN, ACCOUNT_LEVEL_SUPER_EMPLOYEE, ACCOUNT_LEVEL_EMPLOYEE},
-    ACCOUNT_LEVEL_SUPER_EMPLOYEE: {ACCOUNT_LEVEL_SUPER_EMPLOYEE, ACCOUNT_LEVEL_EMPLOYEE},
+    # SUPER_ADMIN is excluded from all creation sets — there can only be one
+    # super admin (the bootstrapped system owner). No account at any level
+    # may create another SUPER_ADMIN through the staff/employee endpoints.
+    # ADMIN may only create EMPLOYEE-level accounts; creating or elevating
+    # another ADMIN is a SUPER_ADMIN-exclusive operation.
+    ACCOUNT_LEVEL_SUPER_ADMIN: {ACCOUNT_LEVEL_ADMIN, ACCOUNT_LEVEL_EMPLOYEE},
+    ACCOUNT_LEVEL_ADMIN: {ACCOUNT_LEVEL_EMPLOYEE},
     ACCOUNT_LEVEL_EMPLOYEE: set(),
 }
 
@@ -95,7 +118,6 @@ CREATABLE_LEVELS: Dict[str, Set[str]] = {
 LEVEL_USER_TYPE: Dict[str, str] = {
     ACCOUNT_LEVEL_SUPER_ADMIN: "admin",
     ACCOUNT_LEVEL_ADMIN: "admin",
-    ACCOUNT_LEVEL_SUPER_EMPLOYEE: "employee",
     ACCOUNT_LEVEL_EMPLOYEE: "employee",
 }
 
@@ -184,9 +206,22 @@ _ROLE_DEFS: Dict[str, dict] = {
             "returns.view", "returns.manage",
             "customers.view", "inventory.view", "inventory.manage", "inventory.receive", "inventory.adjust", "inventory.transfer",
             "employees.view", "employees.create", "employees.edit", "employees.suspend", "employees.resetPassword", "employees.managePermissions", "employees.delete",
-            "analytics.view", "offers.view", "offers.create", "offers.edit",
+            "analytics.view", "offers.view", "offers.create", "offers.edit", "instagram_reward.manage",
             "attendance.view", "leave.view", "leave.approve", "performance.view", "performance.review",
             "audit.view", "users.view", "users.manage", "roles.view", "roles.manage",
+            "ai.view",
+        ],
+    },
+    "SUPER_EMPLOYEE": {
+        "id": "SUPER_EMPLOYEE",
+        "name": "Super Employee",
+        "description": "Elevated employee with workforce and team management authority.",
+        "permissions": [
+            "employees.view", "employees.create", "employees.edit", "employees.suspend", "employees.resetPassword",
+            "analytics.view", "offers.view", "offers.create", "offers.edit",
+            "attendance.view", "attendance.correct", "attendance.manage",
+            "leave.view", "leave.approve", "performance.view", "performance.review",
+            "audit.view", "users.view", "roles.view",
             "ai.view",
         ],
     },
@@ -266,6 +301,40 @@ def build_role_catalog() -> Dict[str, dict]:
 
 
 BUILT_IN_ROLES: Dict[str, dict] = build_role_catalog()
+
+
+def resolve_stored_grants(
+    *,
+    account_level: Optional[str],
+    roles: Optional[Iterable[str]],
+    permission_mode: Optional[str],
+    custom_permissions: Optional[Iterable[str]],
+    role_permission_codes: Optional[Iterable[str]] = None,
+) -> Set[str]:
+    """
+    The grant list that authorization expands.
+
+    ``permission_mode == "custom"`` REPLACES role defaults with the stored
+    ``custom_permissions`` list (empty list = no extra grants). Role mode
+    keeps role-row codes plus the BUILT_IN_ROLES fallback. SUPER_ADMIN
+    always keeps the top-level ``*`` override — custom mode cannot shrink it.
+    """
+    role_list = [str(role) for role in (roles or []) if role]
+    is_super_admin = (
+        (account_level or "").upper() == ACCOUNT_LEVEL_SUPER_ADMIN
+        or ACCOUNT_LEVEL_SUPER_ADMIN in {role.upper() for role in role_list}
+    )
+    if (permission_mode or "").lower() == "custom":
+        grants = {str(code) for code in (custom_permissions or []) if code}
+    else:
+        grants = {str(code) for code in (role_permission_codes or []) if code}
+        for role in role_list:
+            entry = BUILT_IN_ROLES.get(canonical_role_name(role) or "")
+            if entry:
+                grants.update(entry.get("permissions") or [])
+    if is_super_admin:
+        grants.add("*")
+    return grants
 
 
 # ===========================================================================
@@ -390,7 +459,9 @@ CAPABILITY_GROUPS: List[dict] = [
             {"code": "offers.view", "label": "View", "implies": ["offers.view"]},
             {"code": "offers.manage", "label": "Manage",
              "implies": ["offers.create", "offers.edit", "offers.activate",
-                         "offers.pause", "offers.archive", "offers.manage"]},
+                         "offers.pause", "offers.archive", "offers.manage", "instagram_reward.manage"]},
+            {"code": "instagram_reward.manage", "label": "Manage Instagram Rewards",
+             "implies": ["instagram_reward.manage"]},
         ],
     },
     {
@@ -441,7 +512,7 @@ LEGACY_TO_CAPABILITY.update({cap: cap for cap in ALL_CAPABILITIES})
 #: Granting these is admin-domain authority (§7, §10).
 ADMIN_ONLY_CAPABILITIES = frozenset({"settings.manage", "people.security"})
 
-#: Everything an employee-domain creator (SUPER_EMPLOYEE) may hand out.
+#: Everything an employee-domain creator may hand out.
 EMPLOYEE_DOMAIN_CAPABILITIES = frozenset(ALL_CAPABILITIES) - ADMIN_ONLY_CAPABILITIES
 
 
@@ -498,10 +569,10 @@ def check_delegation(
     Raises (ForbiddenException=403 / BusinessLogicException=422):
       • creator level may not create the target level at all
       • requested capabilities exceed what the creator can delegate
-      • an employee-domain creator (SUPER_EMPLOYEE) attempts to hand out
+      • the target is employee-domain and the request includes
         admin-domain authority (settings.manage / people.security)
-    SUPER_ADMIN is unrestricted (top-level override) but must still target a
-    known level.
+    SUPER_ADMIN is unrestricted for Admin-workspace targets, but those two
+    codes still cannot be granted to Super Employee or Employee.
     """
     from app.core.exceptions import BusinessLogicException, ForbiddenException
 
@@ -513,18 +584,8 @@ def check_delegation(
         raise ForbiddenException(
             f"Accounts at level {target_level} cannot be created by {creator_level or 'this'} account."
         )
-    if creator_level == ACCOUNT_LEVEL_SUPER_ADMIN:
-        return  # system-owner: unrestricted delegation
-    creator_effective = set(expand_effective_permissions(creator_capabilities))
-    if "*" in creator_effective:
-        return  # wildcard holder behaves as top-level override
     requested_effective = set(expand_effective_permissions(requested))
-    if creator_level == ACCOUNT_LEVEL_SUPER_EMPLOYEE:
-        # Employee-domain creators may hand out employee-domain authority
-        # only. Compare at the ROLL-UP level (capability of every code,
-        # legacy included) — intersecting the expanded ceiling with the
-        # canonical set would wrongly reject the granular codes a granted
-        # capability itself implies (e.g. catalogue.view → products.view).
+    if target_level == ACCOUNT_LEVEL_EMPLOYEE:
         forbidden = sorted(
             {
                 cap
@@ -535,9 +596,14 @@ def check_delegation(
         )
         if forbidden:
             raise ForbiddenException(
-                "Super Employee accounts cannot be granted admin-domain authority: "
+                "Employee-domain accounts cannot be granted admin-domain authority: "
                 + ", ".join(forbidden)
             )
+    if creator_level == ACCOUNT_LEVEL_SUPER_ADMIN:
+        return  # system-owner: unrestricted for Admin-workspace targets
+    creator_effective = set(expand_effective_permissions(creator_capabilities))
+    if "*" in creator_effective:
+        return  # wildcard holder behaves as top-level override
     over = sorted(requested_effective - creator_effective)
     if over:
         raise ForbiddenException(
@@ -559,9 +625,9 @@ _KNOWN_OPERATIONAL: frozenset = frozenset({
     "settings.view", "settings.manage",
 })
 
-#: Subset actually injected onto every employee-domain session (EMPLOYEE and
-#: SUPER_EMPLOYEE). The capability UI has no Dashboard/Profile row, so without
-#: this union a newly created account authenticates then cannot open /employee.
+#: Subset actually injected onto every employee-domain session (EMPLOYEE).
+#: The capability UI has no Dashboard/Profile row, so without this union a
+#: newly created account authenticates then cannot open /employee.
 #: House-wide keys (attendance.manage, leave.approve, people.*, settings.*)
 #: stay assignment-only and are NOT in this set.
 EMPLOYEE_SELF_SERVICE_PERMISSIONS: frozenset = frozenset({

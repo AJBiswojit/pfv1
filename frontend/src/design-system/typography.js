@@ -1,9 +1,13 @@
 /**
- * PRATIKSHYA FASHON — Atelier Typography
+ * PRATIKSHYA FASHION — Atelier Typography
  *
- * Two typefaces carry the whole brand:
+ * Three typefaces carry the brand:
  *   display — Cormorant Garamond, used for every headline and product name.
  *   ui      — Instrument Sans, used for eyebrows, navigation, meta and prices.
+ *   accent  — Playfair Display, used for pull-quotes and campaign accent moments.
+ *             Replaces Cormorant Infinitum: Playfair Display shares the same
+ *             high-fashion editorial character but has a more legible contrast
+ *             ratio at screen sizes below 48 px.
  *
  * Headline weights are always `font-light`; the italic accent word is the only
  * emphasis device. All scales below are lifted verbatim from the Phase 1
@@ -13,51 +17,66 @@
 export const fonts = {
   display: "font-display",
   ui: "font-ui",
+  accent: "font-accent",
 };
 
 export const fontFamilies = {
   display: '"Cormorant Garamond", Georgia, serif',
   ui: '"Instrument Sans", system-ui, sans-serif',
+  accent: '"Playfair Display", Georgia, serif',
 };
 
 /* ------------------------------------------------------------------ */
-/* Display scale (serif, font-light, tracking-tight)                   */
+/* Accent scale (Playfair Display — pull-quotes & campaign moments)    */
+/* ------------------------------------------------------------------ */
+
+export const accent = {
+  /** Large pull-quote or campaign statement. */
+  pullquote: "font-accent text-2xl md:text-4xl font-normal italic leading-snug tracking-tight",
+  /** Inline accent phrase inside a serif paragraph. */
+  inline: "font-accent font-normal italic",
+  /** Small decorative caption beneath imagery. */
+  caption: "font-accent text-sm font-normal italic",
+};
+
+/* ------------------------------------------------------------------ */
+/* Display scale (accent serif, font-light, tracking-tight)            */
 /* ------------------------------------------------------------------ */
 
 export const display = {
   /** Hero headline — the largest type on the site. */
-  hero: "text-6xl md:text-[9rem] lg:text-[11rem] font-light leading-[0.82] tracking-tight",
+  hero: "font-accent text-6xl md:text-[9rem] lg:text-[11rem] font-light leading-[0.82] tracking-tight",
   /** Full-bleed campaign band headline. */
-  campaign: "text-4xl md:text-7xl lg:text-8xl font-light tracking-tight",
+  campaign: "font-accent text-4xl md:text-7xl lg:text-8xl font-light tracking-tight",
   /** Centred brand manifesto headline. */
-  manifesto: "text-4xl md:text-6xl lg:text-8xl font-light tracking-tight",
+  manifesto: "font-accent text-4xl md:text-6xl lg:text-8xl font-light tracking-tight",
   /** Headline of a dark editorial section. */
-  editorial: "text-4xl md:text-6xl lg:text-7xl font-light tracking-tight",
+  editorial: "font-accent text-4xl md:text-6xl lg:text-7xl font-light tracking-tight",
   /** Headline of a feature section. */
-  feature: "text-3xl md:text-6xl lg:text-7xl font-light tracking-tight",
+  feature: "font-accent text-3xl md:text-6xl lg:text-7xl font-light tracking-tight",
   /** Standard section headline. */
-  section: "text-4xl md:text-7xl font-light tracking-tight",
+  section: "font-accent text-4xl md:text-7xl font-light tracking-tight",
   /** Quiet section headline above a grid. */
-  subsection: "text-3xl md:text-5xl font-light tracking-tight",
+  subsection: "font-accent text-3xl md:text-5xl font-light tracking-tight",
 };
 
 /* ------------------------------------------------------------------ */
-/* Heading scale (serif, sub-display)                                  */
+/* Heading scale (accent serif, sub-display)                           */
 /* ------------------------------------------------------------------ */
 
 export const heading = {
   /** Panel headline beside an image (fabric stories, collection tiles). */
-  xl: "text-3xl md:text-5xl font-light",
+  xl: "font-accent text-3xl md:text-5xl font-light",
   /** Editorial article title. */
-  lg: "text-3xl md:text-4xl font-light",
+  lg: "font-accent text-3xl md:text-4xl font-light",
   /** Caption headline laid over imagery. */
-  md: "text-2xl md:text-4xl font-light",
+  md: "font-accent text-2xl md:text-4xl font-light",
   /** Campaign sub-headline. */
-  sm: "text-xl md:text-3xl font-light",
+  sm: "font-accent text-xl md:text-3xl font-light",
   /** Product name. */
-  product: "text-base md:text-lg font-light",
+  product: "font-accent text-base md:text-lg font-light",
   /** Footer brand mark. */
-  footer: "text-xl",
+  footer: "font-accent text-xl",
 };
 
 /* ------------------------------------------------------------------ */
@@ -128,6 +147,7 @@ export const badge = "text-[9px] uppercase tracking-widest";
 export const typography = {
   fonts,
   fontFamilies,
+  accent,
   display,
   heading,
   eyebrow,

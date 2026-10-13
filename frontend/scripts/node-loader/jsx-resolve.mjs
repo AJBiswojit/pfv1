@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Node ESM resolver hook with JSX support (QA tooling only).
+ * PRATIKSHYA FASHION — Node ESM resolver hook with JSX support (QA tooling only).
  *
  * `resolve.mjs` lets the test runner import `src/*` services unmodified. This
  * hook extends it so React *components* can also be imported outside Vite:

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Workforce API client.
+ * PRATIKSHYA FASHION — Workforce API client.
  *
  * Thin async wrappers over the workforce backend (attendance punches, leave,
  * performance). The session mirror (`../workforce/store.js`) is populated by
@@ -183,3 +183,57 @@ export default {
   apiCreatePerformance,
   apiUpdatePerformance,
 };
+
+// ── Attendance Devices ───────────────────────────────────────────────────────
+
+/** Requires `attendance.manage`. List all registered punching machines. */
+export async function apiListAttendanceDevices() {
+  try {
+    const data = await apiClient.get("/admin/attendance/devices", opts());
+    return { ok: true, items: data.items ?? [] };
+  } catch (err) {
+    return { ...handleError(err), items: [] };
+  }
+}
+
+/** Requires `attendance.manage`. Register a new punching machine. */
+export async function apiCreateAttendanceDevice({ serialNumber, label }) {
+  try {
+    const data = await apiClient.post("/admin/attendance/devices", { serialNumber, label }, opts());
+    return { ok: true, record: data, message: "Device registered." };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/** Requires `attendance.manage`. Patch a device (isActive, label, or both). */
+export async function apiUpdateAttendanceDevice(deviceId, patch) {
+  try {
+    const data = await apiClient.patch(`/admin/attendance/devices/${deviceId}`, patch, opts());
+    return { ok: true, record: data, message: "Device updated." };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+// ── Unmapped Punches ─────────────────────────────────────────────────────────
+
+/** Requires `attendance.manage`. List unrecognised machine device-pins. */
+export async function apiListUnmappedPunches() {
+  try {
+    const data = await apiClient.get("/admin/attendance/unmapped-punches", opts());
+    return { ok: true, items: data.items ?? [] };
+  } catch (err) {
+    return { ...handleError(err), items: [] };
+  }
+}
+
+/** Requires `attendance.manage`. Link a device-pin to an employee. */
+export async function apiMapDevicePin(employeeId, devicePin) {
+  try {
+    const data = await apiClient.put(`/admin/attendance/device-pin/${employeeId}`, { devicePin }, opts());
+    return { ok: true, record: data, message: "Device pin linked to employee." };
+  } catch (err) {
+    return handleError(err);
+  }
+}

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Category listing placement surfaces.
+ * PRATIKSHYA FASHION — Category listing placement surfaces.
  *
  * The pure bridge between a category listing page's locked scope filters and
  * the PRODUCT marketing placements whose documented surface is that page

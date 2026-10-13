@@ -19,7 +19,7 @@ export default function EmployeeChangePassword() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Change Password — PRATIKSHYA FASHON";
+    document.title = "Change Password — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };

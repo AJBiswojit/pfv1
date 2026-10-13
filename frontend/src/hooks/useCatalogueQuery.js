@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue query state (backend-authoritative).
+ * PRATIKSHYA FASHION — Catalogue query state (backend-authoritative).
  *
  *   - Reads filters / sort / search from the URL (unchanged behaviour).
  *   - Queries GET /products (or GET /search when a search term is set)

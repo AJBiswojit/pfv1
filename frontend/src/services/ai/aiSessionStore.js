@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI assistant session persistence (Phase 21.1).
+ * PRATIKSHYA FASHION — AI assistant session persistence (Phase 21.1).
  *
  * Lightweight demo persistence for assistant conversations, scoped per
  * customer or admin id. Follows the house pattern (namespaced localStorage

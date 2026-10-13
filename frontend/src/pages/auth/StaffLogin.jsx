@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowRight, Eye, EyeOff, KeyRound } from "lucide-react";
 import { AtelierButton, Brand, Rule } from "../../design-system";
-import { sanitizeAdminReturnUrl } from "../../config/adminNavigation";
+import { sanitizeAdminReturnUrl, sanitizeSuperAdminReturnUrl } from "../../config/adminNavigation";
 import { sanitizeEmployeeReturnUrl } from "../../config/employeeNavigation";
 import { homeForAccountLevel } from "../../config/rbacModel";
 import { useAdminAuth } from "../../context/AdminAuthContext";
@@ -10,7 +10,7 @@ import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { apiSignInStaff } from "../../services/api/authApi";
 
 /**
- * PRATIKSHYA FASHON — the ONE canonical staff sign-in page.
+ * PRATIKSHYA FASHION — the ONE canonical staff sign-in page.
  *
  * Serves all four account levels: SUPER_ADMIN · ADMIN · SUPER_EMPLOYEE ·
  * EMPLOYEE. The backend authenticates the credential (email, phone or PF
@@ -34,7 +34,7 @@ export default function StaffLogin() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Sign In — PRATIKSHYA FASHON";
+    document.title = "Sign In — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };
@@ -63,17 +63,21 @@ export default function StaffLogin() {
     // Sync the owning workspace context with the freshly-issued, scoped
     // session (both contexts re-validate against the backend), then route
     // to the destination the SERVER resolved. The workspace home comes from
-    // the authoritative accountLevel (SUPER_ADMIN/ADMIN → /admin,
-    // SUPER_EMPLOYEE/EMPLOYEE → /employee); `workspace` is only a fallback
-    // for sessions that predate the accountLevel field. returnTo is honored
-    // only when it belongs to the resolved workspace.
+    // the authoritative accountLevel (SUPER_ADMIN → /super-admin,
+    // ADMIN → /admin, SUPER_EMPLOYEE/EMPLOYEE → /employee); `workspace` is
+    // only a fallback for sessions that predate the accountLevel field.
+    // returnTo is honored only when it belongs to the resolved workspace.
     const home = homeForAccountLevel(result.accountLevel) ??
       (result.workspace === "admin" ? "/admin" : "/employee");
-    const returnTo = home === "/admin"
-      ? sanitizeAdminReturnUrl(searchParams.get("returnTo"))
-      : sanitizeEmployeeReturnUrl(searchParams.get("returnTo"));
 
-    if (home === "/admin") {
+    const isAdminWorkspace = home === "/admin" || home === "/super-admin";
+    const returnTo = home === "/super-admin"
+      ? sanitizeSuperAdminReturnUrl(searchParams.get("returnTo"))
+      : isAdminWorkspace
+        ? sanitizeAdminReturnUrl(searchParams.get("returnTo"))
+        : sanitizeEmployeeReturnUrl(searchParams.get("returnTo"));
+
+    if (isAdminWorkspace) {
       const session = await refreshAdminSession();
       setIsSubmitting(false);
       if (!session?.isAuthenticated) {
@@ -104,7 +108,7 @@ export default function StaffLogin() {
           size="default"
           variant="lockup"
           theme="dark"
-          wordmark="PRATIKSHYA FASHON"
+          wordmark="PRATIKSHYA FASHION"
           subtitle="Staff Sign In · Admin & Team Portal"
         />
       </header>
@@ -152,7 +156,7 @@ export default function StaffLogin() {
                 autoComplete="username"
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                placeholder="you@pratikshyafashon.in · PF-SLS-00124"
+                placeholder="you@pratikshyafashion.in · PF-SLS-00124"
                 className="w-full border border-pearl bg-canvas px-4 py-3.5 font-ui text-sm text-ink placeholder:text-taupe/60 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               />
             </div>
@@ -223,7 +227,7 @@ export default function StaffLogin() {
               Customer sign in
             </Link>
             <a
-              href="mailto:operations@pratikshyafashon.in"
+              href="mailto:operations@pratikshyafashion.in"
               className="font-ui text-[11px] text-taupe underline-offset-4 hover:text-accent hover:underline"
             >
               Contact administrator

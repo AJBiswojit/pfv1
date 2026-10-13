@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Recently viewed (Phase 19).
+ * PRATIKSHYA FASHION — Recently viewed (Phase 19).
  *
  * Isolated namespace. Stores only productId + timestamp.
  * Customer-scoped when authenticated; guest namespace otherwise.

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Customer Authentication Context
+ * PRATIKSHYA FASHION — Customer Authentication Context
  *
  * Wired to the FastAPI backend (Phase B).
  * All identity operations call /api/v1/auth/customer/* via authApi.js.
@@ -29,6 +29,7 @@ import {
 import { writeStorage } from "../utils/shopping";
 import {
   apiSignInCustomer,
+  apiSignInGoogleCustomer,
   apiSignUpCustomer,
   apiSignOutCustomer,
   apiForgotPasswordCustomer,
@@ -163,6 +164,19 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
+  // ── Google Sign In ───────────────────────────────────────────────────────
+
+  const signInWithGoogle = useCallback(async ({ idToken }) => {
+    setIsLoading(true);
+    const result = await apiSignInGoogleCustomer({ idToken });
+    setIsLoading(false);
+
+    if (!result.ok) return { ok: false, error: result.error };
+
+    setUser(result.user);
+    return { ok: true, user: result.user };
+  }, []);
+
   // ── Context value ─────────────────────────────────────────────────────────
 
   const value = useMemo(() => ({
@@ -170,12 +184,13 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user),
     isLoading,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     forgotPassword,
     resetPassword,
     updateUser,
-  }), [user, isLoading, signIn, signUp, signOut, forgotPassword, resetPassword, updateUser]);
+  }), [user, isLoading, signIn, signInWithGoogle, signUp, signOut, forgotPassword, resetPassword, updateUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -191,12 +206,13 @@ export function useAuth() {
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      signIn:        async () => ({ ok: false, error: "" }),
-      signUp:        async () => ({ ok: false, error: "" }),
-      signOut:       async () => {},
-      forgotPassword: async () => ({ ok: false, error: "" }),
-      resetPassword: async () => ({ ok: false, error: "" }),
-      updateUser:    () => {},
+      signIn:           async () => ({ ok: false, error: "" }),
+      signInWithGoogle: async () => ({ ok: false, error: "" }),
+      signUp:           async () => ({ ok: false, error: "" }),
+      signOut:          async () => {},
+      forgotPassword:   async () => ({ ok: false, error: "" }),
+      resetPassword:    async () => ({ ok: false, error: "" }),
+      updateUser:       () => {},
     };
   }
   return context;

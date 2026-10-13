@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin session service.
+ * PRATIKSHYA FASHION — Admin session service.
  *
  *   AdminAuthContext → adminAuthService → mock admin identity   (now)
  *   AdminAuthContext → adminAuthService → admin API             (later)

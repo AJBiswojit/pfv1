@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Namespaced employee storage keys.
+ * PRATIKSHYA FASHION — Namespaced employee storage keys.
  *
  * Employee data is isolated from customer auth, bag and order storage.
  * Credentials never live on the employee profile record.

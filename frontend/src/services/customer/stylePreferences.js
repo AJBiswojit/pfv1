@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Optional style preferences (Phase 19).
+ * PRATIKSHYA FASHION — Optional style preferences (Phase 19).
  *
  * Isolated namespace. Customer-scoped. Never invents taste.
  *

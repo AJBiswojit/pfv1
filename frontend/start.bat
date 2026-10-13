@@ -1,12 +1,12 @@
 @echo off
 REM ============================================================
-REM  PRATIKSHYA FASHON - Frontend startup [Windows]
+REM  PRATIKSHYA FASHION - Frontend startup [Windows]
 REM
 REM  Run from the IDE embedded terminal - no external window needed.
 REM  Vite dev server URL: http://localhost:5173
 REM ============================================================
 setlocal
-title PRATIKSHYA FASHON - Frontend
+title PRATIKSHYA FASHION - Frontend
 
 REM This script now lives inside the frontend\ folder.
 REM %~dp0 resolves to that folder at runtime.
@@ -55,7 +55,7 @@ if not exist ".env" (
 )
 
 echo ============================================================
-echo  PRATIKSHYA FASHON - Frontend
+echo  PRATIKSHYA FASHION - Frontend
 echo ============================================================
 echo  Frontend        : http://localhost:5173
 echo  Backend expected: http://localhost:8000

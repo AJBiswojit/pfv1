@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product access facade.
+ * PRATIKSHYA FASHION — Product access facade.
  *
  * All product records come from the backend-fed catalog store
  * (`src/services/catalog/catalogStore.js`) hydrated from GET /products,

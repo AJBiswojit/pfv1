@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Order service (Phase 15)
+ * PRATIKSHYA FASHION — Order service (Phase 15)
  *
  * Single source for order persistence + operational transitions.
  * Extensions preserve Phase 7-14 behaviour and add fulfillment workflow.

@@ -130,7 +130,7 @@ export default function AccountDashboard() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "My PRATIKSHYA — PRATIKSHYA FASHON";
+    document.title = "My PRATIKSHYA — PRATIKSHYA FASHION";
     const robots = document.querySelector('meta[name="robots"]');
     const created = !robots;
     const node = robots || document.createElement("meta");

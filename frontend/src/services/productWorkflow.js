@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media-to-product workflow (Phase 22).
+ * PRATIKSHYA FASHION — Media-to-product workflow (Phase 22).
  *
  * The deterministic MEDIA → PRODUCT DRAFT → REVIEW → PUBLISH pipeline.
  *

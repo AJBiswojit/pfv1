@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee offers (Phase 17)
+ * PRATIKSHYA FASHION — Employee offers (Phase 17)
  *
  * Floor visibility of the same offer register the Admin Portal authors.
  * Create / edit only appear when the signed-in role has permission.

@@ -120,7 +120,7 @@ export default function CategoryPage() {
       {!group && (
         <AtelierSection rhythm="compact" width="prose" className="text-center">
           <p className={cn(body.story, "text-graphite mb-10")}>
-            This page is part of the PRATIKSHYA FASHON shell. Its content arrives with the phase
+            This page is part of the PRATIKSHYA FASHION shell. Its content arrives with the phase
             that owns it — the navigation, layout and routing around it are in place.
           </p>
           <AtelierButton as={Link} to="/">

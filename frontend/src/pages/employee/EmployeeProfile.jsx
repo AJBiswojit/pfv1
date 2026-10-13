@@ -5,48 +5,60 @@ import EmployeeField, { employeeInputClass } from "../../components/employee/Emp
 import EmployeePage from "../../components/employee/EmployeePage";
 import StatusBadge from "../../components/employee/StatusBadge";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
-import { useEmployeeManagement } from "../../context/EmployeeManagementContext";
 import { getDepartmentLabel, getSectionLabel, getStoreLabel } from "../../config/employeeDepartments";
 import { getRoleLabel } from "../../config/employeeRoles";
-import { formatEmployeeDate } from "../../utils/employee";
+import { employeeFullName, formatEmployeeDate } from "../../utils/employee";
 import { isValidPhone } from "../../utils/validation";
 import { PERMISSIONS } from "../../config/employeePermissions";
 import { cn } from "../../utils/cn";
 
 export default function EmployeeProfile() {
-  const { employee, hasPermission, refreshSession } = useEmployeeAuth();
-  const { updateOwnProfile } = useEmployeeManagement();
+  const { employee, hasPermission, updateOwnProfile } = useEmployeeAuth();
   const canEdit = hasPermission(PERMISSIONS.PROFILE_EDIT);
-  const [phone, setPhone] = useState(employee?.phone || "");
+  const [draft, setDraft] = useState({ name: "", phone: "" });
   const [feedback, setFeedback] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setPhone(employee?.phone || "");
-  }, [employee?.phone]);
+    if (!employee) return;
+    setDraft({
+      name: employeeFullName(employee) === "Team member" ? "" : employeeFullName(employee),
+      phone: employee.phone || "",
+    });
+  }, [employee?.id, employee?.firstName, employee?.lastName, employee?.name, employee?.phone]);
 
   if (!employee) return null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!canEdit) return;
-    if (phone && !isValidPhone(phone)) {
+    if (!draft.name.trim()) {
+      setFeedback({ ok: false, message: "Name is required." });
+      return;
+    }
+    if (draft.phone && !isValidPhone(draft.phone)) {
       setFeedback({ ok: false, message: "Please enter a valid 10-digit mobile number." });
       return;
     }
     setSaving(true);
-    const result = await updateOwnProfile({ phone });
+    const result = await updateOwnProfile({
+      name: draft.name.trim(),
+      phone: draft.phone,
+    });
     setSaving(false);
     if (result.ok) {
-      refreshSession();
-      setFeedback({ ok: true, message: "Your reachable number has been updated." });
+      setFeedback({ ok: true, message: "Your profile has been saved." });
     } else {
-      setFeedback({ ok: false, message: result.errors?.phone || "The profile could not be updated." });
+      setFeedback({
+        ok: false,
+        message: result.errors?.phone || result.error || "The profile could not be updated.",
+      });
     }
   };
 
+  const displayName = employeeFullName(employee);
   const rows = [
-    ["Name", `${employee.firstName} ${employee.lastName}`],
+    ["Name", displayName],
     ["Employee ID", employee.employeeId],
     ["Role", getRoleLabel(employee.role)],
     ["Department", getDepartmentLabel(employee.department)],
@@ -55,6 +67,7 @@ export default function EmployeeProfile() {
     ["Joining date", formatEmployeeDate(employee.joiningDate)],
     ["Email", employee.email],
     ["Shift", employee.shift],
+    ["Title", employee.designation],
   ];
 
   return (
@@ -65,7 +78,7 @@ export default function EmployeeProfile() {
           Your house <span className="italic text-accent">profile.</span>
         </>
       }
-      description="Role, department and employee ID are issued by administration. You may keep your reachable number current."
+      description="Role, department and employee ID are issued by administration. You may keep your name and reachable number current."
     >
       <div className="mb-6">
         <StatusBadge status={employee.status} />
@@ -89,27 +102,37 @@ export default function EmployeeProfile() {
           {rows.map(([label, value]) => (
             <div key={label} className="grid gap-1 px-5 py-4 sm:grid-cols-[180px_minmax(0,1fr)]">
               <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-              <dd className="font-ui text-sm text-ink">{value}</dd>
+              <dd className="font-ui text-sm text-ink">{value || "—"}</dd>
             </div>
           ))}
         </dl>
 
         <form onSubmit={handleSubmit} className="border border-mist/80 bg-surface/40 p-6">
-          <EmployeeField label="Phone" hint="The number the floor uses to reach you.">
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              disabled={!canEdit}
-              className={employeeInputClass()}
-            />
-          </EmployeeField>
+          <div className="grid gap-5">
+            <EmployeeField label="Name" required hint="Shown on your desk and in the directory.">
+              <input
+                value={draft.name}
+                onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                disabled={!canEdit}
+                className={employeeInputClass()}
+              />
+            </EmployeeField>
+            <EmployeeField label="Phone" hint="The number the floor uses to reach you.">
+              <input
+                value={draft.phone}
+                onChange={(event) => setDraft({ ...draft, phone: event.target.value })}
+                disabled={!canEdit}
+                className={employeeInputClass()}
+              />
+            </EmployeeField>
+          </div>
           <p className="mt-4 font-ui text-[11px] text-taupe">
             Role, department, section and status can only be changed by an administrator.
           </p>
           {canEdit ? (
             <div className="mt-6">
               <AtelierButton type="submit" size="chip" disabled={saving}>
-                {saving ? "Saving..." : "Save phone"}
+                {saving ? "Saving..." : "Save profile"}
               </AtelierButton>
             </div>
           ) : null}

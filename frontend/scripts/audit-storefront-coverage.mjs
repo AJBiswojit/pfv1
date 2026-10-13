@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Storefront coverage audit (Phase 23).
+ * PRATIKSHYA FASHION — Storefront coverage audit (Phase 23).
  *
  * For every ACTIVE category, compares the EXPECTED PUBLISHED PRODUCT IDS
  * (the canonical catalogue filtered by status = PUBLISHED and canonical

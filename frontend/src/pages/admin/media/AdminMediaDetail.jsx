@@ -30,9 +30,10 @@ import useMediaActions from "../../../hooks/useMediaActions";
 import catalogRepository from "../../../services/catalogRepository";
 import { transferMediaOwnership } from "../../../services/productWorkflow";
 import { formatEmployeeDateTime } from "../../../utils/employee";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 
 /**
- * PRATIKSHYA FASHON — Media record.
+ * PRATIKSHYA FASHION — Media record.
  *
  * One piece of media, in full: preview, editable metadata, assignment,
  * status and removal. Everything on this page goes through the media
@@ -46,6 +47,8 @@ const label = "font-ui text-[10px] uppercase tracking-[.16em] text-taupe";
 export default function AdminMediaDetail() {
   const { mediaId } = useParams();
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const media = useMediaRecord(mediaId);
   const actions = useMediaActions();
 
@@ -79,7 +82,7 @@ export default function AdminMediaDetail() {
         <p className="font-ui text-sm text-taupe">
           That media record could not be found. It may have been removed.
         </p>
-        <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline" className="mt-5">
+        <AtelierButton as={Link} to={`${prefix}/media`} size="chip" variant="outline" className="mt-5">
           Back to the library
         </AtelierButton>
       </AdminPage>
@@ -115,13 +118,13 @@ export default function AdminMediaDetail() {
       description={`${isVideo ? "Video" : "Image"} · ${MEDIA_SCOPE_LABELS[media.scope]} · added ${formatEmployeeDateTime(media.createdAt)}`}
       actions={
         <>
-          <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/media`} size="chip" variant="outline">
             Library
           </AtelierButton>
           {media.productId ? (
             <AtelierButton
               as={Link}
-              to={`/admin/products/${media.productId}/media`}
+              to={`${prefix}/products/${media.productId}/media`}
               size="chip"
               variant="outline"
             >
@@ -486,7 +489,7 @@ export default function AdminMediaDetail() {
                 onClick={() => {
                   const target = media.productId;
                   actions.remove(media.id);
-                  navigate(target ? `/admin/products/${target}/media` : "/admin/media");
+                  navigate(target ? `${prefix}/products/${target}/media` : `${prefix}/media`);
                 }}
               >
                 Remove media

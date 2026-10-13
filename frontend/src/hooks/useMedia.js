@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media hooks.
+ * PRATIKSHYA FASHION — Media hooks.
  *
  * Small subscriptions over `mediaRepository`. Every surface that shows media
  * reads through one of these, so a change made in the Admin Portal reaches
@@ -15,6 +15,7 @@ import mediaRepository, { MEDIA_CHANGED_EVENT } from "../services/media/mediaRep
 import { selectBrideGroomLooks, selectSareeEditProducts } from "../services/media/mediaResolver";
 import { getProductSlides } from "../services/media/productMediaSource";
 import { applyProductMediaSet } from "../services/media/productMediaSet";
+import { CATALOG_CHANGED_EVENT } from "../services/catalog/catalogStore";
 
 /**
  * Re-runs `select` whenever the register changes.
@@ -125,24 +126,44 @@ export const useProductCovers = (products) => {
  * Re-running after a media-store write means an unpublished or remapped
  * product image disappears from the carousel immediately rather than leaving
  * the homepage with a stale cross-product plate.
+ * Also re-runs when the catalog store hydrates so products become visible
+ * as soon as they load from the backend.
  */
 export const useSareeEditProducts = (products = null) => {
   const key = products ? products.map((product) => product.id).join("|") : "live-catalogue";
-  return useMediaSelector(
+  const read = useCallback(
     () => selectSareeEditProducts(products ?? undefined),
     [key] // eslint-disable-line react-hooks/exhaustive-deps
   );
+  const [value, setValue] = useState(read);
+
+  useEffect(() => {
+    const sync = () => setValue(read());
+    sync();
+    window.addEventListener(MEDIA_CHANGED_EVENT, sync);
+    window.addEventListener(CATALOG_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(MEDIA_CHANGED_EVENT, sync);
+      window.removeEventListener(CATALOG_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [read]);
+
+  return value;
 };
 
 /**
  * Homepage Bride & Groom looks from the canonical deterministic selector.
  * Re-reads after a media-store write so a remapped or unpublished plate
  * leaves the section immediately.
+ * Also re-runs when the catalog store hydrates so products become visible
+ * as soon as they load from the backend.
  */
 export const useBrideGroomLooks = (options = {}) => {
   const excludeKey = [...(options.excludeIds || [])].join("|");
   const productKey = options.products ? options.products.map((product) => product.id).join("|") : "live-catalogue";
-  return useMediaSelector(
+  const read = useCallback(
     () => {
       try {
         return selectBrideGroomLooks(options.products ?? undefined, {
@@ -155,6 +176,22 @@ export const useBrideGroomLooks = (options = {}) => {
     },
     [excludeKey, productKey, options.count] // eslint-disable-line react-hooks/exhaustive-deps
   );
+  const [value, setValue] = useState(read);
+
+  useEffect(() => {
+    const sync = () => setValue(read());
+    sync();
+    window.addEventListener(MEDIA_CHANGED_EVENT, sync);
+    window.addEventListener(CATALOG_CHANGED_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(MEDIA_CHANGED_EVENT, sync);
+      window.removeEventListener(CATALOG_CHANGED_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [read]);
+
+  return value;
 };
 
 export default useMediaLibrary;

@@ -42,7 +42,7 @@ const resolveGroomHref = () =>
 const lookKey = (look, fallback) =>
   look?.mediaId || look?.productId || look?.filename || fallback;
 
-const lookAlt = (look, label) => look?.image?.alt || `${label} wedding wear at PRATIKSHYA FASHON`;
+const lookAlt = (look, label) => look?.image?.alt || `${label} wedding wear at PRATIKSHYA FASHION`;
 
 const wrap = (value, count) => ((value % count) + count) % count;
 
@@ -191,6 +191,35 @@ function WeddingPlate({
 }
 
 /**
+ * Placeholder shown when one side of the wedding pair has no products yet.
+ * Keeps the editorial grid balanced while communicating honest inventory state.
+ */
+function ComingSoonPlate({ label, align = "left", reveal, reducedMotion }) {
+  return (
+    <motion.div
+      className="min-w-0"
+      initial={reveal.initial}
+      whileInView={reveal.animate}
+      viewport={{ once: true, amount: 0.35 }}
+    >
+      <div
+        className={cn(
+          "relative flex h-[22rem] w-full flex-col items-center justify-center gap-4 border border-ivory/10 bg-ink-muted sm:h-[26rem] md:h-[28rem] lg:h-[32rem]",
+          align === "right" && "md:items-end md:pr-8"
+        )}
+        aria-label={`${label} collection — coming soon`}
+      >
+        <p className="font-ui text-[10px] uppercase tracking-[0.28em] text-gold">{label}</p>
+        <p className="font-display text-2xl font-light text-ivory/40">Coming Soon</p>
+        <p className="px-8 text-center font-ui text-[11px] tracking-[0.06em] text-ivory/30">
+          Our {label.toLowerCase()} collection is being curated.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
  * BRIDE & GROOM — a paired wedding composition, not two category cards.
  *
  * Looks arrive already resolved: taxonomy → catalogue → product media set
@@ -231,10 +260,12 @@ export default function BrideGroomEdit({ excludeIds = null }) {
 
   const brideCount = brideLooks.length;
   const groomCount = groomLooks.length;
+  // Only rotate when at least one side has multiple looks.
   const canRotate = !reducedMotion && (brideCount > 1 || groomCount > 1);
 
   useEffect(() => {
-    if (brideCount > 0 && index >= Math.max(brideCount, groomCount, 1)) setIndex(0);
+    const maxCount = Math.max(brideCount || 1, groomCount || 1);
+    if (index >= maxCount) setIndex(0);
   }, [brideCount, groomCount, index]);
 
   useEffect(
@@ -263,10 +294,13 @@ export default function BrideGroomEdit({ excludeIds = null }) {
     return () => window.clearTimeout(timer);
   }, [advance, index, paused]);
 
-  if (!brideRoute || !groomRoute || brideCount === 0 || groomCount === 0) return null;
+  // Both sides completely unavailable — nothing to show at all.
+  const brideAvailable = brideCount > 0 && brideRoute;
+  const groomAvailable = groomCount > 0 && groomRoute;
+  if (!brideAvailable && !groomAvailable) return null;
 
-  const brideLook = brideLooks[wrap(index, brideCount)];
-  const groomLook = groomLooks[wrap(index, groomCount)];
+  const brideLook = brideAvailable ? brideLooks[wrap(index, brideCount)] : null;
+  const groomLook = groomAvailable ? groomLooks[wrap(index, groomCount)] : null;
 
   const seconds = (ms) => (reducedMotion ? BRIDE_GROOM_REDUCED_MS : ms) / 1000;
   const brideReveal = reducedMotion
@@ -328,19 +362,28 @@ export default function BrideGroomEdit({ excludeIds = null }) {
           onMouseEnter={() => setHovered("bride")}
           onFocus={() => setHovered("bride")}
         >
-          <WeddingPlate
-            look={brideLook}
-            label="Bride"
-            line="Bridal Sarees · Lehengas · Couture"
-            href={brideRoute.href}
-            cta="Explore Bride"
-            align="left"
-            reveal={brideReveal}
-            hovered={hovered === "bride"}
-            dimmed={hovered === "groom"}
-            reducedMotion={reducedMotion}
-            priority
-          />
+          {brideAvailable ? (
+            <WeddingPlate
+              look={brideLook}
+              label="Bride"
+              line="Bridal Sarees · Lehengas · Couture"
+              href={brideRoute.href}
+              cta="Explore Bride"
+              align="left"
+              reveal={brideReveal}
+              hovered={hovered === "bride"}
+              dimmed={hovered === "groom"}
+              reducedMotion={reducedMotion}
+              priority
+            />
+          ) : (
+            <ComingSoonPlate
+              label="Bride"
+              align="left"
+              reveal={brideReveal}
+              reducedMotion={reducedMotion}
+            />
+          )}
         </div>
 
         <div
@@ -357,19 +400,28 @@ export default function BrideGroomEdit({ excludeIds = null }) {
           onMouseEnter={() => setHovered("groom")}
           onFocus={() => setHovered("groom")}
         >
-          <WeddingPlate
-            look={groomLook}
-            label="Groom"
-            line="Sherwanis · Kurta Sets · Ceremonial Wear"
-            href={groomRoute.href}
-            cta="Explore Groom"
-            align="right"
-            reveal={groomReveal}
-            hovered={hovered === "groom"}
-            dimmed={hovered === "bride"}
-            reducedMotion={reducedMotion}
-            priority
-          />
+          {groomAvailable ? (
+            <WeddingPlate
+              look={groomLook}
+              label="Groom"
+              line="Sherwanis · Kurta Sets · Ceremonial Wear"
+              href={groomRoute.href}
+              cta="Explore Groom"
+              align="right"
+              reveal={groomReveal}
+              hovered={hovered === "groom"}
+              dimmed={hovered === "bride"}
+              reducedMotion={reducedMotion}
+              priority
+            />
+          ) : (
+            <ComingSoonPlate
+              label="Groom"
+              align="right"
+              reveal={groomReveal}
+              reducedMotion={reducedMotion}
+            />
+          )}
         </div>
       </div>
     </AtelierSection>

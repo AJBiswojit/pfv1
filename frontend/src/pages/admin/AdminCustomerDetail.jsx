@@ -5,9 +5,12 @@ import AdminPanel from "../../components/admin/AdminPanel";
 import { AtelierButton, EmptyState } from "../../design-system";
 import { apiAdminGetCustomer } from "../../services/api/customersApi";
 import { apiAdminListOrders } from "../../services/api/ordersApi";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 
 export default function AdminCustomerDetail() {
   const { customerId } = useParams();
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   // BACKEND CONTRACT (admin consolidation, HP-4): this customer's orders are
   // a bounded server query — never the global 100-order snapshot.
   const [orders, setOrders] = useState([]);
@@ -106,7 +109,7 @@ export default function AdminCustomerDetail() {
           ) : orders.length ? (
             orders.map((o) => (
               <div className="flex justify-between border-b border-pearl py-3" key={o.id}>
-                <Link className="underline" to={`/admin/orders/${o.id}`}>
+                <Link className="underline" to={`${prefix}/orders/${o.id}`}>
                   {o.orderNumber ?? o.id}
                 </Link>
                 <span>

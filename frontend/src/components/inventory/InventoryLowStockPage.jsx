@@ -21,14 +21,14 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
   const [thresholds, setThresholds] = useState({});
   const [feedback, setFeedback] = useState("");
   const [showOut, setShowOut] = useState(true);
-  const Page = portal === "admin" ? AdminPage : EmployeePage;
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
-  const actor = portal === "admin" ? { adminId: admin?.adminId, name: admin?.name || "Administrator" } : employee;
+  const Page = portal === "employee" ? EmployeePage : AdminPage;
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const actor = portal !== "employee" ? { adminId: admin?.adminId, name: admin?.name || "Administrator" } : employee;
   const warehouseOnly = portal === "employee" && employee?.role === ROLES.WAREHOUSE_STAFF;
   const availabilityOnly = portal === "employee" && [ROLES.SALES_EXECUTIVE, ROLES.FASHION_STYLIST, ROLES.CUSTOMER_SUPPORT].includes(employee?.role);
-  const canReceive = portal === "admin" || hasPermission(PERMISSIONS.INVENTORY_RECEIVE);
-  const canTransfer = portal === "admin" || hasPermission(PERMISSIONS.INVENTORY_TRANSFER);
-  const canManage = portal === "admin" || hasPermission(PERMISSIONS.INVENTORY_MANAGE);
+  const canReceive = portal !== "employee" || hasPermission(PERMISSIONS.INVENTORY_RECEIVE);
+  const canTransfer = portal !== "employee" || hasPermission(PERMISSIONS.INVENTORY_TRANSFER);
+  const canManage = portal !== "employee" || hasPermission(PERMISSIONS.INVENTORY_MANAGE);
 
   const rows = useMemo(() => inventory.records.filter((row) =>
     [STOCK_STATUS.LOW_STOCK, STOCK_STATUS.OUT_OF_STOCK].includes(row.status) &&
@@ -65,7 +65,7 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
 
   return (
     <Page
-      eyebrow={`${portal === "admin" ? "Business" : "Retail operations"} / Inventory`}
+      eyebrow={`${portal === "employee" ? "Retail operations" : "Business"} / Inventory`}
       title="Low & Out of Stock"
       description="Prioritised stock alerts calculated centrally from available units and each product's existing low-stock threshold."
       actions={<AtelierButton as={Link} to={root} variant="outline" size="chip">Back to inventory</AtelierButton>}

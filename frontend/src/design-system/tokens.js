@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Atelier Design Tokens
+ * PRATIKSHYA FASHION — Atelier Design Tokens
  *
  * Every value in this file was extracted from the approved Phase 1 landing
  * page. Nothing here is invented. The Tailwind theme in `src/index.css`

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — The shopping state foundation.
+ * PRATIKSHYA FASHION — The shopping state foundation.
  *
  * One provider composes the two shopping concerns — bag and wishlist — and
  * one hook exposes the movements that need both at once. There is exactly

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Protected Route Wrapper
+ * PRATIKSHYA FASHION — Protected Route Wrapper
  *
  * Enforces customer authentication for private account areas.
  * Preserves the intended destination via `returnTo` search parameter

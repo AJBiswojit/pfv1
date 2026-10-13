@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Order timeline service (Phase 15)
+ * PRATIKSHYA FASHION — Order timeline service (Phase 15)
  *
  * Centralizes every important transition as a timeline event.
  * Timeline lives inside the order record — no second storage.

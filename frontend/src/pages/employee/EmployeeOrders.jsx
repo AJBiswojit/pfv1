@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee Order Desk (Phase 15)
+ * PRATIKSHYA FASHION — Employee Order Desk (Phase 15)
  *
  * Role-aware operational workspace.
  * Warehouse sees warehouse orders, Store Manager sees store + warehouse,
@@ -48,7 +48,7 @@ export default function EmployeeOrders() {
       orders = orders.filter((o) => o.inventoryReservationId || o.fulfillment?.status);
     } else if (role === "CUSTOMER_SUPPORT") {
       // Payment issues, cancellation, returns
-      orders = orders.filter((o) => [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.CANCELLED, ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING].includes(o.status) || o.paymentStatus === "FAILED" || o.paymentStatus === "PENDING");
+      orders = orders.filter((o) => [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.CANCELLED, ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING].includes(o.status) || ["FAILED", "PAYMENT_FAILED", "PENDING", "PENDING_PAYMENT"].includes(o.paymentStatus));
       if (orders.length === 0) orders = allOrders.slice(0, 8); // fallback to show something in demo
     } else if (role === "SALES_EXECUTIVE") {
       // Customer orders view only, no internal fulfillment deep details
@@ -95,7 +95,7 @@ export default function EmployeeOrders() {
     if (role === "CUSTOMER_SUPPORT") {
       return [
         { label: "Customer Orders", value: roleFiltered.length },
-        { label: "Payment Issues", value: allOrders.filter((o) => o.paymentStatus === "FAILED" || o.paymentStatus === "PENDING").length },
+        { label: "Payment Issues", value: allOrders.filter((o) => ["FAILED", "PAYMENT_FAILED", "PENDING", "PENDING_PAYMENT"].includes(o.paymentStatus)).length },
         { label: "Cancellation Requests", value: allOrders.filter((o) => o.status === ORDER_STATUS.CANCELLED).length },
         { label: "Return Requests", value: allOrders.filter((o) => [ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED].includes(o.status)).length },
       ];

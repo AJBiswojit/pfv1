@@ -43,7 +43,7 @@ export default function Cart() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Your Collection — PRATIKSHYA FASHON";
+    document.title = "Your Collection — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

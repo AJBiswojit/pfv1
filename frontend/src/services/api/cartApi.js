@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Cart API
+ * PRATIKSHYA FASHION — Cart API
  * Maps to API_CONTRACT.md § CART
  *
  * All endpoints require Customer JWT.

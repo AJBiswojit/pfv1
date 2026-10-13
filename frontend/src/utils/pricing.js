@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Pricing engine (Phase 13).
+ * PRATIKSHYA FASHION — Pricing engine (Phase 13).
  *
  * Every price calculation the house performs lives here: the product
  * editor, the admin tables, the review queue and (later) a backend all

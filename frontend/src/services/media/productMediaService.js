@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product media lifecycle orchestration (Phase 7).
+ * PRATIKSHYA FASHION — Product media lifecycle orchestration (Phase 7).
  *
  * THE awaited frontend door for the real product-media lifecycle:
  *

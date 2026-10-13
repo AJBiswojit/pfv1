@@ -269,10 +269,10 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
               <label
                 htmlFor={`payment-${method.id}`}
                 className={cn(
-                  "flex h-full cursor-pointer items-start gap-3 border bg-surface/20 p-4 transition-colors",
-                  "peer-checked:border-ink peer-checked:bg-surface/60",
-                  "peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-accent",
-                  "hover:border-brass"
+                  "flex h-full cursor-pointer items-start gap-3 border p-4 transition-colors hover:border-brass",
+                  selected
+                    ? "border-ink bg-surface/60"
+                    : "border-mist/80 bg-surface/20"
                 )}
               >
                 <Icon size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
@@ -329,7 +329,9 @@ const PaymentStep = forwardRef(function PaymentStep(_props, ref) {
             size="lg"
             onClick={handlePay}
           >
-            Pay {formatINR(checkout.totals.total)}
+            {checkout.paymentMethod === "cod"
+              ? "Place Order"
+              : `Pay ${formatINR(checkout.totals.total)}`}
           </AtelierButton>
         </div>
         <p className="mt-4 flex items-center gap-2 font-ui text-[10px] text-taupe">

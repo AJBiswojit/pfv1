@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Order configuration (Phase 15)
+ * PRATIKSHYA FASHION — Order configuration (Phase 15)
  *
  * The single home for every order-level definition:
  * order statuses, payment statuses, fulfillment statuses, transitions,
@@ -394,31 +394,57 @@ export const ADMIN_ORDER_FILTERS = [
 /* ------------------------------------------------------------------ */
 
 export const ORDER_PAYMENT_STATUS = {
-  PENDING: "PENDING",
-  AUTHORIZED: "AUTHORIZED",
+  PENDING_PAYMENT: "PENDING_PAYMENT",
+  PAYMENT_PROCESSING: "PAYMENT_PROCESSING",
   PAID: "PAID",
+  PAYMENT_FAILED: "PAYMENT_FAILED",
+  PAYMENT_CANCELLED: "PAYMENT_CANCELLED",
+  PAYMENT_EXPIRED: "PAYMENT_EXPIRED",
+  REFUND_PENDING: "REFUND_PENDING",
+  REFUNDED: "REFUNDED",
+  PARTIALLY_REFUNDED: "PARTIALLY_REFUNDED",
+  // Backward-compatibility aliases
+  PENDING: "PENDING_PAYMENT",
+  FAILED: "PAYMENT_FAILED",
+  CANCELLED: "PAYMENT_CANCELLED",
+  NOT_CAPTURED: "PAYMENT_EXPIRED",
+  REFUND_INITIATED: "REFUND_PENDING",
+};
+
+export const PAYMENT_TRANSACTION_STATUS = {
+  CREATED: "CREATED",
+  AUTHORIZED: "AUTHORIZED",
+  CAPTURED: "CAPTURED",
   FAILED: "FAILED",
-  CANCELLED: "CANCELLED",
-  NOT_CAPTURED: "NOT_CAPTURED",
-  REFUND_INITIATED: "REFUND_INITIATED",
   REFUND_PENDING: "REFUND_PENDING",
   REFUNDED: "REFUNDED",
 };
 
 export const PAYMENT_STATUSES = {
-  [ORDER_PAYMENT_STATUS.PENDING]: { id: "PENDING", label: "Payment Pending", tone: "quiet" },
-  [ORDER_PAYMENT_STATUS.AUTHORIZED]: { id: "AUTHORIZED", label: "Authorized", tone: "accent" },
+  [ORDER_PAYMENT_STATUS.PENDING_PAYMENT]: { id: "PENDING_PAYMENT", label: "Pending Payment", tone: "quiet" },
+  [ORDER_PAYMENT_STATUS.PAYMENT_PROCESSING]: { id: "PAYMENT_PROCESSING", label: "Payment Processing", tone: "quiet" },
   [ORDER_PAYMENT_STATUS.PAID]: { id: "PAID", label: "Paid", tone: "ink" },
-  [ORDER_PAYMENT_STATUS.FAILED]: { id: "FAILED", label: "Failed", tone: "muted" },
-  [ORDER_PAYMENT_STATUS.CANCELLED]: { id: "CANCELLED", label: "Payment Cancelled", tone: "muted" },
-  [ORDER_PAYMENT_STATUS.NOT_CAPTURED]: { id: "NOT_CAPTURED", label: "Not Captured", tone: "muted" },
-  [ORDER_PAYMENT_STATUS.REFUND_INITIATED]: { id: "REFUND_INITIATED", label: "Refund Initiated", tone: "accent" },
+  [ORDER_PAYMENT_STATUS.PAYMENT_FAILED]: { id: "PAYMENT_FAILED", label: "Payment Failed", tone: "muted" },
+  [ORDER_PAYMENT_STATUS.PAYMENT_CANCELLED]: { id: "PAYMENT_CANCELLED", label: "Payment Cancelled", tone: "muted" },
+  [ORDER_PAYMENT_STATUS.PAYMENT_EXPIRED]: { id: "PAYMENT_EXPIRED", label: "Payment Expired", tone: "muted" },
   [ORDER_PAYMENT_STATUS.REFUND_PENDING]: { id: "REFUND_PENDING", label: "Refund Pending", tone: "accent" },
   [ORDER_PAYMENT_STATUS.REFUNDED]: { id: "REFUNDED", label: "Refunded", tone: "accent" },
+  [ORDER_PAYMENT_STATUS.PARTIALLY_REFUNDED]: { id: "PARTIALLY_REFUNDED", label: "Partially Refunded", tone: "accent" },
 };
 
-export const getPaymentStatus = (status) =>
-  PAYMENT_STATUSES[status] ?? PAYMENT_STATUSES[ORDER_PAYMENT_STATUS.PENDING];
+/** Alias map to normalize legacy or gateway status strings */
+const PAYMENT_STATUS_ALIASES = {
+  PENDING: ORDER_PAYMENT_STATUS.PENDING_PAYMENT,
+  FAILED: ORDER_PAYMENT_STATUS.PAYMENT_FAILED,
+  CANCELLED: ORDER_PAYMENT_STATUS.PAYMENT_CANCELLED,
+  NOT_CAPTURED: ORDER_PAYMENT_STATUS.PAYMENT_EXPIRED,
+  REFUND_INITIATED: ORDER_PAYMENT_STATUS.REFUND_PENDING,
+};
+
+export const getPaymentStatus = (status) => {
+  const normalized = PAYMENT_STATUS_ALIASES[status] ?? status;
+  return PAYMENT_STATUSES[normalized] ?? PAYMENT_STATUSES[ORDER_PAYMENT_STATUS.PENDING_PAYMENT];
+};
 
 /* ------------------------------------------------------------------ */
 /* Cancellation                                                        */

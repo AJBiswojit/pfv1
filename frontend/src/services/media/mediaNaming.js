@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media naming parser (Phase 21.6).
+ * PRATIKSHYA FASHION — Media naming parser (Phase 21.6).
  *
  * New filename convention:
  *   [department]-[category]-[style/product-set]-[number]-[view].webp

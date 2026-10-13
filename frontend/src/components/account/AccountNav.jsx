@@ -10,6 +10,7 @@ import {
   Sparkles,
   Camera,
   Wand2,
+  Gift,
 } from "lucide-react";
 import { useWishlist } from "../../context/WishlistContext";
 import { cn } from "../../utils/cn";
@@ -31,6 +32,11 @@ export const ACCOUNT_NAV_ITEMS = [
     label: "Orders",
     to: "/account/orders",
     icon: ShoppingBag,
+  },
+  {
+    label: "Share & Earn",
+    to: "/account/instagram-rewards",
+    icon: Gift,
   },
   {
     label: "Wishlist",

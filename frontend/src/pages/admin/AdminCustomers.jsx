@@ -5,10 +5,13 @@ import AdminPanel from "../../components/admin/AdminPanel";
 import AdminMetricCard from "../../components/admin/AdminMetricCard";
 import { AtelierButton, EmptyState } from "../../design-system";
 import { apiAdminListCustomers } from "../../services/api/customersApi";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 
 const money = (n) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
 
 export default function AdminCustomers() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const [customers, setCustomers] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -84,7 +87,7 @@ export default function AdminCustomers() {
                 {customers.map((c) => (
                   <tr key={c.id} className="border-b border-pearl/60">
                     <td className="py-4">
-                      <Link className="font-medium underline" to={`/admin/customers/${c.id}`}>
+                      <Link className="font-medium underline" to={`${prefix}/customers/${c.id}`}>
                         {c.firstName} {c.lastName}
                       </Link>
                       <div className="text-xs text-slate">{String(c.id).slice(0, 12)}</div>
@@ -106,7 +109,7 @@ export default function AdminCustomers() {
                             : "NEW"}
                     </td>
                     <td>
-                      <Link to={`/admin/customers/${c.id}`} className="text-xs uppercase tracking-widest">
+                      <Link to={`${prefix}/customers/${c.id}`} className="text-xs uppercase tracking-widest">
                         View →
                       </Link>
                     </td>

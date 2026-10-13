@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Leave service.
+ * PRATIKSHYA FASHION — Leave service.
  *
  * Request, approve, reject, cancel. Approved leave writes LEAVE onto the
  * shared attendance store; it is never stored twice.

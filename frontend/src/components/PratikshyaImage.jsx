@@ -20,7 +20,7 @@ function EmptyMedia({ className, label = "Product media coming soon" }) {
       aria-label={label}
       className={`flex h-full w-full items-center justify-center bg-[#eee9e1] text-center font-ui text-[9px] uppercase tracking-[0.22em] text-taupe/80 ${className}`}
     >
-      <span className="border border-taupe/25 px-3 py-2">PRATIKSHYA FASHON</span>
+      <span className="border border-taupe/25 px-3 py-2">PRATIKSHYA FASHION</span>
     </div>
   );
 }

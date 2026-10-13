@@ -143,7 +143,7 @@ export default function AiMirror() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "PRATIKSHYA AI Mirror — PRATIKSHYA FASHON";
+    document.title = "PRATIKSHYA AI Mirror — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

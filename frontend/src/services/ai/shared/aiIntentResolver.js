@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI assistants, shared intent resolution (Phase 21.1).
+ * PRATIKSHYA FASHION — AI assistants, shared intent resolution (Phase 21.1).
  *
  * Pure text-reading helpers shared by the shopping and business assistants.
  * Nothing here touches storage, React or the DOM, so every helper can be

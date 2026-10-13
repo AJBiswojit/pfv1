@@ -47,7 +47,7 @@ export default function AccountOrders() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "My Orders — PRATIKSHYA FASHON";
+    document.title = "My Orders — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

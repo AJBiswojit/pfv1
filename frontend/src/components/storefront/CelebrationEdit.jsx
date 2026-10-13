@@ -66,15 +66,13 @@ export default function CelebrationEdit({ excludeIds = null }) {
      the live catalogue resolves it (PUBLISHED only), and that product's
      primary media stands. With no curated, published product it shows its
      legitimate empty state — never a static catalogue plate. */
-  const festiveEntries = usePlacementEntries(
-    MARKETING_PLACEMENTS.FESTIVE_SECTION,
-    getLiveStorefrontProducts()
-  );
-  /* The EDITORIAL placement owns the heritage storytelling plate — the one
-     frame without a frame-specific marketing seam. An ACTIVE record stands
-     in for the artwork exactly the way the festive record does; anything
-     else (no record, draft, archived, no usable file) leaves the house's
-     deterministic editorial frame where it is. */
+  const liveProducts = getLiveStorefrontProducts();
+  const bridalEntries = usePlacementEntries(MARKETING_PLACEMENTS.BRIDAL_SECTION, liveProducts);
+  const groomEntries = usePlacementEntries(MARKETING_PLACEMENTS.GROOM_SECTION, liveProducts);
+  const festiveEntries = usePlacementEntries(MARKETING_PLACEMENTS.FESTIVE_SECTION, liveProducts);
+  const lehengaEntries = usePlacementEntries(MARKETING_PLACEMENTS.LEHENGA_SECTION, liveProducts);
+  const sareeEntries = usePlacementEntries(MARKETING_PLACEMENTS.SAREE_SECTION, liveProducts);
+
   const editorialMedia = useActivePlacementMedia(MARKETING_PLACEMENTS.EDITORIAL);
   const activeEdit = edits.find((edit) => edit.id === activeId) ?? edits[0];
   const usedIds = new Set(excludeIds ?? []);
@@ -82,15 +80,42 @@ export default function CelebrationEdit({ excludeIds = null }) {
   const themeFor = (id) =>
     ({ bridal: "bridal", groom: "groom", festive: "festive", heritage: "heritage" }[id] || "festive");
 
+  /*
+   * Image resolution per edit card — priority order:
+   *
+   *  bridal  → BRIDAL_SECTION[0] → LEHENGA_SECTION[0] → SAREE_SECTION[0] → editorial frame
+   *  groom   → GROOM_SECTION[0]  → editorial frame
+   *  festive → FESTIVE_SECTION[0] → editorial frame
+   *  heritage → resolveEditorialFrame("heritage") always (no placement override by design)
+   *
+   * ADMIN NOTE — BRIDAL_SECTION must be populated:
+   *   The bridal card cascades through lehenga and saree placements as
+   *   fallbacks so the section is never blank. If BRIDAL_SECTION and
+   *   LEHENGA_SECTION are both empty, a saree image will appear in the
+   *   bridal context, which may be visually incongruous. Populate at least
+   *   one active entry in BRIDAL_SECTION (Admin → Media → Marketing) before
+   *   going live. See docs/marketing-media-api.md §CelebrationEdit for
+   *   the full placement checklist and admin steps.
+   */
   const images = Object.fromEntries(
     edits.map((edit) => {
-      const resolved =
-        edit.id === "festive"
-          ? festiveEntries[0]?.image || imageRef(edit.image)
-          : edit.id === "heritage"
-            ? resolvePlacementImage(editorialMedia, resolveEditorialFrame("heritage", usedIds) || imageRef(edit.image))
-            : resolveEditorialFrame(themeFor(edit.id), usedIds) || imageRef(edit.image);
-      return [edit.id, resolved];
+      let resolved = null;
+      if (edit.id === "bridal") {
+        resolved = bridalEntries[0]?.image || lehengaEntries[0]?.image || sareeEntries[0]?.image;
+      } else if (edit.id === "groom") {
+        resolved = groomEntries[0]?.image;
+      } else if (edit.id === "festive") {
+        resolved = festiveEntries[0]?.image;
+      }
+
+      if (!resolved) {
+        resolved = edit.id === "heritage"
+          ? resolvePlacementImage(editorialMedia, resolveEditorialFrame("heritage", usedIds) || imageRef(edit.image))
+          : resolveEditorialFrame(themeFor(edit.id), usedIds) || imageRef(edit.image);
+      }
+
+      const imgObj = typeof resolved === "string" ? { src: resolved, alt: edit.label } : resolved;
+      return [edit.id, imgObj];
     })
   );
   const resolveImage = (edit) => images[edit.id] || imageRef(edit.image);
@@ -120,8 +145,12 @@ export default function CelebrationEdit({ excludeIds = null }) {
             <div className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" aria-hidden="true" />
             <button
               type="button"
-              onClick={() => setActiveId("bridal")}
-              aria-label="Show Bridal Edit as the featured story"
+              onClick={() => {
+                const currentIndex = edits.findIndex((e) => e.id === activeId);
+                const nextIndex = (currentIndex + 1) % edits.length;
+                setActiveId(edits[nextIndex].id);
+              }}
+              aria-label="Show next edit"
               className="absolute bottom-4 right-5 font-ui text-[10px] tracking-[.25em] text-white transition-opacity hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white md:bottom-6 md:right-7"
             >
               {activeEdit.number} / 04
@@ -140,7 +169,7 @@ export default function CelebrationEdit({ excludeIds = null }) {
         </div>
 
         <div className="grid grid-cols-3 gap-3 md:gap-4 lg:grid-cols-1">
-          {edits.slice(1).map((edit) => {
+          {edits.filter((edit) => edit.id !== activeId).map((edit) => {
             const isActive = activeId === edit.id;
             return (
               <button

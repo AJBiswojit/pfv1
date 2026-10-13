@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin product service (Phase 5).
+ * PRATIKSHYA FASHION — Admin product service (Phase 5).
  *
  * THE awaited backend layer behind every admin product screen. Every call:
  *   1. goes through the single normalized API layer (services/api/productsApi
@@ -41,6 +41,7 @@ import {
   buildAdminProductPayload,
 } from "../api/productsApi";
 import { getAccessToken } from "../api/apiClient";
+import { WORKFLOW_STAGES, getProductWorkflowState } from "../workflow/productWorkflowState";
 
 const withUpsert = (result) => {
   if (result?.ok && result.product) {
@@ -174,6 +175,45 @@ export async function persistAdminProduct(record, { isNew = false } = {}) {
   return result;
 }
 
+/**
+ * Submit → approve → publish through the existing server endpoints.
+ * Never bypasses the publish-issues gate. Used when an admin publishes a
+ * product they created themselves.
+ */
+export async function approveAndPublishProduct(id) {
+  const issuesResult = await apiAdminGetPublishIssues(id);
+  if (issuesResult.ok && (issuesResult.issues ?? []).length) {
+    return {
+      ok: false,
+      error: `Resolve the publish checklist before going live: ${issuesResult.issues.join(" ")}`,
+      issues: issuesResult.issues,
+      status: 422,
+    };
+  }
+
+  const current = await fetchAdminProduct(id);
+  if (!current.ok) return current;
+  let stage = getProductWorkflowState(current.product).stage;
+
+  if (stage === WORKFLOW_STAGES.PUBLISHED) {
+    return current;
+  }
+
+  if (stage !== WORKFLOW_STAGES.APPROVED) {
+    if (stage !== WORKFLOW_STAGES.SUBMITTED && stage !== WORKFLOW_STAGES.IN_ADMIN_REVIEW) {
+      const submitted = await runAction(id, "submitReview");
+      if (!submitted.ok) return submitted;
+      stage = getProductWorkflowState(submitted.product).stage;
+    }
+    if (stage !== WORKFLOW_STAGES.APPROVED) {
+      const approved = await runAction(id, "approve");
+      if (!approved.ok) return approved;
+    }
+  }
+
+  return runAction(id, "publish");
+}
+
 export default {
   fetchAdminProducts,
   fetchAdminProduct,
@@ -183,6 +223,7 @@ export default {
   createAdminProduct,
   saveAdminProduct,
   persistAdminProduct,
+  approveAndPublishProduct,
   runAction,
   runBulkFlags,
   hasAdminSession,

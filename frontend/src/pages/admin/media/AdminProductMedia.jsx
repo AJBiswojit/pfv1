@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { Film, Image as ImageIcon, Star } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
@@ -13,7 +14,7 @@ import ProductLifecycleActions from "../../../components/admin/ProductLifecycleA
 import { useEffect } from "react";
 
 /**
- * PRATIKSHYA FASHON — Product media manager (Phase 7, server-backed).
+ * PRATIKSHYA FASHION — Product media manager (Phase 7, server-backed).
  *
  * ONE product's media, exactly as the SERVER knows it:
  *
@@ -32,6 +33,8 @@ import { useEffect } from "react";
 const AdminProductMedia = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const [productVersion, setProductVersion] = useState(0);
   // eslint-disable-next-line no-unused-vars
   const _refreshKey = productVersion; /* re-find the record after lifecycle actions */
@@ -63,7 +66,7 @@ const AdminProductMedia = () => {
       <AdminPage eyebrow="Business / Media" title="Product unavailable">
         <p className="font-ui text-sm text-taupe">That product could not be found.</p>
         <Link
-          to="/admin/products"
+          to={`${prefix}/products`}
           className="mt-5 inline-block border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
         >
           Back to the catalog
@@ -87,7 +90,7 @@ const AdminProductMedia = () => {
       description={`${product.sku ?? product.id} · registered media is served from the backend media store at its canonical /media/objects/… URL. The cover is the image every card, listing and storefront page uses.`}
       actions={
         <Link
-          to={`/admin/products/${productId}`}
+          to={`${prefix}/products/${productId}`}
           className="border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink"
         >
           Product record
@@ -163,7 +166,7 @@ const AdminProductMedia = () => {
       <ProductLifecycleActions
         product={product}
         onChanged={() => setProductVersion((value) => value + 1)}
-        onDeleted={() => navigate("/admin/media")}
+        onDeleted={() => navigate(`${prefix}/media`)}
       />
     </AdminPage>
   );

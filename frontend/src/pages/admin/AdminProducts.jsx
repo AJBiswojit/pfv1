@@ -77,6 +77,7 @@ const ProductRow = memo(function ProductRow({
   summary,
   cover,
   selected,
+  prefix,
   onToggleSelect,
   onPublishQuick,
   onDuplicate,
@@ -105,7 +106,7 @@ const ProductRow = memo(function ProductRow({
           )}
           <div className="min-w-0">
             <Link
-              to={`/admin/products/${product.id}`}
+              to={`${prefix}/products/${product.id}`}
               className="block max-w-56 truncate font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
             >
               {product.name}
@@ -130,14 +131,14 @@ const ProductRow = memo(function ProductRow({
       <td className="px-3 py-4 align-top">
         {!summary || summary.isEmpty ? (
           <Link
-            to={`/admin/products/${product.id}/media`}
+            to={`${prefix}/products/${product.id}/media`}
             className="font-ui text-[11px] uppercase tracking-widest text-taupe underline-offset-4 hover:text-accent hover:underline"
           >
             Add media
           </Link>
         ) : (
           <Link
-            to={`/admin/products/${product.id}/media`}
+            to={`${prefix}/products/${product.id}/media`}
             className="flex flex-col gap-0.5 underline-offset-4 hover:text-accent hover:underline"
           >
             <span className="font-ui text-[11px] text-ink">{summary.images} img · {summary.videos} vid</span>
@@ -156,9 +157,9 @@ const ProductRow = memo(function ProductRow({
       </td>
       <td className="px-3 py-4 align-top">
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link to={`/admin/products/${product.id}`} aria-label={`View ${product.name}`} title="View record" className="text-taupe hover:text-ink"><Eye size={15} aria-hidden="true" /></Link>
-          <Link to={`/admin/products/${product.id}/edit`} aria-label={`Edit ${product.name}`} title="Edit product" className="text-taupe hover:text-ink"><Pencil size={15} aria-hidden="true" /></Link>
-          <Link to={`/admin/products/${product.id}/media`} aria-label={`Manage media for ${product.name}`} title="Manage Media" className="text-taupe hover:text-ink"><Images size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}`} aria-label={`View ${product.name}`} title="View record" className="text-taupe hover:text-ink"><Eye size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}/edit`} aria-label={`Edit ${product.name}`} title="Edit product" className="text-taupe hover:text-ink"><Pencil size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}/media`} aria-label={`Manage media for ${product.name}`} title="Manage Media" className="text-taupe hover:text-ink"><Images size={15} aria-hidden="true" /></Link>
           {canQuickPublish ? (
             <button
               type="button"
@@ -193,6 +194,8 @@ const ProductRow = memo(function ProductRow({
 });
 
 export default function AdminProducts() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState("ALL");
@@ -436,10 +439,10 @@ export default function AdminProducts() {
       description="One catalogue serves the storefront, the portals and every future surface. This desk is fully server-backed: filters, sort, pagination and every action run against the catalogue API."
       actions={
         <>
-          <AtelierButton as={Link} to="/admin/products/review" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/products/review`} size="chip" variant="outline">
             <ClipboardCheck size={13} aria-hidden="true" /> Review queue{metrics?.pendingReview ? ` (${metrics.pendingReview})` : ""}
           </AtelierButton>
-          <AtelierButton as={Link} to="/admin/products/new" size="chip">
+          <AtelierButton as={Link} to={`${prefix}/products/new`} size="chip">
             <Plus size={13} aria-hidden="true" /> Create product
           </AtelierButton>
         </>
@@ -606,6 +609,7 @@ export default function AdminProducts() {
                   summary={mediaSummaries[product.id]}
                   cover={covers[product.id]}
                   selected={selected}
+                  prefix={prefix}
                   onToggleSelect={toggleSelect}
                   onPublishQuick={publishQuick}
                   onDuplicate={handleDuplicate}
@@ -626,7 +630,7 @@ export default function AdminProducts() {
                 The catalogue is empty server-side. Create the first product to seed the register.
               </p>
               <Link
-                to="/admin/products/new"
+                to={`${prefix}/products/new`}
                 className="mt-5 inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.14em] text-ivory transition-colors hover:bg-ink/90"
               >
                 <Plus size={13} aria-hidden="true" /> Create product

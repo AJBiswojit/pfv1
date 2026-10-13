@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Offers & Coupons API (Phase 5)
+ * PRATIKSHYA FASHION — Offers & Coupons API (Phase 5)
  *
  * THE single normalized layer between admin offer screens and the backend
  * coupon router (app/api/v1/coupons.py):

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — mock AI provider (Phase 21.1).
+ * PRATIKSHYA FASHION — mock AI provider (Phase 21.1).
  *
  * The deterministic stand-in for a real AI provider. It simulates only the
  * pacing of a premium assistant (short, fixed thinking stages) and then

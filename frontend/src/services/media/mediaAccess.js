@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media authorization.
+ * PRATIKSHYA FASHION — Media authorization.
  *
  * Media is governed by the permission architecture the house already has:
  * the keys live in `employeePermissions`, the role defaults in

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Registers the Node resolver/loader hooks so the test
+ * PRATIKSHYA FASHION — Registers the Node resolver/loader hooks so the test
  * runner and the media-exposure audit can import `src/*` modules unmodified.
  *
  * Usage:

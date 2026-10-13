@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI Shopping Assistant, brand copy (Phase 21.1).
+ * PRATIKSHYA FASHION — AI Shopping Assistant, brand copy (Phase 21.1).
  *
  * Template language only. Every product, price and availability figure the
  * assistant speaks comes from the live catalogue repository — never from

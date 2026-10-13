@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product group review panel (Phase 22, section 35/41).
+ * PRATIKSHYA FASHION — Product group review panel (Phase 22, section 35/41).
  *
  * POTENTIAL SAME PRODUCT queue: images side by side, the deterministic
  * group reason, the existing product (if any), and the three human

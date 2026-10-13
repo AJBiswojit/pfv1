@@ -11,8 +11,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import {
   ACCOUNT_LEVELS,
@@ -31,8 +29,7 @@ import {
   EMPLOYEE_SELF_SERVICE_PERMISSIONS,
 } from "../src/config/rbacModel.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BACKEND_ROOT = path.resolve(HERE, "../../backend");
+import { BACKEND_ROOT } from "./helpers/backendRoot.js";
 
 const DUMP = `
 import json, sys
@@ -154,6 +151,13 @@ test("delegation ceiling: SUPER_ADMIN unrestricted, SUPER_EMPLOYEE drops admin-d
   assert.deepEqual(c.admin_only, ["people.security", "settings.manage"]);
   assert.equal(delegableCapabilities({ accountLevel: ACCOUNT_LEVELS.SUPER_ADMIN, permissions: [] }), null);
   assert.equal(delegableCapabilities({ accountLevel: ACCOUNT_LEVELS.ADMIN, permissions: ["*"] }), null);
+  const employeeCeiling = delegableCapabilities(
+    { accountLevel: ACCOUNT_LEVELS.SUPER_ADMIN, permissions: [] },
+    ACCOUNT_LEVELS.EMPLOYEE
+  );
+  assert.ok(employeeCeiling);
+  assert.ok(!employeeCeiling.has("settings.manage"));
+  assert.ok(!employeeCeiling.has("people.security"));
   const ceiling = delegableCapabilities({
     accountLevel: ACCOUNT_LEVELS.SUPER_EMPLOYEE,
     permissions: ["people.manage", "settings.manage", "people.security", "catalogue.view"],

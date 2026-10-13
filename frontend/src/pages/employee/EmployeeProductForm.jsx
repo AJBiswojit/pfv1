@@ -1,20 +1,24 @@
 /**
  * /employee/products/new · /employee/products/:productId/edit
  *
- * Employees holding `products.manage` draft products inside the Employee
- * Portal and submit them for review — publishing stays with managers and
- * admins. Rendered in EmployeeLayout, never the Admin shell.
+ * Employees holding `products.manage` use the same create/edit workspace
+ * as Super Admin and Admin. Publishing stays with managers and admins.
  */
 
 import { Navigate, useParams } from "react-router-dom";
 import EmployeePage from "../../components/employee/EmployeePage";
-import ProductEditor from "../../components/products/ProductEditor";
+import ProductCreateWorkspace, {
+  productCreateDescription,
+  productCreateTitle,
+  useProductCreateFlow,
+} from "../../components/products/ProductCreateWorkspace";
 import { PERMISSIONS } from "../../config/employeePermissions";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 
 export default function EmployeeProductForm() {
   const { productId } = useParams();
   const { employee, hasPermission } = useEmployeeAuth();
+  const useQuick = useProductCreateFlow(productId);
 
   if (!hasPermission(PERMISSIONS.PRODUCTS_MANAGE)) {
     return <Navigate to="/employee/access-denied" replace />;
@@ -29,22 +33,11 @@ export default function EmployeeProductForm() {
 
   return (
     <EmployeePage
-      eyebrow="Catalogue"
-      title={
-        productId ? (
-          <>
-            Edit <span className="italic text-accent">piece.</span>
-          </>
-        ) : (
-          <>
-            New <span className="italic text-accent">piece.</span>
-          </>
-        )
-      }
-      description="Draft the complete product record and submit it for review. A manager or admin approves it before it reaches the storefront."
+      eyebrow="Business / Products"
+      title={productCreateTitle(productId, useQuick)}
+      description={productCreateDescription(useQuick)}
     >
-      <ProductEditor
-        key={productId ?? "new"}
+      <ProductCreateWorkspace
         productId={productId}
         portal="employee"
         actor={actor}

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product editor sections: Pricing and Variants
+ * PRATIKSHYA FASHION — Product editor sections: Pricing and Variants
  * (Phase 13). All arithmetic comes from the shared pricing engine; this
  * file only renders it.
  */

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Workforce live subscription + server hydration.
+ * PRATIKSHYA FASHION — Workforce live subscription + server hydration.
  *
  * The repositories keep an in-memory session mirror and announce
  * `pratikshya-workforce-changed`; this provider keeps dashboards and desks in
@@ -44,9 +44,7 @@ export function WorkforceProvider({ children }) {
         employeeCode: employee.employeeId,
         withRoster:
           employee.accountLevel === "ADMIN" ||
-          employee.accountLevel === "SUPER_ADMIN" ||
-          hasPermission(PERMISSIONS.ATTENDANCE_VIEW) ||
-          hasPermission(PERMISSIONS.ATTENDANCE_MANAGE),
+          employee.accountLevel === "SUPER_ADMIN",
         leaveReviewer:
           hasPermission(PERMISSIONS.LEAVE_APPROVE) ||
           hasPermission(PERMISSIONS.LEAVE_REJECT) ||

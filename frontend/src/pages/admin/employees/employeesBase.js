@@ -1,23 +1,18 @@
 /**
  * Employees-surface base path — shared by the four account-management pages.
- *
- * The pages serve TWO workspaces: `/admin/employees` (Admin portal) and
- * `/employee/team-access` (SUPER_EMPLOYEE self-service, Phase 3). Links and
- * redirects must follow the workspace they were mounted from instead of
- * hard-navigating a SUPER_EMPLOYEE into AdminProtectedRoute (which would
- * bounce them with a 403). An explicit `basePath` prop wins; otherwise the
- * path is derived from the live location — no duplicated page, no duplicated
- * data layer, one navigation contract.
+ * Admin portal uses `/admin/employees`; Super Admin portal uses `/super-admin/employees`.
  */
 import { useLocation } from "react-router-dom";
 
 export const ADMIN_EMPLOYEES_BASE = "/admin/employees";
-export const EMPLOYEE_TEAM_ACCESS_BASE = "/employee/team-access";
+export const SUPER_ADMIN_EMPLOYEES_BASE = "/super-admin/employees";
 
 export function useEmployeesBase(explicitBase) {
   const location = useLocation();
   if (explicitBase) return explicitBase;
-  return location.pathname.startsWith(EMPLOYEE_TEAM_ACCESS_BASE)
-    ? EMPLOYEE_TEAM_ACCESS_BASE
-    : ADMIN_EMPLOYEES_BASE;
+  // Detect which workspace the user is currently in and return the matching base.
+  if (location.pathname.startsWith("/super-admin")) {
+    return SUPER_ADMIN_EMPLOYEES_BASE;
+  }
+  return ADMIN_EMPLOYEES_BASE;
 }

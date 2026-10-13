@@ -26,6 +26,8 @@ from app.models.employee.department import DepartmentModel                 # noq
 from app.models.employee.section import SectionModel                       # noqa: F401
 from app.models.employee.employee import EmployeeProfileModel              # noqa: F401
 from app.models.employee.attendance import AttendanceModel                 # noqa: F401
+from app.models.employee.attendance_device import AttendanceDeviceModel     # noqa: F401
+from app.models.employee.attendance_punch import AttendancePunchModel       # noqa: F401
 from app.models.employee.performance import PerformanceModel               # noqa: F401
 from app.models.employee.target import TargetModel                         # noqa: F401
 
@@ -68,6 +70,7 @@ from app.models.commerce.wishlist import WishlistModel                     # noq
 from app.models.commerce.wishlist_item import WishlistItemModel            # noqa: F401
 from app.models.commerce.coupon import CouponModel                         # noqa: F401
 from app.models.commerce.coupon_redemption import CouponRedemptionModel    # noqa: F401
+from app.models.commerce.instagram_reward import InstagramRewardModel       # noqa: F401
 
 # --- Orders ---
 from app.models.orders.order import OrderModel                             # noqa: F401

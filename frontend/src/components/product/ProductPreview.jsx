@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — ProductPreview (Phase 22).
+ * PRATIKSHYA FASHION — ProductPreview (Phase 22).
  *
  * The one reusable preview for the media-to-product workflow. It accepts a
  * `productId` (or a product record) and resolves EVERY image through

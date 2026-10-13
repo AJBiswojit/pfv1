@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin dashboard reads (backend-driven).
+ * PRATIKSHYA FASHION — Admin dashboard reads (backend-driven).
  *
  * The dashboard is fed by ONE consolidated request:
  *
@@ -34,8 +34,8 @@ const zeroMetrics = () => ({
 });
 
 /** The whole dashboard in one request. */
-export async function loadDashboardSummary({ days = 7, recentLimit = 5 } = {}) {
-  const result = await apiAdminDashboardSummary({ days, recentLimit });
+export async function loadDashboardSummary({ days = 7, recentLimit = 5, workspace = "admin" } = {}) {
+  const result = await apiAdminDashboardSummary({ days, recentLimit, workspace });
   if (!result.ok) {
     return {
       ok: false,
@@ -48,9 +48,11 @@ export async function loadDashboardSummary({ days = 7, recentLimit = 5 } = {}) {
       employees: { total: 0, active: 0 },
     };
   }
+  const rawMetrics = result.metrics ?? {};
   const metrics = {
     ...zeroMetrics(),
-    ...(result.metrics ?? {}),
+    ...rawMetrics,
+    revenue: rawMetrics.revenue ?? rawMetrics.totalRevenue ?? 0,
     totalEmployees: result.employees?.total ?? 0,
     employeesPresent: result.employees?.active ?? 0,
   };

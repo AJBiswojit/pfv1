@@ -5,11 +5,11 @@ Reads credentials from the environment (.env) and creates the first admin accoun
 via the same AuthService used by the API — so password hashing, role assignment,
 and bootstrap-secret gating all go through exactly the same code path.
 
-Usage (from the pratikshya_fashon_backend directory):
+Usage (from the pratikshya_fashion_backend directory):
     python -m scripts.create_admin
 
 Required .env keys:
-    ADMIN_SEED_EMAIL        e.g. admin@pratikshyafashon.com
+    ADMIN_SEED_EMAIL        e.g. admin@pratikshyafashion.com
     ADMIN_SEED_PASSWORD     e.g. Admin@PF2024!
     ADMIN_SEED_FULL_NAME    e.g. Super Admin
     ADMIN_BOOTSTRAP_SECRET  e.g. pf-bootstrap-secret-2024-xK9mN3qR
@@ -82,10 +82,10 @@ async def main() -> None:
             count_res = await db.execute(count_stmt)
             admin_count = count_res.scalar_one()
 
-            if admin_count > 0 and bootstrap_secret:
+            if admin_count > 0:
                 logger.error(
-                    "Active admins already exist and ADMIN_BOOTSTRAP_SECRET is set. "
-                    "Cannot bootstrap a second admin via this script without clearing existing admins."
+                    "A SUPER_ADMIN already exists. There can only be one. "
+                    "No changes made."
                 )
                 sys.exit(1)
 
@@ -95,6 +95,7 @@ async def main() -> None:
                 full_name=full_name,
                 hashed_password=hash_password(password),
                 user_type="admin",
+                account_level="SUPER_ADMIN",
                 status="ACTIVE",
                 is_verified=True,
                 force_password_change=False,

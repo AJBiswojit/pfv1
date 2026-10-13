@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Leave repository.
+ * PRATIKSHYA FASHION — Leave repository.
  *
  * One store: `pratikshya_leave`. Leave is not duplicated inside attendance
  * records; attendance derives LEAVE from an approved request.

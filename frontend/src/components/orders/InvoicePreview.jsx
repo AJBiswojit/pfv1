@@ -140,7 +140,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
                 id={titleId}
                 className="font-display text-2xl font-light tracking-[.08em] text-ink"
               >
-                PRATIKSHYA FASHON
+                PRATIKSHYA FASHION
               </h2>
               <p className="mt-1 font-ui text-[10px] uppercase tracking-[.24em] text-brass">
                 Atelier of Handcrafted Indian Couture
@@ -313,7 +313,7 @@ export default function InvoicePreview({ order, isOpen, onClose }) {
 
           <p className="font-ui text-[10px] uppercase leading-relaxed tracking-[.16em] text-taupe">
             {invoiceIssued
-              ? "Rendered from the PRATIKSHYA FASHON order record. This is not a tax invoice; no tax is charged or recorded on this order."
+              ? "Rendered from the PRATIKSHYA FASHION order record. This is not a tax invoice; no tax is charged or recorded on this order."
               : "An invoice has not been issued for this order yet. This is a summary of the order record, not a tax invoice."}
           </p>
         </div>

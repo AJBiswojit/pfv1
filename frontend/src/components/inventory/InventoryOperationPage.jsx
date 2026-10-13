@@ -16,7 +16,7 @@ import { LOCATION_TYPES } from "../../services/inventory/inventoryRepository";
 const fieldClass = "mt-2 h-11 w-full border border-mist bg-canvas px-3 font-ui text-sm text-ink outline-none transition focus:border-accent focus:ring-1 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50";
 const labelClass = "font-ui text-[10px] uppercase tracking-[.15em] text-taupe";
 
-const actorFor = (portal, admin, employee) => portal === "admin"
+const actorFor = (portal, admin, employee) => portal !== "employee"
   ? { adminId: admin?.adminId, name: admin?.name || "Administrator" }
   : employee;
 
@@ -50,8 +50,8 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
   const [feedback, setFeedback] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
-  const Page = portal === "admin" ? AdminPage : EmployeePage;
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const Page = portal === "employee" ? EmployeePage : AdminPage;
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
   const actor = actorFor(portal, admin, employee);
   const warehouseOnly = portal === "employee" && employee?.role === ROLES.WAREHOUSE_STAFF;
   const locations = inventory.locations.filter((location) =>
@@ -144,7 +144,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
 
   return (
     <Page
-      eyebrow={`${portal === "admin" ? "Business" : "Retail operations"} / Inventory`}
+      eyebrow={`${portal === "employee" ? "Retail operations" : "Business"} / Inventory`}
       title={title}
       description={description}
       actions={<AtelierButton as={Link} to={root} variant="outline" size="chip">Back to inventory</AtelierButton>}

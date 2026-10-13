@@ -19,7 +19,7 @@ export default function EmployeeLayout() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Employee Portal — PRATIKSHYA FASHON";
+    document.title = "Employee Portal — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };

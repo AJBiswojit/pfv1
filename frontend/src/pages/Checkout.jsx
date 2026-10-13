@@ -40,7 +40,7 @@ export default function Checkout() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Checkout — PRATIKSHYA FASHON";
+    document.title = "Checkout — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };
@@ -96,11 +96,12 @@ export default function Checkout() {
     if (valid) checkout.nextStep();
   };
 
+  const isCod = checkout.paymentMethod === "cod";
   const primaryLabels = [
     "Continue to Delivery",
     "Continue to Review",
     "Continue to Payment",
-    `Pay ${formatINR(checkout.totals.total)}`,
+    isCod ? "Place Order" : `Pay ${formatINR(checkout.totals.total)}`,
   ];
 
   const stepPanels = [

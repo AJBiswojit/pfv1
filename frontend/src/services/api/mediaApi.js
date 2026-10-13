@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media API (Phases 6 + 7).
+ * PRATIKSHYA FASHION — Media API (Phases 6 + 7).
  *
  * Phase 6 activated OBJECT STORAGE; Phase 7 completed the RECORD half.
  * Everything below makes real HTTP calls against the backend contract:

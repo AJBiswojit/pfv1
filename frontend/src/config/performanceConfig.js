@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Performance periods, metrics and scoring.
+ * PRATIKSHYA FASHION — Performance periods, metrics and scoring.
  *
  * Role-aware target catalogues live here so warehouse staff are never
  * handed a sales target. Scoring weights are transparent and central.

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Analytics date ranges.
+ * PRATIKSHYA FASHION — Analytics date ranges.
  *
  * One place for period presets, comparison windows and chart buckets.
  * Pages never invent their own “last 7 days” arithmetic.

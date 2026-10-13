@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Workforce date helpers.
+ * PRATIKSHYA FASHION — Workforce date helpers.
  *
  * One locale, one month-boundary model, one working-day calculator.
  * Components never invent their own date arithmetic.

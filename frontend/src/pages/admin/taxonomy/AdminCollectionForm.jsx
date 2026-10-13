@@ -27,7 +27,8 @@ const emptyDraft = {
 export default function AdminCollectionForm() {
   const { collectionId } = useParams();
   const navigate = useNavigate();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
 
   const [existing, setExisting] = useState(null);
@@ -106,7 +107,7 @@ export default function AdminCollectionForm() {
     if (!result.ok) {
       return setError(formatAdminError(result, { entity: "collection", action: existing ? "updated" : "created" }));
     }
-    navigate(`/admin/collections/${result.collection.id}`);
+    navigate(`${prefix}/collections/${result.collection.id}`);
   };
 
   if (loading) {
@@ -128,7 +129,7 @@ export default function AdminCollectionForm() {
       eyebrow="Business / Collections"
       title={existing ? <>Edit <span className="italic text-accent">collection.</span></> : <>Create <span className="italic text-accent">collection.</span></>}
       description="Collections are editorial groupings. They are not categories, and product records are never duplicated."
-      actions={<AtelierButton as={Link} to="/admin/collections" variant="outline" size="chip">Back to collections</AtelierButton>}
+      actions={<AtelierButton as={Link} to={`${prefix}/collections`} variant="outline" size="chip">Back to collections</AtelierButton>}
     >
       <AdminPanel eyebrow="Collection record" title="Details">
         {error ? <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">{error}</p> : null}
@@ -185,7 +186,7 @@ export default function AdminCollectionForm() {
           </label>
           <div className="flex flex-wrap gap-3 lg:col-span-2">
             <AtelierButton type="submit" size="chip">{existing ? "Save collection" : "Create collection"}</AtelierButton>
-            <AtelierButton as={Link} to="/admin/collections" variant="outline" size="chip">Cancel</AtelierButton>
+            <AtelierButton as={Link} to={`${prefix}/collections`} variant="outline" size="chip">Cancel</AtelierButton>
           </div>
         </form>
       </AdminPanel>

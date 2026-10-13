@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Payment service abstraction (backend-owned).
+ * PRATIKSHYA FASHION — Payment service abstraction (backend-owned).
  *
  * Payment sessions are created and verified by the backend
  * (POST /payments/session, GET /payments/session/{id}, POST /payments/verify).

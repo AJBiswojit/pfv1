@@ -1,16 +1,16 @@
 /**
- * PRATIKSHYA FASHON — Reusable Brand component.
+ * PRATIKSHYA FASHION — Reusable Brand component.
  *
  * The single rendering seam for the atelier's brand mark across every
  * surface (storefront header, mobile drawer, footer, checkout, admin portal,
  * employee portal, login pages, order confirmation, etc.).
  *
  * It auto-uses the supplied logo asset when present at the canonical path
- * `src/assets/pratikshya_logo.webp` and gracefully falls back to the
+ * `src/assets/pratikshya_logo.png` and gracefully falls back to the
  * typographic wordmark when the asset has not yet been materialised on
  * disk. No surface hard-codes its own logo or wordmark: every place reads
  * from this component, so a single drop-in of
- * `src/assets/pratikshya_logo.webp` updates the whole application at
+ * `src/assets/pratikshya_logo.png` updates the whole application at
  * once.
  *
  * Visual rules — kept intentionally restrained per the Atelier language:
@@ -25,7 +25,7 @@
  *
  * Variants:
  *   - `mark`      — the supplied logo on its own
- *   - `wordmark`  — the typographic wordmark only (`PRATIKSHYA FASHON`)
+ *   - `wordmark`  — the typographic wordmark only (`PRATIKSHYA FASHION`)
  *   - `lockup`    — logo + wordmark together (default)
  *
  * Theme:
@@ -108,7 +108,7 @@ const THEME_EYEBROW = {
 /**
  * The single image renderer — only mounted when the canonical logo asset
  * is present in `import.meta.glob` (i.e. when the supplied
- * `src/assets/pratikshya_logo.webp` is on disk). Uses object-contain so
+ * `src/assets/pratikshya_logo.png` is on disk). Uses object-contain so
  * the supplied mark keeps its native aspect ratio, never distorts or crops.
  */
 function BrandMarkImage({ className, alt }) {
@@ -133,7 +133,7 @@ function BrandWordmark({ className, children }) {
 }
 
 /**
- * The reusable PRATIKSHYA FASHON brand component.
+ * The reusable PRATIKSHYA FASHION brand component.
  *
  * Render modes are:
  *   - `mark`     — only the supplied logo image
@@ -153,12 +153,12 @@ export default function Brand({
   variant = "lockup",
   size = "default",
   theme = "light",
-  wordmark = "PRATIKSHYA FASHON",
+  wordmark = "PRATIKSHYA FASHION",
   subtitle,
   eyebrow,
   subtitleClassName = "",
   className = "",
-  alt = "PRATIKSHYA FASHON",
+  alt = "PRATIKSHYA FASHION",
   ...rest
 }) {
   const rootRef = useRef(null);

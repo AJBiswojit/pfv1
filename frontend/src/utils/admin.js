@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin presentation helpers.
+ * PRATIKSHYA FASHION — Admin presentation helpers.
  *
  * Pure formatting for the Admin Portal. No storage, no authorization.
  * Currency goes through `formatINR` so the whole product prints rupees the
@@ -8,9 +8,15 @@
 
 import { formatINR } from "./shopping";
 
+/** Display name from either the composed `name` field or first/last parts. */
+export const adminDisplayName = (admin) => {
+  const composed = String(admin?.name || "").trim();
+  if (composed) return composed;
+  return [admin?.firstName, admin?.lastName].filter(Boolean).join(" ").trim();
+};
+
 export const adminInitials = (admin) => {
-  const parts = String(admin?.name || "")
-    .trim()
+  const parts = adminDisplayName(admin)
     .split(/\s+/)
     .filter(Boolean);
   if (parts.length === 0) return "PF";
@@ -61,9 +67,10 @@ export const greetingForAdmin = (date = new Date()) => {
 
 /** First name only — used in the dashboard greeting. */
 export const adminFirstName = (admin) =>
-  String(admin?.name || "").trim().split(/\s+/)[0] || "Administrator";
+  String(admin?.firstName || adminDisplayName(admin) || "").trim().split(/\s+/)[0] || "Administrator";
 
 export default {
+  adminDisplayName,
   adminInitials,
   formatCompactINR,
   formatAdminNumber,

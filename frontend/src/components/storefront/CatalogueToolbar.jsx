@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue toolbar.
+ * PRATIKSHYA FASHION — Catalogue toolbar.
  *
  * The ecommerce control bar that sits immediately below the compact
  * category header. Layout:

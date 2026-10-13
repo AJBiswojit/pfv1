@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee roles.
+ * PRATIKSHYA FASHION — Employee roles.
  *
  * Role identifiers never appear as raw strings in JSX. Each role owns a
  * default permission set. Custom permissions may be granted later by

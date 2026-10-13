@@ -15,6 +15,9 @@ import AnalyticsTrendChart from "./AnalyticsTrendChart";
 import AnalyticsBarList from "./AnalyticsBarList";
 import AnalyticsEmpty from "./AnalyticsEmpty";
 
+/** Returns true for any admin-tier portal (admin or super-admin). */
+const isAdminPortal = (portal) => portal === "admin" || portal === "super-admin";
+
 const viewFromPath = (pathname) => {
   if (pathname.includes("/sales")) return "sales";
   if (pathname.includes("/products")) return "products";
@@ -222,7 +225,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
           eyebrow="Catalogue"
           title="Top products"
           action={
-            <AtelierButton as={Link} to={portal === "admin" ? "/admin/analytics/products" : "/employee/reports/products"} variant="outline" size="chip">
+            <AtelierButton as={Link} to={isAdminPortal(portal) ? `/${portal}/analytics/products` : "/employee/reports/products"} variant="outline" size="chip">
               All products
             </AtelierButton>
           }
@@ -404,7 +407,7 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
 }
 
 function ProductsSection({ snapshot, productRank, setProductRank, productRows, portal }) {
-  const productBase = portal === "admin" ? "/admin/products" : "/employee/products";
+  const productBase = isAdminPortal(portal) ? `/${portal}/products` : "/employee/products";
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -489,7 +492,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
 }
 
 function CustomersSection({ snapshot, portal }) {
-  const customerBase = portal === "admin" ? "/admin/customers" : "/employee/customers";
+  const customerBase = isAdminPortal(portal) ? `/${portal}/customers` : "/employee/customers";
   return (
     <>
       <MetricGrid
@@ -543,7 +546,7 @@ function CustomersSection({ snapshot, portal }) {
                 id: "name",
                 label: "Customer",
                 render: (row) =>
-                  portal === "admin" && row.registry ? (
+                  isAdminPortal(portal) && row.registry ? (
                     <Link to={`${customerBase}/${row.id}`} className="underline-offset-4 hover:text-accent hover:underline">
                       {row.name}
                     </Link>
@@ -579,7 +582,7 @@ function InventorySection({ snapshot, filters, portal }) {
   const lowRows = filters.location
     ? inventory.lowStockRows.filter((row) => row.locationId === filters.location)
     : inventory.lowStockRows;
-  const inventoryBase = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const inventoryBase = isAdminPortal(portal) ? `/${portal}/inventory` : "/employee/inventory";
 
   return (
     <>
@@ -641,7 +644,7 @@ function InventorySection({ snapshot, filters, portal }) {
                 label: "Product",
                 render: (row) => (
                   <Link
-                    to={portal === "admin" ? `/admin/products/${row.productId}` : `/employee/products/${row.productId}/edit`}
+                    to={isAdminPortal(portal) ? `/${portal}/products/${row.productId}` : `/employee/products/${row.productId}/edit`}
                     className="underline-offset-4 hover:text-accent hover:underline"
                   >
                     {row.product}
@@ -699,7 +702,7 @@ function ReturnsSection({ snapshot }) {
 }
 
 function OffersSection({ snapshot, portal }) {
-  const offerBase = portal === "admin" ? "/admin/offers" : "/employee/offers";
+  const offerBase = isAdminPortal(portal) ? `/${portal}/offers` : "/employee/offers";
   return (
     <>
       <p className="mb-4 font-ui text-[11px] text-taupe">
@@ -811,7 +814,7 @@ function PeopleList({ rows, empty, to }) {
 
 function ProductTable({ rows, portal, empty = "No products to show." }) {
   const hrefFor = (productId) =>
-    portal === "admin" ? `/admin/products/${productId}` : `/employee/products/${productId}/edit`;
+    isAdminPortal(portal) ? `/${portal}/products/${productId}` : `/employee/products/${productId}/edit`;
   return (
     <DataTable
       rows={rows}

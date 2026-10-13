@@ -9,7 +9,7 @@ import { getProductLifecycleOptions } from "../../services/productDeletionServic
 import { useAdminAuth } from "../../context/AdminAuthContext";
 
 /**
- * PRATIKSHYA FASHON — Product lifecycle actions (Phase 5 rework).
+ * PRATIKSHYA FASHION — Product lifecycle actions (Phase 5 rework).
  *
  * The Media Management view of "retire this product". Every transition here
  * is a SERVER action, awaited: the button reports only what the backend

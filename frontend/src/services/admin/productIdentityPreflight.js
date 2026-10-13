@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — product identity pre-flight (Phase 3 Block 4).
+ * PRATIKSHYA FASHION — product identity pre-flight (Phase 3 Block 4).
  *
  * Closes PF3-N16: `GET /admin/products/availability` existed with zero call
  * sites while the editor decided SKU/slug uniqueness from

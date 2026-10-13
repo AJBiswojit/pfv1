@@ -56,7 +56,7 @@ export default function CustomerLayout() {
         <SiteHeader counts={counts} onOpenCart={cart.openDrawer} />
       )}
 
-      <div className="flex-1">
+      <div className="flex-1 pt-16 md:pt-20">
         <AnimatePresence mode="wait" initial={false}>
           <PageTransition key={pathname}>
             <Suspense fallback={<LoadingState label="Loading" />}>

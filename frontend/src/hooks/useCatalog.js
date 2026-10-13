@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Reactive catalog store hook.
+ * PRATIKSHYA FASHION — Reactive catalog store hook.
  *
  * Subscribes a component to the backend-fed catalog snapshot so it
  * re-renders when products / categories / collections arrive from the API.

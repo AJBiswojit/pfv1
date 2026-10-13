@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Demo upload validation.
+ * PRATIKSHYA FASHION — Demo upload validation.
  *
  * Format rules live in `config/mediaTypes` (`UPLOAD_RULES`). This module
  * applies them to a chosen File so the dropzone and the marketing panel

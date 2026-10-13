@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product-first catalogue listing page.
+ * PRATIKSHYA FASHION — Product-first catalogue listing page.
  *
  * Every browsable product listing renders through this one page:
  *   · /category/:slug         (managed categories)

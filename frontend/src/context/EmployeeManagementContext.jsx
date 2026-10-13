@@ -1,7 +1,7 @@
 /**
- * PRATIKSHYA FASHON — Employee management context.
+ * PRATIKSHYA FASHION — Employee management context.
  *
- * Shared employee repository state. Super Admin account-management actions
+ * Shared employee repository state. Admin account-management actions
  * are thin wrappers around employeeService and carry the signed-in Admin
  * actor into its authorization gate. Employee surfaces receive read-only
  * operational data plus the deliberately narrow own-profile action.
@@ -20,14 +20,15 @@ import { useAdminAuth } from "./AdminAuthContext";
 import { getAccessToken } from "../services/api/apiClient";
 import {
   apiAdminListEmployees,
+  apiAdminGetEmployee,
   apiAdminCreateEmployee,
   apiAdminUpdateEmployee,
   apiAdminUpdateEmployeeStatus,
   apiAdminResetEmployeePassword,
   apiAdminUpdateEmployeePermissions,
 } from "../services/api/employeesApi";
-import { canManageEmployeeAccounts, isSuperEmployeeAccount } from "../config/adminAccess";
-import { getRoleLabel } from "../config/employeeRoles";
+import { canManageEmployeeAccounts } from "../config/adminAccess";
+import { getRoleLabel, isKnownRole } from "../config/employeeRoles";
 import { getDepartmentLabel, getSectionLabel, getStoreLabel } from "../config/employeeDepartments";
 import { getStatusLabel } from "../config/employeeStatus";
 import { employeeFullName } from "../utils/employee";
@@ -59,29 +60,26 @@ import {
 const EmployeeManagementContext = createContext(null);
 
 export function EmployeeManagementProvider({ children }) {
-  const { employee: employeeActor, refreshSession } = useEmployeeAuth();
+  const { employee: employeeActor, refreshSession, updateOwnProfile: persistOwnProfile } = useEmployeeAuth();
   const { admin } = useAdminAuth();
   const [employees, setEmployees] = useState(() => ensureSeeded());
 
   /**
    * Which isolated session may drive the account-management API right now?
-   * "admin" for Admin-workspace accounts, "employee" for a SUPER_EMPLOYEE
-   * (the SAME endpoints, the SAME hierarchy checks server-side), null when
-   * neither applies. Legacy local-store actions stay available for offline
-   * development exactly as before.
+   * "admin" for Admin-workspace accounts, null when neither applies.
+   * Legacy local-store actions stay available for offline development
+   * exactly as before.
    */
   const resolveAccountScope = useCallback(() => {
     if (getAccessToken("admin")) return "admin";
-    if (getAccessToken("employee") && isSuperEmployeeAccount(employeeActor)) return "employee";
     return null;
-  }, [employeeActor]);
+  }, []);
   const [activity, setActivity] = useState(() => loadActivity());
   const [isWorking, setIsWorking] = useState(false);
 
   // Sync staff list from backend. The server is authoritative — no seed.
   // Admin-workspace sessions ask for the full roster (ADMIN / SUPER_ADMIN
-  // included). SUPER_EMPLOYEE sessions omit include_admins so they cannot
-  // enumerate admin-domain accounts.
+  // included).
   useEffect(() => {
     const scope = resolveAccountScope();
     if (!scope) return;
@@ -89,7 +87,7 @@ export function EmployeeManagementProvider({ children }) {
     apiAdminListEmployees({
       pageSize: 100,
       includeAdmins: scope === "admin",
-    }).then((result) => {
+    }, scope).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         replaceServerEmployees(result.items ?? []);
@@ -128,14 +126,14 @@ export function EmployeeManagementProvider({ children }) {
     (action, target, summary) => {
       setActivity((current) =>
         recordActivity(current, {
-          ...describeActor(admin),
+          ...describeActor(admin ?? employeeActor),
           targetEmployeeId: target?.employeeId || null,
           action,
           summary,
         })
       );
     },
-    [admin]
+    [admin, employeeActor]
   );
 
   /**
@@ -169,12 +167,34 @@ export function EmployeeManagementProvider({ children }) {
     [employees]
   );
 
+  const loadEmployee = useCallback(
+    async (id) => {
+      const existing = findEmployee(employees, id);
+      if (existing) return existing;
+      if (!id || !resolveAccountScope()) return null;
+      const result = await apiAdminGetEmployee(id);
+      if (!result.ok || !result.employee) return null;
+      setEmployees((current) => {
+        const already = findEmployee(current, result.employee.id) || findEmployee(current, result.employee.employeeId);
+        if (already) {
+          return current.map((row) =>
+            row.id === already.id || row.employeeId === already.employeeId ? result.employee : row
+          );
+        }
+        return [...current, result.employee];
+      });
+      return result.employee;
+    },
+    [employees, resolveAccountScope]
+  );
+
   const createEmployee = useCallback(
     async (draft) => {
       setIsWorking(true);
       // Try backend first
-      if (resolveAccountScope()) {
-        const result = await apiAdminCreateEmployee(draft);
+      const scope = resolveAccountScope();
+      if (scope) {
+        const result = await apiAdminCreateEmployee(draft, scope);
         setIsWorking(false);
         if (result.ok) {
           setEmployees((current) => [...current, result.employee]);
@@ -187,7 +207,7 @@ export function EmployeeManagementProvider({ children }) {
         return { ok: false, message: result.error };
       }
       await new Promise((resolve) => setTimeout(resolve, 280));
-      const result = createRecord(employees, draft, admin);
+      const result = createRecord(employees, draft, admin ?? employeeActor);
       setIsWorking(false);
       if (!result.ok) return result;
       setEmployees(result.employees);
@@ -195,25 +215,49 @@ export function EmployeeManagementProvider({ children }) {
         `Created employee ${employeeFullName(result.employee)} · ${result.employee.employeeId}`);
       return result;
     },
-    [employees, admin, note]
+    [employees, admin, employeeActor, note, resolveAccountScope]
   );
 
   const updateEmployee = useCallback(
     async (employeeId, patch) => {
       setIsWorking(true);
-      if (resolveAccountScope()) {
-        const result = await apiAdminUpdateEmployee(employeeId, patch);
-        setIsWorking(false);
-        if (result.ok) {
-          setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
-          syncIfCurrent(result.employee);
-          note(ACTIVITY_ACTIONS.EMPLOYEE_UPDATED, result.employee, `Updated ${employeeFullName(result.employee)}`);
-          return { ok: true, employee: result.employee };
+      const scope = resolveAccountScope();
+      if (scope) {
+        const {
+          permissionMode,
+          permissions,
+          email: _email,
+          status: _status,
+          ...profilePatch
+        } = patch || {};
+        if (!isKnownRole(profilePatch.role)) {
+          delete profilePatch.role;
         }
-        return { ok: false, message: result.error };
+        const result = await apiAdminUpdateEmployee(employeeId, profilePatch, scope);
+        if (!result.ok) {
+          setIsWorking(false);
+          return { ok: false, message: result.error };
+        }
+        let employee = result.employee;
+        if (permissionMode === "custom" || permissionMode === "role") {
+          const permResult = await apiAdminUpdateEmployeePermissions(employeeId, {
+            permissionMode,
+            permissions: permissionMode === "custom" && Array.isArray(permissions) ? permissions : [],
+          }, scope);
+          if (!permResult.ok) {
+            setIsWorking(false);
+            return { ok: false, message: permResult.error };
+          }
+          employee = permResult.employee;
+        }
+        setIsWorking(false);
+        setEmployees((current) => current.map((e) => (e.id === employee.id ? employee : e)));
+        syncIfCurrent(employee);
+        note(ACTIVITY_ACTIONS.EMPLOYEE_UPDATED, employee, `Updated ${employeeFullName(employee)}`);
+        return { ok: true, employee };
       }
       await new Promise((resolve) => setTimeout(resolve, 220));
-      const result = updateRecord(employees, employeeId, patch, admin);
+      const result = updateRecord(employees, employeeId, patch, admin ?? employeeActor);
       setIsWorking(false);
       if (!result.ok) return result;
       setEmployees(result.employees);
@@ -221,7 +265,7 @@ export function EmployeeManagementProvider({ children }) {
       note(ACTIVITY_ACTIONS.EMPLOYEE_UPDATED, result.employee, `Updated ${employeeFullName(result.employee)}`);
       return result;
     },
-    [employees, admin, note, syncIfCurrent]
+    [employees, admin, employeeActor, note, syncIfCurrent, resolveAccountScope]
   );
 
   const updateOwnProfile = useCallback(
@@ -230,27 +274,33 @@ export function EmployeeManagementProvider({ children }) {
         return { ok: false, code: "FORBIDDEN", message: "You need to sign in first." };
       }
       setIsWorking(true);
-      const result = updateOwnProfileRecord(
-        employees,
-        employeeActor.employeeId,
-        patch,
-        employeeActor
-      );
+      const result = persistOwnProfile
+        ? await persistOwnProfile(patch)
+        : updateOwnProfileRecord(employees, employeeActor.employeeId, patch, employeeActor);
       setIsWorking(false);
       if (!result.ok) return result;
-      setEmployees(result.employees);
-      refreshSession();
+      if (result.employee) {
+        setEmployees((current) =>
+          current.map((person) =>
+            person.id === result.employee.id || person.employeeId === result.employee.employeeId
+              ? { ...person, ...result.employee }
+              : person
+          )
+        );
+      } else if (result.employees) {
+        setEmployees(result.employees);
+      }
       setActivity((current) =>
         recordActivity(current, {
           ...describeActor(employeeActor),
           targetEmployeeId: employeeActor.employeeId,
           action: ACTIVITY_ACTIONS.EMPLOYEE_UPDATED,
-          summary: `${employeeFullName(employeeActor)} updated their own contact profile`,
+          summary: `${employeeFullName(result.employee || employeeActor)} updated their own contact profile`,
         })
       );
       return result;
     },
-    [employees, employeeActor, refreshSession]
+    [employees, employeeActor, persistOwnProfile]
   );
 
   const updateEmployeeRole = useCallback(
@@ -312,8 +362,9 @@ export function EmployeeManagementProvider({ children }) {
 
   const suspendEmployee = useCallback(
     async (employeeId) => {
-      if (resolveAccountScope()) {
-        const result = await apiAdminUpdateEmployeeStatus(employeeId, "SUSPENDED");
+      const scope = resolveAccountScope();
+      if (scope) {
+        const result = await apiAdminUpdateEmployeeStatus(employeeId, "SUSPENDED", scope);
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
           syncIfCurrent(result.employee);
@@ -322,20 +373,21 @@ export function EmployeeManagementProvider({ children }) {
         }
         return { ok: false, message: result.error };
       }
-      const result = suspendRecord(employees, employeeId, admin);
+      const result = suspendRecord(employees, employeeId, admin ?? employeeActor);
       if (!result.ok) return result;
       setEmployees(result.employees);
       syncIfCurrent(result.employee);
       note(ACTIVITY_ACTIONS.EMPLOYEE_SUSPENDED, result.employee, `Suspended ${employeeFullName(result.employee)}`);
       return result;
     },
-    [employees, admin, note, syncIfCurrent]
+    [employees, admin, employeeActor, note, syncIfCurrent, resolveAccountScope]
   );
 
   const activateEmployee = useCallback(
     async (employeeId) => {
-      if (resolveAccountScope()) {
-        const result = await apiAdminUpdateEmployeeStatus(employeeId, "ACTIVE");
+      const scope = resolveAccountScope();
+      if (scope) {
+        const result = await apiAdminUpdateEmployeeStatus(employeeId, "ACTIVE", scope);
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
           syncIfCurrent(result.employee);
@@ -344,20 +396,21 @@ export function EmployeeManagementProvider({ children }) {
         }
         return { ok: false, message: result.error };
       }
-      const result = activateRecord(employees, employeeId, admin);
+      const result = activateRecord(employees, employeeId, admin ?? employeeActor);
       if (!result.ok) return result;
       setEmployees(result.employees);
       syncIfCurrent(result.employee);
       note(ACTIVITY_ACTIONS.EMPLOYEE_ACTIVATED, result.employee, `Activated ${employeeFullName(result.employee)} · ${getStatusLabel(result.employee.status)}`);
       return result;
     },
-    [employees, admin, note, syncIfCurrent]
+    [employees, admin, employeeActor, note, syncIfCurrent, resolveAccountScope]
   );
 
   const deactivateEmployee = useCallback(
     async (employeeId) => {
-      if (resolveAccountScope()) {
-        const result = await apiAdminUpdateEmployeeStatus(employeeId, "INACTIVE");
+      const scope = resolveAccountScope();
+      if (scope) {
+        const result = await apiAdminUpdateEmployeeStatus(employeeId, "INACTIVE", scope);
         if (result.ok) {
           setEmployees((current) => current.map((e) => (e.id === result.employee.id ? result.employee : e)));
           syncIfCurrent(result.employee);
@@ -366,31 +419,37 @@ export function EmployeeManagementProvider({ children }) {
         }
         return { ok: false, message: result.error };
       }
-      const result = deactivateRecord(employees, employeeId, admin);
+      const result = deactivateRecord(employees, employeeId, admin ?? employeeActor);
       if (!result.ok) return result;
       setEmployees(result.employees);
       syncIfCurrent(result.employee);
       note(ACTIVITY_ACTIONS.EMPLOYEE_DEACTIVATED, result.employee, `Deactivated ${employeeFullName(result.employee)}`);
       return result;
     },
-    [employees, admin, note, syncIfCurrent]
+    [employees, admin, employeeActor, note, syncIfCurrent, resolveAccountScope]
   );
 
   const resetEmployeePassword = useCallback(
     async (employeeId) => {
       setIsWorking(true);
-      if (resolveAccountScope()) {
-        const result = await apiAdminResetEmployeePassword(employeeId);
+      const scope = resolveAccountScope();
+      if (scope) {
+        const result = await apiAdminResetEmployeePassword(employeeId, {}, scope);
         setIsWorking(false);
         if (result.ok) {
           const emp = employees.find((e) => e.id === employeeId || e.employeeId === employeeId);
           if (emp) note(ACTIVITY_ACTIONS.PASSWORD_RESET, emp, `Reset password for ${employeeFullName(emp)}`);
-          return { ok: true, message: result.message };
+          return {
+            ok: true,
+            message: result.message,
+            temporaryPassword: result.temporaryPassword ?? null,
+            employee: emp ?? null,
+          };
         }
         return { ok: false, message: result.error };
       }
       await new Promise((resolve) => setTimeout(resolve, 240));
-      const result = resetRecord(employees, employeeId, admin);
+      const result = resetRecord(employees, employeeId, admin ?? employeeActor);
       setIsWorking(false);
       if (!result.ok) return result;
       setEmployees(result.employees);
@@ -398,7 +457,7 @@ export function EmployeeManagementProvider({ children }) {
       note(ACTIVITY_ACTIONS.PASSWORD_RESET, result.employee, `Reset password for ${employeeFullName(result.employee)}`);
       return result;
     },
-    [employees, admin, note, syncIfCurrent]
+    [employees, admin, employeeActor, note, syncIfCurrent, resolveAccountScope]
   );
 
   const getActivity = useCallback(
@@ -407,7 +466,7 @@ export function EmployeeManagementProvider({ children }) {
     [activity]
   );
 
-  const canManageEmployees = canManageEmployeeAccounts(admin) || isSuperEmployeeAccount(employeeActor);
+  const canManageEmployees = canManageEmployeeAccounts(admin);
 
   const value = useMemo(
     () => ({
@@ -416,6 +475,7 @@ export function EmployeeManagementProvider({ children }) {
       isWorking,
       canManageEmployees,
       getEmployee,
+      loadEmployee,
       getEmployees,
       createEmployee,
       updateEmployee,
@@ -436,6 +496,7 @@ export function EmployeeManagementProvider({ children }) {
       isWorking,
       canManageEmployees,
       getEmployee,
+      loadEmployee,
       getEmployees,
       createEmployee,
       updateEmployee,
@@ -465,6 +526,7 @@ const inertManagement = {
   isWorking: false,
   canManageEmployees: false,
   getEmployee: () => null,
+  loadEmployee: async () => null,
   getEmployees: () => [],
   createEmployee: async () => ({ ok: false }),
   updateEmployee: async () => ({ ok: false }),

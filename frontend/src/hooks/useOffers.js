@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Offer register subscriptions (Phase 5: fully
+ * PRATIKSHYA FASHION — Offer register subscriptions (Phase 5: fully
  * server-backed).
  *
  * Admin and employee desks read `GET /admin/offers`; customers get the

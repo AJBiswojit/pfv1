@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Departments, sections and store locations.
+ * PRATIKSHYA FASHION — Departments, sections and store locations.
  *
  * The mall is organised by fashion house, not by generic corporate units.
  * Employees are assigned a department, a section inside it, and a floor.

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Return service.
+ * PRATIKSHYA FASHION — Return service.
  *
  * Return eligibility, validation, record creation, operational lifecycle,
  * and the demo return timeline. Kept away from the UI so the return form

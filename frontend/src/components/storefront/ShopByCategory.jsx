@@ -47,7 +47,7 @@ const categoryCard = (category, usedIds) => ({
   eyebrow: category.eyebrow || "",
   featured: category.featured,
   image: resolveCategoryCover(category, usedIds),
-  alt: `${category.name} collection at PRATIKSHYA FASHON`,
+  alt: `${category.name} collection at PRATIKSHYA FASHION`,
 });
 
 export default function ShopByCategory({ excludeIds = null }) {
@@ -131,7 +131,7 @@ export default function ShopByCategory({ excludeIds = null }) {
                             {card.eyebrow}
                           </p>
                         ) : null}
-                        <h4 className="font-display text-xl md:text-2xl font-light leading-tight text-white">
+                        <h4 className="font-accent text-xl md:text-2xl font-light leading-tight text-white">
                           {card.name}
                         </h4>
                         <span className="mt-2 inline-flex items-center gap-1.5 font-ui text-[9px] uppercase tracking-[.2em] text-pearl transition-colors group-hover:text-white">

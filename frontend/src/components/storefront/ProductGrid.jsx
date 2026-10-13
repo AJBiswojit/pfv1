@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product grid.
+ * PRATIKSHYA FASHION — Product grid.
  *
  * Lays out premium Atelier product cards with the catalogue-first column
  * rhythm:

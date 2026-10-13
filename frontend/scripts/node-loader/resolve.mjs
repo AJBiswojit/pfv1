@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Node ESM resolver hook (test / audit tooling only).
+ * PRATIKSHYA FASHION — Node ESM resolver hook (test / audit tooling only).
  *
  * The application is bundled by Vite, which resolves extensionless relative
  * imports and bare `.json` imports. Node's ESM loader does neither, so the

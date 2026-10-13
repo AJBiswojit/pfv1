@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.core.rbac import is_staff_login_blocked
 from app.core.exceptions import (
     BusinessLogicException,
     ConflictException,
@@ -56,6 +57,7 @@ from app.schemas.auth.login import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     StaffLoginRequest,
+    StaffProfileUpdateRequest,
 )
 from app.schemas.auth.token import TokenResponse, UserDTO
 
@@ -130,7 +132,7 @@ class AuthService:
         )
 
         extra: dict = {}
-        if user.user_type == "employee":
+        if user.user_type in ("employee", "admin"):
             profile_res = await self.db.execute(
                 select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
             )
@@ -144,11 +146,12 @@ class AuthService:
                     department_id=profile.department_id,
                     section_id=profile.section_id,
                 )
-        elif user.user_type == "admin":
-            # The current schema has no separate admin-profile table/code. Keep
-            # admin identity explicit and stable by exposing the authoritative
-            # user UUID under both legacy aliases without inventing DB fields.
-            extra.update(admin_code=user.id, adminId=user.id)
+            if user.user_type == "admin":
+                # Prefer the PF staff code when one exists (accounts created
+                # through People); fall back to the user UUID for bootstrap
+                # SUPER_ADMIN rows that predate staff profiles.
+                staff_code = profile.employee_code if profile else user.id
+                extra.update(admin_code=staff_code, adminId=staff_code)
 
         # ── Account-level model (unified auth consolidation) ────────────────
         # ONE canonical field — the frontend routes on this, never on derived
@@ -189,6 +192,8 @@ class AuthService:
             roles=roles,
             permissions=permissions,
             permission_mode=getattr(user, "permission_mode", None) or "role",
+            created_at=getattr(user, "created_at", None),
+            createdAt=getattr(user, "created_at", None),
             **extra,
         )
 
@@ -250,18 +255,32 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         surface: str = "customer",
+        _prefetched_rbac: Optional[Tuple[List[str], List[str]]] = None,
     ) -> TokenResponse:
         """
         Build the JWT token response.
 
         `surface` controls which alias key is populated in the response
         (user / employee / admin) as per API_CONTRACT.md.
+
+        `_prefetched_rbac` — when the caller has already resolved
+        (roles, permissions) for this user (e.g. to check account_level
+        before deciding which endpoint is allowed), pass the tuple here to
+        skip the redundant second RBAC lookup.  The cache means this is
+        never wrong; it just avoids a wasted round-trip on a cold cache.
         """
-        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if _prefetched_rbac is not None:
+            roles, permissions = _prefetched_rbac
+        else:
+            roles, permissions = await self._get_user_roles_and_permissions(user.id)
+
+        from app.dependencies import resolve_account_level
+        account_level = resolve_account_level(user, roles)
 
         access_token = create_access_token(
             subject=user.id,
             user_type=user.user_type,
+            account_level=account_level,
             extra_claims={
                 "roles": roles,
                 "force_password_change": user.force_password_change,
@@ -303,10 +322,11 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> TokenResponse:
-        stmt = select(UserModel).where(UserModel.email == req.email)
+        email_clean = req.email.strip().lower()
+        stmt = select(UserModel).where(UserModel.email == email_clean)
         res = await self.db.execute(stmt)
         if res.scalars().first():
-            logger.warning("Customer registration conflict email=%s ip=%s", req.email, ip_address)
+            logger.warning("Customer registration conflict email=%s ip=%s", email_clean, ip_address)
             raise ConflictException(
                 "An account with this email already exists. Please sign in."
             )
@@ -321,7 +341,7 @@ class AuthService:
                 )
 
         new_user = UserModel(
-            email=req.email,
+            email=email_clean,
             phone=req.phone,
             full_name=req.full_name,
             hashed_password=hash_password(req.password),
@@ -333,7 +353,7 @@ class AuthService:
         self.db.add(new_user)
         await self.db.flush()
 
-        self.db.add(CustomerProfileModel(user_id=new_user.id))
+        self.db.add(CustomerProfileModel(user_id=new_user.id, first_name=req.firstName, last_name=req.lastName))
 
         role_stmt = select(RoleModel).where(RoleModel.name == "CUSTOMER")
         role_res = await self.db.execute(role_stmt)
@@ -360,7 +380,7 @@ class AuthService:
         if _is_phone(identifier):
             stmt = select(UserModel).where(UserModel.phone == identifier)
         else:
-            stmt = select(UserModel).where(UserModel.email == identifier)
+            stmt = select(UserModel).where(UserModel.email == identifier.lower())
 
         res = await self.db.execute(stmt)
         user = res.scalars().first()
@@ -369,7 +389,7 @@ class AuthService:
             logger.warning("Customer login failed — unknown identifier=%s ip=%s", identifier, ip_address)
             raise UnauthorizedException("That email or phone doesn't match our records.")
 
-        if user.status in ("SUSPENDED", "DEACTIVATED"):
+        if user.status != "ACTIVE":
             logger.warning("Customer login blocked status=%s user_id=%s ip=%s", user.status, user.id, ip_address)
             raise ForbiddenException(f"Account is {user.status.lower()}. Access denied.")
 
@@ -423,7 +443,7 @@ class AuthService:
         if not user or user.user_type != "employee":
             raise UnauthorizedException("That employee ID does not match our records.")
 
-        if user.status in ("SUSPENDED", "INACTIVE"):
+        if is_staff_login_blocked(user.status):
             raise ForbiddenException(
                 f"Employee account is {user.status.lower()}. Access denied."
             )
@@ -461,26 +481,24 @@ class AuthService:
         admin_count = count_res.scalar_one()
         is_bootstrap = admin_count == 0
 
+        # Only the very first admin (bootstrap) may be created through this
+        # endpoint. Once a SUPER_ADMIN exists there is exactly one — this path
+        # is permanently closed so no authenticated caller, regardless of role,
+        # can create a second SUPER_ADMIN.
+        if not is_bootstrap:
+            raise ForbiddenException(
+                "A SUPER_ADMIN account already exists. "
+                "Additional admin accounts must be created through POST /admin/employees."
+            )
+
         bootstrap_secret = getattr(settings, "ADMIN_BOOTSTRAP_SECRET", None)
+        if bootstrap_secret and req.adminSecret != bootstrap_secret:
+            raise ForbiddenException(
+                "ADMIN_BOOTSTRAP_SECRET is required to create the first admin account."
+            )
 
-        if is_bootstrap:
-            if bootstrap_secret and req.adminSecret != bootstrap_secret:
-                raise ForbiddenException(
-                    "ADMIN_BOOTSTRAP_SECRET is required to create the first admin account."
-                )
-        else:
-            if actor is None:
-                if not bootstrap_secret or req.adminSecret != bootstrap_secret:
-                    raise ForbiddenException(
-                        "Creating an admin account requires an existing SUPER_ADMIN session "
-                        "or the ADMIN_BOOTSTRAP_SECRET key."
-                    )
-            else:
-                actor_roles, _actor_permissions = await self._get_user_roles_and_permissions(actor.id)
-                if "SUPER_ADMIN" not in actor_roles:
-                    raise ForbiddenException("Creating an admin account requires a SUPER_ADMIN session.")
-
-        email_stmt = select(UserModel).where(UserModel.email == req.email)
+        email_clean = req.email.strip().lower()
+        email_stmt = select(UserModel).where(UserModel.email == email_clean)
         email_res = await self.db.execute(email_stmt)
         if email_res.scalars().first():
             raise ConflictException("An account with this email already exists.")
@@ -492,7 +510,7 @@ class AuthService:
                 raise ConflictException("An account with this phone number already exists.")
 
         new_admin = UserModel(
-            email=req.email,
+            email=email_clean,
             phone=req.phone,
             full_name=req.full_name,
             hashed_password=hash_password(req.password),
@@ -527,15 +545,68 @@ class AuthService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> TokenResponse:
-        admin_identifier = req.adminId or str(req.email or "")
+        """ADMIN-level sign-in. Rejects SUPER_ADMIN — use /auth/super-admin/sign-in."""
+        user = await self._resolve_admin_user(req.adminId or str(req.email or ""), req.password, ip_address)
 
-        if not admin_identifier:
+        from app.dependencies import resolve_account_level
+        from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+
+        # Fetch once — reused for the level check AND passed into
+        # _build_token_response to avoid a redundant second lookup.
+        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if resolve_account_level(user, roles) == ACCOUNT_LEVEL_SUPER_ADMIN:
+            logger.warning("SUPER_ADMIN attempted ADMIN login endpoint user_id=%s ip=%s", user.id, ip_address)
+            raise ForbiddenException(
+                "This account is a SUPER_ADMIN. Please use /auth/super-admin/sign-in."
+            )
+
+        logger.info("Admin login success user_id=%s ip=%s", user.id, ip_address)
+        return await self._build_token_response(
+            user, ip_address, user_agent, surface="admin",
+            _prefetched_rbac=(roles, permissions),
+        )
+
+    async def login_super_admin(
+        self,
+        req: AdminLoginRequest,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> TokenResponse:
+        """SUPER_ADMIN-exclusive sign-in. Rejects ADMIN — use /auth/admin/sign-in."""
+        user = await self._resolve_admin_user(req.adminId or str(req.email or ""), req.password, ip_address)
+
+        from app.dependencies import resolve_account_level
+        from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
+
+        # Fetch once — reused for the level check AND passed into
+        # _build_token_response to avoid a redundant second lookup.
+        roles, permissions = await self._get_user_roles_and_permissions(user.id)
+        if resolve_account_level(user, roles) != ACCOUNT_LEVEL_SUPER_ADMIN:
+            logger.warning("Non-SUPER_ADMIN attempted super-admin login endpoint user_id=%s ip=%s", user.id, ip_address)
+            raise ForbiddenException(
+                "This account is not a SUPER_ADMIN. Please use /auth/admin/sign-in."
+            )
+
+        logger.info("Super admin login success user_id=%s ip=%s", user.id, ip_address)
+        return await self._build_token_response(
+            user, ip_address, user_agent, surface="admin",
+            _prefetched_rbac=(roles, permissions),
+        )
+
+    async def _resolve_admin_user(self, identifier: str, password: str, ip_address: Optional[str]) -> UserModel:
+        """Shared credential resolution for admin-surface logins.
+
+        Looks up by email or phone, validates user_type, status, password
+        presence, and password correctness. Does NOT check account_level —
+        callers do that themselves after this returns.
+        """
+        if not identifier:
             raise UnauthorizedException("Admin ID or email is required.")
 
-        if _is_phone(admin_identifier):
-            stmt = select(UserModel).where(UserModel.phone == admin_identifier)
+        if _is_phone(identifier):
+            stmt = select(UserModel).where(UserModel.phone == identifier)
         else:
-            stmt = select(UserModel).where(UserModel.email == admin_identifier)
+            stmt = select(UserModel).where(UserModel.email == identifier.lower())
 
         res = await self.db.execute(stmt)
         user = res.scalars().first()
@@ -543,22 +614,19 @@ class AuthService:
         if not user or user.user_type != "admin":
             raise ForbiddenException("Admin access privileges required.")
 
-        if user.status == "SUSPENDED":
-            raise ForbiddenException("Admin account is suspended. Access denied.")
+        if is_staff_login_blocked(user.status):
+            raise ForbiddenException(f"Admin account is {user.status.lower()}. Access denied.")
 
         if not user.hashed_password:
             raise UnauthorizedException(
                 "This admin account has no password set. Please contact the system administrator."
             )
 
-        if not verify_password(req.password, user.hashed_password):
+        if not verify_password(password, user.hashed_password):
             logger.warning("Admin login failed — wrong password user_id=%s ip=%s", user.id, ip_address)
             raise UnauthorizedException("Invalid admin credentials.")
 
-        logger.info("Admin login success user_id=%s ip=%s", user.id, ip_address)
-        return await self._build_token_response(
-            user, ip_address, user_agent, surface="admin"
-        )
+        return user
 
     # ── Unified Staff Login (all four account levels) ─────────────────────────
 
@@ -589,7 +657,7 @@ class AuthService:
             )
             .where(
                 or_(
-                    UserModel.email == identifier,
+                    UserModel.email == identifier.lower(),
                     UserModel.phone == identifier,
                     EmployeeProfileModel.employee_code == identifier,
                 )
@@ -602,9 +670,7 @@ class AuthService:
             logger.warning("Staff login failed — unknown identifier ip=%s", ip_address)
             raise UnauthorizedException("Those credentials don't match a staff account.")
 
-        if user.status == "SUSPENDED" or (
-            user.user_type == "employee" and user.status == "INACTIVE"
-        ):
+        if is_staff_login_blocked(user.status):
             raise ForbiddenException(f"Account is {user.status.lower()}. Access denied.")
 
         if not user.hashed_password:
@@ -724,6 +790,65 @@ class AuthService:
         await self.db.commit()
         logger.info("User logged out user_id=%s", user_id)
         return True
+
+    # ── Staff self-service profile ────────────────────────────────────────────
+
+    async def update_own_profile(
+        self, user: UserModel, req: StaffProfileUpdateRequest
+    ) -> UserModel:
+        """
+        Persist the signed-in staff member's own contact identity.
+
+        Writes only users.full_name / email / phone and, when a staff profile
+        row exists, employee_profiles.designation. Does not touch roles,
+        account_level, employee_code, or customer profiles.
+        """
+        if user.user_type == "customer":
+            raise ForbiddenException(
+                "Customer accounts update their profile through the customer account endpoint."
+            )
+
+        if req.full_name:
+            user.full_name = req.full_name.strip()
+
+        if req.email is not None:
+            email_str = str(req.email).strip().lower()
+            dup = await self.db.execute(
+                select(UserModel).where(
+                    UserModel.email == email_str,
+                    UserModel.id != user.id,
+                )
+            )
+            if dup.scalars().first():
+                raise ConflictException("That email address is already in use.")
+            user.email = email_str
+
+        if "phone" in req.model_fields_set:
+            phone = (str(req.phone).strip() if req.phone else "") or None
+            if phone != user.phone:
+                if phone:
+                    dup = await self.db.execute(
+                        select(UserModel).where(
+                            UserModel.phone == phone,
+                            UserModel.id != user.id,
+                        )
+                    )
+                    if dup.scalars().first():
+                        raise ConflictException("That phone number is already in use.")
+                user.phone = phone
+
+        if req.designation:
+            profile_res = await self.db.execute(
+                select(EmployeeProfileModel).where(EmployeeProfileModel.user_id == user.id)
+            )
+            profile = profile_res.scalars().first()
+            if profile:
+                profile.designation = req.designation.strip()
+
+        await self.db.commit()
+        await self.db.refresh(user)
+        logger.info("Staff profile updated user_id=%s", user.id)
+        return user
 
     # ── Change Password ───────────────────────────────────────────────────────
 

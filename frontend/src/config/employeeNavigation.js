@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee navigation & route authorization.
+ * PRATIKSHYA FASHION — Employee navigation & route authorization.
  *
  * Navigation is organised around WORK, grouped into collapsible sections.
  * Items are filtered by the existing permission catalogue (employeePermissions),
@@ -16,7 +16,7 @@
 import { PERMISSIONS as P } from "./employeePermissions";
 
 export const EMPLOYEE_BRAND = {
-  name: "PRATIKSHYA FASHON",
+  name: "PRATIKSHYA FASHION",
   portal: "Employee Portal",
   subtitle: "Retail Operations",
   home: "/employee",
@@ -30,10 +30,6 @@ export const EMPLOYEE_BRAND = {
 export const EMPLOYEE_ROUTE_RULES = [
   { path: "/employee/management", permission: P.PROFILE_VIEW, prefix: true },
   { path: "/employee/team", permission: P.TEAM_VIEW, prefix: true },
-  /* SUPER_EMPLOYEE account management (reuses the Admin pages under an
-     employee route; the backend matrix remains the authority). */
-  { path: "/employee/team-access/new", permission: P.EMPLOYEES_CREATE, prefix: true },
-  { path: "/employee/team-access", permission: P.EMPLOYEES_VIEW, prefix: true },
   { path: "/employee/reports", permission: P.ANALYTICS_VIEW, prefix: true },
   { path: "/employee/sales", permission: P.ANALYTICS_VIEW, prefix: true },
   { path: "/employee/media/upload", permission: P.MEDIA_UPLOAD, prefix: true },
@@ -171,8 +167,7 @@ export const EMPLOYEE_NAV_GROUPS = [
       { id: "attendance", label: "Attendance", to: "/employee/attendance", icon: "clock", permission: P.ATTENDANCE_VIEW },
       { id: "leave", label: "Leave", to: "/employee/attendance/leave", icon: "calendarDays", permission: P.LEAVE_VIEW },
       { id: "performance", label: "Performance", to: "/employee/performance", icon: "target", permission: P.PERFORMANCE_VIEW },
-      { id: "team", label: "Team", to: "/employee/team", icon: "team", permission: P.TEAM_VIEW },
-      { id: "team-access", label: "Team & access", to: "/employee/team-access", icon: "users", permission: P.EMPLOYEES_VIEW },
+      { id: "team", label: "Assigned team", to: "/employee/team", icon: "team", permission: P.TEAM_VIEW },
     ],
   },
   {

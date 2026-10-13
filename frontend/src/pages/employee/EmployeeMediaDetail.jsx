@@ -115,7 +115,7 @@ export default function EmployeeMediaDetail() {
                 Approved & Active
               </p>
               <p className="text-[11px] text-emerald-800">
-                This asset is published and visible on the PRATIKSHYA FASHON customer storefront.
+                This asset is published and visible on the PRATIKSHYA FASHION customer storefront.
               </p>
             </div>
           ) : null}

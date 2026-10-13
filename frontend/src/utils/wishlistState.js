@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Wishlist state helper (pure).
+ * PRATIKSHYA FASHION — Wishlist state helper (pure).
  *
  * Builds the wishlist surface from the backend's saved product ids: every
  * id is kept — resolved products render normally, ids whose catalogue

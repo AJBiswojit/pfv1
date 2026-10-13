@@ -36,9 +36,9 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
     notes: "",
   });
   const [feedback, setFeedback] = useState(null);
-  const Page = portal === "admin" ? AdminPage : EmployeePage;
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
-  const actor = portal === "admin"
+  const Page = portal === "employee" ? EmployeePage : AdminPage;
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const actor = portal !== "employee"
     ? { adminId: admin?.adminId, name: admin?.name || "Administrator" }
     : employee;
   const products = useMemo(() => catalogRepository.all().filter((product) => product.status !== "ARCHIVED"), []);
@@ -95,7 +95,7 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
       : { kind: "error", message: result.error });
   };
 
-  const canManage = portal === "admin" || hasPermission(PERMISSIONS.INVENTORY_MANAGE) || employee?.role === ROLES.STORE_MANAGER;
+  const canManage = portal !== "employee" || hasPermission(PERMISSIONS.INVENTORY_MANAGE) || employee?.role === ROLES.STORE_MANAGER;
   const nextAction = (transfer) => {
     if (transfer.status === TRANSFER_STATES.DRAFT) return [TRANSFER_STATES.REQUESTED, "Request"];
     if (transfer.status === TRANSFER_STATES.REQUESTED && canManage) return [TRANSFER_STATES.APPROVED, "Approve"];
@@ -106,7 +106,7 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
 
   return (
     <Page
-      eyebrow={`${portal === "admin" ? "Business" : "Retail operations"} / Inventory`}
+      eyebrow={`${portal === "employee" ? "Retail operations" : "Business"} / Inventory`}
       title="Transfer Stock"
       description="Move stock between store and warehouse locations through approval, transit and receipt. Destination stock never changes early."
       actions={<AtelierButton as={Link} to={root} variant="outline" size="chip">Back to inventory</AtelierButton>}

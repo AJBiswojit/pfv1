@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Navigation & Information Architecture
+ * PRATIKSHYA FASHION — Navigation & Information Architecture
  *
  * The single source of truth for every navigational surface in the app:
  * the desktop navigation, the mega menu, the mobile drawer, the utility
@@ -50,10 +50,10 @@ const heritageWeaves = () =>
   null;
 
 export const brand = {
-  name: "PRATIKSHYA FASHON",
+  name: "PRATIKSHYA FASHION",
   home: "/",
   tagline: "Fashion, textile and celebration—considered with care.",
-  copyright: "© 2026 PRATIKSHYA FASHON",
+  copyright: "© 2026 PRATIKSHYA FASHION",
 };
 
 /* ------------------------------------------------------------------ */
@@ -223,7 +223,7 @@ export const standalonePages = [
     label: "About Us",
     eyebrow: "Our Story",
     description:
-      "PRATIKSHYA FASHON brings together the richness of textile craft and the joy of dressing for life's most meaningful occasions.",
+      "PRATIKSHYA FASHION brings together the richness of textile craft and the joy of dressing for life's most meaningful occasions.",
     image: null,
   },
   {
@@ -237,7 +237,7 @@ export const standalonePages = [
     to: "/privacy",
     label: "Privacy",
     eyebrow: "Policies",
-    description: "How PRATIKSHYA FASHON handles the information you share.",
+    description: "How PRATIKSHYA FASHION handles the information you share.",
     image: null,
   },
   {

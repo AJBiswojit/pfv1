@@ -13,6 +13,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { readBackendSrc } from "./helpers/backendRoot.js";
 
 const src = (rel) => readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), "utf8");
 
@@ -43,20 +44,21 @@ test("Issue 1: validateEmployeeDraft does not require joiningDate", async () => 
   assert.equal(result.errors.joiningDate, undefined);
 });
 
-test("Issue 1: employeesApi sanitises empty joiningDate before POST", () => {
+test("Issue 1: employeesApi omits unpersisted joiningDate from the create allowlist", () => {
   const api = src("services/api/employeesApi.js");
   assert.match(api, /sanitizeEmployeePayload/);
-  assert.match(api, /joiningDate/);
-  assert.match(api, /delete out\.joiningDate/);
-  // backend schema keeps the column nullable; payload must not be "": the
-  // Pydantic Optional[date] would 422 on "".
+  assert.match(api, /EMPLOYEE_CREATE_FIELDS/);
+  const createFields = api.slice(api.indexOf("EMPLOYEE_CREATE_FIELDS"), api.indexOf("EMPLOYEE_UPDATE_FIELDS"));
+  assert.doesNotMatch(createFields, /joiningDate/);
+  assert.doesNotMatch(createFields, /store/);
+  assert.doesNotMatch(createFields, /section/);
 });
 
 test("Issue 1: backend EmployeeCreateRequest coerces empty joiningDate to null", async () => {
   // Source pin — the Pydantic model must normalise "" → None so
   // Optional[date] does not 422 when the hidden admin-domain block sends "".
   // Executing the model requires pydantic/sqlalchemy; pin the source instead.
-  const backendSrc = readFileSync(fileURLToPath(new URL("../../backend/app/schemas/employee/employee.py", import.meta.url)), "utf8");
+  const backendSrc = readBackendSrc("app/schemas/employee/employee.py");
   assert.match(backendSrc, /_coerce_empty_joining_date/);
   assert.match(backendSrc, /joiningDate.*Optional\[date\]/);
   assert.match(backendSrc, /field_validator.*joiningDate.*mode=.before./);
@@ -185,7 +187,7 @@ test("Issue 4: toEmployeeProfile does not treat account levels as floor roles", 
 });
 
 test("Issue 3: backend keeps access token valid for the initial forced-password flow", async () => {
-  const backendSrc = readFileSync(fileURLToPath(new URL("../../backend/app/services/auth/auth_service.py", import.meta.url)), "utf8");
+  const backendSrc = readBackendSrc("app/services/auth/auth_service.py");
   // The service must capture the pre-change forced flag and skip
   // blacklisting the current access token for that one forced set-password
   // so the UI can navigate to /employee without a blank race.
@@ -243,10 +245,63 @@ test("Admin directory: admin-workspace sync requests the full staff roster", () 
   assert.match(service, /includeAdmins: true/);
 });
 
-test("Admin directory: create form previews a PF-ADM id instead of a placeholder", () => {
+test("Admin directory: create form does not preview a client-made employee ID", () => {
   const page = src("pages/admin/employees/AdminEmployeeCreate.jsx");
-  assert.doesNotMatch(page, /Assigned for Admin-workspace accounts/);
-  assert.match(page, /adminDomain \? accountLevel : draft\.role/);
+  assert.match(page, /Assigned when saved/);
+  assert.doesNotMatch(page, /generateEmployeeId/);
+});
+
+test("Phase A: create form can send role defaults instead of always-custom", () => {
+  const page = src("pages/admin/employees/AdminEmployeeCreate.jsx");
+  assert.match(page, /permissionMode: customPermissions \? "custom" : "role"/);
+  assert.match(page, /Assign a custom capability set/);
+});
+
+test("Phase A: edit form saves capabilities through permissionMode, not PATCH-only", () => {
+  const page = src("pages/admin/employees/AdminEmployeeEdit.jsx");
+  assert.match(page, /permissionMode: customPermissions \? "custom" : "role"/);
+  assert.match(page, /isKnownRole\(draft\.role\)/);
+  const ctx = src("context/EmployeeManagementContext.jsx");
+  assert.match(ctx, /apiAdminUpdateEmployeePermissions/);
+  assert.match(ctx, /permissionMode === "custom"/);
+});
+
+test("Phase B: DEACTIVATED is treated as inactive for badge, filter and Activate", async () => {
+  const { canEmployeeLogin, isAccessBlocked, canonicalEmployeeStatus, getStatusLabel } = await import("../src/config/employeeStatus.js");
+  assert.equal(canonicalEmployeeStatus("DEACTIVATED"), "INACTIVE");
+  assert.equal(canEmployeeLogin("DEACTIVATED"), false);
+  assert.equal(isAccessBlocked("DEACTIVATED"), true);
+  assert.equal(getStatusLabel("DEACTIVATED"), "Inactive");
+  const { isEmployeeInactiveForOps } = await import("../src/services/workforce/scope.js");
+  assert.equal(isEmployeeInactiveForOps({ status: "DEACTIVATED" }), true);
+  assert.equal(isEmployeeInactiveForOps({ status: "ACTIVE" }), false);
+});
+
+test("Phase B: detail and directory expose Suspend next to Deactivate", () => {
+  const detail = src("pages/admin/employees/AdminEmployeeDetail.jsx");
+  assert.match(detail, /suspendEmployee/);
+  assert.match(detail, /setConfirm\("suspend"\)/);
+  const list = src("pages/admin/employees/AdminEmployees.jsx");
+  assert.match(list, /changeAccess\(row, "suspend"\)/);
+  assert.match(list, /isAccessBlocked\(row\.status\)/);
+});
+
+test("Phase B: reset password returns the one-time secret to the credential sheet", () => {
+  const ctx = src("context/EmployeeManagementContext.jsx");
+  assert.match(ctx, /temporaryPassword: result\.temporaryPassword/);
+  const detail = src("pages/admin/employees/AdminEmployeeDetail.jsx");
+  assert.match(detail, /issued\?\.temporaryPassword/);
+});
+
+test("Phase B: create form hides the dead Status field", () => {
+  const page = src("pages/admin/employees/AdminEmployeeCreate.jsx");
+  assert.match(page, /hideStatus/);
+});
+
+test("Phase A: empty phone is omitted from the employee payload", () => {
+  const api = src("services/api/employeesApi.js");
+  assert.match(api, /if \(isEmpty\(out\.phone\)\)/);
+  assert.match(api, /delete out\.phone/);
 });
 
 test("Admin directory: ADM prefix is used for admin-workspace levels", async () => {
@@ -254,4 +309,68 @@ test("Admin directory: ADM prefix is used for admin-workspace levels", async () 
   assert.equal(prefixForAssignment("ADMIN"), "ADM");
   assert.equal(prefixForAssignment("SUPER_ADMIN"), "ADM");
   assert.match(generateEmployeeId({ role: "ADMIN", existingIds: [] }), /^PF-ADM-\d{5}$/);
+});
+
+test("Phase C: Admin-domain drafts do not require role, department or store", async () => {
+  const { validateEmployeeDraft } = await import("../src/services/employees/employeeService.js");
+  const result = validateEmployeeDraft(
+    { firstName: "House", lastName: "Admin", email: "house@example.com", accountLevel: "ADMIN" },
+    [],
+    { isCreate: true }
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.errors.role, undefined);
+  assert.equal(result.errors.department, undefined);
+  assert.equal(result.errors.store, undefined);
+});
+
+test("Phase C: edit locks email and detail/edit fetch a missing account", () => {
+  const form = src("components/employee/EmployeeForm.jsx");
+  assert.match(form, /emailLocked/);
+  const edit = src("pages/admin/employees/AdminEmployeeEdit.jsx");
+  assert.match(edit, /emailLocked/);
+  assert.match(edit, /loadEmployee/);
+  const detail = src("pages/admin/employees/AdminEmployeeDetail.jsx");
+  assert.match(detail, /loadEmployee/);
+  const ctx = src("context/EmployeeManagementContext.jsx");
+  assert.match(ctx, /apiAdminGetEmployee/);
+});
+
+test("Phase C: list is view-gated and writes stay on people.manage", () => {
+  const guard = src("components/admin/AdminEmployeeManagementRoute.jsx");
+  assert.match(guard, /requireWrite/);
+  assert.match(guard, /EMPLOYEES_VIEW/);
+  const app = src("App.jsx");
+  assert.match(app, /AdminEmployeeManagementRoute requireWrite/);
+  const list = src("pages/admin/employees/AdminEmployees.jsx");
+  assert.match(list, /canManageEmployees/);
+});
+
+test("Phase D: create payload is allowlisted and local create does not invent a backend success", () => {
+  const api = src("services/api/employeesApi.js");
+  assert.match(api, /EMPLOYEE_CREATE_FIELDS/);
+  assert.match(api, /isUpdate: true/);
+  const create = src("pages/admin/employees/AdminEmployeeCreate.jsx");
+  assert.doesNotMatch(create, /\.\.\.draft/);
+  const service = src("services/employees/employeeService.js");
+  const createFn = service.slice(service.indexOf("export const createEmployee"), service.indexOf("export const updateEmployee"));
+  assert.doesNotMatch(createFn, /import\("\.\.\/api\/employeesApi"\)/);
+  assert.match(createFn, /Live sessions create through/);
+});
+
+test("Phase D: Assigned team and Team & access are distinct nav labels", () => {
+  const nav = src("config/employeeNavigation.js");
+  assert.match(nav, /label: "Assigned team"/);
+  assert.match(nav, /label: "Team & access"/);
+});
+
+test("Phase C: employee-domain targets cannot receive admin-only capabilities", async () => {
+  const { delegableCapabilities, ACCOUNT_LEVELS } = await import("../src/config/rbacModel.js");
+  const sa = { accountLevel: ACCOUNT_LEVELS.SUPER_ADMIN, permissions: ["*"] };
+  assert.equal(delegableCapabilities(sa), null);
+  const employeeCeiling = delegableCapabilities(sa, ACCOUNT_LEVELS.EMPLOYEE);
+  assert.ok(employeeCeiling);
+  assert.equal(employeeCeiling.has("settings.manage"), false);
+  assert.equal(employeeCeiling.has("people.security"), false);
+  assert.equal(employeeCeiling.has("catalogue.view"), true);
 });

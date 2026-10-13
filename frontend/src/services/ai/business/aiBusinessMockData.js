@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI Business Assistant, brand copy (Phase 21.1).
+ * PRATIKSHYA FASHION — AI Business Assistant, brand copy (Phase 21.1).
  *
  * Language and quick questions only. Every number the business assistant
  * speaks is read from the existing analytics/order/inventory/returns/

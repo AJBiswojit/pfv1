@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue taxonomy facade (backend-driven).
+ * PRATIKSHYA FASHION — Catalogue taxonomy facade (backend-driven).
  *
  * Category, subcategory and collection truth comes from the backend-fed
  * catalog store (GET /categories, GET /collections). This module keeps the

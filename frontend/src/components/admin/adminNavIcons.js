@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin navigation icons.
+ * PRATIKSHYA FASHION — Admin navigation icons.
  *
  * Lucide only, matching the employee portal's approach: navigation config
  * names an icon, this map resolves it, so config files never import React.
@@ -12,10 +12,13 @@ import {
   BadgeCheck,
   BarChart3,
   Boxes,
+  Building2,
+  CalendarOff,
   ChartNoAxesCombined,
   ClipboardCheck,
   ClipboardList,
   Clock3,
+  CreditCard,
   Film,
   Image as ImageIcon,
   ImagePlay,
@@ -23,8 +26,12 @@ import {
   Layers,
   LayoutDashboard,
   LayoutGrid,
+  Link2Off,
   LogOut,
+  Monitor,
   Package,
+  PackageCheck,
+  RefreshCw,
   RotateCcw,
   Settings,
   ShieldCheck,
@@ -36,11 +43,13 @@ import {
   Target,
   TrendingUp,
   TriangleAlert,
+  Truck,
   User,
   Users,
   UsersRound,
   Video,
   Warehouse,
+  Camera,
   ChevronDown,
   ChevronRight,
   Box,
@@ -48,6 +57,7 @@ import {
 
 export const ADMIN_NAV_ICONS = {
   layout: LayoutDashboard,
+  camera: Camera,
   check: ClipboardCheck,
   sparkles: Sparkles,
   grid: LayoutGrid,
@@ -62,6 +72,7 @@ export const ADMIN_NAV_ICONS = {
   box: Box,
   warehouse: Warehouse,
   swap: ArrowLeftRight,
+  arrowLeftRight: ArrowLeftRight,
   badge: BadgeCheck,
   shield: ShieldCheck,
   clock: Clock3,
@@ -76,14 +87,26 @@ export const ADMIN_NAV_ICONS = {
   video: Video,
   sliders: SlidersHorizontal,
   package: Package,
+  packageCheck: PackageCheck,
   inbox: Inbox,
   alert: TriangleAlert,
+  alertTriangle: TriangleAlert,
   activity: Activity,
   settings: Settings,
   user: User,
   logout: LogOut,
   chevronDown: ChevronDown,
   chevronRight: ChevronRight,
+  // Workforce additions
+  calendarOff: CalendarOff,
+  monitor: Monitor,
+  linkSlash: Link2Off,
+  // Inventory additions
+  building2: Building2,
+  truck: Truck,
+  // Payments
+  creditCard: CreditCard,
+  refreshCw: RefreshCw,
 };
 
 export const adminNavIcon = (name) => ADMIN_NAV_ICONS[name] ?? LayoutDashboard;

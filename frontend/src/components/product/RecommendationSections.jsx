@@ -22,6 +22,6 @@ export function RecommendationSectionContent({ placement, sections, status }) {
 }
 
 export default function RecommendationSections({ placement, productId, cartIds }) {
-  const state = useRecommendations({ placement, productId, cartIds });
-  return <RecommendationSectionContent placement={placement} {...state} />;
+  const { sections, status } = useRecommendations({ placement, productId, cartIds });
+  return <RecommendationSectionContent placement={placement} sections={sections} status={status} />;
 }

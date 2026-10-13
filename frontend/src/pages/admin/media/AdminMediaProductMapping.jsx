@@ -10,7 +10,7 @@
  */
 
 /**
- * PRATIKSHYA FASHON — Admin media product mapping workspace (Phase 21.6).
+ * PRATIKSHYA FASHION — Admin media product mapping workspace (Phase 21.6).
  *
  * Atelier admin design system.
  * Displays deterministic media groups built from new filename convention,
@@ -33,6 +33,7 @@ import useMediaActions from "../../../hooks/useMediaActions";
 import catalogRepository from "../../../services/catalogRepository";
 import { buildMediaGroups } from "../../../services/media/mediaGroups";
 import { cn } from "../../../utils/cn";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 
 const VIEW_LABELS = {
   front: "Front",
@@ -57,6 +58,8 @@ const VIEW_LABELS = {
 const getViewLabel = (view) => (view ? VIEW_LABELS[view.toLowerCase()] || view.replace(/-/g, " ") : "Primary");
 
 export default function AdminMediaProductMapping() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const media = useMediaLibrary();
   const actions = useMediaActions();
 
@@ -151,10 +154,10 @@ export default function AdminMediaProductMapping() {
       description="Deterministic groups from the new filename convention. Approve mappings, review uncertain groups, and manually assign products without editing JSON."
       actions={
         <div className="flex flex-wrap gap-2">
-          <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/media`} size="chip" variant="outline">
             Media Library
           </AtelierButton>
-          <AtelierButton as={Link} to="/admin/media/marketing" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/media/marketing`} size="chip" variant="outline">
             Marketing Media
           </AtelierButton>
         </div>
@@ -273,7 +276,7 @@ export default function AdminMediaProductMapping() {
                     <Eye size={12} className="mr-1" /> {isSelected ? "Selected" : "Review"}
                   </AtelierButton>
                   {productId ? (
-                    <AtelierButton as={Link} to={`/admin/products/${productId}/media`} size="chip" variant="outline">
+                    <AtelierButton as={Link} to={`${prefix}/products/${productId}/media`} size="chip" variant="outline">
                       <Package size={12} className="mr-1" /> Product Media
                     </AtelierButton>
                   ) : null}

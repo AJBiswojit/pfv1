@@ -39,7 +39,8 @@ const EMPTY_METRICS = {
  * error/empty state.
  */
 export default function AdminDashboard() {
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const workspacePrefix = isSuperAdmin ? "/super-admin" : "/admin";
 
   const [metrics, setMetrics] = useState(EMPTY_METRICS);
   const [series, setSeries] = useState([]);
@@ -60,7 +61,7 @@ export default function AdminDashboard() {
     let cancelled = false;
     setStatus("loading");
     setError(null);
-    loadDashboardSummary({ days: 7, recentLimit: 5 }).then((result) => {
+    loadDashboardSummary({ days: 7, recentLimit: 5, workspace: isSuperAdmin ? "super-admin" : "admin" }).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setError(result.error ?? "Could not load the dashboard.");
@@ -73,7 +74,7 @@ export default function AdminDashboard() {
       setStatus("ready");
     });
     return () => { cancelled = true; };
-  }, [attempt]);
+  }, [attempt, isSuperAdmin]);
 
   useEffect(() => {
     const refresh = () => setAttempt((a) => a + 1);
@@ -124,7 +125,7 @@ export default function AdminDashboard() {
     <AdminPage
       eyebrow="Business overview"
       title={<>{greetingForAdmin()}, <span className="italic text-accent">{adminFirstName(admin)}.</span></>}
-      description="Your PRATIKSHYA FASHON operation at a glance."
+      description="Your PRATIKSHYA FASHION operation at a glance."
       actions={
         <>
           {error ? (
@@ -132,8 +133,8 @@ export default function AdminDashboard() {
               Retry
             </AtelierButton>
           ) : null}
-          <AtelierButton as={Link} to="/admin/analytics" size="chip">View analytics</AtelierButton>
-          <AtelierButton as={Link} to="/admin/products" size="chip" variant="outline">Manage products</AtelierButton>
+          <AtelierButton as={Link} to={`${workspacePrefix}/analytics`} size="chip">View analytics</AtelierButton>
+          <AtelierButton as={Link} to={`${workspacePrefix}/products`} size="chip" variant="outline">Manage products</AtelierButton>
         </>
       }
     >
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
           title="Recent orders"
           bodyClassName="px-0 py-0 sm:px-0"
           action={
-            <AtelierButton as={Link} to="/admin/orders" variant="outline" size="chip">
+            <AtelierButton as={Link} to={`${workspacePrefix}/orders`} variant="outline" size="chip">
               All orders
             </AtelierButton>
           }
@@ -219,7 +220,7 @@ export default function AdminDashboard() {
                 id: "actions",
                 label: "Actions",
                 render: (row) => (
-                  <Link to={`/admin/orders/${row.id}`} className="font-ui text-brass hover:text-accent">
+                  <Link to={`${workspacePrefix}/orders/${row.id}`} className="font-ui text-brass hover:text-accent">
                     View order
                   </Link>
                 ),

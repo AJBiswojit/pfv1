@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Explore advertisement placements (Phase 24).
+ * PRATIKSHYA FASHION — Explore advertisement placements (Phase 24).
  *
  * Promotional and editorial inserts on Explore resolve through the existing
  * mediaResolver. They never use a product's primary / gallery / hover plate

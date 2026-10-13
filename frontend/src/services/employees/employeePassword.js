@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee password policies (client-side validation).
+ * PRATIKSHYA FASHION — Employee password policies (client-side validation).
  *
  * Credentials are backend-owned (POST /auth/employee/sign-in,
  * POST /auth/employee/change-password, admin reset endpoints). This module

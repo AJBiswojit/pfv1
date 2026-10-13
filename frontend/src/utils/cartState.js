@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Cart state helpers (pure).
+ * PRATIKSHYA FASHION — Cart state helpers (pure).
  *
  * The single home for guest-cart persistence shape and the server-cart →
  * frontend-state projection used by CartContext. Kept free of React so the

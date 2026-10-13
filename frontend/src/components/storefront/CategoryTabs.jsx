@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Category navigation chips.
+ * PRATIKSHYA FASHION — Category navigation chips.
  *
  * Renders subcategory/peer-category tabs directly from the canonical
  * taxonomy. The "All" chip always links back to the parent scope; sibling

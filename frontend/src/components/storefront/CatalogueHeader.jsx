@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Compact catalogue header.
+ * PRATIKSHYA FASHION — Compact catalogue header.
  *
  * A product-first replacement for the oversized editorial PageHeader that
  * previously dominated category and subcategory storefront pages.

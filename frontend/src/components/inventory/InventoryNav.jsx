@@ -7,7 +7,7 @@ import { ROLES } from "../../config/employeeRoles";
 export default function InventoryNav({ portal = "admin" }) {
   const { employee, hasPermission } = useEmployeeAuth();
   const availabilityOnly = [ROLES.SALES_EXECUTIVE, ROLES.FASHION_STYLIST, ROLES.CUSTOMER_SUPPORT].includes(employee?.role);
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
   const items = [
     { label: "Inventory", to: root, end: true, permission: PERMISSIONS.INVENTORY_VIEW },
     { label: "Receive", to: `${root}/receive`, permission: PERMISSIONS.INVENTORY_RECEIVE },
@@ -15,7 +15,7 @@ export default function InventoryNav({ portal = "admin" }) {
     { label: "Transfers", to: `${root}/transfers`, permission: PERMISSIONS.INVENTORY_TRANSFER },
     { label: "Movements", to: `${root}/movements`, permission: PERMISSIONS.INVENTORY_AUDIT },
     { label: "Low stock", to: `${root}/low-stock`, permission: PERMISSIONS.INVENTORY_VIEW },
-  ].filter((item) => (portal === "admin" || hasPermission(item.permission)) && !(availabilityOnly && item.label === "Low stock"));
+  ].filter((item) => (portal !== "employee" || hasPermission(item.permission)) && !(availabilityOnly && item.label === "Low stock"));
 
   return (
     <nav aria-label="Inventory sections" className="mb-7 overflow-x-auto border-b border-mist/80">

@@ -5,7 +5,7 @@ import { cn } from "../../utils/cn";
 import RailTooltip from "./RailTooltip";
 
 /**
- * PRATIKSHYA FASHON — Shared Portal sidebar rendering.
+ * PRATIKSHYA FASHION — Shared Portal sidebar rendering.
  *
  * Used by BOTH the Admin and Employee portals. It renders:
  *   - an identity header (real authenticated identity)

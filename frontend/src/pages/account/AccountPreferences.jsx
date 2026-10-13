@@ -50,7 +50,7 @@ export default function AccountPreferences() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = "Style Preferences — PRATIKSHYA FASHON";
+    document.title = "Style Preferences — PRATIKSHYA FASHION";
     return () => {
       document.title = prev;
     };

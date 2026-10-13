@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin workspace route guard.
+ * PRATIKSHYA FASHION — Admin workspace route guard.
  *
  * Three outcomes, in order:
  *
@@ -7,11 +7,12 @@
  *   employee-domain session     → /login — employee credentials never open
  *                                  the Admin workspace (the backend is the
  *                                  authority; this is the UX mirror of it)
+ *   SUPER_ADMIN session         → /super-admin (super admin has its own workspace)
  *   admin session, no rights    → Admin access denied
  *
- * Both Admin-workspace account levels (SUPER_ADMIN, ADMIN) may enter;
- * per-module authority is capability-checked (backend-enforced), never
- * implied by the workspace alone.
+ * Only ADMIN-level accounts (not SUPER_ADMIN) may enter; per-module
+ * authority is capability-checked (backend-enforced), never implied by
+ * the workspace alone.
  */
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
@@ -21,7 +22,7 @@ import { sanitizeAdminReturnUrl } from "../../config/adminNavigation";
 import AdminAccessDenied from "../../pages/admin/AdminAccessDenied";
 
 export default function AdminProtectedRoute() {
-  const { isAuthenticated, isLoading, hasAdminWorkspaceAccess } = useAdminAuth();
+  const { isAuthenticated, isLoading, hasAdminWorkspaceAccess, isSuperAdmin } = useAdminAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -36,6 +37,11 @@ export default function AdminProtectedRoute() {
     const intended = sanitizeAdminReturnUrl(location.pathname + location.search);
     // Unified staff sign-in — one /login page for all four account levels.
     return <Navigate to={`/login?returnTo=${encodeURIComponent(intended)}`} replace />;
+  }
+
+  /* SUPER_ADMIN belongs to the /super-admin workspace, not /admin. */
+  if (isSuperAdmin) {
+    return <Navigate to="/super-admin" replace />;
   }
 
   /* Signed in, but not with an Admin-workspace account (SUPER_ADMIN or

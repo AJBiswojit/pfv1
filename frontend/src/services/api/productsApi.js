@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Products API
+ * PRATIKSHYA FASHION — Products API
  *
  * Maps to API_CONTRACT.md § PRODUCTS
  *
@@ -32,6 +32,7 @@
  *
  * Employee:
  *   GET   /employee/products/{id}
+ *   POST  /employee/products/draft
  *   PATCH /employee/products/{id}
  */
 
@@ -667,6 +668,16 @@ export async function apiAdminClearReviewFlags(id, flags) {
 export async function apiEmployeeGetProduct(id) {
   try {
     const data = await apiClient.get(`/employee/products/${id}`, { scope: "employee" });
+    return { ok: true, product: normaliseProduct(data.product ?? data) };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/** POST /employee/products/draft — server-allocated ID, assigned to caller. */
+export async function apiEmployeeCreateDraft(body) {
+  try {
+    const data = await apiClient.post("/employee/products/draft", body, { scope: "employee" });
     return { ok: true, product: normaliseProduct(data.product ?? data) };
   } catch (err) {
     return handleError(err);

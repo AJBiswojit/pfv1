@@ -18,6 +18,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import EmployeeProtectedRoute from "./components/employee/EmployeeProtectedRoute";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 import AdminEmployeeManagementRoute from "./components/admin/AdminEmployeeManagementRoute";
+import SuperAdminProtectedRoute from "./components/admin/SuperAdminProtectedRoute";
 import CustomerLayout from "./layouts/CustomerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -39,8 +40,8 @@ const SignIn = lazy(() => import("./pages/auth/SignIn"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
-// ONE canonical staff login for all four account levels (SUPER_ADMIN, ADMIN,
-// SUPER_EMPLOYEE, EMPLOYEE). The former Admin/Employee login routes now
+// ONE canonical staff login for all three account levels (SUPER_ADMIN, ADMIN,
+// EMPLOYEE). The former Admin/Employee login routes now
 // redirect here — there is a single login experience, not two.
 const StaffLogin = lazy(() => import("./pages/auth/StaffLogin"));
 
@@ -56,6 +57,7 @@ const AccountSecurity = lazy(() => import("./pages/account/AccountSecurity"));
 const AccountPreferences = lazy(() => import("./pages/account/AccountPreferences"));
 const AiMirror = lazy(() => import("./pages/account/AiMirror"));
 const AiShoppingAssistant = lazy(() => import("./pages/account/AiShoppingAssistant"));
+const InstagramRewards = lazy(() => import("./pages/account/InstagramRewards"));
 
 const EmployeeLogin = lazy(() => import("./pages/employee/EmployeeLogin"));
 const EmployeeForgotPassword = lazy(() => import("./pages/employee/EmployeeForgotPassword"));
@@ -109,6 +111,7 @@ const AdminReturnDetail = lazy(() => import("./pages/admin/AdminReturnDetail"));
 const AdminOffers = lazy(() => import("./pages/admin/offers/AdminOffers"));
 const AdminOfferFormPage = lazy(() => import("./pages/admin/offers/AdminOfferFormPage"));
 const AdminOfferDetail = lazy(() => import("./pages/admin/offers/AdminOfferDetail"));
+const AdminInstagramRewards = lazy(() => import("./pages/admin/offers/AdminInstagramRewards"));
 const AdminCategories = lazy(() => import("./pages/admin/taxonomy/AdminCategories"));
 const AdminCategoryForm = lazy(() => import("./pages/admin/taxonomy/AdminCategoryForm"));
 const AdminCategoryDetail = lazy(() => import("./pages/admin/taxonomy/AdminCategoryDetail"));
@@ -117,15 +120,23 @@ const AdminCollectionForm = lazy(() => import("./pages/admin/taxonomy/AdminColle
 const AdminCollectionDetail = lazy(() => import("./pages/admin/taxonomy/AdminCollectionDetail"));
 const AdminAnalytics = lazy(() => import("./pages/admin/analytics/AdminAnalytics"));
 const AiBusinessAssistant = lazy(() => import("./pages/admin/AiBusinessAssistant"));
+const AdminAttendanceDay = lazy(() => import("./pages/admin/attendance/AdminAttendanceDay"));
+const AdminAttendanceDevices = lazy(() => import("./pages/admin/attendance/AdminAttendanceDevices"));
+const AdminAttendanceUnmapped = lazy(() => import("./pages/admin/attendance/AdminAttendanceUnmapped"));
+const AdminLeaveQueue = lazy(() => import("./pages/admin/leave/AdminLeaveQueue"));
+const AdminPayments = lazy(() => import("./pages/admin/payments/AdminPayments"));
+const AdminPaymentDetail = lazy(() => import("./pages/admin/payments/AdminPaymentDetail"));
+const AdminPaymentReconcile = lazy(() => import("./pages/admin/payments/AdminPaymentReconcile"));
 
-/* Inventory screens remain LIVE for the Employee portal only. The Admin
-   inventory routes were deferred (localStorage simulation, blocker B-01);
-   see the redirect block in the admin route table below. */
+/* Inventory screens — live for both Admin and Employee portals. */
 const InventoryDashboardPage = lazy(() => import("./components/inventory/InventoryDashboardPage"));
 const InventoryOperationPage = lazy(() => import("./components/inventory/InventoryOperationPage"));
 const InventoryTransfersPage = lazy(() => import("./components/inventory/InventoryTransfersPage"));
 const InventoryMovementsPage = lazy(() => import("./components/inventory/InventoryMovementsPage"));
 const InventoryLowStockPage = lazy(() => import("./components/inventory/InventoryLowStockPage"));
+const AdminWarehouses = lazy(() => import("./pages/admin/warehouses/AdminWarehouses"));
+const AdminWarehouseForm = lazy(() => import("./pages/admin/warehouses/AdminWarehouseForm"));
+const AdminWarehouseDetail = lazy(() => import("./pages/admin/warehouses/AdminWarehouseDetail"));
 
 const dedicatedPaths = new Set([
   "/explore",
@@ -143,6 +154,7 @@ const dedicatedPaths = new Set([
   "/account/preferences",
   "/account/ai-mirror",
   "/account/ai-shopping",
+  "/account/instagram-rewards",
   "/account/wishlist",
   "/signin",
   "/signup",
@@ -181,7 +193,7 @@ export default function App() {
                     <AdminAuthProvider>
                       <EmployeeManagementProvider>
                     <WorkforceProvider>
-                    <Suspense fallback={<LoadingState label="Opening PRATIKSHYA FASHON" />}>
+                    <Suspense fallback={<LoadingState label="Opening PRATIKSHYA FASHION" />}>
                     <Routes>
                       {/* Unified staff sign-in — all four account levels. */}
                       <Route path="/login" element={<StaffLogin />} />
@@ -192,10 +204,12 @@ export default function App() {
                           <Route path="/admin" element={<AdminDashboard />} />
                           <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
 
-                          <Route element={<AdminEmployeeManagementRoute />}>
-                            <Route path="/admin/employees" element={<AdminEmployees />} />
+                          <Route element={<AdminEmployeeManagementRoute requireWrite />}>
                             <Route path="/admin/employees/new" element={<AdminEmployeeCreate />} />
                             <Route path="/admin/employees/:employeeId/edit" element={<AdminEmployeeEdit />} />
+                          </Route>
+                          <Route element={<AdminEmployeeManagementRoute />}>
+                            <Route path="/admin/employees" element={<AdminEmployees />} />
                             <Route path="/admin/employees/:employeeId" element={<AdminEmployeeDetail />} />
                           </Route>
 
@@ -235,6 +249,7 @@ export default function App() {
                           <Route path="/admin/offers/new" element={<AdminOfferFormPage />} />
                           <Route path="/admin/offers/:offerId/edit" element={<AdminOfferFormPage />} />
                           <Route path="/admin/offers/:offerId" element={<AdminOfferDetail />} />
+                          <Route path="/admin/instagram-rewards" element={<AdminInstagramRewards />} />
                           {/* Phase 15 — Orders become operational */}
                           <Route path="/admin/orders" element={<AdminOrders />} />
                           <Route path="/admin/orders/:orderId" element={<AdminOrderDetail />} />
@@ -243,32 +258,132 @@ export default function App() {
                           <Route path="/admin/customers/:customerId" element={<AdminCustomerDetail />} />
                           <Route path="/admin/returns" element={<AdminReturns />} />
                           <Route path="/admin/returns/:returnId" element={<AdminReturnDetail />} />
-                          {/* Inventory suite deferred: the implementation is a browser-localStorage
-                              simulation and the backend inventory ledger is an empty stub
-                              (blocker B-01). Stock truth for admins lives on the product
-                              records (catalog_product.stock) — see the dashboard and the
-                              products desk. The Employee portal keeps its routes. */}
-                          <Route path="/admin/inventory" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/inventory/receive" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/inventory/adjust" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/inventory/transfers" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/inventory/movements" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/inventory/low-stock" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/warehouses" element={<Navigate to="/admin" replace />} />
-                          <Route path="/admin/stock-movements" element={<Navigate to="/admin" replace />} />
+                          {/* Inventory suite — live for Admin portal (backend ledger active) */}
+                          <Route path="/admin/inventory" element={<InventoryDashboardPage portal="admin" />} />
+                          <Route path="/admin/inventory/movements" element={<InventoryMovementsPage portal="admin" />} />
+                          <Route path="/admin/inventory/low-stock" element={<InventoryLowStockPage portal="admin" />} />
+                          <Route path="/admin/inventory/receive" element={<InventoryOperationPage portal="admin" operation="receive" />} />
+                          <Route path="/admin/inventory/adjust" element={<InventoryOperationPage portal="admin" operation="adjust" />} />
+                          <Route path="/admin/inventory/transfers" element={<InventoryTransfersPage portal="admin" />} />
+                          <Route path="/admin/warehouses" element={<AdminWarehouses />} />
+                          <Route path="/admin/warehouses/new" element={<AdminWarehouseForm />} />
+                          <Route path="/admin/warehouses/:warehouseId" element={<AdminWarehouseDetail />} />
+                          <Route path="/admin/warehouses/:warehouseId/edit" element={<AdminWarehouseForm />} />
+                          <Route path="/admin/stock-movements" element={<Navigate to="/admin/inventory/movements" replace />} />
                           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/sales" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/products" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/customers" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/inventory" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/returns" element={<AdminAnalytics />} />
+                          <Route path="/admin/analytics/offers" element={<AdminAnalytics />} />
                           <Route path="/admin/ai-assistant" element={<AiBusinessAssistant />} />
-                          {/* Legacy analytics aliases — one canonical screen with internal
-                              tabs; old URLs redirect instead of re-registering the page. */}
-                          <Route path="/admin/analytics/sales" element={<Navigate to="/admin/analytics" replace />} />
-                          <Route path="/admin/analytics/products" element={<Navigate to="/admin/analytics" replace />} />
-                          <Route path="/admin/analytics/customers" element={<Navigate to="/admin/analytics" replace />} />
-                          <Route path="/admin/analytics/inventory" element={<Navigate to="/admin/analytics" replace />} />
-                          <Route path="/admin/analytics/returns" element={<Navigate to="/admin/analytics" replace />} />
-                          <Route path="/admin/analytics/offers" element={<Navigate to="/admin/analytics" replace />} />
                           <Route path="/admin/settings" element={<AdminSettings />} />
+                          <Route path="/admin/attendance" element={<AdminAttendanceDay />} />
+                          <Route path="/admin/attendance/devices" element={<AdminAttendanceDevices />} />
+                          <Route path="/admin/attendance/unmapped" element={<AdminAttendanceUnmapped />} />
+                          <Route path="/admin/leave" element={<AdminLeaveQueue />} />
+
+                          <Route path="/admin/payments" element={<AdminPayments />} />
+                          <Route path="/admin/payments/reconcile" element={<AdminPaymentReconcile />} />
+                          <Route path="/admin/payments/:sessionId" element={<AdminPaymentDetail />} />
 
                           <Route path="/admin/*" element={<AdminNotFound />} />
+                        </Route>
+                      </Route>
+
+                      {/* ── SUPER ADMIN workspace (SUPER_ADMIN only) ── */}
+                      <Route element={<SuperAdminProtectedRoute />}>
+                        <Route element={<AdminLayout />}>
+                          <Route path="/super-admin" element={<AdminDashboard />} />
+                          <Route path="/super-admin/dashboard" element={<Navigate to="/super-admin" replace />} />
+
+                          <Route element={<AdminEmployeeManagementRoute requireWrite />}>
+                            <Route path="/super-admin/employees/new" element={<AdminEmployeeCreate />} />
+                            <Route path="/super-admin/employees/:employeeId/edit" element={<AdminEmployeeEdit />} />
+                          </Route>
+                          <Route element={<AdminEmployeeManagementRoute />}>
+                            <Route path="/super-admin/employees" element={<AdminEmployees />} />
+                            <Route path="/super-admin/employees/:employeeId" element={<AdminEmployeeDetail />} />
+                          </Route>
+
+                          <Route path="/super-admin/activity" element={<Navigate to="/super-admin" replace />} />
+                          <Route path="/super-admin/profile" element={<AdminProfile />} />
+
+                          <Route path="/super-admin/products" element={<AdminProducts />} />
+                          <Route path="/super-admin/products/review" element={<AdminProductReview />} />
+                          <Route path="/super-admin/products/new" element={<ProductForm />} />
+                          <Route path="/super-admin/products/:productId/edit" element={<ProductForm />} />
+                          <Route path="/super-admin/products/:productId" element={<AdminProductDetail />} />
+                          <Route path="/super-admin/products/:productId/media" element={<AdminProductMedia />} />
+
+                          <Route path="/super-admin/media" element={<AdminMediaLibrary />} />
+                          <Route path="/super-admin/media/upload" element={<AdminMediaUpload />} />
+                          <Route path="/super-admin/media/review" element={<Navigate to="/super-admin/media" replace />} />
+                          <Route path="/super-admin/media/product-mapping" element={<Navigate to="/super-admin/media" replace />} />
+                          <Route path="/super-admin/media/:mediaId" element={<Navigate to="/super-admin/media" replace />} />
+                          <Route path="/super-admin/media/marketing" element={<AdminMarketingMedia />} />
+
+                          <Route path="/super-admin/categories" element={<AdminCategories />} />
+                          <Route path="/super-admin/categories/new" element={<AdminCategoryForm />} />
+                          <Route path="/super-admin/categories/:categoryId/edit" element={<AdminCategoryForm />} />
+                          <Route path="/super-admin/categories/:categoryId/subcategories" element={<AdminCategoryDetail />} />
+                          <Route path="/super-admin/categories/:categoryId" element={<AdminCategoryDetail />} />
+
+                          <Route path="/super-admin/collections" element={<AdminCollections />} />
+                          <Route path="/super-admin/collections/new" element={<AdminCollectionForm />} />
+                          <Route path="/super-admin/collections/:collectionId/edit" element={<AdminCollectionForm />} />
+                          <Route path="/super-admin/collections/:collectionId/products" element={<AdminCollectionDetail />} />
+                          <Route path="/super-admin/collections/:collectionId" element={<AdminCollectionDetail />} />
+
+                          <Route path="/super-admin/offers" element={<AdminOffers />} />
+                          <Route path="/super-admin/offers/new" element={<AdminOfferFormPage />} />
+                          <Route path="/super-admin/offers/:offerId/edit" element={<AdminOfferFormPage />} />
+                          <Route path="/super-admin/offers/:offerId" element={<AdminOfferDetail />} />
+                          <Route path="/super-admin/instagram-rewards" element={<AdminInstagramRewards />} />
+
+                          <Route path="/super-admin/orders" element={<AdminOrders />} />
+                          <Route path="/super-admin/orders/:orderId" element={<AdminOrderDetail />} />
+                          <Route path="/super-admin/orders/:orderId/invoice" element={<AdminOrderInvoice />} />
+
+                          <Route path="/super-admin/customers" element={<AdminCustomers />} />
+                          <Route path="/super-admin/customers/:customerId" element={<AdminCustomerDetail />} />
+
+                          <Route path="/super-admin/returns" element={<AdminReturns />} />
+                          <Route path="/super-admin/returns/:returnId" element={<AdminReturnDetail />} />
+
+                          {/* Inventory suite — mirrored for super-admin workspace */}
+                          <Route path="/super-admin/inventory" element={<InventoryDashboardPage portal="super-admin" />} />
+                          <Route path="/super-admin/inventory/movements" element={<InventoryMovementsPage portal="super-admin" />} />
+                          <Route path="/super-admin/inventory/low-stock" element={<InventoryLowStockPage portal="super-admin" />} />
+                          <Route path="/super-admin/inventory/receive" element={<InventoryOperationPage portal="super-admin" operation="receive" />} />
+                          <Route path="/super-admin/inventory/adjust" element={<InventoryOperationPage portal="super-admin" operation="adjust" />} />
+                          <Route path="/super-admin/inventory/transfers" element={<InventoryTransfersPage portal="super-admin" />} />
+                          <Route path="/super-admin/warehouses" element={<AdminWarehouses />} />
+                          <Route path="/super-admin/warehouses/new" element={<AdminWarehouseForm />} />
+                          <Route path="/super-admin/warehouses/:warehouseId" element={<AdminWarehouseDetail />} />
+                          <Route path="/super-admin/warehouses/:warehouseId/edit" element={<AdminWarehouseForm />} />
+
+                          <Route path="/super-admin/analytics" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/sales" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/products" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/customers" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/inventory" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/returns" element={<AdminAnalytics />} />
+                          <Route path="/super-admin/analytics/offers" element={<AdminAnalytics />} />
+
+                          <Route path="/super-admin/settings" element={<AdminSettings />} />
+                          <Route path="/super-admin/ai-assistant" element={<AiBusinessAssistant />} />
+                          <Route path="/super-admin/attendance" element={<AdminAttendanceDay />} />
+                          <Route path="/super-admin/attendance/devices" element={<AdminAttendanceDevices />} />
+                          <Route path="/super-admin/attendance/unmapped" element={<AdminAttendanceUnmapped />} />
+                          <Route path="/super-admin/leave" element={<AdminLeaveQueue />} />
+
+                          <Route path="/super-admin/payments" element={<AdminPayments />} />
+                          <Route path="/super-admin/payments/reconcile" element={<AdminPaymentReconcile />} />
+                          <Route path="/super-admin/payments/:sessionId" element={<AdminPaymentDetail />} />
+
+                          <Route path="/super-admin/*" element={<AdminNotFound />} />
                         </Route>
                       </Route>
 
@@ -327,14 +442,6 @@ export default function App() {
                           <Route path="/employee/styling/wedding" element={<EmployeeDesk />} />
                           <Route path="/employee/sales" element={<EmployeeDesk />} />
                           <Route path="/employee/team" element={<EmployeeDesk />} />
-                          {/* SUPER_EMPLOYEE self-service: the SAME account
-                              pages the Admin workspace mounts (one data
-                              layer, one authorization matrix — the backend
-                              caps what this token may do). */}
-                          <Route path="/employee/team-access" element={<AdminEmployees />} />
-                          <Route path="/employee/team-access/new" element={<AdminEmployeeCreate />} />
-                          <Route path="/employee/team-access/:employeeId/edit" element={<AdminEmployeeEdit />} />
-                          <Route path="/employee/team-access/:employeeId" element={<AdminEmployeeDetail />} />
                           <Route path="/employee/reports" element={<EmployeeReports />} />
                           <Route path="/employee/reports/sales" element={<EmployeeReports />} />
                           <Route path="/employee/reports/products" element={<EmployeeReports />} />
@@ -362,8 +469,10 @@ export default function App() {
                         <Route path="/product/:productId" element={<ProductDetail />} />
 
                         <Route path="/cart" element={<Cart />} />
-                        <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/order-success" element={<OrderSuccess />} />
+                        <Route element={<ProtectedRoute />}>
+                          <Route path="/checkout" element={<Checkout />} />
+                          <Route path="/order-success" element={<OrderSuccess />} />
+                        </Route>
                         <Route path="/account/wishlist" element={<Wishlist />} />
                         <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
 
@@ -386,6 +495,7 @@ export default function App() {
                           <Route path="/account/preferences" element={<AccountPreferences />} />
                           <Route path="/account/ai-mirror" element={<AiMirror />} />
                           <Route path="/account/ai-shopping" element={<AiShoppingAssistant />} />
+                          <Route path="/account/instagram-rewards" element={<InstagramRewards />} />
                         </Route>
 
                         {routeManifest

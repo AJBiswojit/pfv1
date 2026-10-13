@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product media groups (Phase 22).
+ * PRATIKSHYA FASHION — Product media groups (Phase 22).
  *
  * Human decisions about which media assets form ONE product. This registry
  * stores decisions only — media lives in the one media register and product

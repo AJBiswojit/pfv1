@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Central analytics read-model (Phase 19).
+ * PRATIKSHYA FASHION — Central analytics read-model (Phase 19).
  *
  * Aggregates the existing business systems. It does not own orders,
  * products, customers, inventory, returns, offers or employees.

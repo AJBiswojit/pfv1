@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Offer repository (backend-driven).
+ * PRATIKSHYA FASHION — Offer repository (backend-driven).
  *
  * Offers/coupons are backend-owned (GET /offers, POST /offers/validate and
  * the /admin/offers/* endpoints). This module is a facade over the

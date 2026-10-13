@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Facet construction.
+ * PRATIKSHYA FASHION — Facet construction.
  *
  * Turns the declared facets in `taxonomy.js` into the option lists the filter
  * panel renders, counted against the products actually in scope.
@@ -86,6 +86,13 @@ export function buildFacets(scoped, filters = {}, locked = {}) {
           options = availabilityOptions
             .map((option) => ({ ...option, count: counts[option.id] ?? 0 }))
             .filter((option) => option.count > 0);
+        } else if (facet.id === "subcategory") {
+          options = Object.keys(counts)
+            .map((id) => {
+              const sub = taxonomyRepository.findSubcategory(id);
+              return { id, label: sub?.name ?? id, count: counts[id] };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label));
         } else if (facet.id === "color") {
           options = derivedOptions(counts).map((option) => ({
             ...option,
@@ -122,6 +129,7 @@ export const chipLabel = (facetId, value) => {
     return ratingOptions.find((option) => option.id === value)?.label ?? value;
   }
   if (facetId === "category") return categoryLabels[value] ?? value;
+  if (facetId === "subcategory") return taxonomyRepository.findSubcategory(value)?.name ?? value;
   if (facetId === "department") return departmentNames[value] ?? value;
   if (facetId === "availability") {
     return availabilityOptions.find((option) => option.id === value)?.label ?? value;

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin workspace session context.
+ * PRATIKSHYA FASHION — Admin workspace session context.
  *
  * UNIFIED AUTHENTICATION (2026-09): all four staff account levels sign in
  * through the ONE /login page → POST /auth/staff/sign-in. This context owns
@@ -22,7 +22,9 @@ import { ACCOUNT_LEVELS } from "../config/rbacModel";
 import {
   apiSignInStaff,
   apiSignOutAdmin,
+  apiSignOutSuperAdmin,
   apiRestoreAdminSession,
+  apiUpdateOwnStaffProfile,
 } from "../services/api/authApi";
 import { writeStorage } from "../utils/shopping";
 import { clearTokens, getAccessToken } from "../services/api/apiClient";
@@ -128,13 +130,38 @@ export function AdminAuthProvider({ children }) {
     return result;
   }, []);
 
+  // ── RBAC helpers ──────────────────────────────────────────────────────────
+  // Declared before signOut so the callback can safely reference isSuperAdmin
+  // without hitting a temporal dead zone (const TDZ ReferenceError).
+
+  const isSuperAdmin = Boolean(
+    admin && (
+      admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN ||
+      (!admin.accountLevel && admin.roles?.includes("SUPER_ADMIN"))
+    )
+  );
+  // Any admin-workspace level may enter the portal (SUPER_ADMIN or ADMIN);
+  // per-module access is capability-checked, never workspace-wide.
+  const hasAdminWorkspaceAccess = Boolean(admin && (
+    admin.accountLevel
+      ? admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN || admin.accountLevel === ACCOUNT_LEVELS.ADMIN
+      : admin.role === ACCOUNT_LEVELS.SUPER_ADMIN
+  ));
+
   // ── Sign Out ─────────────────────────────────────────────────────────────
 
   const signOut = useCallback(async () => {
-    await apiSignOutAdmin();
+    // Route to the correct backend endpoint based on account level.
+    // SUPER_ADMIN tokens are rejected by /auth/admin/sign-out (403), so the
+    // dedicated /auth/super-admin/sign-out endpoint must be used instead.
+    if (isSuperAdmin) {
+      await apiSignOutSuperAdmin();
+    } else {
+      await apiSignOutAdmin();
+    }
     clearAdminTokens();
     setSession({ admin: null, isAuthenticated: false });
-  }, []);
+  }, [isSuperAdmin]);
 
   // ── Refresh local session ─────────────────────────────────────────────────
 
@@ -156,30 +183,15 @@ export function AdminAuthProvider({ children }) {
   // ── Profile update ─────────────────────────────────────────────────────────
 
   const updateProfile = useCallback(
-    (patch) => {
+    async (patch) => {
       if (!admin) return { ok: false, error: "You need to sign in first." };
-      const updated = { ...admin, ...patch };
-      setSession({ admin: updated, isAuthenticated: true });
-      return { ok: true, admin: updated };
+      const result = await apiUpdateOwnStaffProfile(patch, "admin");
+      if (!result.ok) return result;
+      setSession({ admin: result.admin, isAuthenticated: true });
+      return { ok: true, admin: result.admin };
     },
     [admin]
   );
-
-  // ── RBAC helpers ──────────────────────────────────────────────────────────
-
-  const isSuperAdmin = Boolean(
-    admin && (
-      admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN ||
-      (!admin.accountLevel && admin.roles?.includes("SUPER_ADMIN"))
-    )
-  );
-  // Any admin-workspace level may enter the portal (SUPER_ADMIN or ADMIN);
-  // per-module access is capability-checked, never workspace-wide.
-  const hasAdminWorkspaceAccess = Boolean(admin && (
-    admin.accountLevel
-      ? admin.accountLevel === ACCOUNT_LEVELS.SUPER_ADMIN || admin.accountLevel === ACCOUNT_LEVELS.ADMIN
-      : admin.role === ACCOUNT_LEVELS.SUPER_ADMIN
-  ));
 
   const hasPermission = useCallback(
     (permission) => hasAdminPermission(admin, permission),
@@ -218,7 +230,7 @@ const inertAdminAuth = {
   signIn:         async () => ({ ok: false, error: "" }),
   signOut:        async () => {},
   refreshSession: () => ({ admin: null, isAuthenticated: false }),
-  updateProfile:  () => ({ ok: false, error: "" }),
+  updateProfile:  async () => ({ ok: false, error: "" }),
 };
 
 export function useAdminAuth() {

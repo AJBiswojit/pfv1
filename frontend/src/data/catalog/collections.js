@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Editorial collections (backend-driven).
+ * PRATIKSHYA FASHION — Editorial collections (backend-driven).
  *
  * Collection records come from GET /collections. The helpers below project
  * them against the backend-fed catalog store; products resolve through the

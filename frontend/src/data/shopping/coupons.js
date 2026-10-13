@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Checkout coupon adapter (backend-driven).
+ * PRATIKSHYA FASHION — Checkout coupon adapter (backend-driven).
  *
  * Coupon offers are backend-owned (GET /offers, POST /offers/validate).
  * These helpers read from the backend-fed offer store — no hardcoded

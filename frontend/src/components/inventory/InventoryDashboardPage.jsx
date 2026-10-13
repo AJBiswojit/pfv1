@@ -88,8 +88,8 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
     ROLES.FASHION_STYLIST,
     ROLES.CUSTOMER_SUPPORT,
   ].includes(employee?.role);
-  const root = portal === "admin" ? "/admin/inventory" : "/employee/inventory";
-  const Page = portal === "admin" ? AdminPage : EmployeePage;
+  const root = portal === "super-admin" ? "/super-admin/inventory" : portal === "admin" ? "/admin/inventory" : "/employee/inventory";
+  const Page = portal === "employee" ? EmployeePage : AdminPage;
 
   const rows = useMemo(() => inventory.query({
     ...filters,
@@ -143,7 +143,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
     };
   }, [inventory.metrics, rows, employeeWarehouseOnly]);
 
-  const can = (permission) => portal === "admin" || hasPermission(permission);
+  const can = (permission) => portal !== "employee" || hasPermission(permission);
   const filterSourceRows = employeeWarehouseOnly
     ? inventory.records.filter((row) => row.location?.type === LOCATION_TYPES.WAREHOUSE)
     : inventory.records;
@@ -205,7 +205,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
 
   return (
     <Page
-      eyebrow={portal === "admin" ? "Business / Inventory" : "Retail operations / Inventory"}
+      eyebrow={portal === "employee" ? "Retail operations / Inventory" : "Business / Inventory"}
       title="Inventory Dashboard"
       description={employeeWarehouseOnly
         ? "Warehouse stock, receiving and transfer handling. Store-only details remain outside this work queue."
@@ -228,9 +228,6 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
     >
       <InventoryNav portal={portal} />
 
-      <p className="mb-4 border-l-2 border-brass bg-surface/50 px-4 py-3 font-ui text-[11px] leading-relaxed text-taupe">
-        Inventory is backend-owned. The backend inventory service is not available in this phase (see INTEGRATION_AUDIT.md §7) — no local stock records are shown or written.
-      </p>
 
       <section aria-label="Inventory metrics" className="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {tiles.map(([label, value, hint, Icon, alert], index) => (
@@ -463,7 +460,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
             </article>
           ))}
         </div>
-        {portal === "admin" ? (
+        {portal !== "employee" ? (
           <form onSubmit={addLocation} className="mt-5 grid gap-3 border-t border-mist/70 pt-5 sm:grid-cols-2 lg:grid-cols-4">
             <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
               Location name

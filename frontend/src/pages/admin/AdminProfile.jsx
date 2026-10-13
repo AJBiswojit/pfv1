@@ -7,7 +7,7 @@ import EmployeeField, { employeeInputClass } from "../../components/employee/Emp
 import StatusBadge from "../../components/employee/StatusBadge";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { getAdminRoleLabel, getAdminStatusLabel } from "../../config/adminAccess";
-import { formatAdminDate, formatAdminDateTime } from "../../utils/admin";
+import { adminDisplayName, formatAdminDate, formatAdminDateTime } from "../../utils/admin";
 
 /**
  * /admin/profile
@@ -21,24 +21,32 @@ export default function AdminProfile() {
   const [draft, setDraft] = useState({ name: "", email: "", phone: "", title: "" });
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const displayName = adminDisplayName(admin);
 
   useEffect(() => {
     if (!admin) return;
     setDraft({
-      name: admin.name || "",
+      name: adminDisplayName(admin),
       email: admin.email || "",
       phone: admin.phone || "",
       title: admin.title || "",
     });
-  }, [admin?.adminId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [admin?.id, admin?.name, admin?.firstName, admin?.email, admin?.phone, admin?.title]);
 
   if (!admin) return null;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setSaved(false);
-    const result = updateProfile(draft);
+    if (!draft.name.trim()) {
+      setError("Name is required.");
+      return;
+    }
+    setSaving(true);
+    const result = await updateProfile(draft);
+    setSaving(false);
     if (!result.ok) {
       setError(result.error || "That profile could not be saved.");
       return;
@@ -69,10 +77,10 @@ export default function AdminProfile() {
         <AdminPanel eyebrow="Identity" title="Account" bodyClassName="px-0 py-0 sm:px-0">
           <div className="flex items-center gap-4 border-b border-mist/70 px-5 py-5 sm:px-6">
             <span className="flex h-14 w-14 items-center justify-center bg-ink font-display text-xl font-light text-gold">
-              {admin.name?.[0]?.toUpperCase() ?? "A"}
+              {displayName?.[0]?.toUpperCase() ?? "A"}
             </span>
             <div className="min-w-0">
-              <p className="truncate font-display text-2xl font-light text-ink">{admin.name}</p>
+              <p className="truncate font-display text-2xl font-light text-ink">{displayName || "Administrator"}</p>
               <p className="font-ui text-[11px] text-taupe">{admin.email}</p>
             </div>
           </div>
@@ -142,8 +150,8 @@ export default function AdminProfile() {
               />
             </EmployeeField>
             <div className="sm:col-span-2">
-              <AtelierButton type="submit" size="chip">
-                Save profile
+              <AtelierButton type="submit" size="chip" disabled={saving}>
+                {saving ? "Saving..." : "Save profile"}
               </AtelierButton>
             </div>
           </form>

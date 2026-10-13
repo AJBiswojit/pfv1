@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Attendance settings (demo working hours + calendar).
+ * PRATIKSHYA FASHION — Attendance settings (demo working hours + calendar).
  *
  * Synchronous house defaults for workforce timing math. Live admin settings
  * stay on the Admin Settings page; they are admin-token scoped and must not

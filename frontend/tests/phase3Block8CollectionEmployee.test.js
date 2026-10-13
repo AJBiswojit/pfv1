@@ -136,7 +136,7 @@ test("employee product read and employee assignment use separate explicit scopes
 
 test("STATIC: employee route names the safe projection and does not use AdminProduct", () => {
   const source = readFileSync(
-    fileURLToPath(new URL("../../backend/app/api/v1/products.py", import.meta.url)),
+    fileURLToPath(new URL("../../pratikshya-backend/app/api/v1/products.py", import.meta.url)),
     "utf8",
   );
   const getStart = source.indexOf('"/employee/products/{id}"');

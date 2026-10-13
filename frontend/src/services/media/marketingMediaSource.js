@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Marketing media resolution.
+ * PRATIKSHYA FASHION — Marketing media resolution.
  *
  * The storefront's landing seams (hero, collection panels, campaign
  * backdrop) were authored against the image manifest in Phases 1–4. Phase 12

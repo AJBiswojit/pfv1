@@ -23,9 +23,9 @@ from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.logging import get_logger
 from app.core.rbac import (
     ACCOUNT_LEVEL_SUPER_ADMIN,
-    ACCOUNT_LEVEL_SUPER_EMPLOYEE,
     derive_account_level,
     expand_effective_permissions,
+    resolve_stored_grants,
     with_employee_self_service,
 )
 from app.core.redis import get_redis
@@ -82,6 +82,10 @@ async def get_current_user_claims(
     if not payload:
         logger.warning("Invalid or expired token presented")
         raise UnauthorizedException("Invalid or expired authentication token.")
+
+    if not payload.get("sub"):
+        logger.warning("Token presented without sub claim")
+        raise UnauthorizedException("Invalid token: subject missing.")
 
     # Reject refresh tokens presented to access-token-only endpoints
     if payload.get("token_type") != "access":
@@ -198,26 +202,46 @@ async def get_current_admin(
     return user
 
 
-async def get_current_account_manager(
+async def get_current_super_admin(
     user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+) -> UserModel:
+    """Ensure current user is authenticated as a SUPER_ADMIN.
+
+    Rejects plain ADMIN accounts (and all non-admin user types) with 403.
+    Used as a FastAPI dependency on routes that are exclusively reserved for
+    SUPER_ADMIN — this keeps the intent visible at the route signature level
+    rather than buried inside the handler body.
+
+    Note on the ``db`` parameter: FastAPI deduplicates ``Depends(get_db)``
+    within a single request's dependency graph. Because ``get_current_user``
+    (a parent dep) already holds a ``Depends(get_db)`` node, the session
+    injected here is the **same** AsyncSession instance — only one connection
+    is checked out of the pool per request. The explicit declaration is kept
+    so ``get_user_roles_and_permissions`` receives a typed session without
+    requiring a structural refactor of ``get_current_user``.
+    """
+    if user.user_type != "admin":
+        raise ForbiddenException("Super Admin authentication privileges required.")
+    # Resolve account level (checks both the DB column and legacy role rows)
+    roles, _permissions = await get_user_roles_and_permissions(user, db)
+    if resolve_account_level(user, roles) == ACCOUNT_LEVEL_SUPER_ADMIN or "SUPER_ADMIN" in roles:
+        return user
+    raise ForbiddenException("SUPER_ADMIN privileges required.")
+
+
+async def get_current_account_manager(
+    user: UserModel = Depends(get_current_user),
 ) -> UserModel:
     """
     Surface guard for account-management operations (People domain).
 
-    Admits workspace admins (SUPER_ADMIN / ADMIN) and employee-domain accounts
-    at SUPER_EMPLOYEE level — the four-level matrix in `app.core.rbac` then
-    decides which levels they may create/manage, and the capability checks
-    decide the operations. Normal EMPLOYEE accounts are denied here: employee
-    accounts carry no account-creation authority (§6/§11).
+    Admits workspace admins (SUPER_ADMIN / ADMIN) only. Employee accounts
+    carry no account-creation authority (§6/§11).
     """
     if user.user_type == "admin":
         return user
-    if user.user_type == "employee":
-        roles, _permissions = await get_user_roles_and_permissions(user, db)
-        if resolve_account_level(user, roles) == ACCOUNT_LEVEL_SUPER_EMPLOYEE:
-            return user
-    raise ForbiddenException("Account management requires an Admin or Super Employee account.")
+    raise ForbiddenException("Account management requires an Admin account.")
 
 
 # ---------------------------------------------------------------------------
@@ -279,25 +303,13 @@ async def get_user_roles_and_permissions(
             .where(UserRoleModel.user_id == user.id)
         )
     ).scalars().all()
-    permissions = set(permission_rows)
-
-    # A 'custom' permission_mode overrides role-derived grants with the
-    # explicit per-user grant list (PUT /admin/employees/{id}/permissions).
-    # Role-derived SUPER_ADMIN/* authority is never lost by custom mode.
-    if getattr(user, "permission_mode", None) == "custom" and getattr(user, "custom_permissions", None):
-        permissions.update(str(code) for code in user.custom_permissions if code)
-
-    # Reuse the existing built-in role vocabulary as a fallback for system
-    # roles. This is not a second RBAC model; it mirrors the app's current
-    # built-in roles when the DB role-permission rows are sparse.
-    try:
-        from app.core.rbac import BUILT_IN_ROLES, canonical_role_name
-        for role in roles:
-            entry = BUILT_IN_ROLES.get(canonical_role_name(role) or "")
-            if entry:
-                permissions.update(entry.get("permissions", []))
-    except Exception:
-        logger.debug("Unable to load built-in RBAC fallback", exc_info=True)
+    permissions = resolve_stored_grants(
+        account_level=resolve_account_level(user, roles),
+        roles=roles,
+        permission_mode=getattr(user, "permission_mode", None),
+        custom_permissions=getattr(user, "custom_permissions", None),
+        role_permission_codes=permission_rows,
+    )
 
     permissions = expand_effective_permissions(permissions)
     permissions = with_employee_self_service(getattr(user, "user_type", None), permissions)

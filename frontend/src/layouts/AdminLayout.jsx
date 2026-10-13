@@ -14,7 +14,7 @@ import usePortalSidebarCollapse from "../components/navigation/usePortalSidebarC
  * Desktop keeps a persistent sidebar that can collapse to an icon rail;
  * tablet and mobile use a drawer over a scrim. The header is the only
  * ink-dark band — content sits on the Atelier canvas so the portal still
- * reads as PRATIKSHYA FASHON rather than a generic dashboard chrome.
+ * reads as PRATIKSHYA FASHION rather than a generic dashboard chrome.
  */
 export default function AdminLayout() {
   const { pathname } = useLocation();
@@ -23,7 +23,7 @@ export default function AdminLayout() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Admin Portal — PRATIKSHYA FASHON";
+    document.title = "Admin Portal — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };

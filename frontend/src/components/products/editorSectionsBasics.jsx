@@ -1,12 +1,15 @@
 /**
- * PRATIKSHYA FASHON — Product editor sections: Basic Information and
+ * PRATIKSHYA FASHION — Product editor sections: Basic Information and
  * Category & Attributes (Phase 13).
+ *
+ * Basics holds identity + taxonomy only. Story copy lives in Product Content;
+ * cover/gallery live in Media. Collection membership is assigned from the
+ * collection desk, not from this form.
  */
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   AVAILABILITY_OPTIONS,
-  COLLECTION_OPTIONS,
   COLOR_OPTIONS,
   DEPARTMENT_SELECT_OPTIONS,
   FABRIC_OPTIONS,
@@ -19,44 +22,60 @@ import {
   SIZE_OPTIONS,
   TAG_SUGGESTIONS,
   WORK_OPTIONS,
+  departmentCategoriesFor,
 } from "../../config/productCatalogConfig";
 import catalogRepository from "../../services/catalogRepository";
-import taxonomyRepository from "../../services/taxonomyRepository";
+import { resolveTaxonomySelectValue } from "../../services/taxonomyLifecycle";
+import { departmentForCategory } from "../../data/products/departments";
+import { useAssignableCategoryOptions, useAssignableSubcategories } from "../../hooks/useAssignableTaxonomy";
 import {
   ChipGroup,
   ChipRadio,
   Field,
   Select,
   TagInput,
-  TextArea,
   TextInput,
   hintClass,
 } from "./editorFields";
 
 /* ------------------------------------------------------------------ */
-/* 1 · Basic information                                               */
+/* Taxonomy + name — shared by the full editor and Quick Create        */
 /* ------------------------------------------------------------------ */
 
-export function SectionBasics({ draft, patch, errors, isNew }) {
-  const slugPreview = draft.slug || catalogRepository.suggestSlug(draft.name, draft.id);
+export function ProductTaxonomyFields({ draft, patch, errors = {}, isNew, nameId = "pf-name" }) {
+  const allCategories = useAssignableCategoryOptions();
+  const subcategoryItems = useAssignableSubcategories(draft.category);
 
-  /** Reset child taxonomy fields whenever their canonical parent changes. */
+  const categoryOptions = useMemo(() => {
+    if (!draft.department) return allCategories;
+    const allowed = new Set(departmentCategoriesFor(draft.department).map((entry) => entry.value));
+    const filtered = allCategories.filter((category) => allowed.has(category.id));
+    return filtered.length ? filtered : allCategories;
+  }, [allCategories, draft.department]);
+
   const handleDepartmentChange = (departmentId) => {
     patch({ department: departmentId, category: "", subcategory: "" });
   };
 
+  const handleCategoryChange = (categoryId) => {
+    const inferred = departmentForCategory(categoryId);
+    patch({
+      category: categoryId,
+      subcategory: "",
+      department: inferred || draft.department,
+    });
+  };
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <>
       <Field
         label="Department"
-        required
         hint={
           isNew
-            ? "All departments use the same product-management system. Selecting a department narrows the available categories and subcategories."
+            ? "Narrows the category list. The Product ID is allocated from the category you save."
             : "Department is locked after the canonical Product ID is allocated."
         }
         htmlFor="pf-department"
-        className="lg:col-span-2"
       >
         <Select
           id="pf-department"
@@ -65,34 +84,69 @@ export function SectionBasics({ draft, patch, errors, isNew }) {
           placeholder="Choose a department"
           disabled={!isNew}
           options={DEPARTMENT_SELECT_OPTIONS.map((dept) => ({
-            value: dept.id,
+            value: dept.value ?? dept.id,
             label: dept.label,
           }))}
         />
       </Field>
 
-      <Field label="Product name" required error={errors.name} htmlFor="pf-name" className="lg:col-span-2">
+      <Field label="Category" required error={errors.category} htmlFor="pf-category">
+        <Select
+          id="pf-category"
+          value={resolveTaxonomySelectValue(categoryOptions, draft.category)}
+          onChange={(event) => handleCategoryChange(event.target.value)}
+          placeholder={draft.department ? "Choose a category" : "Choose a department first (or pick any category)"}
+          disabled={!isNew}
+          options={categoryOptions.map((category) => ({ value: category.id, label: category.label }))}
+        />
+      </Field>
+
+      <Field label="Subcategory" htmlFor="pf-subcategory" className="lg:col-span-2">
+        <Select
+          id="pf-subcategory"
+          value={resolveTaxonomySelectValue(subcategoryItems, draft.subcategory)}
+          onChange={(event) => patch({ subcategory: event.target.value })}
+          placeholder={draft.category ? "Choose a style" : "Choose a category first"}
+          disabled={!isNew}
+          options={subcategoryItems.map((entry) => ({ value: entry.id, label: entry.name }))}
+        />
+      </Field>
+
+      <Field label="Product name" required error={errors.name} htmlFor={nameId} className="lg:col-span-2">
         <TextInput
-          id="pf-name"
+          id={nameId}
           value={draft.name}
           onChange={(event) => patch({ name: event.target.value })}
           placeholder="Product name"
           autoComplete="off"
         />
       </Field>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 1 · Basic information                                               */
+/* ------------------------------------------------------------------ */
+
+export function SectionBasics({ draft, patch, errors, isNew }) {
+  const slugPreview = draft.slug || catalogRepository.suggestSlug(draft.name, draft.id);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <ProductTaxonomyFields draft={draft} patch={patch} errors={errors} isNew={isNew} />
 
       <Field
         label="SKU"
-        required
         error={errors.sku}
-        hint="Unique across products and variants. Never reused."
+        hint="Leave blank to let the server allocate a unique SKU. Type one only to override."
         htmlFor="pf-sku"
       >
         <TextInput
           id="pf-sku"
           value={draft.sku}
           onChange={(event) => patch({ sku: event.target.value.toUpperCase() })}
-          placeholder="PF-SARE-001"
+          placeholder="Allocated on save"
           autoComplete="off"
         />
       </Field>
@@ -151,50 +205,6 @@ export function SectionBasics({ draft, patch, errors, isNew }) {
       </Field>
 
       <Field
-        label="Cover image / Catalogue plate"
-        hint="Manifest plate key (e.g. saree-banarasi) or direct image URL."
-        htmlFor="pf-cover-plate"
-        className="lg:col-span-2"
-      >
-        <TextInput
-          id="pf-cover-plate"
-          value={draft.image || ""}
-          onChange={(event) => patch({ image: event.target.value })}
-          placeholder="saree-banarasi or https://images.pratikshya.com/..."
-        />
-      </Field>
-
-      <Field
-        label="Short description"
-        hint="One considered line for cards and previews."
-        htmlFor="pf-short"
-        className="lg:col-span-2"
-      >
-        <TextArea
-          id="pf-short"
-          rows={2}
-          value={draft.shortDescription}
-          onChange={(event) => patch({ shortDescription: event.target.value })}
-        />
-      </Field>
-
-      <Field
-        label="Full description"
-        required
-        error={errors.description}
-        hint="The story told on the product page."
-        htmlFor="pf-description"
-        className="lg:col-span-2"
-      >
-        <TextArea
-          id="pf-description"
-          rows={5}
-          value={draft.description}
-          onChange={(event) => patch({ description: event.target.value })}
-        />
-      </Field>
-
-      <Field
         label="Product tags"
         hint="Searchable across the storefront."
         className="lg:col-span-2"
@@ -220,73 +230,10 @@ export function SectionBasics({ draft, patch, errors, isNew }) {
 /* 2 · Category & attributes                                           */
 /* ------------------------------------------------------------------ */
 
-export function SectionAttributes({ draft, patch, errors, isNew }) {
-  /*
-   * The product write path reads the ADMIN taxonomy surface — every lifecycle
-   * state (DRAFT / ACTIVE / ARCHIVED) — and emits server ids for both levels.
-   * It no longer depends on the static `data/products/departments.js` /
-   * `data/catalog/taxonomy.js` hierarchy, so categories and subcategories an
-   * admin created through the taxonomy screens are assignable exactly like the
-   * authored ones.
-   */
-  const [categoryOptions, setCategoryOptions] = useState([]);
-  const [subcategoryOptions, setSubcategoryOptions] = useState([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    taxonomyRepository.loadCategoryOptions().then((result) => {
-      if (cancelled || !result.ok) return;
-      setCategoryOptions(result.items ?? []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!draft.category) {
-      setSubcategoryOptions([]);
-      return undefined;
-    }
-    taxonomyRepository.loadSubcategories(draft.category).then((result) => {
-      if (cancelled || !result.ok) return;
-      setSubcategoryOptions(
-        (result.items ?? []).map((entry) => ({ id: entry.id, name: entry.name }))
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.category]);
-
-  const collectionOptions = taxonomyRepository.collectionOptions().map((entry) => entry.label);
-
+export function SectionAttributes({ draft, patch }) {
   return (
     <div className="space-y-8">
       <div className="grid gap-6 lg:grid-cols-2">
-        <Field label="Category" required error={errors.category} htmlFor="pf-category">
-          <Select
-            id="pf-category"
-            value={draft.category}
-            onChange={(event) => patch({ category: event.target.value, subcategory: "" })}
-            placeholder="Choose a category"
-            disabled={!isNew}
-            options={categoryOptions.map((category) => ({ value: category.id, label: category.label }))}
-          />
-        </Field>
-
-        <Field label="Subcategory" htmlFor="pf-subcategory">
-          <Select
-            id="pf-subcategory"
-            value={draft.subcategory}
-            onChange={(event) => patch({ subcategory: event.target.value })}
-            placeholder={draft.category ? "Choose a style" : "Choose a category first"}
-            disabled={!isNew}
-            options={subcategoryOptions.map((entry) => ({ value: entry.id, label: entry.name }))}
-          />
-        </Field>
-
         <Field label="Fabric" hint="Available to every category, not only sarees." htmlFor="pf-fabric">
           <Select
             id="pf-fabric"
@@ -412,21 +359,6 @@ export function SectionAttributes({ draft, patch, errors, isNew }) {
           options={[...new Set([...OCCASION_OPTIONS, ...draft.occasion])]}
           value={draft.occasion}
           onToggle={(occasion) => patch({ occasion })}
-          allowCustom
-        />
-      </Field>
-
-      <Field
-        label="Collections"
-        hint="The first collection becomes the primary one for the storefront facet."
-      >
-        <ChipGroup
-          ariaLabel="Collections"
-          options={[...new Set([...collectionOptions, ...COLLECTION_OPTIONS, ...draft.collections])]}
-          value={draft.collections}
-          onToggle={(collections) =>
-            patch({ collections, collection: collections[0] ?? "" })
-          }
           allowCustom
         />
       </Field>

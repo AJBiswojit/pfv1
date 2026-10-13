@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee ID generation.
+ * PRATIKSHYA FASHION — Employee ID generation.
  *
  * IDs are department/role-aware and unique within the mock dataset.
  * Never generate IDs inside UI components.

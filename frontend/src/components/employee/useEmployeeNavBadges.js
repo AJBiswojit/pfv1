@@ -5,7 +5,7 @@ import { pendingLeaveCount } from "../../services/workforce/leaveService";
 import { getPendingReview } from "../../services/media/mediaRepository";
 
 /**
- * PRATIKSHYA FASHON — Sidebar badges from REAL data.
+ * PRATIKSHYA FASHION — Sidebar badges from REAL data.
  *
  * Every count here comes from an existing lightweight selector, context or
  * service. Nothing is invented and nothing is polled — counts are derived on

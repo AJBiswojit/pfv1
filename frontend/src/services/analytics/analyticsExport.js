@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Analytics CSV export.
+ * PRATIKSHYA FASHION — Analytics CSV export.
  *
  * Native browser generation via the existing workforce CSV helper.
  * No extra dependency. Writes only the filtered snapshot the operator sees.

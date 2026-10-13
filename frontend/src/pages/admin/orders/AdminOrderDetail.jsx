@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin Order Detail
+ * PRATIKSHYA FASHION — Admin Order Detail
  *
  * Order Header, Customer, Items, Pricing, Payment, Inventory, Fulfillment,
  * Shipping, Timeline, Notes.
@@ -35,9 +35,12 @@ import { formatOrderDate, formatEventTime } from "../../../utils/orders";
 import { employeeFullName } from "../../../utils/employee";
 import { getActiveAssignmentEmployees } from "../../../services/employees/employeeService";
 import { AtelierButton } from "../../../design-system";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 
 export default function AdminOrderDetail() {
   const { orderId } = useParams();
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const { allocateOrder, assignFulfillment, markItemPicked, markPacked, markReadyToDispatch, dispatchOrder, markOutForDelivery, markDelivered, addInternalNote, cancelOrderAdmin } = useOrder();
   const inventory = useInventory();
   const { employees: employeeRegister } = useEmployeeManagement();
@@ -144,7 +147,7 @@ export default function AdminOrderDetail() {
               Try again
             </AtelierButton>
           ) : null}
-          <Link to="/admin/orders" className="font-ui text-sm text-brass hover:text-accent">Back to orders</Link>
+          <Link to={`${prefix}/orders`} className="font-ui text-sm text-brass hover:text-accent">Back to orders</Link>
         </div>
       </AdminPage>
     );
@@ -178,10 +181,10 @@ export default function AdminOrderDetail() {
       description={`${order.customer?.fullName || "Customer unavailable"} · ${order.items.length} items · ${formatINR(order.pricing.total)}`}
       actions={
         <div className="flex flex-wrap gap-2">
-          <AtelierButton as={Link} to="/admin/orders" variant="outline" size="chip">
+          <AtelierButton as={Link} to={`${prefix}/orders`} variant="outline" size="chip">
             <ArrowLeft size={12} /> Back
           </AtelierButton>
-          <AtelierButton as={Link} to={`/admin/orders/${order.id}/invoice`} variant="outline" size="chip">
+          <AtelierButton as={Link} to={`${prefix}/orders/${order.id}/invoice`} variant="outline" size="chip">
             Invoice
           </AtelierButton>
         </div>

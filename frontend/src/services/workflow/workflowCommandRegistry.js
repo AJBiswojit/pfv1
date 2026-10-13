@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Workflow command registry (Phase 2, Step D).
+ * PRATIKSHYA FASHION — Workflow command registry (Phase 2, Step D).
  *
  * Leaf module (NO imports) that late-binds the universal workflow command
  * layer, the universal publish validator and the media ownership service.

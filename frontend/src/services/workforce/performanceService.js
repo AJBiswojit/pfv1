@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Performance service.
+ * PRATIKSHYA FASHION — Performance service.
  *
  * Targets, live achievement, transparent scoring, manager review.
  * Employees never finalize their own review.

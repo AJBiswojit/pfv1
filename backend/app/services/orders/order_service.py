@@ -156,6 +156,8 @@ def _timeline_event(event: str, actor_id: Optional[str] = None, note: Optional[s
 
 
 def _compute_shipping(subtotal_after_coupon: int, delivery_method: str) -> int:
+    if delivery_method == "normal":
+        return 0  # normal delivery is always free
     if delivery_method == "express":
         return EXPRESS_SHIPPING_FEE  # express is never free
     return 0 if subtotal_after_coupon >= FREE_SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE
@@ -422,6 +424,8 @@ class OrderService:
         required_qty: Dict[str, int] = {}
 
         for line in req.items:
+            if line.quantity <= 0:
+                raise BusinessLogicException("Line item quantity must be greater than zero.")
             product = products.get(line.product_id)
             if not product:
                 raise BusinessLogicException(f"Product '{line.product_id}' not found.")
@@ -438,15 +442,20 @@ class OrderService:
             price_lines.append(
                 {"product_id": line.product_id, "quantity": line.quantity, "unit_price": unit_price}
             )
+            raw_img = getattr(product, "image", None)
+            safe_img = None
+            if raw_img and not raw_img.startswith("data:"):
+                safe_img = raw_img[:500]
+
             order_items.append(
                 OrderItemModel(
                     id=_new_uuid(),
                     product_id=line.product_id,
-                    product_name=product.name or "",
-                    product_image=getattr(product, "image", None),
-                    sku=getattr(product, "sku", None),
-                    color=line.color,
-                    size=line.size,
+                    product_name=(product.name or "")[:255],
+                    product_image=safe_img,
+                    sku=(getattr(product, "sku", None) or "")[:100] or None,
+                    color=(line.color or "")[:100] or None,
+                    size=(line.size or "")[:50] or None,
                     unit_price=unit_price,
                     original_price=original_price,
                     quantity=line.quantity,
@@ -498,7 +507,7 @@ class OrderService:
         # ── Canonical initial status ──────────────────────────────────────────
         is_cod = req.payment_method == "cod"
         status = "ORDER_CONFIRMED" if is_cod else "PENDING_PAYMENT"
-        payment_status = "PENDING"  # never PAID at creation — verification only
+        payment_status = "PENDING_PAYMENT"  # never PAID at creation — verification only
 
         if is_cod:
             timeline = [
@@ -838,9 +847,33 @@ class OrderService:
           2. Cancel any active payment session so a cancelled order can no
              longer be charged through a stale Razorpay modal.
         """
-        if order.payment_status in ("PENDING", "FAILED"):
+        if order.payment_status in ("PENDING", "PENDING_PAYMENT", "FAILED", "PAYMENT_FAILED"):
             await self._release_stock_reservation(order)
+            await self._release_coupon_reservation(order)
         await self._cancel_active_payment_sessions(order)
+
+    async def _release_coupon_reservation(self, order: OrderModel) -> None:
+        """Release coupon usage if order is cancelled before payment completion."""
+        from app.models.commerce.coupon import CouponModel
+        from app.models.commerce.coupon_redemption import CouponRedemptionModel
+
+        if not order.coupon_id:
+            return
+        res = await self.db.execute(
+            select(CouponModel).where(CouponModel.id == order.coupon_id).with_for_update()
+        )
+        coupon = res.scalars().first()
+        if coupon and (coupon.usage_count or 0) > 0:
+            coupon.usage_count = max(0, coupon.usage_count - 1)
+
+        red_res = await self.db.execute(
+            select(CouponRedemptionModel).where(
+                CouponRedemptionModel.coupon_id == order.coupon_id,
+                CouponRedemptionModel.order_id == order.id,
+            )
+        )
+        for red in red_res.scalars().all():
+            await self.db.delete(red)
 
     async def _release_stock_reservation(self, order: OrderModel) -> None:
         """Return reserved quantity to `catalog_product.stock` (row-locked)."""

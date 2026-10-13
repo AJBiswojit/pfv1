@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Backend-managed HOME_HERO admin panel (B-02)
+ * PRATIKSHYA FASHION — Backend-managed HOME_HERO admin panel (B-02)
  *
  * This panel talks to the real backend API:
  *   GET    /admin/marketing/media?placement=HOME_HERO
@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, EyeOff, Eye, Trash2, Plus, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, EyeOff, Eye, Trash2, Plus, RefreshCw, UploadCloud, X, CheckCircle2 } from "lucide-react";
 import AdminPanel from "./AdminPanel";
 import { AtelierButton } from "../../design-system";
 import {
@@ -25,7 +25,9 @@ import {
   apiDeleteMarketingMedia,
   apiReorderMarketingMedia,
 } from "../../services/api/marketingMediaApi";
-import { mediaObjectUrl } from "../../services/media/mediaPaths";
+import { apiUploadMediaObject } from "../../services/api/mediaApi";
+import { mediaObjectUrl, resolveMediaUrl } from "../../services/media/mediaPaths";
+import { hydrateCatalog } from "../../services/catalog/catalogStore";
 
 const CANONICAL_HERO_OPTIONS = [
   { key: "hero/hero001.avif", label: "hero001.avif — Festive Elegance" },
@@ -41,6 +43,11 @@ const DEFAULT_COPY = {
   "hero/hero003.avif": { title: "Heritage Weaves", subtitle: "Six yards of timeless craft", ctaLabel: "Shop Sarees", ctaHref: "/women/sarees" },
   "hero/hero004.avif": { title: "The Celebration Edit", subtitle: "Dress up every moment", ctaLabel: "Shop the Edit", ctaHref: "/shop" },
   "hero/hero005.avif": { title: "New Arrivals", subtitle: "Fresh drapes, just landed", ctaLabel: "Shop New", ctaHref: "/shop" },
+};
+
+const titleFromFileName = (name = "") => {
+  const stem = name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  return stem ? stem.charAt(0).toUpperCase() + stem.slice(1) : "Custom hero";
 };
 
 export default function BackendHomeHeroPanel() {
@@ -60,6 +67,22 @@ export default function BackendHomeHeroPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
 
+  // Device file upload state
+  const [sourceMode, setSourceMode] = useState("preset"); // "preset" | "device"
+  const [deviceFile, setDeviceFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const load = useCallback(async () => {
     setStatus("loading");
     setError(null);
@@ -68,6 +91,7 @@ export default function BackendHomeHeroPanel() {
       const sorted = (result.items || []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       setItems(sorted);
       setStatus("ready");
+      hydrateCatalog({ force: true }).catch(() => {});
     } else {
       setStatus("error");
       setError(result.error || "Failed to load HOME_HERO");
@@ -78,8 +102,69 @@ export default function BackendHomeHeroPanel() {
     load();
   }, [load]);
 
+  const uploadFileToStorage = async (file) => {
+    setUploadingFile(true);
+    setUploadError(null);
+    setUploadSuccess(false);
+
+    const res = await apiUploadMediaObject(file, { namespace: "hero" });
+    setUploadingFile(false);
+
+    if (res.ok && (res.object?.key || res.data?.object?.key)) {
+      const key = res.object?.key || res.data?.object?.key;
+      setUploadSuccess(true);
+      setForm((f) => ({
+        ...f,
+        objectKey: key,
+        title: f.title === "Festive Elegance" || !f.title ? titleFromFileName(file.name) : f.title,
+      }));
+    } else {
+      setUploadError(res.error || "Failed to upload image file to storage.");
+    }
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setSourceMode("device");
+    setDeviceFile(file);
+    setPreviewUrl(localUrl);
+    setUploadSuccess(false);
+    setUploadError(null);
+
+    await uploadFileToStorage(file);
+  };
+
+  const handleClearDeviceFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setDeviceFile(null);
+    setPreviewUrl(null);
+    setUploadSuccess(false);
+    setUploadError(null);
+    setSourceMode("preset");
+    setForm((f) => ({ ...f, objectKey: CANONICAL_HERO_OPTIONS[0].key }));
+  };
+
   const handleCreate = async (e) => {
     e?.preventDefault();
+
+    if (sourceMode === "device" && deviceFile && !uploadSuccess && !uploadingFile) {
+      await uploadFileToStorage(deviceFile);
+    }
+
+    if (uploadingFile) {
+      setMessage({ type: "error", text: "Please wait for the image upload to complete." });
+      return;
+    }
+
     setBusy(true);
     setMessage(null);
     const payload = {
@@ -97,6 +182,7 @@ export default function BackendHomeHeroPanel() {
     if (result.ok) {
       setMessage({ type: "success", text: `Created ${payload.objectKey}` });
       setShowCreate(false);
+      handleClearDeviceFile();
       await load();
     } else {
       setMessage({ type: "error", text: result.error || "Create failed" });
@@ -127,7 +213,6 @@ export default function BackendHomeHeroPanel() {
     const tmp = newItems[index];
     newItems[index] = newItems[target];
     newItems[target] = tmp;
-    // Reassign sortOrder based on new position
     const reorderPayload = newItems.map((it, i) => ({ id: it.id, sortOrder: i }));
     setBusy(true);
     const result = await apiReorderMarketingMedia({ placement: "HOME_HERO", items: reorderPayload });
@@ -154,7 +239,6 @@ export default function BackendHomeHeroPanel() {
   const seedCanonical = async () => {
     setBusy(true);
     setMessage(null);
-    // Create 5 canonical hero entries if not already present
     for (let i = 0; i < CANONICAL_HERO_OPTIONS.length; i++) {
       const opt = CANONICAL_HERO_OPTIONS[i];
       const copy = DEFAULT_COPY[opt.key] || {};
@@ -181,11 +265,18 @@ export default function BackendHomeHeroPanel() {
     await load();
   };
 
+  const currentPreviewUrl =
+    sourceMode === "device"
+      ? previewUrl || (form.objectKey ? resolveMediaUrl(form.objectKey) : null)
+      : form.objectKey
+      ? resolveMediaUrl(form.objectKey)
+      : null;
+
   return (
     <AdminPanel
       eyebrow="Backend-managed"
       title="HOME_HERO — Hero carousel (B-02)"
-      description="Database-managed hero curation. Order is explicit, inactive entries excluded, no duplicate media in same placement. Changes reflect on homepage after refresh. This is the production source of truth — the 5 canonical hero files remain as initial data, not hardcoded slideshow definition."
+      description="Database-managed hero curation. Order is explicit, inactive entries excluded, no duplicate media in same placement. Changes reflect on homepage after refresh. Select canonical hero presets or choose an image directly from your device."
       action={
         <div className="flex gap-2">
           <AtelierButton size="chip" variant="outline" onClick={load} disabled={busy}>
@@ -225,7 +316,7 @@ export default function BackendHomeHeroPanel() {
           {items.length ? (
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((item, index) => {
-                const url = item.url || mediaObjectUrl(item.objectKey || item.object_key);
+                const url = resolveMediaUrl(item.url || item.objectKey || item.object_key);
                 const first = index === 0;
                 const last = index === items.length - 1;
                 return (
@@ -268,15 +359,131 @@ export default function BackendHomeHeroPanel() {
           {showCreate ? (
             <form onSubmit={handleCreate} className="mt-6 border border-mist/80 bg-surface/20 p-4">
               <h4 className="mb-3 font-display text-sm font-medium">Add HOME_HERO entry</h4>
+
               <div className="grid gap-3 sm:grid-cols-2">
+                {/* Hero Image Source Selection */}
+                <div className="sm:col-span-2 space-y-3 rounded border border-mist/80 bg-surface/50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe font-medium">
+                      Hero Image Selection
+                    </span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSourceMode("preset");
+                          setForm((f) => ({ ...f, objectKey: CANONICAL_HERO_OPTIONS[0].key }));
+                        }}
+                        className={`px-2.5 py-1 text-[11px] font-ui transition-colors ${
+                          sourceMode === "preset"
+                            ? "bg-ink text-ivory font-medium"
+                            : "border border-mist/80 bg-canvas text-taupe hover:text-ink"
+                        }`}
+                      >
+                        Preset Options
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSourceMode("device")}
+                        className={`px-2.5 py-1 text-[11px] font-ui transition-colors ${
+                          sourceMode === "device"
+                            ? "bg-ink text-ivory font-medium"
+                            : "border border-mist/80 bg-canvas text-taupe hover:text-ink"
+                        }`}
+                      >
+                        Choose from Device
+                      </button>
+                    </div>
+                  </div>
+
+                  {sourceMode === "preset" ? (
+                    <label className="block">
+                      <span className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe">Preset Object Key</span>
+                      <select
+                        value={form.objectKey}
+                        onChange={(e) => handleObjectKeyChange(e.target.value)}
+                        className="mt-1 w-full border border-mist/80 bg-canvas px-3 py-2 font-mono text-xs"
+                      >
+                        {CANONICAL_HERO_OPTIONS.map((opt) => (
+                          <option key={opt.key} value={opt.key}>{opt.label}</option>
+                        ))}
+                        <option value="marketing/custom.avif">marketing/custom.avif (custom)</option>
+                      </select>
+                    </label>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="block">
+                        <span className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe">Choose Image from Device</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer border border-mist/80 bg-canvas px-3 py-2 hover:bg-surface text-xs font-ui text-ink transition-colors">
+                            <UploadCloud size={15} className="text-cocoa" />
+                            <span>{deviceFile ? deviceFile.name : "Select Image File..."}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleFileSelect}
+                            />
+                          </label>
+
+                          {deviceFile ? (
+                            <button
+                              type="button"
+                              onClick={handleClearDeviceFile}
+                              className="p-1.5 text-taupe hover:text-amber-800 transition-colors"
+                              title="Clear selected file"
+                            >
+                              <X size={15} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </label>
+
+                      {uploadingFile ? (
+                        <div className="flex items-center gap-2 text-xs font-ui text-taupe">
+                          <RefreshCw size={12} className="animate-spin text-cocoa" />
+                          <span>Uploading image to server…</span>
+                        </div>
+                      ) : null}
+
+                      {uploadSuccess ? (
+                        <div className="flex items-center gap-2 text-xs font-ui text-green-800 bg-green-50 px-3 py-2 border border-green-200">
+                          <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />
+                          <span>Uploaded successfully! Object key: <code className="font-mono text-[11px] font-semibold">{form.objectKey}</code></span>
+                        </div>
+                      ) : null}
+
+                      {uploadError ? (
+                        <div className="text-xs font-ui text-amber-900 bg-amber-50 px-3 py-2 border border-amber-200">
+                          Upload failed: {uploadError}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Image Preview */}
+                  {currentPreviewUrl ? (
+                    <div className="mt-2 flex items-center gap-3 border border-mist/80 bg-canvas p-2">
+                      <div className="h-14 w-20 overflow-hidden bg-surface relative flex-shrink-0 border border-mist/60">
+                        <img src={currentPreviewUrl} alt="Hero preview" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="text-xs font-ui min-w-0 space-y-0.5">
+                        <p className="font-medium text-ink truncate">Image Preview</p>
+                        <p className="font-mono text-[10px] text-taupe truncate">Key: {form.objectKey || "(none)"}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Form fields */}
                 <label className="block">
                   <span className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe">Object Key</span>
-                  <select value={form.objectKey} onChange={(e) => handleObjectKeyChange(e.target.value)} className="mt-1 w-full border border-mist/80 bg-canvas px-3 py-2 font-mono text-xs">
-                    {CANONICAL_HERO_OPTIONS.map((opt) => (
-                      <option key={opt.key} value={opt.key}>{opt.label}</option>
-                    ))}
-                    <option value="marketing/custom.avif">marketing/custom.avif (custom)</option>
-                  </select>
+                  <input
+                    value={form.objectKey}
+                    onChange={(e) => setForm({ ...form, objectKey: e.target.value })}
+                    className="mt-1 w-full border border-mist/80 bg-canvas px-3 py-2 font-mono text-xs"
+                    placeholder="e.g. hero/image.jpg"
+                  />
                 </label>
                 <label className="block">
                   <span className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe">Sort Order</span>
@@ -304,8 +511,12 @@ export default function BackendHomeHeroPanel() {
                 </label>
               </div>
               <div className="mt-4 flex gap-2">
-                <AtelierButton type="submit" size="chip" disabled={busy}>Create</AtelierButton>
-                <AtelierButton type="button" size="chip" variant="outline" onClick={() => setShowCreate(false)}>Cancel</AtelierButton>
+                <AtelierButton type="submit" size="chip" disabled={busy || uploadingFile}>
+                  {uploadingFile ? "Uploading…" : "Create"}
+                </AtelierButton>
+                <AtelierButton type="button" size="chip" variant="outline" onClick={() => { setShowCreate(false); handleClearDeviceFile(); }}>
+                  Cancel
+                </AtelierButton>
               </div>
             </form>
           ) : null}
@@ -314,3 +525,4 @@ export default function BackendHomeHeroPanel() {
     </AdminPanel>
   );
 }
+

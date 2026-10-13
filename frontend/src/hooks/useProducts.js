@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product register subscription (backend-driven).
+ * PRATIKSHYA FASHION — Product register subscription (backend-driven).
  *
  * Admin/employee product data is fetched from the backend
  * (GET /admin/products, GET /admin/products/{id}) and cached in memory via

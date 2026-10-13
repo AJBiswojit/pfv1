@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Server-backed product media manager (Phase 7).
+ * PRATIKSHYA FASHION — Server-backed product media manager (Phase 7).
  *
  * ONE reusable panel that runs the real product-media lifecycle against the
  * backend and renders ONLY what the server confirms:

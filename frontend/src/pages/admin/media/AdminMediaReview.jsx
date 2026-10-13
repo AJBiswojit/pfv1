@@ -22,8 +22,11 @@ import useMediaActions from "../../../hooks/useMediaActions";
 import catalogRepository from "../../../services/catalogRepository";
 import { formatEmployeeDateTime } from "../../../utils/employee";
 import { cn } from "../../../utils/cn";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 
 export default function AdminMediaReview() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const pendingItems = usePendingReviewMedia();
   const actions = useMediaActions();
 
@@ -115,11 +118,11 @@ export default function AdminMediaReview() {
       description="Review and approve employee media submissions. Approved assets immediately become active and visible on customer-facing product pages."
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/media`} size="chip" variant="outline">
             <ArrowLeft size={13} className="mr-1 inline-block" />
             Media Management
           </AtelierButton>
-          <AtelierButton as={Link} to="/admin/media/upload" size="chip" className="bg-ink text-ivory">
+          <AtelierButton as={Link} to={`${prefix}/media/upload`} size="chip" className="bg-ink text-ivory">
             Upload Media
           </AtelierButton>
         </div>
@@ -345,7 +348,7 @@ export default function AdminMediaReview() {
             </p>
           </div>
           <div className="pt-2">
-            <AtelierButton as={Link} to="/admin/media" size="chip" variant="outline">
+            <AtelierButton as={Link} to={`${prefix}/media`} size="chip" variant="outline">
               Return to Media Management
             </AtelierButton>
           </div>

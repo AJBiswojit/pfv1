@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media vocabulary.
+ * PRATIKSHYA FASHION — Media vocabulary.
  *
  * The single source of truth for every media constant the house uses:
  * what a piece of media *is* (image or video), what it is *for* (a product

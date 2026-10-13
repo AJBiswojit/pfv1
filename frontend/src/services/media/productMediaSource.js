@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product media resolution.
+ * PRATIKSHYA FASHION — Product media resolution.
  *
  * The bridge between the media repository and the storefront. A product's
  * pictures may come from two places: the catalogue plates authored in

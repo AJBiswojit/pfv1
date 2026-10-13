@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — shared admin API error presentation (Phase 5).
+ * PRATIKSHYA FASHION — shared admin API error presentation (Phase 5).
  *
  * One mapping layer from backend HTTP semantics to honest operator copy,
  * used by the product, category, collection and offer admin screens. It must

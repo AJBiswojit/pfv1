@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Canonical order read model (Phase 3).
+ * PRATIKSHYA FASHION — Canonical order read model (Phase 3).
  *
  * One place that turns a backend order response into the shape the UI
  * consumes, and one place that derives every order-state question the UI
@@ -239,8 +239,8 @@ export function buildOrderStateFlags(order) {
     isPendingPayment: status === ORDER_STATUS.PENDING_PAYMENT,
     // Payment lifecycle (never derived from order state or payment method)
     isPaid: paymentStatus === ORDER_PAYMENT_STATUS.PAID,
-    isPaymentPending: paymentStatus === ORDER_PAYMENT_STATUS.PENDING,
-    isPaymentFailed: paymentStatus === ORDER_PAYMENT_STATUS.FAILED,
+    isPaymentPending: paymentStatus === ORDER_PAYMENT_STATUS.PENDING_PAYMENT || paymentStatus === "PENDING",
+    isPaymentFailed: paymentStatus === ORDER_PAYMENT_STATUS.PAYMENT_FAILED || paymentStatus === "FAILED",
     // Actions the backend would actually accept
     canCancel: isOrderCancellable(order),
     canRequestReturn: isOrderReturnable(order),

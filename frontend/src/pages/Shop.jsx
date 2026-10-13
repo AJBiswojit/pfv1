@@ -12,7 +12,6 @@ import {
 } from "../design-system";
 import CatalogueBrowser from "../components/storefront/CatalogueBrowser";
 import CategoryShortcuts from "../components/storefront/CategoryShortcuts";
-import { collectionRoutes } from "../data/products/taxonomy";
 import taxonomyRepository from "../services/taxonomyRepository";
 import { categoryHref, resolveCollectionRoute } from "../services/taxonomyRouting";
 import { categoryCounts, products } from "../data/products";
@@ -58,7 +57,19 @@ export default function Shop() {
    * rather than rendered from an invented title, href or plate.
    */
   const featuredRoute = resolveCollectionRoute("featured");
-  const featured = featuredRoute ? collectionRoutes[featuredRoute.collection.slug] ?? null : null;
+  /*
+   * Derive editorial copy directly from the backend collection record.
+   * The static collectionRoutes map is not consulted — the collection object
+   * returned by resolveCollectionRoute already carries name, eyebrow and
+   * description from the API. We normalise `name` → `title` here so the
+   * JSX below can stay unchanged.
+   */
+  const featured = featuredRoute
+    ? {
+        ...featuredRoute.collection,
+        title: featuredRoute.collection.name,
+      }
+    : null;
   const featuredImage = featured ? resolveCollectionCover(featured) : null;
   const featuredHref = featuredRoute?.href ?? null;
   const featuredCount = products.filter((product) => product.isFeatured).length;

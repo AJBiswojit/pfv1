@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Validation Utilities
+ * PRATIKSHYA FASHION — Validation Utilities
  *
  * Centralized form validation rules and safe redirect sanitization.
  * Used across Sign In, Sign Up, Profile, and Address forms.

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Wishlist API
+ * PRATIKSHYA FASHION — Wishlist API
  * Maps to API_CONTRACT.md § WISHLIST
  *
  * All endpoints require Customer JWT.

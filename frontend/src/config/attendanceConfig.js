@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Attendance, leave and house calendar.
+ * PRATIKSHYA FASHION — Attendance, leave and house calendar.
  *
  * Constants and demo working-hours only. No storage, no React.
  * Phase 20 Settings can replace ATTENDANCE_DEFAULTS / HOUSE_CALENDAR

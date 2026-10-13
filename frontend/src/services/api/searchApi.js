@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Search & Explore API
+ * PRATIKSHYA FASHION — Search & Explore API
  * Maps to API_CONTRACT.md § SEARCH + EXPLORE
  */
 import { apiClient, ApiError, handleError } from "./apiClient";

@@ -271,9 +271,7 @@ const DeliveryStep = forwardRef(function DeliveryStep(_props, ref) {
           Delivery Method
         </h3>
         <p className="mt-1.5 font-ui text-xs text-taupe">
-          {payable >= freeShippingThreshold
-            ? "Standard delivery is complimentary on orders at or above this value."
-            : `Standard delivery is complimentary above ${formatINR(freeShippingThreshold)}.`}
+          Normal delivery is always complimentary. Standard delivery is free above {formatINR(freeShippingThreshold)}.
         </p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2" role="radiogroup" aria-label="Delivery method">
@@ -294,16 +292,16 @@ const DeliveryStep = forwardRef(function DeliveryStep(_props, ref) {
                 <label
                   htmlFor={`delivery-${method.id}`}
                   className={cn(
-                    "flex h-full cursor-pointer flex-col border bg-surface/20 p-5 transition-colors",
-                    "peer-checked:border-ink peer-checked:bg-surface/60",
-                    "peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-accent",
-                    "hover:border-brass"
+                    "flex h-full cursor-pointer flex-col border p-5 transition-colors hover:border-brass",
+                    selected
+                      ? "border-ink bg-surface/60"
+                      : "border-mist/80 bg-surface/20"
                   )}
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="inline-flex items-center gap-2.5">
-                      <Icon size={16} strokeWidth={1.5} className="text-accent" aria-hidden="true" />
-                      <span className="font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+                      <Icon size={16} strokeWidth={1.5} className={selected ? "text-ink" : "text-accent"} aria-hidden="true" />
+                      <span className={cn("font-ui text-[11px] uppercase tracking-[.18em]", selected ? "text-ink font-medium" : "text-ink")}>
                         {method.label}
                       </span>
                     </span>

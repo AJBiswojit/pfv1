@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Explore catalogue (Phase 24).
+ * PRATIKSHYA FASHION — Explore catalogue (Phase 24).
  *
  * The unified product-discovery dataset. Explore never scans files, never
  * invents cards from gallery views, and never keeps a second catalogue.

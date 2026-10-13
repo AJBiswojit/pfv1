@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Customer Account Context (backend-authoritative).
+ * PRATIKSHYA FASHION — Customer Account Context (backend-authoritative).
  *
  * Every account read and write goes to the backend when the customer is
  * authenticated:

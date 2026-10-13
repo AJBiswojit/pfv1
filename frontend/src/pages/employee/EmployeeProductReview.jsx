@@ -33,8 +33,9 @@ import {
   submitProductForReview,
 } from "../../services/productWorkflow";
 import { getPublishIssues } from "../../services/catalogRepository";
-import { CATEGORY_OPTIONS, getProductStatusLabel } from "../../config/productCatalogConfig";
-import taxonomyRepository from "../../services/taxonomyRepository";
+import { getProductStatusLabel } from "../../config/productCatalogConfig";
+import { resolveTaxonomySelectValue } from "../../services/taxonomyLifecycle";
+import { useAssignableCategoryOptions, useAssignableSubcategories } from "../../hooks/useAssignableTaxonomy";
 import { formatINR } from "../../utils/shopping";
 import { reviewFlagLabel } from "../../services/productReviewFlags";
 
@@ -104,6 +105,9 @@ export default function EmployeeProductReview() {
           : null,
     [form, formKey, activeProduct]
   );
+
+  const categoryOptions = useAssignableCategoryOptions();
+  const subcategoryItems = useAssignableSubcategories(draft?.category);
 
   const update = (key, value) => setForm({ ...draft, __key: formKey, [key]: value });
 
@@ -341,7 +345,7 @@ export default function EmployeeProductReview() {
                         </label>
                         <select
                           id={`emp-cat-${selected.id}`}
-                          value={draft.category}
+                          value={resolveTaxonomySelectValue(categoryOptions, draft.category)}
                           onChange={(event) => {
                             setForm({
                               ...draft,
@@ -353,7 +357,7 @@ export default function EmployeeProductReview() {
                           className={fieldClass}
                         >
                           <option value="">— Select category —</option>
-                          {CATEGORY_OPTIONS.map((option) => (
+                          {categoryOptions.map((option) => (
                             <option key={option.id} value={option.id}>
                               {option.label}
                             </option>
@@ -366,18 +370,16 @@ export default function EmployeeProductReview() {
                         </label>
                         <select
                           id={`emp-sub-${selected.id}`}
-                          value={draft.subcategory}
+                          value={resolveTaxonomySelectValue(subcategoryItems, draft.subcategory)}
                           onChange={(event) => update("subcategory", event.target.value)}
                           className={fieldClass}
                         >
                           <option value="">— Select subcategory —</option>
-                          {(taxonomyRepository.subcategoryOptionsFor(draft.category) ?? []).map(
-                            (option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            )
-                          )}
+                          {subcategoryItems.map((entry) => (
+                            <option key={entry.id} value={entry.id}>
+                              {entry.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>

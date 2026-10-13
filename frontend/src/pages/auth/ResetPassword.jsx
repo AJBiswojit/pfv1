@@ -29,7 +29,7 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Reset Password — PRATIKSHYA FASHON";
+    document.title = "Reset Password — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };

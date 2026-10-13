@@ -127,6 +127,37 @@ def register_error_handlers(app: FastAPI) -> None:
             },
         )
 
+    try:
+        from sqlalchemy.exc import DBAPIError, OperationalError
+
+        @app.exception_handler(OperationalError)
+        @app.exception_handler(DBAPIError)
+        async def db_connection_exception_handler(request: Request, exc: Exception):
+            err_str = str(exc).lower()
+            if "does not exist" in err_str or "undefined" in err_str:
+                code = "DATABASE_SCHEMA_ERROR"
+                message = "A required database table or column is missing. Please run: alembic upgrade heads"
+            else:
+                code = "DATABASE_UNAVAILABLE"
+                message = "Database connection failed. Please ensure PostgreSQL is running."
+            logger.error(
+                "Database error path=%s method=%s: %s",
+                request.url.path, request.method, str(exc),
+            )
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": code,
+                        "message": message,
+                        "details": {},
+                    },
+                },
+            )
+    except ImportError:
+        pass
+
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         logger.error(

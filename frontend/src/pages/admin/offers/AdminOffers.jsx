@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin Offers desk (Phase 5)
+ * PRATIKSHYA FASHION — Admin Offers desk (Phase 5)
  *
  * Fully server-backed: the register list, its search (`q`), the derived
  * status filter and pagination all run on `GET /admin/offers`; the metric
@@ -59,7 +59,8 @@ const STATUS_FILTERS = [
 ];
 
 export default function AdminOffers() {
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
 
   const [query, setQuery] = useState("");
@@ -165,7 +166,7 @@ export default function AdminOffers() {
       }
       description="Coupons are backend-owned: this desk lists, filters and toggles the live coupon table. Eligibility at checkout is decided by the server's validation gate — never by this page."
       actions={
-        <AtelierButton as={Link} to="/admin/offers/new" size="chip">
+        <AtelierButton as={Link} to={`${prefix}/offers/new`} size="chip">
           <Plus size={13} aria-hidden="true" /> Create offer
         </AtelierButton>
       }
@@ -284,7 +285,7 @@ export default function AdminOffers() {
                 offers.map((offer) => (
                   <tr key={offer.id} className="border-b border-mist/60 font-ui text-sm">
                     <td className="px-3 py-4 font-medium">
-                      <Link to={`/admin/offers/${offer.id}`} className="underline-offset-4 hover:text-accent hover:underline">
+                      <Link to={`${prefix}/offers/${offer.id}`} className="underline-offset-4 hover:text-accent hover:underline">
                         {offer.code}
                       </Link>
                     </td>
@@ -306,7 +307,7 @@ export default function AdminOffers() {
                     <td className="px-3 py-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
-                          to={`/admin/offers/${offer.id}/edit`}
+                          to={`${prefix}/offers/${offer.id}/edit`}
                           className="font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:text-accent"
                         >
                           Edit

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Customer registry (deprecated shim).
+ * PRATIKSHYA FASHION — Customer registry (deprecated shim).
  *
  * Customers are backend-owned (GET /admin/customers, /customers/me). This
  * module is kept only so legacy consumers do not crash mid-migration; it

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Category ↔ media-family safety (Phase 3F).
+ * PRATIKSHYA FASHION — Category ↔ media-family safety (Phase 3F).
  *
  * A deterministic validation layer between product categories and optional
  * imported-media filename families. Filenames are used ONLY to recognize an

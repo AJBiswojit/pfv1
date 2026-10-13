@@ -6,14 +6,15 @@ import { useOffer } from "../../../hooks/useOffers";
 
 export default function AdminOfferFormPage() {
   const { offerId } = useParams();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const { offer: existing } = useOffer(offerId);
 
   if (offerId && !existing) {
     return (
       <AdminPage eyebrow="Offers" title="Offer not found">
-        <Link to="/admin/offers" className="font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/offers`} className="font-ui text-sm text-brass hover:text-accent">
           Back to offers
         </Link>
       </AdminPage>
@@ -40,7 +41,7 @@ export default function AdminOfferFormPage() {
           : "Compose a coupon. Checkout will validate it through the existing pricing engine."
       }
     >
-      <OfferForm offer={existing} actor={actor} basePath="/admin/offers" />
+      <OfferForm offer={existing} actor={actor} basePath={`${prefix}/offers`} />
     </AdminPage>
   );
 }

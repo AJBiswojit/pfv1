@@ -3,13 +3,13 @@ import random
 import secrets
 import string
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import logging
 
-from datetime import date
+from datetime import date, datetime
 from app.core.exceptions import (
     ConflictException,
     ForbiddenException,
@@ -64,7 +64,6 @@ ROLE_CODE_PREFIX: dict[str, str] = {
     "FASHION_STYLIST":   "STY",
     # account levels (unified hierarchy) — admin-domain codes use the ADM prefix
     "ADMIN":             "ADM",
-    "SUPER_EMPLOYEE":    "SUP",
     "EMPLOYEE":          "EMP",
 }
 
@@ -114,6 +113,10 @@ async def _require_target_manageable(
         raise NotFoundException("Employee not found.")
     creator_level = _creator_account_level(creator, creator_roles or [])
     target_level = _creator_account_level(target)
+
+    # can_manage enforces the full creation matrix: ADMIN→ADMIN is blocked
+    # because CREATABLE_LEVELS["ADMIN"] = {EMPLOYEE}; ADMIN→SUPER_ADMIN is
+    # blocked by the same table. The single check below covers all cases.
     if not can_manage(creator_level, target_level):
         from app.services.audit.audit_service import record_detached
 
@@ -174,11 +177,12 @@ class EmployeeService:
         the least-privilege delegation ceiling:
 
           • creator level must be allowed to create the requested level
-            (SUPER_ADMIN → all four; ADMIN → ADMIN/SUPER_EMPLOYEE/EMPLOYEE;
-            SUPER_EMPLOYEE → SUPER_EMPLOYEE/EMPLOYEE; EMPLOYEE → none);
+            (SUPER_ADMIN → ADMIN/EMPLOYEE;
+             ADMIN → EMPLOYEE only;
+             EMPLOYEE → none);
+            SUPER_ADMIN accounts can only be bootstrapped, never created here;
           • requested capabilities must be delegable by the creator
-            (SUPER_ADMIN unlimited; everyone else ⊆ own effective set;
-            SUPER_EMPLOYEE further bounded to the employee domain);
+            (SUPER_ADMIN unlimited; everyone else ⊆ own effective set);
           • business roles are the existing PredefinedRole catalogue — never
             an elevation path into Admin authority.
 
@@ -199,7 +203,16 @@ class EmployeeService:
             from app.core.exceptions import BusinessLogicException
 
             raise BusinessLogicException(
-                f"Unknown account level '{req.accountLevel}'. Expected SUPER_ADMIN, ADMIN, SUPER_EMPLOYEE or EMPLOYEE."
+                f"Unknown account level '{req.accountLevel}'. Expected SUPER_ADMIN, ADMIN or EMPLOYEE."
+            )
+
+        # SUPER_ADMIN is the bootstrapped system owner — exactly one may exist.
+        # Creating additional SUPER_ADMIN accounts through this endpoint is
+        # permanently blocked regardless of the caller's account level.
+        if target_level == "SUPER_ADMIN":
+            raise ForbiddenException(
+                "A SUPER_ADMIN account cannot be created through this endpoint. "
+                "There can only be one SUPER_ADMIN in the system."
             )
 
         creator = await self.db.get(UserModel, creator_id)
@@ -214,10 +227,13 @@ class EmployeeService:
             creator_level, target_level, requested, set(creator_permissions), creator.id
         )
 
+        email = (str(req.email).strip() if req.email else "") or None
+        phone = (str(req.phone).strip() if req.phone else "") or None
+
         # Uniqueness checks
-        if req.email and await self.repo.email_exists(req.email):
+        if email and await self.repo.email_exists(email):
             raise ConflictException("An account with this email already exists.")
-        if req.phone and await self.repo.phone_exists(req.phone):
+        if phone and await self.repo.phone_exists(phone):
             raise ConflictException("An account with this phone number already exists.")
         if req.employee_code and await self.repo.employee_code_exists(req.employee_code):
             raise ConflictException(f"Employee code '{req.employee_code}' is already in use.")
@@ -232,12 +248,12 @@ class EmployeeService:
             if not section:
                 raise NotFoundException("Section not found.")
 
-        is_employee_domain = target_level in ("SUPER_EMPLOYEE", "EMPLOYEE")
+        is_employee_domain = target_level == "EMPLOYEE"
         temp_password = req.password or _generate_temp_password()
 
         user = UserModel(
-            email=req.email,
-            phone=req.phone,
+            email=email,
+            phone=phone,
             full_name=req.full_name,
             hashed_password=hash_password(temp_password),
             user_type=LEVEL_USER_TYPE[target_level],
@@ -271,9 +287,7 @@ class EmployeeService:
         # Role + capability assignment (hierarchy role is authoritative via
         # users.account_level; role rows carry the operational grants).
         role_names: list[str] = []
-        if target_level == "SUPER_ADMIN":
-            role_names.append("SUPER_ADMIN")
-        elif target_level == "ADMIN":
+        if target_level == "ADMIN":
             role_names.append("ADMIN")
         elif is_employee_domain and business_role:
             role_names.append(business_role)
@@ -283,12 +297,23 @@ class EmployeeService:
             if role:
                 self.db.add(UserRoleModel(user_id=user.id, role_id=role.id))
 
-        if req.permissionMode == "custom" or (requested and not is_employee_domain):
-            # Explicit capability assignment: store the canonical/legacy
-            # grant list. Custom mode replaces role defaults by design.
-            if requested:
-                user.permission_mode = "custom"
-                user.custom_permissions = requested
+        custom_requested = (req.permissionMode or "").lower() == "custom"
+        if custom_requested or requested:
+            # Merge the role's built-in base set so role-granted permissions
+            # (e.g. analytics.view for ADMIN) are never silently stripped when
+            # a creator supplies a partial custom list. resolve_stored_grants
+            # with permission_mode="role" returns the same set the user would
+            # have had without custom mode — we union rather than replace.
+            from app.core.rbac import resolve_stored_grants
+            role_base = resolve_stored_grants(
+                account_level=target_level,
+                roles=role_names,
+                permission_mode="role",
+                custom_permissions=None,
+                role_permission_codes=[],
+            )
+            user.permission_mode = "custom"
+            user.custom_permissions = sorted(role_base | set(requested))
         # Audit BEFORE commit so the diary row rides the same transaction.
         # Credential material is deliberately absent (the temp password only
         # ever exists in the create response).
@@ -436,10 +461,12 @@ class EmployeeService:
 
         if req.full_name is not None:
             user.full_name = req.full_name
-        if req.phone is not None:
-            if req.phone != user.phone and await self.repo.phone_exists(req.phone):
-                raise ConflictException("This phone number is already in use.")
-            user.phone = req.phone
+        if "phone" in req.model_fields_set:
+            phone = (str(req.phone).strip() if req.phone else "") or None
+            if phone != user.phone:
+                if phone and await self.repo.phone_exists(phone):
+                    raise ConflictException("This phone number is already in use.")
+                user.phone = phone
 
         # ── Account level change (hierarchy-sensitive) ──────────────────────
         level_change: Optional[tuple] = None
@@ -464,26 +491,32 @@ class EmployeeService:
         # ── Business role change (operational responsibility, not authority) ──
         role_change: Optional[tuple] = None
         if req.role is not None:
-            from app.core.rbac import BUSINESS_ROLE_NAMES, canonical_role_name
+            from app.core.rbac import ACCOUNT_LEVELS, BUSINESS_ROLE_NAMES, canonical_role_name
 
             new_role = canonical_role_name(req.role) if req.role else None
-            if new_role and new_role not in BUSINESS_ROLE_NAMES:
+            # Directory fallbacks send ADMIN / SUPER_ADMIN / EMPLOYEE as
+            # `role` when businessRole was missing. Those are account levels,
+            # not business roles — ignore them so Admin-domain edits do not 422
+            # and do not wipe a real business-role row.
+            hierarchy_label = bool(new_role and new_role in ACCOUNT_LEVELS and new_role not in BUSINESS_ROLE_NAMES)
+            if new_role and new_role not in BUSINESS_ROLE_NAMES and not hierarchy_label:
                 raise BusinessLogicException(f"Unknown business role '{req.role}'.")
-            previous_roles = sorted(
-                {
-                    name
-                    for _ur, name in (
-                        await self.db.execute(
-                            select(UserRoleModel, RoleModel.name).join(
-                                RoleModel, RoleModel.id == UserRoleModel.role_id
-                            ).where(UserRoleModel.user_id == user.id)
-                        )
-                    ).all()
-                }
-            )
-            await self._reassign_business_roles(user, new_role)
-            if new_role or previous_roles:
-                role_change = (", ".join(previous_roles) or "(none)", new_role or "(cleared)")
+            if not hierarchy_label:
+                previous_roles = sorted(
+                    {
+                        name
+                        for _ur, name in (
+                            await self.db.execute(
+                                select(UserRoleModel, RoleModel.name).join(
+                                    RoleModel, RoleModel.id == UserRoleModel.role_id
+                                ).where(UserRoleModel.user_id == user.id)
+                            )
+                        ).all()
+                    }
+                )
+                await self._reassign_business_roles(user, new_role)
+                if new_role or previous_roles:
+                    role_change = (", ".join(previous_roles) or "(none)", new_role or "(cleared)")
 
         profile = user.employee_profile
         if profile:
@@ -542,9 +575,16 @@ class EmployeeService:
     async def update_employee_status(
         self, user_id: str, req: EmployeeStatusRequest, actor_id: Optional[str] = None
     ) -> UserModel:
+        # INACTIVE is the frontend/schema vocabulary; DEACTIVATED is the
+        # canonical stored value. Accept both so the API never 422s on a
+        # valid deactivation request from the frontend.
+        _ALIAS = {"INACTIVE": "DEACTIVATED"}
+        canonical_status = _ALIAS.get(req.status, req.status)
         allowed = {"ACTIVE", "SUSPENDED", "DEACTIVATED"}
-        if req.status not in allowed:
-            raise BusinessLogicException(f"Invalid status. Must be one of: {', '.join(allowed)}")
+        if canonical_status not in allowed:
+            raise BusinessLogicException(
+                f"Invalid status. Must be one of: ACTIVE, SUSPENDED, INACTIVE, DEACTIVATED"
+            )
 
         user = await self.repo.get_any_staff_by_id(user_id)
         if not user:
@@ -553,13 +593,13 @@ class EmployeeService:
         if actor is not None:
             await _require_target_manageable(self.db, actor, actor_roles, user.id)
 
-        user.status = req.status
+        user.status = canonical_status
         status_action = {
             "ACTIVE": "EMPLOYEE_ACTIVATED",
             "SUSPENDED": "EMPLOYEE_SUSPENDED",
             "DEACTIVATED": "EMPLOYEE_DEACTIVATED",
-        }[req.status]
-        await self._audit(status_action, actor_id, user, status=req.status)
+        }[canonical_status]
+        await self._audit(status_action, actor_id, user, status=canonical_status)
         await self.db.commit()
         await self.db.refresh(user)
         return await self.repo.get_any_staff_by_id(user_id)
@@ -599,7 +639,7 @@ class EmployeeService:
 
         Enforced here (§7/§28):
           • the caller's delegable set — nobody grants capabilities they do not
-            hold; SUPER_EMPLOYEE creators are bounded to the employee domain;
+            hold;
           • SUPER_ADMIN keeps the top-level override regardless of overrides.
         """
         from app.core.rbac import (
@@ -781,8 +821,8 @@ class EmployeeService:
         already exists UPDATES that row — the admin correction use case —
         instead of failing or duplicating. Enforced for every write surface.
         """
-        # Validate employee exists
-        emp_profile = await self._get_profile(req.employee_id)
+        # Validate employee exists (admin staff included — they punch too)
+        emp_profile = await self._get_profile(req.employee_id, staff=True)
         existing = (
             await self.db.execute(
                 select(AttendanceModel).where(
@@ -792,10 +832,19 @@ class EmployeeService:
             )
         ).scalars().first()
         if existing is not None:
+            # Overwriting a day (possibly machine data) must say why.
+            if not (req.notes or "").strip():
+                raise ValidationException(
+                    "A reason is required when correcting an existing attendance record (send `notes`)."
+                )
+            status_sent = "status" in req.model_fields_set
             for field in ("check_in", "check_out", "status", "notes"):
+                if field == "status" and not status_sent:
+                    continue  # schema default must not overwrite a derived status
                 value = getattr(req, field)
                 if value is not None:
                     setattr(existing, field, value)
+            await self._apply_admin_timing(existing, status_explicit=status_sent)
             await self._audit(
                 "ATTENDANCE_CORRECTED",
                 actor.id if actor else None,
@@ -814,6 +863,7 @@ class EmployeeService:
             status=req.status,
             notes=req.notes,
         )
+        await self._apply_admin_timing(record, status_explicit="status" in req.model_fields_set)
         self.db.add(record)
         await self._audit(
             "ATTENDANCE_CORRECTED",
@@ -827,6 +877,38 @@ class EmployeeService:
         await self.db.refresh(record)
         return record
 
+    async def _apply_admin_timing(self, record: AttendanceModel, *, status_explicit: bool) -> None:
+        """Stamp an admin-written row as final: source=ADMIN, exception cleared,
+        late/early/worked recomputed from the (corrected) times.
+
+        When the admin did not choose a status and the row has a check-in, the
+        status is re-derived from the times (leave days keep LEAVE)."""
+        from app.services.employee import workforce_rules as rules
+        from app.services.employee.workforce_service import WorkforceService
+
+        settings = await WorkforceService(self.db).settings()
+        day = record.attendance_date
+        check_in = datetime.combine(day, record.check_in) if record.check_in else None
+        check_out = datetime.combine(day, record.check_out) if record.check_out else None
+        if check_in and check_out and check_out < check_in:
+            raise ValidationException("Check-out cannot be earlier than check-in.")
+        timing = rules.evaluate_timing(day, check_in, check_out, settings)
+        record.late_minutes = timing["lateMinutes"]
+        record.early_leave_minutes = timing["earlyLeaveMinutes"]
+        record.worked_minutes = timing["workMinutes"] if (check_in and check_out) else None
+        record.punch_count = (1 if check_in else 0) + (1 if check_out else 0)
+        record.exception = None
+        record.source = "ADMIN"
+        record.status = str(record.status or "").strip().upper()
+        if record.status not in rules.ATTENDANCE_STATUSES:
+            raise ValidationException(
+                f"Unknown attendance status '{record.status}'. Expected one of: "
+                + ", ".join(sorted(rules.ATTENDANCE_STATUSES))
+                + "."
+            )
+        if not status_explicit and check_in and record.status != "LEAVE":
+            record.status = rules.status_after_punch(day, check_in, check_out, settings)
+
     async def list_attendance(
         self,
         employee_id: str,
@@ -837,7 +919,7 @@ class EmployeeService:
     ) -> Tuple[List[AttendanceModel], int]:
         """One employee's history. Contract API-ATT-01 exposes `from`/`to`
         day bounds; both are pushed into SQL (bounded page, bounded total)."""
-        profile = await self._get_profile(employee_id)
+        profile = await self._get_profile(employee_id, staff=True)
         if date_from is None and date_to is None:
             skip = (page - 1) * page_size
             return await self.repo.list_attendance(profile.id, skip, page_size)
@@ -876,6 +958,11 @@ class EmployeeService:
         if not record:
             raise NotFoundException("Attendance record not found.")
         changed: List[str] = []
+        before = {
+            "status": record.status,
+            "in": record.check_in.strftime("%H:%M") if record.check_in else None,
+            "out": record.check_out.strftime("%H:%M") if record.check_out else None,
+        }
         if req.check_in is not None:
             record.check_in = req.check_in
             changed.append("check_in")
@@ -883,11 +970,15 @@ class EmployeeService:
             record.check_out = req.check_out
             changed.append("check_out")
         if req.status is not None:
-            record.status = req.status
+            record.status = req.status.strip().upper()
             changed.append("status")
         if req.notes is not None:
             record.notes = req.notes
             changed.append("notes")
+        # Only a change to times/status is a correction of the attendance facts.
+        # A notes-only edit must not clear a MISSING_OUT flag or claim the row.
+        if any(field in changed for field in ("check_in", "check_out", "status")):
+            await self._apply_admin_timing(record, status_explicit=req.status is not None)
         # Explicit load: `record.employee` is lazy and would raise in async.
         profile = await self.db.get(EmployeeProfileModel, record.employee_id)
         await self._audit(
@@ -896,6 +987,9 @@ class EmployeeService:
             profile.employee_code if profile else None,
             date=record.attendance_date.isoformat(),
             fields=changed,
+            status=f"{before['status']}->{record.status}",
+            check_in=f"{before['in']}->{record.check_in.strftime('%H:%M') if record.check_in else None}",
+            check_out=f"{before['out']}->{record.check_out.strftime('%H:%M') if record.check_out else None}",
         )
         await self.db.commit()
         await self.db.refresh(record)
@@ -912,8 +1006,17 @@ class EmployeeService:
             profile.employee_code if profile else None,
             date=record.attendance_date.isoformat(),
             action_taken="row removed",
+            status=record.status,
+            source=record.source,
         )
+        profile_id, day = record.employee_id, record.attendance_date
         await self.db.delete(record)
+        await self.db.flush()
+        # If the machine recorded punches that day, removing a (corrected) row
+        # reverts the day to what the machine says instead of leaving a false gap.
+        from app.services.employee.attendance_ingest_service import AttendanceIngestService
+
+        await AttendanceIngestService(self.db).recompute_day(profile_id, day)
         await self.db.commit()
         return True
 
@@ -1055,9 +1158,14 @@ class EmployeeService:
         user.employee_profile = profile
         return True
 
-    async def _get_profile(self, employee_user_id: str) -> EmployeeProfileModel:
-        """Resolve employee user_id → EmployeeProfileModel, raising 404 if not found."""
-        user = await self.repo.get_employee_by_id(employee_user_id)
+    async def _get_profile(self, employee_user_id: str, staff: bool = False) -> EmployeeProfileModel:
+        """Resolve employee user_id → EmployeeProfileModel, raising 404 if not found.
+
+        `staff=True` also resolves admin accounts (attendance covers them)."""
+        if staff:
+            user = await self.repo.get_any_staff_by_id(employee_user_id)
+        else:
+            user = await self.repo.get_employee_by_id(employee_user_id)
         if not user or not user.employee_profile:
             raise NotFoundException("Employee not found.")
         return user.employee_profile

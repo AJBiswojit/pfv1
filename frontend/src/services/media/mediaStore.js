@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media storage layer.
+ * PRATIKSHYA FASHION — Media storage layer.
  *
  * The lowest level of the media system: it reads, normalises and writes the
  * `pratikshya_media` register and nothing else. No product knowledge, no
@@ -29,7 +29,7 @@ import {
 } from "../../config/mediaTypes";
 import { resolveMediaUrl } from "./mediaPaths";
 
-/** Namespaced, in line with every other PRATIKSHYA FASHON storage key. */
+/** Namespaced, in line with every other PRATIKSHYA FASHION storage key. */
 export const MEDIA_STORAGE_KEY = "pratikshya_media";
 /** Marks browser media storage as initialized for the canonical empty register. */
 export const CANONICAL_MEDIA_STATE_KEY = "pratikshya_canonical_media_state_2026_08_17";

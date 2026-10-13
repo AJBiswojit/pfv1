@@ -4,7 +4,7 @@ import { MEDIA_TYPES } from "../../config/mediaTypes";
 import { cn } from "../../utils/cn";
 
 /**
- * PRATIKSHYA FASHON — Media thumbnail.
+ * PRATIKSHYA FASHION — Media thumbnail.
  *
  * One tile shape for every admin surface that lists media: the library, the
  * per-product manager, the marketing board and the detail page.

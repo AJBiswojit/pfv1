@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Offer editor (Phase 17).
+ * PRATIKSHYA FASHION — Offer editor (Phase 17).
  *
  * Shared by admin and employee desks. Validation and uniqueness live in
  * the offer repository; this form only collects and previews.

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Order utilities
+ * PRATIKSHYA FASHION — Order utilities
  *
  * Pure-logic layer: defensive normalisation of locally-held order
  * snapshots, ownership, eligibility, formatting and search.

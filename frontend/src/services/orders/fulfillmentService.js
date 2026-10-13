@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Fulfillment service (Phase 15)
+ * PRATIKSHYA FASHION — Fulfillment service (Phase 15)
  *
  * Attached to the existing order — never a second order dataset.
  * Every order has exactly one fulfillment record (future split fulfillment

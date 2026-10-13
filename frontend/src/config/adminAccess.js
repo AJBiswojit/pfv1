@@ -1,11 +1,11 @@
 /**
- * PRATIKSHYA FASHON — Admin workspace access model.
+ * PRATIKSHYA FASHION — Admin workspace access model.
  *
  * The Admin Portal is a separate authentication boundary from the customer
  * storefront; the Employee Operations Portal is the staff workspace for
- * SUPER_EMPLOYEE / EMPLOYEE levels. Authorization is capability-based:
- * ADMIN authority is the sum of the capabilities actually held and is always
- * below SUPER_ADMIN (the top-level override).
+ * EMPLOYEE accounts. Authorization is capability-based: ADMIN authority is
+ * the sum of the capabilities actually held and is always below SUPER_ADMIN
+ * (the top-level override).
  *
  * Permission strings on this surface are the canonical capability codes from
  * `config/rbacModel.js` (mirrored and ENFORCED by `app/core/rbac.py`).
@@ -27,6 +27,7 @@ export const ADMIN_ROLES = {
 
 /** Legacy export kept for existing import sites (capability vocabulary now). */
 export const ADMIN_PERMISSIONS = {
+  EMPLOYEES_VIEW: "people.view",
   EMPLOYEES_MANAGE: "people.manage",
 };
 
@@ -119,22 +120,10 @@ export const canManageEmployeeAccounts = (admin) =>
 
 /**
  * Legacy helper alias (kept for existing consumers): an account-level id in
- * the ADMIN workspace's four-level model.
+ * the ADMIN workspace's three-level model.
  */
 export const isAdminRole = (roleId) =>
   roleId === ACCOUNT_LEVELS.SUPER_ADMIN || roleId === ACCOUNT_LEVELS.ADMIN;
-
-/**
- * SUPER_EMPLOYEE is the highest level inside the EMPLOYEE workspace. Its
- * account-management authority (create SUPER_EMPLOYEE/EMPLOYEE accounts,
- * delegate a subset of its own capabilities) is exercised through the SAME
- * /admin/employees API with the employee-scoped token; the backend applies
- * the identical hierarchy matrix.
- */
-export const isSuperEmployeeAccount = (employee) =>
-  Boolean(employee) &&
-  employee.accountLevel === ACCOUNT_LEVELS.SUPER_EMPLOYEE &&
-  canAdminSignIn(employee.status);
 
 export default {
   ADMIN_ROLES,
@@ -149,7 +138,6 @@ export default {
   canAdminSignIn,
   isAdminAccount,
   isAdminRole,
-  isSuperEmployeeAccount,
   hasAdminPermission,
   canManageEmployeeAccounts,
 };

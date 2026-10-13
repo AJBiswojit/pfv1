@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Mega-menu editorial media resolution.
+ * PRATIKSHYA FASHION — Mega-menu editorial media resolution.
  *
  * The navigation's editorial panel is a DISTRIBUTION SURFACE, not a data
  * source. It owns no image list, no product list and no filenames: it asks
@@ -246,7 +246,7 @@ const srcOf = (image) => {
  * record's identity must not reach a customer surface through a caption.
  */
 const editorialAlt = (group) =>
-  group?.feature?.title ? `${group.feature.title} — PRATIKSHYA FASHON` : "PRATIKSHYA FASHON";
+  group?.feature?.title ? `${group.feature.title} — PRATIKSHYA FASHION` : "PRATIKSHYA FASHION";
 
 const plate = (src, { group, source, scope, focal }) => {
   if (!src) return null;

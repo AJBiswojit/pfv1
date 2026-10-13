@@ -21,7 +21,7 @@ KNOWN_SECTIONS = {
 
 SETTINGS_DEFAULTS: Dict[str, Any] = {
     "business": {
-        "name": "Pratikshya Fashon",
+        "name": "Pratikshya Fashion",
         "email": "",
         "phone": "",
         "gst": "",
@@ -44,6 +44,7 @@ SETTINGS_DEFAULTS: Dict[str, Any] = {
         "lateThresholdMinutes": 10,
         "minimumHalfDayMinutes": 240,
         "fullDayMinutes": 540,
+        "webPunchEnabled": True,
     },
     "holidays": {"list": []},
     "tax": {

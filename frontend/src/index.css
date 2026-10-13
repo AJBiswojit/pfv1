@@ -1,7 +1,12 @@
 @import "tailwindcss";
 
+/* Safelist font-accent so Tailwind v4's content scanner always emits it,
+   even when it only appears inside JS template strings that the scanner
+   cannot statically detect. */
+@source inline("font-accent");
+
 /**
- * PRATIKSHYA FASHON — Atelier theme.
+ * PRATIKSHYA FASHION — Atelier theme.
  *
  * These custom properties are the CSS mirror of `src/design-system/tokens.js`
  * and `src/design-system/typography.js`. Keep the two in sync: the JS modules
@@ -11,6 +16,10 @@
   /* Typefaces */
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-ui: "Instrument Sans", system-ui, sans-serif;
+  /* Accent serif — used for pull-quotes and campaign accent moments.
+     Playfair Display replaces Cormorant Infinitum: better screen legibility
+     with the same high-fashion editorial character. */
+  --font-accent: "Playfair Display", Georgia, serif;
 
   /* Surfaces — universal base page background is white (#FFFFFF) per the
      Atelier visual language. `canvas` carries the page canvas, `surface`

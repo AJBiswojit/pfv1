@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Attendance repository.
+ * PRATIKSHYA FASHION — Attendance repository.
  *
  * One store: `pratikshya_attendance`. Admin, manager and employee views
  * all read this list. The older Phase 9 map

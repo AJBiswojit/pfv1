@@ -4,7 +4,7 @@ import PratikshyaImage from "../PratikshyaImage";
 import { cn } from "../../utils/cn";
 
 /**
- * PRATIKSHYA FASHON — Video plate.
+ * PRATIKSHYA FASHION — Video plate.
  *
  * Native HTML5 video, no player library. The browser's own control bar
  * carries play, pause, mute, scrubbing and fullscreen, which is both the

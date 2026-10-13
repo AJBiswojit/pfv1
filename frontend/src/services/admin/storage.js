@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Namespaced admin storage keys.
+ * PRATIKSHYA FASHION — Namespaced admin storage keys.
  *
  * Kept deliberately apart from `pratikshya_employee_*` and the customer
  * keys so no portal can ever read another portal's session.

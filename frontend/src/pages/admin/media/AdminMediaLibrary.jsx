@@ -25,6 +25,7 @@ import { apiListMediaAssets } from "../../../services/api/mediaApi";
 import { useMediaLibrary, useMediaMetrics } from "../../../hooks/useMedia";
 import useMediaActions from "../../../hooks/useMediaActions";
 import { cn } from "../../../utils/cn";
+import { useAdminAuth } from "../../../context/AdminAuthContext";
 
 const TABS = [
   { id: "ALL", label: "All" },
@@ -229,6 +230,8 @@ function DurableAssetsPanel() {
 }
 
 export default function AdminMediaLibrary() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const media = useMediaLibrary();
   const metrics = useMediaMetrics();
   const actions = useMediaActions();
@@ -303,7 +306,7 @@ export default function AdminMediaLibrary() {
     <AdminPage
       eyebrow="Business / Media"
       title="Media Management"
-      description="Manage product and marketing media across PRATIKSHYA FASHON."
+      description="Manage product and marketing media across PRATIKSHYA FASHION."
       actions={
         <div className="flex flex-wrap items-center gap-2.5">
           {metrics.pendingReview > 0 ? (
@@ -315,13 +318,13 @@ export default function AdminMediaLibrary() {
               Pending review ({metrics.pendingReview}) · session-local
             </span>
           ) : null}
-          <AtelierButton as={Link} to="/admin/media/marketing" size="chip" variant="outline">
+          <AtelierButton as={Link} to={`${prefix}/media/marketing`} size="chip" variant="outline">
             Marketing Media
           </AtelierButton>
           {actions.access.canUpload ? (
             <AtelierButton
               as={Link}
-              to="/admin/media/upload"
+              to={`${prefix}/media/upload`}
               size="chip"
               className="bg-ink text-ivory hover:bg-cocoa shadow-sm"
             >
@@ -610,7 +613,7 @@ export default function AdminMediaLibrary() {
                       {item.scope === MEDIA_SCOPES.PRODUCT && item.productId && ownerStatusOf(item.productId) !== null ? (
                         <AtelierButton
                           as={Link}
-                          to={`/admin/products/${item.productId}/media`}
+                          to={`${prefix}/products/${item.productId}/media`}
                           size="chip"
                           variant="outline"
                         >

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media groups (Phase 21.6).
+ * PRATIKSHYA FASHION — Media groups (Phase 21.6).
  *
  * Deterministic grouping based ONLY on filename parsing.
  * Groups images when their base is identical after removing view suffix.

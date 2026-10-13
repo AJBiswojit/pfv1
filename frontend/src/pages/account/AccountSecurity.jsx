@@ -55,7 +55,7 @@ export default function AccountSecurity() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Security — PRATIKSHYA FASHON";
+    document.title = "Security — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };

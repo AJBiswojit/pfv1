@@ -21,7 +21,7 @@ export default function AccountSettings() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Settings — PRATIKSHYA FASHON";
+    document.title = "Settings — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };

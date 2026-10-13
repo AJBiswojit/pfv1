@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Unified Review Queue (Phase 3D).
+ * PRATIKSHYA FASHION — Unified Review Queue (Phase 3D).
  *
  * The ONE queue over the ONE product lifecycle. Every product in the
  * canonical register appears here exactly once. Every canonical department
@@ -46,11 +46,8 @@ import {
 import { WORKFLOW_STAGE_LABELS } from "../../services/workflow/productWorkflowState";
 import { validateProductForPublish } from "../../services/workflow/productPublishValidator";
 import { reviewFlagLabel } from "../../services/productReviewFlags";
-import {
-  bulkApproveProducts,
-  bulkPublishProducts,
-  bulkSubmitProducts,
-} from "../../services/productWorkflow";
+import { runAction } from "../../services/admin/productAdminService";
+import { formatAdminError } from "../../services/admin/adminError";
 import { categoryLabels } from "../../data/products/taxonomy";
 
 const PAGE_SIZE = 25;
@@ -115,9 +112,9 @@ const wrongStageMessage = (row, action) => {
 };
 
 /**
- * Action-specific preview. It invokes the canonical validator instead of
- * duplicating MRP, selling-price, description, media, taxonomy, grouping,
- * review-flag, category, or other business rules in the UI.
+ * Action-specific preview.
+ * Submit / approve follow the server: stage only. Publish still runs the
+ * publish checklist (cover, name, category, price, description).
  */
 export const previewBulkEligibility = (rows = [], actionId) => {
   const action = actionFor(actionId);
@@ -136,7 +133,11 @@ export const previewBulkEligibility = (rows = [], actionId) => {
       });
       return;
     }
-    const validation = validateProductForPublish(row.product);
+    if (action.id === "submit" || action.id === "approve") {
+      ready.push(row);
+      return;
+    }
+    const validation = validateProductForPublish(row.product, { requireApproved: true });
     if (validation.ok) {
       ready.push(row);
       return;

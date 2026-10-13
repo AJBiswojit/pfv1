@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Canonical workflow projection (Phase 2, Step A).
+ * PRATIKSHYA FASHION — Canonical workflow projection (Phase 2, Step A).
  *
  * The repository still persists the compatibility fields:
  *
@@ -142,73 +142,76 @@ export const getProductWorkflowState = (product) => {
     stage: null,
     presentation: null,
     returned: false,
-    editable: false,
+    /* editable is resolved below from the derived stage — not set here. */
   };
 
+  /** Finalise and return: derives editable from the resolved stage so every
+   *  branch benefits automatically and the set is the single source of truth. */
+  const resolve = (fields) => ({
+    ...base,
+    ...fields,
+    editable: EMPLOYEE_EDITABLE_STAGES.has(fields.stage),
+  });
+
   if (status === STATUS_ARCHIVED) {
-    return { ...base, stage: WORKFLOW_STAGES.ARCHIVED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.ARCHIVED] };
+    return resolve({ stage: WORKFLOW_STAGES.ARCHIVED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.ARCHIVED] });
   }
 
   if (status === STATUS_PUBLISHED) {
     /* Grandfathered — an existing published product stays PUBLISHED. */
-    return { ...base, stage: WORKFLOW_STAGES.PUBLISHED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.PUBLISHED] };
+    return resolve({ stage: WORKFLOW_STAGES.PUBLISHED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.PUBLISHED] });
   }
 
   if (reviewState === REVIEW_APPROVED) {
     /* Approved but explicitly NOT published (the Phase 2 decoupling). */
-    return { ...base, stage: WORKFLOW_STAGES.APPROVED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.APPROVED] };
+    return resolve({ stage: WORKFLOW_STAGES.APPROVED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.APPROVED] });
   }
 
   if (isPendingStatus(status)) {
     if (product.workflow?.adminReviewStartedAt || product.review?.adminReviewStartedAt) {
       /* An Admin has explicitly begun reviewing this submission. */
-      return {
-        ...base,
+      return resolve({
         stage: WORKFLOW_STAGES.IN_ADMIN_REVIEW,
         label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.IN_ADMIN_REVIEW],
-      };
+      });
     }
     if (reviewState === REVIEW_PENDING) {
       /* Submitted, waiting for the Admin to pick it up. */
-      return {
-        ...base,
+      return resolve({
         stage: WORKFLOW_STAGES.SUBMITTED,
         label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.SUBMITTED],
-      };
+      });
     }
     /* Legacy pending rows without a review state are treated as submitted. */
-    return {
-      ...base,
+    return resolve({
       stage: WORKFLOW_STAGES.SUBMITTED,
       label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.SUBMITTED],
-    };
+    });
   }
 
   if (reviewState === REVIEW_REJECTED) {
     /* RETURNED is a result, not a stage: the record is back in an editable
        operational state with the reason preserved. */
     const operational = assignee ? WORKFLOW_STAGES.IN_EMPLOYEE_REVIEW : WORKFLOW_STAGES.DRAFT;
-    return {
-      ...base,
+    return resolve({
       stage: operational,
       presentation: RETURNED_PRESENTATION,
       returned: true,
       label: WORKFLOW_STAGE_LABELS[operational],
-    };
+    });
   }
 
   if (assignee) {
     if (employeeReviewStartedAtOf(product)) {
-      return {
-        ...base,
+      return resolve({
         stage: WORKFLOW_STAGES.IN_EMPLOYEE_REVIEW,
         label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.IN_EMPLOYEE_REVIEW],
-      };
+      });
     }
-    return { ...base, stage: WORKFLOW_STAGES.ASSIGNED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.ASSIGNED] };
+    return resolve({ stage: WORKFLOW_STAGES.ASSIGNED, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.ASSIGNED] });
   }
 
-  return { ...base, stage: WORKFLOW_STAGES.DRAFT, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.DRAFT] };
+  return resolve({ stage: WORKFLOW_STAGES.DRAFT, label: WORKFLOW_STAGE_LABELS[WORKFLOW_STAGES.DRAFT] });
 };
 
 /** True when the canonical stage accepts employee edits. */

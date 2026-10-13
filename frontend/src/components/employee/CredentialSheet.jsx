@@ -42,7 +42,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
         .value { font-family: sans-serif; font-size: 18px; }
         .note { margin-top: 32px; font-family: sans-serif; font-size: 12px; color: #777; }
       </style></head><body>
-      <p class="label">PRATIKSHYA FASHON · TEMPORARY CREDENTIALS</p>
+      <p class="label">PRATIKSHYA FASHION · TEMPORARY CREDENTIALS</p>
       <h1>Employee created</h1>
       <div class="row"><div class="label">Name</div><div class="value">${employeeFullName(employee)}</div></div>
       <div class="row"><div class="label">Employee ID</div><div class="value">${employee.employeeId}</div></div>

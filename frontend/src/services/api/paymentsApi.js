@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Payments API
+ * PRATIKSHYA FASHION — Payments API
  * Maps to API_CONTRACT.md § PAYMENTS + Razorpay integration
  *
  * POST /payments/session        — create Razorpay order against a pending order
@@ -174,6 +174,132 @@ export async function apiValidateCoupon({ code, cartItems = [], customerId, cust
       coupon: data.coupon ?? null,
       discount: data.discount ?? 0,
       error: data.error ?? null,
+    };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+
+// ===========================================================================
+// ADMIN — Payments desk (scope: "admin")
+// ===========================================================================
+
+/**
+ * GET /super-admin/payments  (super admin)
+ * GET /admin/payments         (regular admin)
+ *
+ * Paginated list of payment sessions joined with order + customer info.
+ * Returns { ok, sessions, total, page, pageSize, statusCounts }
+ *
+ * @param {boolean} isSuperAdmin - pass true when the caller is a super-admin
+ *   so the request is routed to the correct backend prefix.
+ */
+export async function apiAdminListPayments({
+  orderId,
+  status,
+  paymentMethod,
+  page = 1,
+  pageSize = 50,
+  isSuperAdmin = false,
+} = {}) {
+  try {
+    const qs = new URLSearchParams({ page, pageSize });
+    if (orderId)       qs.set("orderId", orderId);
+    if (status)        qs.set("status", status);
+    if (paymentMethod) qs.set("paymentMethod", paymentMethod);
+
+    const urlPrefix = isSuperAdmin ? "/super-admin" : "/admin";
+    const data = await apiClient.get(`${urlPrefix}/payments?${qs}`, { scope: "admin" });
+
+    return {
+      ok: true,
+      sessions: data.sessions ?? [],
+      total: data.total ?? 0,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? data.page_size ?? pageSize,
+      statusCounts: data.statusCounts ?? data.status_counts ?? null,
+    };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/**
+ * POST /payments/session/{sessionId}/refund
+ *
+ * Initiates a full or partial refund for a captured (PAID) session.
+ * Returns { ok, message, refundId, amountPaise, status, orderPaymentStatus }
+ */
+export async function apiAdminRefundPayment(sessionId, {
+  amountPaise = null,
+  reason = null,
+  idempotencyKey = null,
+} = {}) {
+  try {
+    const data = await apiClient.post(
+      `/payments/session/${sessionId}/refund`,
+      {
+        amount_paise: amountPaise,
+        reason,
+        idempotency_key: idempotencyKey,
+      },
+      { scope: "admin" }
+    );
+    return {
+      ok: data.ok ?? true,
+      message: data.message ?? "Refund initiated.",
+      refundId: data.refundId ?? data.refund_id ?? null,
+      amountPaise: data.amountPaise ?? data.amount_paise ?? 0,
+      status: data.status ?? null,
+      orderPaymentStatus: data.orderPaymentStatus ?? data.order_payment_status ?? null,
+    };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/**
+ * GET /payments/session/{sessionId}/reconcile
+ *
+ * Reconciles a single payment session against Razorpay (network failure recovery).
+ * For admin use — no ownership check enforced on the backend for admin callers.
+ * Returns raw reconcile result from the backend.
+ */
+export async function apiAdminReconcileSession(sessionId) {
+  try {
+    const data = await apiClient.get(
+      `/payments/session/${sessionId}/reconcile`,
+      { scope: "admin" }
+    );
+    return { ok: true, ...data };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/**
+ * POST /payments/reconcile-batch
+ *
+ * Batch-audits CREATED/PENDING sessions against Razorpay. Admin only.
+ * Returns { ok, totalAudited, reconciled, flaggedForAdmin, details }
+ */
+export async function apiAdminBatchReconcile({ limit = 100, sessionIds = null } = {}) {
+  try {
+    const data = await apiClient.post(
+      "/payments/reconcile-batch",
+      {
+        limit,
+        session_ids: sessionIds ?? null,
+      },
+      { scope: "admin" }
+    );
+    return {
+      ok: data.ok ?? true,
+      totalAudited: data.totalAudited ?? data.total_audited ?? 0,
+      reconciled: data.reconciled ?? 0,
+      flaggedForAdmin: data.flaggedForAdmin ?? data.flagged_for_admin ?? 0,
+      details: data.details ?? [],
     };
   } catch (err) {
     return handleError(err);

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI Shopping Assistant intelligence (Phase 21.1).
+ * PRATIKSHYA FASHION — AI Shopping Assistant intelligence (Phase 21.1).
  *
  * Deterministic, catalogue-grounded shopping intelligence behind the mock
  * provider. Everything here is pure: products, wishlist ids, recently

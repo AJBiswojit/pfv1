@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Tracking presentation service (Phase 3)
+ * PRATIKSHYA FASHION — Tracking presentation service (Phase 3)
  *
  * WHAT THIS IS: a pure projection of the backend tracking response
  * (`GET /orders/{id}/tracking`, already normalised by

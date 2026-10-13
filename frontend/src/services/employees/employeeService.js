@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee management service.
+ * PRATIKSHYA FASHION — Employee management service.
  *
  * The seam the future Admin Portal will consume:
  *
@@ -15,6 +15,7 @@ import {
   EMPLOYEE_STATUS,
   EMPLOYEE_STATUSES,
   canEmployeeLogin,
+  canonicalEmployeeStatus,
   getEmployeeStatus,
 } from "../../config/employeeStatus";
 import {
@@ -22,6 +23,7 @@ import {
   sanitizeEmployeePermissions,
 } from "../../config/employeePermissions";
 import { authorizeEmployeeManagement } from "../admin/adminAuthorization";
+import { workspaceForLevel } from "../../config/rbacModel";
 import { isValidEmail, isValidPhone } from "../../utils/validation";
 import { employeeFullName } from "../../utils/employee";
 import { EMPLOYEE_STORAGE_KEYS } from "./storage";
@@ -206,7 +208,12 @@ export const getEmployees = (employees, filters = {}) => {
   return list.filter((employee) => {
     if (filters.role && employee.role !== filters.role) return false;
     if (filters.department && employee.department !== filters.department) return false;
-    if (filters.status && employee.status !== filters.status) return false;
+    if (
+      filters.status &&
+      canonicalEmployeeStatus(employee.status) !== canonicalEmployeeStatus(filters.status)
+    ) {
+      return false;
+    }
     if (filters.store && employee.store !== filters.store) return false;
     if (filters.query) {
       const haystack = [
@@ -282,10 +289,11 @@ export const validateEmployeeDraft = (draft, employees, { isCreate = false } = {
   if (!email) errors.email = "Email is required.";
   else if (!isValidEmail(email)) errors.email = "Please enter a valid email address.";
   if (phone && !isValidPhone(phone)) errors.phone = "Please enter a valid 10-digit mobile number.";
+  const adminDomain = workspaceForLevel(draft.accountLevel) === "admin";
   const requestedRole = String(draft.role || "").toUpperCase();
   if (["ADMIN", "SUPER_ADMIN"].includes(requestedRole)) {
     errors.role = "Admin identities are not employee accounts.";
-  } else if (!draft.role || !isKnownRole(draft.role)) {
+  } else if (!adminDomain && (!draft.role || !isKnownRole(draft.role))) {
     errors.role = "Please choose a legitimate employee role.";
   }
   if (
@@ -294,8 +302,7 @@ export const validateEmployeeDraft = (draft, employees, { isCreate = false } = {
   ) {
     errors.permissions = "Employee-account administration permissions cannot be assigned to employees.";
   }
-  if (!draft.department) errors.department = "Please choose a department.";
-  if (!draft.store) errors.store = "Please choose a store or floor.";
+  if (!adminDomain && !draft.department) errors.department = "Please choose a department.";
   // joiningDate is intentionally optional — the employee profile table carries
   // no joining_date column (see app/models/employee/employee.py); the form
   // field is for informational completeness only and must not block account
@@ -315,7 +322,7 @@ export const validateEmployeeDraft = (draft, employees, { isCreate = false } = {
   return { ok: Object.keys(errors).length === 0, errors };
 };
 
-export const createEmployee = async (employees, draft, actor = null) => {
+export const createEmployee = (employees, draft, actor = null) => {
   const denied = authorize(employees, actor);
   if (denied) return { ...denied, temporaryPassword: null };
 
@@ -374,35 +381,17 @@ export const createEmployee = async (employees, draft, actor = null) => {
   const nextEmployees = [employee, ...employees];
   saveEmployees(nextEmployees);
 
-  // Backend persist — the server owns the employee record and password.
-  const { apiAdminCreateEmployee } = await import("../api/employeesApi");
-  const result = await apiAdminCreateEmployee({
-    firstName: employee.firstName,
-    lastName: employee.lastName,
-    email: employee.email,
-    phone: employee.phone,
-    role: employee.role,
-    department: employee.department,
-    section: employee.section,
-    status: employee.status,
-    permissions: employee.permissions,
-    permissionMode: employee.permissionMode,
-    mustChangePassword: true,
-  });
-  if (result.ok && result.employee) {
-    saveEmployees(replaceEmployee(loadEmployees(), result.employee));
-  }
-
+  // Offline / test path only. Live sessions create through
+  // apiAdminCreateEmployee and must not invent a local success when the
+  // server refused the write.
   return {
     ok: true,
     errors: {},
     employee,
-    temporaryPassword: result.employee?.temporaryPassword ?? "",
+    temporaryPassword: null,
     employees: nextEmployees,
     actor,
-    message: result.ok
-      ? `${employeeFullName(employee)} has been added to the house.`
-      : result.error ?? "Employee saved locally; backend sync pending.",
+    message: `${employeeFullName(employee)} has been added to the house.`,
   };
 };
 
@@ -537,7 +526,7 @@ export const updateEmployeePermissions = (employees, employeeId, permissions, ac
   return { ok: true, employee: next, employees: nextEmployees };
 };
 
-export const setEmployeeStatus = (employees, employeeId, status, actor = null) => {
+export const setEmployeeStatus = async (employees, employeeId, status, actor = null) => {
   const denied = authorize(employees, actor);
   if (denied) return denied;
   const current = getEmployee(employees, employeeId);
@@ -552,16 +541,24 @@ export const setEmployeeStatus = (employees, employeeId, status, actor = null) =
   });
   const nextEmployees = replaceEmployee(employees, next);
   saveEmployees(nextEmployees);
+
+  // Persist to backend. The local state is already updated above so the UI
+  // reflects the change immediately regardless of network latency.
+  try {
+    const { apiAdminUpdateEmployeeStatus } = await import("../api/employeesApi");
+    await apiAdminUpdateEmployeeStatus(current.id, status);
+  } catch { /* local state is the source of truth if the backend is unreachable */ }
+
   return { ok: true, employee: next, employees: nextEmployees };
 };
 
-export const suspendEmployee = (employees, employeeId, actor = null) =>
+export const suspendEmployee = async (employees, employeeId, actor = null) =>
   setEmployeeStatus(employees, employeeId, EMPLOYEE_STATUS.SUSPENDED, actor);
 
-export const activateEmployee = (employees, employeeId, actor = null) =>
+export const activateEmployee = async (employees, employeeId, actor = null) =>
   setEmployeeStatus(employees, employeeId, EMPLOYEE_STATUS.ACTIVE, actor);
 
-export const deactivateEmployee = (employees, employeeId, actor = null) =>
+export const deactivateEmployee = async (employees, employeeId, actor = null) =>
   setEmployeeStatus(employees, employeeId, EMPLOYEE_STATUS.INACTIVE, actor);
 
 export const resetEmployeePassword = async (employees, employeeId, actor = null) => {

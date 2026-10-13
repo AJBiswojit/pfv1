@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — canonical media-path helpers (Phase 6).
+ * PRATIKSHYA FASHION — canonical media-path helpers (Phase 6).
  *
  * One rule: the BACKEND decides what a product image reference resolves to.
  * This module never derives a storage path from a slug, an id or a folder
@@ -131,8 +131,10 @@ export const resolveMediaUrl = (value) => {
   if (!text) return "";
   if (isRemoteOrInlineUrl(text)) return text;
   if (isBackendMediaUrl(text)) return `${mediaOrigin()}${text}`;
-  // Legacy public asset, media-register id, or anything else: unchanged.
-  // Nothing is invented, and no product ever borrows another product's art.
+  if (isLegacyPublicImageUrl(text)) return text;
+  if (/^(hero|products|marketing|collections|categories)\//i.test(text)) {
+    return mediaObjectUrl(text);
+  }
   return text;
 };
 

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Collections API
+ * PRATIKSHYA FASHION — Collections API
  * Maps to API_CONTRACT.md § COLLECTIONS
  */
 import { apiClient, ApiError, handleError } from "./apiClient";

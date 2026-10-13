@@ -50,7 +50,7 @@ const REAL_AUTHORED_REFERENCE = `/images/${REAL_OBJECT_KEY}`;
 const REAL_CANONICAL_URL = `${MEDIA_URL_PREFIX}/${REAL_OBJECT_KEY}`;
 
 const SOURCE_ASSET = join(process.cwd(), "public", "images", REAL_OBJECT_KEY);
-const STORE_ASSET = join(process.cwd(), "..", "backend", "storage", "media", REAL_OBJECT_KEY);
+const STORE_ASSET = join(process.cwd(), "..", "pratikshya-backend", "storage", "media", REAL_OBJECT_KEY);
 
 const sourceExists = existsSync(SOURCE_ASSET) && statSync(SOURCE_ASSET).isFile();
 const storeExists = existsSync(STORE_ASSET) && statSync(STORE_ASSET).isFile();
@@ -92,7 +92,7 @@ test("the frontend renders the BACKEND media URL for the migrated asset, not the
 });
 
 test("the frontend media prefix still mirrors the backend mount", () => {
-  const backend = readFileSync(join(process.cwd(), "..", "backend", "app", "config.py"), "utf8");
+  const backend = readFileSync(join(process.cwd(), "..", "pratikshya-backend", "app", "config.py"), "utf8");
   assert.match(backend, /API_V1_PREFIX:\s*str\s*=\s*"\/api\/v1"/);
   assert.match(backend, /MEDIA_URL_PREFIX:\s*str\s*=\s*"\/media\/objects"/);
   assert.equal(MEDIA_URL_PREFIX, "/api/v1/media/objects");

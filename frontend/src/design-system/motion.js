@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Atelier Motion
+ * PRATIKSHYA FASHION — Atelier Motion
  *
  * The motion language is deliberately quiet: content fades up once as it
  * enters the viewport, imagery breathes on hover, colour changes are instant

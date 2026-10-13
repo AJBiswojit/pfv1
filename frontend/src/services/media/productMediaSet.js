@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Canonical Product Media set.
+ * PRATIKSHYA FASHION — Canonical Product Media set.
  *
  * Product cards and product-detail galleries share this one helper.
  * It returns ONLY media that can be proved to belong to the given product.

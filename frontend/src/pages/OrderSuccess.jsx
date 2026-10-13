@@ -41,7 +41,7 @@ export default function OrderSuccess() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Order Confirmed — PRATIKSHYA FASHON";
+    document.title = "Order Confirmed — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

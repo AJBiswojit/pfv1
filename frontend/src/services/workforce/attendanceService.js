@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Attendance service.
+ * PRATIKSHYA FASHION — Attendance service.
  *
  * Check-in, check-out, corrections, summaries and reports. Working hours
  * and status rules live here so UI never recomputes them.
@@ -40,13 +40,11 @@ import {
 } from "./dateUtils";
 import { resolveEmployeeLocation } from "./location";
 import {
-  actorCanAct,
   actorLabel,
+  attendanceEmployeeIds,
   canCorrectAttendance,
   canManageAttendance,
-  isEmployeeInactiveForOps,
   isInScope,
-  teamEmployeeIds,
 } from "./scope";
 import { loadAttendanceSettings } from "./settings";
 
@@ -220,7 +218,7 @@ export const employeeAttendanceSummary = (employeeId, month = monthKey()) =>
 
 export const listVisibleAttendance = (actor, filters = {}) => {
   const employees = loadEmployees();
-  const allowed = new Set(teamEmployeeIds(actor, employees));
+  const allowed = new Set(attendanceEmployeeIds(actor, employees));
   const date = filters.date || todayKey();
   const records = loadAttendance();
   const leaves = loadLeave();
@@ -279,134 +277,11 @@ export const checkIn = ({ employeeId, actor, at = new Date().toISOString() } = {
      (INTEGRATION_AUDIT.md §7). No local punch is recorded. */
   void employeeId; void actor; void at;
   return fail("Check-in is managed by the backend attendance service, which is not available in this phase. No local record was created.");
-  if (!actorCanAct(actor)) return fail("You cannot check in from this account.");
-  const employees = loadEmployees();
-  const employee = getEmployee(employees, employeeId || actor.employeeId);
-  if (!employee) return fail("Employee not found.");
-  if (isEmployeeInactiveForOps(employee)) {
-    return fail("This account cannot check in while it is suspended or inactive.");
-  }
-  const self = actor.employeeId && actor.employeeId === employee.employeeId;
-  if (self && !actorCanAct(actor)) return fail("You cannot check in from this account.");
-  if (!self && !canManageAttendance(actor)) {
-    return fail("You can only check in for your own desk.");
-  }
-  if (self && !canViewAttendance(actor, employee.employeeId, employees) && !actor.adminId) {
-    /* view is implied by being signed in on the attendance page */
-  }
-
-  const date = todayKey(new Date(at));
-  const settings = loadAttendanceSettings();
-  const existing = findAttendance(employee.employeeId, date);
-  if (existing?.checkIn) {
-    return fail("You are already checked in for today.", { record: existing, code: "DUPLICATE" });
-  }
-
-  const leave = approvedLeaveOn(employee.employeeId, date);
-  if (leave) {
-    return fail("You are on approved leave today.", { record: existing, code: "ON_LEAVE" });
-  }
-
-  const location = resolveEmployeeLocation(employee);
-  const calendar = calendarMark(date, settings, settings.holidays);
-  const timing = evaluateTiming(date, at, null, settings);
-  const status = statusAfterPunch({
-    date,
-    checkIn: at,
-    checkOut: null,
-    settings,
-    onLeave: false,
-    calendar,
-  });
-
-  const draft = {
-    ...(existing || createBlankAttendance(employee, date)),
-    employeeNameSnapshot: employeeFullName(employee),
-    checkIn: at,
-    checkOut: null,
-    status,
-    lateMinutes: timing.lateMinutes,
-    earlyLeaveMinutes: 0,
-    workMinutes: 0,
-    locationId: location.locationId,
-    notes: existing?.notes || "",
-  };
-
-  const result = upsertAttendance(draft);
-  if (!result.ok) return fail(result.message);
-  noteActivity(
-    actor,
-    ACTIVITY_ACTIONS.ATTENDANCE_CHECKED_IN,
-    employee.employeeId,
-    `${employeeFullName(employee)} checked in`
-  );
-  return {
-    ok: true,
-    record: result.record,
-    lateMinutes: timing.lateMinutes,
-    location,
-    message:
-      timing.lateMinutes > 0
-        ? `You checked in ${timing.lateMinutes} minute${timing.lateMinutes === 1 ? "" : "s"} late.`
-        : "Checked in.",
-  };
 };
 
 export const checkOut = ({ employeeId, actor, at = new Date().toISOString() } = {}) => {
   void employeeId; void actor; void at;
   return fail("Check-out is managed by the backend attendance service, which is not available in this phase. No local record was created.");
-  if (!actorCanAct(actor)) return fail("You cannot check out from this account.");
-  const employees = loadEmployees();
-  const employee = getEmployee(employees, employeeId || actor.employeeId);
-  if (!employee) return fail("Employee not found.");
-  if (isEmployeeInactiveForOps(employee)) {
-    return fail("This account cannot check out while it is suspended or inactive.");
-  }
-  const self = actor.employeeId && actor.employeeId === employee.employeeId;
-  if (!self && !canManageAttendance(actor)) {
-    return fail("You can only check out for your own desk.");
-  }
-
-  const date = todayKey(new Date(at));
-  const existing = findAttendance(employee.employeeId, date);
-  if (!existing?.checkIn) return fail("Check in before you check out.", { code: "NO_CHECKIN" });
-  if (existing.checkOut) return fail("You have already checked out today.", { record: existing, code: "DUPLICATE" });
-  if (new Date(at) < new Date(existing.checkIn)) {
-    return fail("Check-out cannot be earlier than check-in.");
-  }
-
-  const settings = loadAttendanceSettings();
-  const timing = evaluateTiming(date, existing.checkIn, at, settings);
-  const calendar = calendarMark(date, settings, settings.holidays);
-  const status = statusAfterPunch({
-    date,
-    checkIn: existing.checkIn,
-    checkOut: at,
-    settings,
-    onLeave: false,
-    calendar,
-  });
-
-  const result = upsertAttendance({
-    ...existing,
-    checkOut: at,
-    status,
-    workMinutes: timing.workMinutes,
-    lateMinutes: timing.lateMinutes,
-    earlyLeaveMinutes: timing.earlyLeaveMinutes,
-  });
-  if (!result.ok) return fail(result.message);
-  noteActivity(
-    actor,
-    ACTIVITY_ACTIONS.ATTENDANCE_CHECKED_OUT,
-    employee.employeeId,
-    `${employeeFullName(employee)} checked out · ${formatMinutes(timing.workMinutes)}`
-  );
-  return {
-    ok: true,
-    record: result.record,
-    message: `Checked out · ${formatMinutes(timing.workMinutes)} on the floor.`,
-  };
 };
 
 export const correctAttendance = ({
@@ -528,7 +403,7 @@ export const attendanceReport = ({ range = "monthly", date = todayKey(), actor =
     range === "daily" ? date : range === "weekly" ? startOfIsoWeek(date) : startOfMonth(date);
   const end = range === "daily" ? date : range === "weekly" ? endOfIsoWeek(date) : endOfMonth(date);
   const employees = loadEmployees();
-  const allowed = new Set(teamEmployeeIds(actor || { adminId: "system" }, employees));
+  const allowed = new Set(attendanceEmployeeIds(actor || { adminId: "system" }, employees));
   const records = loadAttendance();
   const leaves = loadLeave();
   const settings = loadAttendanceSettings();

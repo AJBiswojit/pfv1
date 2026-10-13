@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AtelierButton, Rule } from "../../design-system";
+import { useAdminAuth } from "../../context/AdminAuthContext";
 
 /**
  * The Admin Portal 404.
@@ -8,6 +9,8 @@ import { AtelierButton, Rule } from "../../design-system";
  * never a stack trace, never a bare error string.
  */
 export default function AdminNotFound() {
+  const { isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   return (
     <div className="mx-auto max-w-xl py-16 text-center">
       <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">Error 404</p>
@@ -24,7 +27,7 @@ export default function AdminNotFound() {
         <AtelierButton as={Link} to="/admin">
           Business overview
         </AtelierButton>
-        <AtelierButton as={Link} to="/admin/products" variant="outline">
+        <AtelierButton as={Link} to={`${prefix}/products`} variant="outline">
           Products
         </AtelierButton>
       </div>

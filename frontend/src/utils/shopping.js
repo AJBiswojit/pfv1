@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Shopping utilities.
+ * PRATIKSHYA FASHION — Shopping utilities.
  *
  * The single home for cart-line identity, quantity/stock rules, storage
  * safety and the presentation-only price arithmetic used by the GUEST cart.

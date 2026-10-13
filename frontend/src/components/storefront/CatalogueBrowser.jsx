@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Catalogue browser (redesigned).
+ * PRATIKSHYA FASHION — Catalogue browser (redesigned).
  *
  * The discovery engine that every product listing renders.
  *

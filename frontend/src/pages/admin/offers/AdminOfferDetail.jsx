@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin offer detail (Phase 17)
+ * PRATIKSHYA FASHION — Admin offer detail (Phase 17)
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -28,7 +28,8 @@ import { formatOrderDate } from "../../../utils/orders";
 
 export default function AdminOfferDetail() {
   const { offerId } = useParams();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const { activity } = useEmployeeManagement();
   const { offer, loading, error } = useOffer(offerId);
@@ -58,7 +59,7 @@ export default function AdminOfferDetail() {
         {error ? (
           <p role="alert" className="mb-4 font-ui text-sm text-accent">{error}</p>
         ) : null}
-        <Link to="/admin/offers" className="font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/offers`} className="font-ui text-sm text-brass hover:text-accent">
           Back to offers
         </Link>
       </AdminPage>
@@ -102,10 +103,10 @@ export default function AdminOfferDetail() {
       description={offer.description || "House promotion."}
       actions={
         <div className="flex flex-wrap gap-2">
-          <AtelierButton as={Link} to="/admin/offers" variant="outline" size="chip">
+          <AtelierButton as={Link} to={`${prefix}/offers`} variant="outline" size="chip">
             <ArrowLeft size={12} /> Back
           </AtelierButton>
-          <AtelierButton as={Link} to={`/admin/offers/${offer.id}/edit`} size="chip">
+          <AtelierButton as={Link} to={`${prefix}/offers/${offer.id}/edit`} size="chip">
             Edit
           </AtelierButton>
           {offer.displayStatus === OFFER_STATUS.ACTIVE ? (
@@ -227,7 +228,7 @@ export default function AdminOfferDetail() {
                   <div key={entry.orderId} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div>
                       <Link
-                        to={`/admin/orders/${entry.orderId}`}
+                        to={`${prefix}/orders/${entry.orderId}`}
                         className="font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {entry.orderId}

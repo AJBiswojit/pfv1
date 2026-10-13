@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Landing hero carousel.
+ * PRATIKSHYA FASHION — Landing hero carousel.
  *
  * An image-first, editorial carousel for the landing page. The fashion
  * photography occupies roughly 85–95% of the frame; eyebrow, a restrained
@@ -16,20 +16,22 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
+
 import PratikshyaImage from "../PratikshyaImage";
 import {
   HOMEPAGE_HERO_THEMES,
   resolveHeroSlideImage,
   resolveHomepageHeroMedia,
 } from "../../services/media/mediaResolver";
-import { mediaObjectUrl } from "../../services/media/mediaPaths";
-import { AtelierButton, header as headerSpacing } from "../../design-system";
+import { mediaObjectUrl, resolveMediaUrl } from "../../services/media/mediaPaths";
+import { AtelierButton } from "../../design-system";
 import { cn } from "../../utils/cn";
 
 /** Calm, premium cadence — fashion sites should never feel hurried. */
 const AUTOPLAY_INTERVAL_MS = 5500;
-const CROSSFADE_MS = 900;
+const CROSSFADE_MS = 1200;
+// Half-point of the crossfade — text swaps exactly when images are 50% blended
+const TEXT_SWAP_MS = CROSSFADE_MS / 2;
 
 /**
  * The slideshow consumes the structured slide data from
@@ -79,26 +81,30 @@ const buildSlides = (slides = [], heroMedia = null) => {
   }));
 
   return source.map((slide, index) => {
-    const registered = resolveHeroSlideImage(HOMEPAGE_HERO_THEMES[index], {
-      heroMedia,
-      usedIds,
-    });
+    const slideSrc = typeof slide.image === "string" ? slide.image : slide.image?.src || slide.image?.fallback;
+    const registered = (hasSlides && slideSrc)
+      ? null
+      : resolveHeroSlideImage(HOMEPAGE_HERO_THEMES[index], {
+          heroMedia,
+          usedIds,
+        });
     const registeredSrc =
       registered && (registered.src || registered.fallback);
-    // Priority: managed HOME_HERO media > backend-provided image > canonical hero object-store fallback
-    const image = registeredSrc
-      ? registered
-      : slide.image
-        ? {
+
+    // Priority: managed HOME_HERO media (backend GET /home slide) > resolver > fallback
+    const image = slideSrc
+      ? (typeof slide.image === "object" ? slide.image : {
             id: slide.id,
             src: slide.image,
-            alt: `${slide.title} — PRATIKSHYA FASHON`,
+            alt: `${slide.title || "Hero"} — PRATIKSHYA FASHION`,
             category: "hero",
-          }
+          })
+      : registeredSrc
+        ? registered
         : {
             id: slide.id || `hero-${index + 1}`,
             src: mediaObjectUrl(CANONICAL_HERO_KEYS[index % CANONICAL_HERO_KEYS.length]),
-            alt: `${slide.title || "Hero"} — PRATIKSHYA FASHON`,
+            alt: `${slide.title || "Hero"} — PRATIKSHYA FASHION`,
             category: "hero",
           };
     return { ...slide, image };
@@ -126,7 +132,13 @@ const resolveImageSrc = (image) => {
 };
 
 export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
-  const slides = useMemo(() => buildSlides(slideData, heroMedia), [slideData, heroMedia]);
+  const slideItems = Array.from(slideData);
+  const slideKey = slideItems.map((s) => s.id || s.image).join("|");
+  const slides = useMemo(
+    () => buildSlides(slideItems, heroMedia),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [slideKey, heroMedia]
+  );
   const count = slides.length;
 
   /* ------------------------------------------------------------------ */
@@ -170,10 +182,13 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
   }, [heroMedia]);
 
   const [index, setIndex] = useState(0);
+  const [displayIndex, setDisplayIndex] = useState(0); // what the text actually shows — lags behind index
+  const [prevIndex, setPrevIndex] = useState(null);
   const [pausedByUser, setPausedByUser] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const transitionTimer = useRef(null);
+  const textSwapTimer = useRef(null);
 
   const reducedMotion = usePrefersReducedMotion();
 
@@ -182,12 +197,26 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
       setIndex((current) => {
         const target = (next + count) % count;
         if (target === current) return current;
+
+        // Keep the outgoing image visible underneath during the crossfade
+        setPrevIndex(current);
+
+        // Step 1: fade text OUT immediately
         setIsTransitioning(true);
+
+        // Step 2: at the midpoint, swap text content (still invisible) then fade back IN
+        if (textSwapTimer.current) window.clearTimeout(textSwapTimer.current);
+        textSwapTimer.current = window.setTimeout(() => {
+          setDisplayIndex(target);
+          setIsTransitioning(false); // fade text back in with new content
+        }, reducedMotion ? 0 : TEXT_SWAP_MS);
+
+        // Step 3: after full crossfade, let the outgoing image disappear
         if (transitionTimer.current) window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = window.setTimeout(
-          () => setIsTransitioning(false),
-          reducedMotion ? 0 : CROSSFADE_MS
-        );
+        transitionTimer.current = window.setTimeout(() => {
+          setPrevIndex(null);
+        }, reducedMotion ? 0 : CROSSFADE_MS);
+
         return target;
       });
     },
@@ -199,19 +228,28 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
 
   const paused = pausedByUser || hovering || reducedMotion;
 
-  /* Autoplay. The interval is reset whenever the slide changes or the
-     paused state flips, so hovering freezes the cadence in place. */
+  /* Autoplay */
   useEffect(() => {
     if (paused || count <= 1) return undefined;
     const timer = window.setInterval(() => {
       setIndex((current) => {
+        const target = (current + 1) % count;
+
+        setPrevIndex(current);
         setIsTransitioning(true);
+
+        if (textSwapTimer.current) window.clearTimeout(textSwapTimer.current);
+        textSwapTimer.current = window.setTimeout(() => {
+          setDisplayIndex(target);
+          setIsTransitioning(false);
+        }, reducedMotion ? 0 : TEXT_SWAP_MS);
+
         if (transitionTimer.current) window.clearTimeout(transitionTimer.current);
-        transitionTimer.current = window.setTimeout(
-          () => setIsTransitioning(false),
-          reducedMotion ? 0 : CROSSFADE_MS
-        );
-        return (current + 1) % count;
+        transitionTimer.current = window.setTimeout(() => {
+          setPrevIndex(null);
+        }, reducedMotion ? 0 : CROSSFADE_MS);
+
+        return target;
       });
     }, AUTOPLAY_INTERVAL_MS);
     return () => window.clearInterval(timer);
@@ -220,6 +258,7 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
   useEffect(
     () => () => {
       if (transitionTimer.current) window.clearTimeout(transitionTimer.current);
+      if (textSwapTimer.current) window.clearTimeout(textSwapTimer.current);
     },
     []
   );
@@ -278,33 +317,36 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
      seams on this page (a placement with nothing curated stays absent). */
   if (count === 0) return null;
 
-  const active = slides[index];
+  const active = slides[displayIndex];
   const toneOnDark = active.tone === "dark";
 
   return (
     <section
       aria-roledescription="carousel"
-      aria-label="PRATIKSHYA FASHON featured collections"
+      aria-label="PRATIKSHYA FASHION featured collections"
       tabIndex={0}
       onKeyDown={onKeyDown}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className={`group relative ${headerOffsetCls} h-[70vh] min-h-[30rem] overflow-hidden bg-ink outline-none md:h-[78vh] md:min-h-[34rem] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset`}
+      className={`group relative h-[70vh] min-h-[30rem] overflow-hidden bg-ink outline-none md:h-[78vh] md:min-h-[34rem] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset`}
     >
       {/* Plates ----------------------------------------------------- */}
       {slides.map((slide, i) => {
         const isActive = i === index;
+        const isLeaving = i === prevIndex;
         return (
           <div
             key={slide.id}
+            style={{ transition: reducedMotion ? "none" : `opacity ${CROSSFADE_MS}ms ease-in-out` }}
             className={cn(
               "absolute inset-0",
-              reducedMotion
-                ? "transition-opacity duration-0"
-                : "transition-opacity duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-              isActive ? "opacity-100" : "opacity-0 pointer-events-none"
+              isActive
+                ? "opacity-100 z-20"
+                : isLeaving
+                  ? "opacity-100 z-10"   // stays fully visible underneath while new one fades in
+                  : "opacity-0 z-0 pointer-events-none"
             )}
             aria-hidden={!isActive}
             aria-roledescription="slide"
@@ -312,7 +354,7 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
           >
             <PratikshyaImage
               image={slide.image}
-              alt={slide.image?.alt ?? `${slide.title} — PRATIKSHYA FASHON`}
+              alt={slide.image?.alt ?? `${slide.title} — PRATIKSHYA FASHION`}
               loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : "low"}
               objectPosition={slide.objectPosition}
@@ -331,21 +373,25 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
           photography stays visible across the rest of the frame. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,16,12,0.55)_0%,rgba(20,16,12,0.35)_28%,rgba(20,16,12,0.08)_55%,transparent_75%)]"
+        className="absolute inset-0 z-20 bg-[linear-gradient(to_right,rgba(20,16,12,0.55)_0%,rgba(20,16,12,0.35)_28%,rgba(20,16,12,0.08)_55%,transparent_75%)]"
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(to_top,rgba(20,16,12,0.65)_0%,rgba(20,16,12,0.25)_35%,transparent_60%)]"
+        className="absolute inset-0 z-20 bg-[linear-gradient(to_top,rgba(20,16,12,0.65)_0%,rgba(20,16,12,0.25)_35%,transparent_60%)]"
       />
 
       {/* Editorial copy -------------------------------------------- */}
-      <div className="pointer-events-none relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-14 md:items-center md:px-12 md:pb-0">
+      <div className="pointer-events-none relative z-30 mx-auto flex h-full max-w-7xl items-end px-6 pb-14 md:items-end md:px-12 md:pb-16">
         <div
           className={cn(
-            "pointer-events-auto max-w-xl transition-all duration-700",
-            reducedMotion ? "" : "motion-reduce:transition-none",
-            isTransitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+            "pointer-events-auto max-w-xl",
+            reducedMotion ? "" : "motion-reduce:transition-none"
           )}
+          style={{
+            transition: reducedMotion ? "none" : `opacity ${TEXT_SWAP_MS}ms ease-in-out, transform ${TEXT_SWAP_MS}ms ease-in-out`,
+            opacity: isTransitioning ? 0 : 1,
+            transform: isTransitioning ? "translateY(10px)" : "translateY(0)",
+          }}
         >
           <p
             className={cn(
@@ -358,7 +404,7 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
           </p>
           <h1
             className={cn(
-              "font-display font-light leading-[1.02] tracking-tight text-ivory",
+              "font-accent font-light leading-[1.02] tracking-tight text-ivory",
               "text-[2rem] sm:text-5xl md:text-[3.5rem] lg:text-[4.25rem]"
             )}
           >
@@ -385,83 +431,7 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
         </div>
       </div>
 
-      {/* Controls + indicator -------------------------------------- */}
-      <div className="absolute inset-x-0 bottom-0 z-20">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 pb-6 md:px-12 md:pb-8">
-          {/* Prev / next */}
-          <div className="flex items-center gap-2">
-            <CarouselControl label="Previous slide" onClick={previous}>
-              <ArrowLeft size={16} strokeWidth={1.5} />
-            </CarouselControl>
-            <CarouselControl
-              label={pausedByUser ? "Play slideshow" : "Pause slideshow"}
-              onClick={() => setPausedByUser((value) => !value)}
-              aria-pressed={pausedByUser}
-            >
-              {pausedByUser ? (
-                <Play size={15} strokeWidth={1.5} />
-              ) : (
-                <Pause size={15} strokeWidth={1.5} />
-              )}
-            </CarouselControl>
-            <CarouselControl label="Next slide" onClick={next}>
-              <ArrowRight size={16} strokeWidth={1.5} />
-            </CarouselControl>
-          </div>
 
-          {/* Counter + progress */}
-          <div className="flex items-center gap-4">
-            <span
-              className="font-ui text-[11px] tabular-nums tracking-[0.25em] text-ivory/80 md:text-xs"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <span className="text-ivory">{String(index + 1).padStart(2, "0")}</span>
-              <span className="mx-2 text-ivory/40">/</span>
-              <span className="text-ivory/60">{String(count).padStart(2, "0")}</span>
-            </span>
-            <div
-              className="hidden h-px w-28 overflow-hidden bg-ivory/25 sm:block md:w-40"
-              role="progressbar"
-              aria-valuemin={1}
-              aria-valuemax={count}
-              aria-valuenow={index + 1}
-              aria-label={`Slide ${index + 1} of ${count}`}
-            >
-              <div
-                key={index}
-                className={cn(
-                  "h-full bg-gold",
-                  !paused && !reducedMotion
-                    ? "animate-[heroProgress_5500ms_linear_forwards]"
-                    : "w-0"
-                )}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Slide dots (subtle) */}
-      <div className="absolute right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3 md:flex">
-        {slides.map((slide, i) => (
-          <button
-            key={slide.id}
-            type="button"
-            aria-label={`Go to slide ${i + 1}: ${slide.title}`}
-            aria-current={i === index ? "true" : undefined}
-            onClick={() => go(i)}
-            className="group/dot flex items-center justify-end py-1"
-          >
-            <span
-              className={cn(
-                "block h-px transition-all duration-500",
-                i === index ? "w-8 bg-gold" : "w-4 bg-ivory/40 group-hover/dot:w-6 group-hover/dot:bg-ivory/70"
-              )}
-            />
-          </button>
-        ))}
-      </div>
 
       {/* Keyframes for the Ken Burns and progress bar. Scoped so they
           never leak outside the hero. */}
@@ -483,27 +453,6 @@ export default function HeroCarousel({ slides: slideData = [], heroMedia }) {
   );
 }
 
-/**
- * Margin-top that clears the fixed navigation (h-16 md:h-20). Drawn from
- * the shared `header.offset` token so it stays in sync with the header's
- * real height. It is a *margin*, not padding, because the slide plates are
- * absolutely positioned (`absolute inset-0`): padding would still let the
- * image run up behind the fixed header, margin pushes the whole hero —
- * including those plates — to start exactly at the header's bottom edge.
- */
-const headerOffsetCls = headerSpacing.offset;
 
-function CarouselControl({ label, onClick, children, ...rest }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="inline-flex h-9 w-9 items-center justify-center border border-ivory/30 text-ivory/80 transition-colors hover:border-ivory hover:bg-ivory/10 hover:text-ivory focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:h-10 md:w-10"
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-}
+
+

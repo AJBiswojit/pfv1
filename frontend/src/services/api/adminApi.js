@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Admin system APIs (roles, permissions, users, audit).
+ * PRATIKSHYA FASHION — Admin system APIs (roles, permissions, users, audit).
  *
  * Backend endpoints (implemented against existing RBAC / audit tables):
  *   GET /roles, GET /roles/{id}
@@ -124,17 +124,43 @@ export async function apiAnalyticsOrders() {
 /**
  * GET /admin/dashboard/summary — ONE consolidated dashboard read.
  *
+ * The analytics module also exposes the same payload at
+ * GET /analytics/admin/dashboard/summary. The Admin portal uses the
+ * /admin path (the contract the dashboard was built against).
+ *
  * Replaces the dashboard's previous fan-out (overview + employees + sales +
  * top-products + orders-status + orders + inventory-summary = 7+ requests,
  * with the employee list fetched twice per load). Every figure is a bounded
  * backend aggregate in a single response.
  */
-export async function apiAdminDashboardSummary({ days = 7, recentLimit = 5 } = {}) {
+export async function apiAdminDashboardSummary({ days = 7, recentLimit = 5, workspace = "admin" } = {}) {
+  const qs = new URLSearchParams({
+    days: String(days),
+    recent_limit: String(recentLimit),
+  });
+  // Super admin sessions use the dedicated /super-admin endpoint (gated by
+  // get_current_super_admin). Plain admin sessions use /admin (get_current_admin).
+  // Both delegate to the same analytics implementation; the split enforces the
+  // correct auth contract on the backend.
+  const endpoint = workspace === "super-admin"
+    ? `/super-admin/dashboard/summary?${qs}`
+    : `/admin/dashboard/summary?${qs}`;
   try {
-    const qs = new URLSearchParams({ days: String(days), recentLimit: String(recentLimit) });
-    const data = await apiClient.get(`/admin/dashboard/summary?${qs}`, { scope: "admin" });
+    const data = await apiClient.get(endpoint, { scope: "admin" });
     return { ok: true, ...data };
-  } catch (err) { return handleError(err); }
+  } catch (primaryErr) {
+    const primary = handleError(primaryErr);
+    // The handler was originally mounted only under /analytics. If this
+    // process has not picked up the /admin alias yet, use that payload
+    // rather than failing the whole dashboard.
+    if (primary.status !== 404) return primary;
+    try {
+      const data = await apiClient.get(`/analytics/admin/dashboard/summary?${qs}`, { scope: "admin" });
+      return { ok: true, ...data };
+    } catch (err) {
+      return handleError(err);
+    }
+  }
 }
 
 export async function apiAnalyticsInventorySummary() {

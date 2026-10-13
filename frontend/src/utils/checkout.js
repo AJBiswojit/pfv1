@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Checkout utilities.
+ * PRATIKSHYA FASHION — Checkout utilities.
  *
  * The pure-logic layer of the Phase 8 transaction experience: delivery
  * pricing, checkout totals, delivery estimates, validation composition,
@@ -41,6 +41,7 @@ export const calculateDeliveryFee = (methodId, payableSubtotal) => {
   if (payableSubtotal <= 0) return 0;
   const shipping = readShippingRules();
   if (shipping.enabled === false) return 0;
+  if (method.id === "normal") return 0;
   if (method.freeAtThreshold && payableSubtotal >= shipping.freeShippingThreshold) return 0;
   if (method.freeAtThreshold) return shipping.defaultShippingFee;
   if (method.id === "express") return shipping.expressDeliveryFee;
@@ -453,7 +454,7 @@ export const buildOrderSnapshot = ({
    * Cash on delivery is not captured at checkout; every other demo method
    * settles at the moment of a successful mock payment.
    */
-  paymentStatus: paymentMethodId === "cod" ? "PENDING" : "PAID",
+  paymentStatus: paymentMethodId === "cod" ? "PENDING_PAYMENT" : "PAID",
 });
 
 /** Customer-facing label for a payment method id. */

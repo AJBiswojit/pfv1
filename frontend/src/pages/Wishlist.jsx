@@ -40,7 +40,7 @@ export default function Wishlist() {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Wishlist — PRATIKSHYA FASHON";
+    document.title = "Wishlist — PRATIKSHYA FASHION";
     return () => {
       document.title = previousTitle;
     };

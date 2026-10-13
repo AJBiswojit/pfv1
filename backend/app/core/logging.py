@@ -1,5 +1,5 @@
 """
-Centralized logging configuration for Pratikshya Fashon backend.
+Centralized logging configuration for Pratikshya Fashion backend.
 
 Log output
 ──────────────────────────────────────────────────────────────────────────────
@@ -69,13 +69,13 @@ def _make_rotating_handler(filename: str, level: int = logging.DEBUG) -> logging
     return handler
 
 
+
 def _make_stream_handler() -> logging.Handler:
     """Return a stdout StreamHandler (used as the structlog sink)."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter("%(message)s"))
     return handler
-
 
 # ---------------------------------------------------------------------------
 # Public setup function — called once at application startup
@@ -84,14 +84,16 @@ def _make_stream_handler() -> logging.Handler:
 def setup_logging(log_level: int = logging.INFO) -> None:
     """
     Configure the root logger, named loggers, and structlog.
-
     Call this once inside the FastAPI lifespan handler (``app/main.py``).
     """
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # ── Remove any console (StreamHandler) handlers from root & uvicorn loggers ──
+    
     # ── Root / catch-all logger ────────────────────────────────────────────
     root = logging.getLogger()
     root.setLevel(log_level)
+
     # Avoid adding handlers multiple times on hot-reload
     if not root.handlers:
         root.addHandler(_make_stream_handler())
@@ -118,7 +120,7 @@ def setup_logging(log_level: int = logging.INFO) -> None:
     for noisy in ("sqlalchemy.engine", "httpx", "httpcore", "uvicorn.access"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
-    # ── structlog: structured JSON on stdout ───────────────────────────────
+   # ── structlog: structured JSON on stdout ───────────────────────
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

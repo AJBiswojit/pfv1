@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee permission catalogue.
+ * PRATIKSHYA FASHION — Employee permission catalogue.
  *
  * The single source of truth for every authorization key the employee
  * portal understands. Pages and navigation never invent permission
@@ -62,6 +62,8 @@ export const PERMISSIONS = {
   OFFERS_ARCHIVE: "offers.archive",
   OFFERS_MANAGE: "offers.manage",
 
+  INSTAGRAM_REWARD_MANAGE: "instagram_reward.manage",
+
   MEDIA_VIEW: "media.view",
   MEDIA_UPLOAD: "media.upload",
   MEDIA_EDIT: "media.edit",
@@ -90,8 +92,8 @@ export const PERMISSIONS = {
   PROFILE_EDIT: "profile.edit",
 
   ATTENDANCE_VIEW: "attendance.view",
-  ATTENDANCE_CHECKIN: "attendance.checkin",
-  ATTENDANCE_CHECKOUT: "attendance.checkout",
+  ATTENDANCE_CHECKIN: "attendance.checkIn",
+  ATTENDANCE_CHECKOUT: "attendance.checkOut",
   ATTENDANCE_MANAGE: "attendance.manage",
   ATTENDANCE_CORRECT: "attendance.correct",
 
@@ -187,6 +189,7 @@ export const PERMISSION_CATALOGUE = [
       { key: PERMISSIONS.OFFERS_PAUSE, label: "Pause offers" },
       { key: PERMISSIONS.OFFERS_ARCHIVE, label: "Archive offers" },
       { key: PERMISSIONS.OFFERS_MANAGE, label: "Manage offers" },
+      { key: PERMISSIONS.INSTAGRAM_REWARD_MANAGE, label: "Manage loyalty rewards" },
     ],
   },
   {

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Achievement resolution.
+ * PRATIKSHYA FASHION — Achievement resolution.
  *
  * Reads existing orders, assisted tickets, inventory movements, fulfillment
  * and care-desk data. It does not invent a second operational dataset.

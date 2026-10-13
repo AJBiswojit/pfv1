@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Marketing placement product assignments.
+ * PRATIKSHYA FASHION — Marketing placement product assignments.
  *
  * The one door for "which products appear in which marketing section".
  *
@@ -28,7 +28,7 @@
 
 import { getPlacement } from "../../config/mediaTypes";
 
-/** Namespaced, in line with every other PRATIKSHYA FASHON storage key. */
+/** Namespaced, in line with every other PRATIKSHYA FASHION storage key. */
 export const MARKETING_PLACEMENTS_STORAGE_KEY = "pratikshya_marketing_placements";
 
 /** Broadcast so every open surface re-reads after a write. */

@@ -126,7 +126,11 @@ class EmployeeRepository(BaseRepository[UserModel]):
             )
 
         if status:
-            base_query = base_query.where(UserModel.status == status)
+            from app.core.rbac import status_filter_values
+
+            values = status_filter_values(status)
+            if values:
+                base_query = base_query.where(UserModel.status.in_(values))
 
         if search:
             like = f"%{search}%"

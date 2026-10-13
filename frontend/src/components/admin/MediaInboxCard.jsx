@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media inbox card (Phase 22).
+ * PRATIKSHYA FASHION — Media inbox card (Phase 22).
  *
  * One media asset in the admin review desk, exactly the shape the phase
  * specifies: large preview, filename, media id, detected group/view,

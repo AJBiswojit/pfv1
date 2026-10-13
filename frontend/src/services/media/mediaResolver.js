@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Media resolver (Phase 21.4).
+ * PRATIKSHYA FASHION — Media resolver (Phase 21.4).
  *
  * The single distribution door. Homepage, category pages, product cards,
  * AI Shopping and AI Mirror ask this module for a plate; they never scan
@@ -50,7 +50,7 @@ const asSource = (media, fallbackCategory = "default") => {
   return {
     id: media.id,
     src,
-    alt: media.alt || media.title || "PRATIKSHYA FASHON",
+    alt: media.alt || media.title || "PRATIKSHYA FASHION",
     category: media.categoryId || media.tags?.[0] || fallbackCategory,
     width: media.width || undefined,
     height: media.height || undefined,
@@ -119,7 +119,7 @@ const staticPlate = (product, id = null) => {
   return {
     id: id ?? product.id,
     src,
-    alt: product.name ? `${product.name} — PRATIKSHYA FASHON` : "PRATIKSHYA FASHON",
+    alt: product.name ? `${product.name} — PRATIKSHYA FASHION` : "PRATIKSHYA FASHION",
     category: product.category ?? "default",
   };
 };
@@ -131,7 +131,7 @@ const staticCollectionPlate = (collection) => {
   return {
     id: plate.id,
     src,
-    alt: `${plate.name} — PRATIKSHYA FASHON`,
+    alt: `${plate.name} — PRATIKSHYA FASHION`,
     category: "collections",
   };
 };
@@ -383,7 +383,7 @@ export const selectSareeEditProducts = (
   const candidates = (products || [])
     .filter(
       (product) =>
-        product?.category === category.id &&
+        (product?.category === category.id || product?.category === category.slug) &&
         product.status === "PUBLISHED" &&
         Boolean(product.slug)
     )
@@ -930,7 +930,7 @@ export const resolveThemeImage = (theme, usedIds = null) => {
       {
         id: themeCollection.id,
         src: themeCollection.media.primary,
-        alt: `${themeCollection.name} — PRATIKSHYA FASHON`,
+        alt: `${themeCollection.name} — PRATIKSHYA FASHION`,
         category: "collections",
       },
       FALLBACK_REASONS.STATIC_CATALOG

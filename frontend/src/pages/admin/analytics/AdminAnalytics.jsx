@@ -14,7 +14,7 @@ import { getAnalyticsSnapshot } from "../../../services/analytics/analyticsServi
 const ADMIN_ANALYTICS_TABS = ANALYTICS_TABS.filter((tab) => tab.section !== "employees");
 
 export default function AdminAnalytics() {
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
   const { allOrders } = useOrder();
   const inventory = useInventory();
   const { revision } = useWorkforce();
@@ -51,7 +51,7 @@ export default function AdminAnalytics() {
         onPeriodChange={(next) => setPeriodInput((current) => ({ ...current, ...next }))}
         filters={filters}
         onFiltersChange={setFilters}
-        portal="admin"
+        portal={isSuperAdmin ? "super-admin" : "admin"}
         allowedTabs={ADMIN_ANALYTICS_TABS}
         actor={admin}
       />

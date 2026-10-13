@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — central AI service (Phase 21.1, consolidation).
+ * PRATIKSHYA FASHION — central AI service (Phase 21.1, consolidation).
  *
  * Two doors:
  *   • SHOPPING assistant (customer portal) — provider contract in

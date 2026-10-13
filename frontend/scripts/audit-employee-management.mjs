@@ -44,7 +44,7 @@ const employeeIdentityKeys = INITIAL_EMPLOYEES.flatMap((employee) => [employee.e
 const draft = {
   firstName: "Audit",
   lastName: "Identity",
-  email: "audit.identity@pratikshyafashon.in",
+  email: "audit.identity@pratikshyafashion.in",
   phone: "+91 98765 43210",
   department: "MANAGEMENT",
   store: "MAIN_FLOOR",
@@ -96,7 +96,7 @@ result(
       employeeId: "PF-ADM-00001",
       firstName: "Kavya",
       lastName: "Menon",
-      email: "kavya.menon@pratikshyafashon.in",
+      email: "kavya.menon@pratikshyafashion.in",
       role: "SUPER_ADMIN",
     },
   ]).some((employee) => employee.role === "SUPER_ADMIN" || employee.employeeId.startsWith("PF-ADM-"))

@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Orders API
+ * PRATIKSHYA FASHION — Orders API
  * Maps to API_CONTRACT.md § ORDERS
  *
  * Customer, Admin (fulfillment pipeline), Returns desk

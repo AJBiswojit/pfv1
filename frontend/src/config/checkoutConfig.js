@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Checkout configuration.
+ * PRATIKSHYA FASHION — Checkout configuration.
  *
  * The single home for checkout-level demo rules: delivery methods and
  * pricing, the cash-on-delivery fee, payment method metadata and the demo
@@ -27,6 +27,13 @@ import { COMMERCE_DEFAULTS } from "./commerceDefaults";
  * drops below its own fee.
  */
 export const DELIVERY_METHODS = [
+  {
+    id: "normal",
+    label: "Normal Delivery",
+    caption: "5–7 business days",
+    fee: 0,
+    freeAtThreshold: false,  // always free regardless of order value
+  },
   {
     id: "standard",
     label: "Standard Delivery",

@@ -15,6 +15,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -35,7 +36,7 @@ class ProductModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     slug: Mapped[str] = mapped_column(String(255), nullable=False, default="", index=True)
     sku: Mapped[str] = mapped_column(String(100), nullable=False, default="", index=True)
-    brand: Mapped[str] = mapped_column(String(100), nullable=False, default="Pratikshya Fashon")
+    brand: Mapped[str] = mapped_column(String(100), nullable=False, default="Pratikshya Fashion")
     product_type: Mapped[str] = mapped_column(String(50), nullable=False, default="fashion")
     product_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="")
     barcode: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="")
@@ -140,4 +141,5 @@ class ProductModel(Base):
         Index("ix_catalog_product_slug", "slug"),
         Index("ix_catalog_product_sku", "sku"),
         Index("ix_catalog_product_assigned_employee", "assigned_employee_id"),
+        UniqueConstraint("product_id", name="uq_catalog_product_product_id"),
     )

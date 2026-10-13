@@ -67,7 +67,7 @@ export default function DashboardFrame({
       <p className="mt-8 font-ui text-[11px] text-taupe">
         Need the storefront?{" "}
         <Link to="/" className="text-ink underline-offset-4 hover:text-accent hover:underline">
-          Open PRATIKSHYA FASHON
+          Open PRATIKSHYA FASHION
         </Link>
       </p>
     </div>

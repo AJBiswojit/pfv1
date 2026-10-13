@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee-editable product fields (Phase 2, Step D).
+ * PRATIKSHYA FASHION — Employee-editable product fields (Phase 2, Step D).
  *
  * The single whitelist of product fields an assigned employee may edit
  * through the workflow. Leaf module (no imports) so both the workflow

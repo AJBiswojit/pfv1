@@ -101,7 +101,7 @@ export default function SaleBanner({ excludeIds = null }) {
 
   const line =
     campaign?.description ||
-    "Enjoy selected pieces from the season's edit at PRATIKSHYA FASHON.";
+    "Enjoy selected pieces from the season's edit at PRATIKSHYA FASHION.";
   const description = trimOfferPrefix(line, hasOffer ? discountValue : null);
 
   /* Canonical destination — never an invented URL. */
@@ -164,7 +164,7 @@ export default function SaleBanner({ excludeIds = null }) {
               <PratikshyaImage
                 image={image}
                 category={image?.category}
-                alt={image?.alt || "Festive Edit — festive lehenga editorial at PRATIKSHYA FASHON"}
+                alt={image?.alt || "Festive Edit — festive lehenga editorial at PRATIKSHYA FASHION"}
                 loading="lazy"
                 fetchPriority="auto"
                 sizes="(min-width: 1024px) 46vw, 100vw"

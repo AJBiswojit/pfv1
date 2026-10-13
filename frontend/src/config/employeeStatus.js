@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Employee account status.
+ * PRATIKSHYA FASHION — Employee account status.
  *
  * Login is allowed only for statuses marked `canLogin`. Suspended and
  * inactive accounts never enter the portal.
@@ -11,7 +11,16 @@ export const EMPLOYEE_STATUS = {
   SUSPENDED: "SUSPENDED",
   ON_LEAVE: "ON_LEAVE",
   PENDING: "PENDING",
+  DEACTIVATED: "DEACTIVATED",
 };
+
+/** Stored DEACTIVATED is the same deactivation state as INACTIVE. */
+export const STATUS_ALIASES = Object.freeze({
+  DEACTIVATED: "INACTIVE",
+});
+
+export const canonicalEmployeeStatus = (status) =>
+  STATUS_ALIASES[status] ?? status;
 
 export const EMPLOYEE_STATUSES = {
   [EMPLOYEE_STATUS.ACTIVE]: {
@@ -55,10 +64,19 @@ export const EMPLOYEE_STATUSES = {
 
 export const STATUS_OPTIONS = Object.values(EMPLOYEE_STATUSES);
 
+/** Directory filter: live API statuses only (create no longer offers PENDING/ON_LEAVE). */
+export const STATUS_FILTER_OPTIONS = [
+  EMPLOYEE_STATUSES[EMPLOYEE_STATUS.ACTIVE],
+  EMPLOYEE_STATUSES[EMPLOYEE_STATUS.SUSPENDED],
+  EMPLOYEE_STATUSES[EMPLOYEE_STATUS.INACTIVE],
+];
+
 export const getEmployeeStatus = (status) =>
-  EMPLOYEE_STATUSES[status] ?? EMPLOYEE_STATUSES[EMPLOYEE_STATUS.INACTIVE];
+  EMPLOYEE_STATUSES[canonicalEmployeeStatus(status)] ?? EMPLOYEE_STATUSES[EMPLOYEE_STATUS.INACTIVE];
 
 export const canEmployeeLogin = (status) => getEmployeeStatus(status).canLogin;
+
+export const isAccessBlocked = (status) => !canEmployeeLogin(status);
 
 export const getStatusLabel = (status) => getEmployeeStatus(status).label;
 
@@ -66,7 +84,11 @@ export default {
   EMPLOYEE_STATUS,
   EMPLOYEE_STATUSES,
   STATUS_OPTIONS,
+  STATUS_FILTER_OPTIONS,
+  STATUS_ALIASES,
+  canonicalEmployeeStatus,
   getEmployeeStatus,
   canEmployeeLogin,
+  isAccessBlocked,
   getStatusLabel,
 };

@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class CustomerRegisterRequest(BaseModel):
@@ -178,6 +178,46 @@ class ResetPasswordRequest(BaseModel):
     def passwords_match(self) -> "ResetPasswordRequest":
         if self.confirmPassword and self.confirmPassword != self.newPassword:
             raise ValueError("Passwords do not match.")
+        return self
+
+
+class StaffProfileUpdateRequest(BaseModel):
+    """
+    PATCH /auth/me and PATCH /employee/me — staff self-service contact identity.
+
+    Restricted to fields the account holder may change: display name, phone,
+    email, and title/designation. Role, account level and employee code stay
+    administration-owned. Customers continue to use PATCH /customers/me.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=255)
+    firstName: Optional[str] = Field(None, min_length=1, max_length=60)
+    lastName: Optional[str] = Field(None, max_length=60)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20)
+    title: Optional[str] = Field(None, max_length=100)
+    designation: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("phone", "email", "name", "title", "designation", mode="before")
+    @classmethod
+    def _coerce_blank(cls, value):
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def resolve_aliases(self) -> "StaffProfileUpdateRequest":
+        if not self.full_name:
+            if self.name:
+                self.full_name = self.name.strip()
+            elif self.firstName or self.lastName:
+                combined = f"{(self.firstName or '').strip()} {(self.lastName or '').strip()}".strip()
+                self.full_name = combined or None
+        if not self.designation and self.title:
+            self.designation = self.title.strip()
         return self
 
 

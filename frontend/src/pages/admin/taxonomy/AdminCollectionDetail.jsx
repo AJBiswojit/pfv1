@@ -21,7 +21,8 @@ const Term = ({ label, value }) => <div className="min-w-0"><dt className="font-
 
 export default function AdminCollectionDetail() {
   const { collectionId } = useParams();
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin ? { adminId: admin.adminId, name: admin.name || "Administrator" } : null;
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
@@ -72,7 +73,7 @@ export default function AdminCollectionDetail() {
         <p className="font-ui text-sm text-taupe">
           {collectionError ?? "Fetching this collection from the server…"}
         </p>
-        <AtelierButton as={Link} to="/admin/collections" size="chip" className="mt-4">Back to collections</AtelierButton>
+        <AtelierButton as={Link} to={`${prefix}/collections`} size="chip" className="mt-4">Back to collections</AtelierButton>
       </AdminPage>
     );
   }
@@ -137,7 +138,7 @@ export default function AdminCollectionDetail() {
       description={collection.description || "Editorial collection from the central taxonomy repository."}
       actions={
         <>
-          <AtelierButton as={Link} to={`/admin/collections/${collection.id}/edit`} variant="outline" size="chip"><Pencil size={12} /> Edit</AtelierButton>
+          <AtelierButton as={Link} to={`${prefix}/collections/${collection.id}/edit`} variant="outline" size="chip"><Pencil size={12} /> Edit</AtelierButton>
           <AtelierButton onClick={() => mutateStatus("activate")} variant="outline" size="chip"><Play size={12} /> Activate</AtelierButton>
           <AtelierButton onClick={() => mutateStatus("pause")} variant="outline" size="chip"><Pause size={12} /> Pause</AtelierButton>
           <AtelierButton onClick={() => mutateStatus("archive")} variant="outline" size="chip"><Archive size={12} /> Archive</AtelierButton>
@@ -183,7 +184,7 @@ export default function AdminCollectionDetail() {
                         <input type="checkbox" checked={selected.includes(product.id)} onChange={() => toggle(product.id)} aria-label={`Select ${product.name}`} />
                       </td>
                       <td className="min-w-0 px-2 py-3 sm:px-3">
-                        <Link to={`/admin/products/${product.id}`} className="block truncate font-medium text-ink hover:text-accent" title={product.name}>{product.name}</Link>
+                        <Link to={`${prefix}/products/${product.id}`} className="block truncate font-medium text-ink hover:text-accent" title={product.name}>{product.name}</Link>
                       </td>
                       <td className="truncate px-2 py-3 text-taupe sm:px-3" title={product.sku}>{product.sku}</td>
                       <td className="min-w-0 px-2 py-3 sm:px-3">

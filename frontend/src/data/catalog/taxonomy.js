@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — canonical catalogue data.
+ * PRATIKSHYA FASHION — canonical catalogue data.
  *
  * The authored canonical Department → Category → Subcategory hierarchy and storefront routes shared by every Product department.
  */

@@ -206,7 +206,7 @@ function ActiveSareeCard({ entry, slideNumber, slideCount, priority, custom, onS
             <p className={cn(eyebrow.editorial, "mb-2 text-blush")}>
               {product.subcategory || product.categoryLabel}
             </p>
-            <h3 className="max-w-xl font-display text-2xl font-light leading-[1.05] sm:text-3xl md:text-4xl">
+            <h3 className="max-w-xl font-accent text-2xl font-light leading-[1.05] sm:text-3xl md:text-4xl">
               {product.name}
             </h3>
             <div className="mt-3">
@@ -264,7 +264,7 @@ function SareePreview({ entry, relation, custom, onSelect }) {
         <p className={cn(eyebrow.editorial, "mb-1.5 text-accent")}>
           {product.subcategory || product.categoryLabel}
         </p>
-        <h3 className="font-display text-xl font-light leading-tight text-ink">{product.name}</h3>
+        <h3 className="font-accent text-xl font-light leading-tight text-ink">{product.name}</h3>
         <div className="mt-2">
           <PriceLine product={product} />
         </div>

@@ -50,7 +50,8 @@ const INBOX_FILTERS = [
 const INBOX_PAGE_SIZE = 24;
 
 export default function AdminProductReview() {
-  const { admin } = useAdminAuth();
+  const { admin, isSuperAdmin } = useAdminAuth();
+  const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   const actor = admin
     ? {
         adminId: admin.adminId,
@@ -113,7 +114,7 @@ export default function AdminProductReview() {
       eyebrow="Business / Products"
       title={<>Product <span className="italic text-accent">review.</span></>}
       description="One workspace over one product lifecycle: every product waits in the same unified queue, is reviewed in the same detail, and moves only through the canonical approve, return and publish commands. Nothing reaches the storefront until it is approved and then explicitly published."
-      actions={<AtelierButton as={Link} to="/admin/products" size="chip" variant="outline">Back to catalog</AtelierButton>}
+      actions={<AtelierButton as={Link} to={`${prefix}/products`} size="chip" variant="outline">Back to catalog</AtelierButton>}
     >
       {notice ? (
         <p aria-live="polite" className={`mb-6 border px-4 py-3 font-ui text-sm ${notice.tone === "warn" ? "border-accent/60 bg-accent/5 text-accent" : "border-mist/80 bg-canvas text-ink"}`}>{notice.text}</p>

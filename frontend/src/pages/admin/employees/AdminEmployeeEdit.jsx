@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import EmployeeForm from "../../../components/employee/EmployeeForm";
@@ -8,7 +8,7 @@ import { AtelierButton } from "../../../design-system";
 import { useEmployeeManagement } from "../../../context/EmployeeManagementContext";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { useEmployeeAuth } from "../../../context/EmployeeAuthContext";
-import { getDefaultPermissions } from "../../../config/employeeRoles";
+import { getDefaultPermissions, isKnownRole } from "../../../config/employeeRoles";
 import {
   ACCOUNT_LEVELS,
   ACCOUNT_LEVEL_META,
@@ -17,7 +17,7 @@ import {
   delegableCapabilities,
   workspaceForLevel,
 } from "../../../config/rbacModel";
-import { EMPLOYEE_TEAM_ACCESS_BASE } from "./employeesBase";
+import { useEmployeesBase } from "./employeesBase";
 import { staffHrefId } from "../../../utils/employee";
 
 const draftFrom = (person) => ({
@@ -36,16 +36,14 @@ const draftFrom = (person) => ({
 export default function AdminEmployeeEdit({ basePath } = {}) {
   const { employeeId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   // Follow the workspace we were mounted from (Admin portal vs SUPER_EMPLOYEE
   // self-service) — see employeesBase.js.
-  const base = basePath ?? (location.pathname.startsWith(EMPLOYEE_TEAM_ACCESS_BASE)
-    ? EMPLOYEE_TEAM_ACCESS_BASE
-    : "/admin/employees");
-  const { getEmployee, updateEmployee, isWorking } = useEmployeeManagement();
+  const base = useEmployeesBase(basePath);
+  const { getEmployee, loadEmployee, updateEmployee, isWorking } = useEmployeeManagement();
   const { admin } = useAdminAuth();
   const { employee: employeeActor } = useEmployeeAuth();
   const person = getEmployee(employeeId);
+  const [lookup, setLookup] = useState(person ? "ready" : "pending");
   const [draft, setDraft] = useState(() => person ? draftFrom(person) : null);
   const [accountLevel, setAccountLevel] = useState(() => person?.accountLevel || ACCOUNT_LEVELS.EMPLOYEE);
   const [permissions, setPermissions] = useState(() => person?.permissions || []);
@@ -62,8 +60,8 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
   const capabilityDriven = true;
   const adminDomain = workspaceForLevel(accountLevel) === "admin";
   const ceiling = useMemo(
-    () => (creator ? delegableCapabilities(creator) : new Set()),
-    [creator]
+    () => (creator ? delegableCapabilities(creator, accountLevel) : new Set()),
+    [creator, accountLevel]
   );
 
   // Level options: what the creator may grant, plus the target's current
@@ -78,12 +76,32 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
   }, [creatorLevel, person?.accountLevel]);
 
   useEffect(() => {
+    if (person) {
+      setLookup("ready");
+      return;
+    }
+    let cancelled = false;
+    setLookup("pending");
+    loadEmployee(employeeId).then((found) => {
+      if (cancelled) return;
+      setLookup(found ? "ready" : "missing");
+    });
+    return () => { cancelled = true; };
+  }, [employeeId, person, loadEmployee]);
+
+  useEffect(() => {
     if (!person) return;
     setDraft(draftFrom(person));
     setAccountLevel(person.accountLevel || ACCOUNT_LEVELS.EMPLOYEE);
     setPermissions(person.permissions || []);
     setCustomPermissions(person.permissionMode === "custom");
   }, [person?.employeeId]);
+
+  if (lookup === "pending" && !person) {
+    return (
+      <AdminPage eyebrow="People / Organization" title="Opening account" description="Loading this staff account." />
+    );
+  }
 
   if (!person || !draft) {
     return (
@@ -112,16 +130,16 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
     setErrors({});
     setNotice("");
     const result = await updateEmployee(staffHrefId(person), {
-      ...draft,
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      phone: draft.phone,
+      department: draft.department,
+      ...(!adminDomain && isKnownRole(draft.role) ? { role: draft.role } : {}),
       // Only send the level when it actually changes — a no-op write would
       // still re-run the hierarchy check, but skipping keeps payloads small.
       ...(accountLevel !== person.accountLevel ? { accountLevel } : {}),
-      ...(capabilityDriven
-        ? { permissionMode: "custom", permissions }
-        : {
-            permissionMode: customPermissions ? "custom" : "role",
-            permissions: customPermissions ? permissions : getDefaultPermissions(draft.role),
-          }),
+      permissionMode: customPermissions ? "custom" : "role",
+      permissions: customPermissions ? permissions : [],
     });
     if (!result.ok) {
       setErrors(result.errors || {});
@@ -180,12 +198,13 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
         </AdminPanel>
 
         <AdminPanel eyebrow="Account identity" title={adminDomain ? "Account details" : "Employee details"}>
-          <EmployeeForm values={draft} errors={errors} onChange={handleChange} idPrefix="admin-edit-employee" adminDomain={adminDomain} />
+          <EmployeeForm values={draft} errors={errors} onChange={handleChange} idPrefix="admin-edit-employee" adminDomain={adminDomain} hideStatus emailLocked />
         </AdminPanel>
 
         <AdminPanel
           eyebrow="Operational access"
           title={capabilityDriven ? "Delegated capabilities" : "Permissions"}
+          bodyClassName="max-h-[62vh] overflow-y-auto"
           action={
             capabilityDriven ? null : (
               <AtelierButton
@@ -204,6 +223,25 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
         >
           {capabilityDriven ? (
             <>
+              <label className="mb-5 flex items-start gap-3 font-ui text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={customPermissions}
+                  disabled={isSelf}
+                  onChange={(event) => {
+                    const custom = event.target.checked;
+                    setCustomPermissions(custom);
+                    if (!custom) setPermissions([]);
+                  }}
+                  className="mt-0.5 accent-ink"
+                />
+                <span>
+                  Assign a custom capability set
+                  <span className="mt-1 block text-[11px] text-taupe">
+                    Off, the account inherits its Admin or business-role defaults. On, only the switches below apply.
+                  </span>
+                </span>
+              </label>
               <p className="mb-5 font-ui text-[11px] leading-relaxed text-taupe">
                 {isSelf
                   ? "Your own capability set — the Super Admin assigns changes to it."
@@ -215,12 +253,13 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
                 catalogue={CAPABILITY_GROUPS}
                 ceiling={isSelf ? [] : ceiling ?? undefined}
                 permissions={permissions}
-                editable={!isSelf}
-                onToggle={(key, allowed) =>
+                editable={!isSelf && customPermissions}
+                onToggle={(key, allowed) => {
+                  setCustomPermissions(true);
                   setPermissions((current) =>
                     allowed ? [...new Set([...current, key])] : current.filter((item) => item !== key)
-                  )
-                }
+                  );
+                }}
               />
             </>
           ) : (

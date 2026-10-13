@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Atelier Spacing & Layout
+ * PRATIKSHYA FASHION — Atelier Spacing & Layout
  *
  * The page breathes on a small number of repeated rhythms. These are the
  * exact values used by the Phase 1 landing page.

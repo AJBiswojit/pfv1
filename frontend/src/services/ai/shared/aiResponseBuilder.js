@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — AI assistants, response envelope (Phase 21.1).
+ * PRATIKSHYA FASHION — AI assistants, response envelope (Phase 21.1).
  *
  * Every assistant answer leaves the provider as one of these envelopes.
  * The UI renders the envelope, never raw provider internals, so a future

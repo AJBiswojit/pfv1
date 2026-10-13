@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Unified Product Review detail (Phase 3D).
+ * PRATIKSHYA FASHION — Unified Product Review detail (Phase 3D).
  *
  * ONE review detail for ONE product lifecycle. All products use this single
  * destination:

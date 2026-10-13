@@ -38,7 +38,7 @@ function ProductNotFound() {
         <div className="grid overflow-hidden bg-surface md:grid-cols-2">
           <MediaFrame
             image={imageRef("saree-banarasi")}
-            alt="PRATIKSHYA FASHON heritage textile detail"
+            alt="PRATIKSHYA FASHION heritage textile detail"
             aspect="portrait"
             overlay="imageBottom"
             className="min-h-72 md:min-h-[32rem]"
@@ -141,7 +141,7 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!product) return undefined;
     const previousTitle = document.title;
-    document.title = `${product.name} — PRATIKSHYA FASHON`;
+    document.title = `${product.name} — PRATIKSHYA FASHION`;
     return () => { document.title = previousTitle; };
   }, [product]);
 

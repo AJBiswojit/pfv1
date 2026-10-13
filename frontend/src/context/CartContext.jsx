@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — The bag (backend-authoritative).
+ * PRATIKSHYA FASHION — The bag (backend-authoritative).
  *
  * Authenticated customers: the backend owns cart state, quantities, pricing,
  * coupon application and stock validation. Every mutation goes through

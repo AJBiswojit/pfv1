@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — canonical Product Media consistency audit.
+ * PRATIKSHYA FASHION — canonical Product Media consistency audit.
  *
  * Reports every product (all statuses) with its resolved media set, then
  * summarises the Product Media report:

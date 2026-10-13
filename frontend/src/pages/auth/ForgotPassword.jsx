@@ -28,7 +28,7 @@ export default function ForgotPassword() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Forgot Password — PRATIKSHYA FASHON";
+    document.title = "Forgot Password — PRATIKSHYA FASHION";
     return () => {
       document.title = prevTitle;
     };
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                   </h1>
                   <Rule width="w-12" tone="accent" className="mx-auto my-6" />
                   <p className="font-ui text-xs leading-relaxed text-taupe">
-                    Enter the email address or mobile number associated with your PRATIKSHYA FASHON account, and we will send you instructions to reset your password.
+                    Enter the email address or mobile number associated with your PRATIKSHYA FASHION account, and we will send you instructions to reset your password.
                   </p>
                 </div>
 

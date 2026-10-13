@@ -1,5 +1,5 @@
 /**
- * PRATIKSHYA FASHON — Product editor sections: Product Content, Media,
+ * PRATIKSHYA FASHION — Product editor sections: Product Content, Media,
  * SEO and Publishing (Phase 13).
  *
  * The media section embeds a completeness summary only — the full media
@@ -31,7 +31,7 @@ import {
 /* 5 · Product content                                                 */
 /* ------------------------------------------------------------------ */
 
-export function SectionContent({ draft, patch }) {
+export function SectionContent({ draft, patch, errors = {} }) {
   return (
     <div className="space-y-8">
       {/* Short & Full Description */}
@@ -54,6 +54,7 @@ export function SectionContent({ draft, patch }) {
         <Field
           label="Full description"
           required
+          error={errors.description}
           hint="The story told in the product details section."
           htmlFor="pf-content-description"
           className="lg:col-span-2"
@@ -185,8 +186,8 @@ export function SectionMedia({ draft, patch, portal }) {
   const isSaved = Boolean(draft.id && draft.exists);
   const cover = items.find((item) => item.role === "COVER") ?? items[0];
   const mediaHref =
-    portal === "admin"
-      ? `/admin/products/${draft.id}/media`
+    portal === "admin" || portal === "super-admin"
+      ? `/${portal}/products/${draft.id}/media`
       : `/employee/media/upload?product=${draft.id}`;
 
   const hasCoverImage = Boolean(summary.hasCover || draft.image || cover?.url || cover?.thumbnail);
@@ -234,11 +235,21 @@ export function SectionMedia({ draft, patch, portal }) {
           >
             <TextInput
               id="pf-cover-input"
-              value={draft.image || ""}
-              onChange={(event) => patch({ image: event.target.value })}
+              value={typeof draft.image === "string" && draft.image.startsWith("data:") ? "" : (draft.image || "")}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (next.startsWith("data:")) return;
+                patch({ image: next });
+              }}
               placeholder="saree-banarasi or https://images.pratikshya.com/..."
             />
           </Field>
+
+          <p className="mt-3 font-ui text-[11px] leading-relaxed text-taupe">
+            {isSaved
+              ? "Upload files with the media manager below. Device files are registered as durable assets — they are never stored as a browser data URL."
+              : "Save this product as a draft first, then upload a cover from your device. The file is registered on the server after save."}
+          </p>
         </div>
 
         <div>
@@ -249,10 +260,10 @@ export function SectionMedia({ draft, patch, portal }) {
               alt={cover.alt || `${draft.name} cover`}
               className="h-44 w-full max-w-xs object-cover border border-mist"
             />
-          ) : draft.image ? (
+          ) : draft.image && !String(draft.image).startsWith("data:") ? (
             <img
               src={
-                draft.image.startsWith("http") || draft.image.startsWith("/") || draft.image.startsWith("data:")
+                draft.image.startsWith("http") || draft.image.startsWith("/")
                   ? resolveMediaUrl(draft.image)
                   : imageRef(draft.image)?.src
               }
@@ -274,7 +285,7 @@ export function SectionMedia({ draft, patch, portal }) {
           A saved product gets the server-backed manager: files go to object
           storage, register as durable assets, attach to this product and the
           product is re-read from the server — never a browser-local echo. */}
-      {isSaved && portal === "admin" ? (
+      {isSaved ? (
         <div className="border border-mist/80 bg-surface/40 p-5 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-ui text-sm leading-relaxed text-ink">
@@ -288,20 +299,7 @@ export function SectionMedia({ draft, patch, portal }) {
               <Star size={12} aria-hidden="true" /> Open full Media Manager <ExternalLink size={11} aria-hidden="true" />
             </Link>
           </div>
-          <ProductMediaManager productId={draft.id} scope="admin" />
-        </div>
-      ) : isSaved ? (
-        <div className="border border-mist/80 bg-surface/40 p-5">
-          <p className="font-ui text-sm leading-relaxed text-ink">
-            Manage the complete gallery, reorder images, upload lookbook photos and add videos
-            via the dedicated Media Manager.
-          </p>
-          <Link
-            to={mediaHref}
-            className="mt-3 inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory transition-colors hover:bg-transparent hover:text-ink"
-          >
-            <Star size={12} aria-hidden="true" /> Manage Product Media <ExternalLink size={11} aria-hidden="true" />
-          </Link>
+          <ProductMediaManager productId={draft.id} scope={portal === "employee" ? "employee" : "admin"} />
         </div>
       ) : (
         <div className="border border-mist/80 bg-canvas p-4 text-taupe font-ui text-xs">
