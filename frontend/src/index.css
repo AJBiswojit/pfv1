@@ -52,6 +52,51 @@
   /* Neutrals on dark surfaces */
   --color-ash: #aaaaaa;
   --color-ash-deep: #666666;
+
+  /* ------------------------------------------------------------------
+     Campaign / editorial palette — Phase 1, ADDITIVE.
+
+     The storefront campaign identity: deep burgundy, blush, muted cocoa
+     and soft neutral. Values mirror `campaign` in
+     `src/design-system/tokens.js`.
+
+     Nothing above this comment is redefined. New class names only
+     (`bg-burgundy`, `text-blush-canvas`, `border-burgundy-line`, ...),
+     so Admin, Super Admin and Employee surfaces keep the exact palette
+     and typography they render today.
+     ------------------------------------------------------------------ */
+  --color-burgundy: #65081f; /* brand accent — deep burgundy */
+  --color-burgundy-deep: #420619; /* accent hovers and accent gradients */
+  --color-burgundy-night: #2a0410; /* darkest end of the accent gradient */
+
+  --color-blush-canvas: #f7eeed; /* campaign background */
+  --color-blush-warm: #e9d0c1; /* secondary campaign background */
+  --color-blush-soft: #f2e2db; /* between canvas and warm */
+  --color-blush-paper: #fbf6f5; /* pale paper insert */
+
+  --color-cocoa-muted: #a0705c; /* muted cocoa accent */
+  --color-neutral-soft: #caafa5; /* soft neutral (captions on dark) */
+
+  --color-espresso: #3a1806; /* campaign body & headlines */
+  --color-espresso-soft: #5b3a2a; /* secondary campaign text */
+  --color-espresso-meta: #8a6555; /* tertiary text / meta */
+  --color-night: #2b1105; /* bridal & jewellery depth */
+  --color-night-soft: #3f1907; /* its lighter pair */
+
+  --color-burgundy-line: rgb(101 8 31 / 0.16); /* hairline */
+  --color-burgundy-line-strong: rgb(101 8 31 / 0.32); /* emphasised hairline */
+  --color-blush-line: rgb(247 238 237 / 0.2); /* hairline on dark */
+
+  /* ------------------------------------------------------------------
+     Campaign motion curves — Phase 1, ADDITIVE.
+
+     Mirrors `campaign.ease` in `src/design-system/motion.js`. New
+     utilities only (`ease-silk`, `ease-editorial`,
+     `ease-editorial-inout`); no existing animation is redefined.
+     ------------------------------------------------------------------ */
+  --ease-silk: cubic-bezier(0.45, 0, 0.15, 1);
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-editorial-inout: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 html {

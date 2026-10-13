@@ -13,6 +13,8 @@ export {
   default as tokens,
   colors,
   colorClasses,
+  campaign,
+  campaignClasses,
   tones,
   radius,
   shadows,
@@ -21,6 +23,10 @@ export {
   dotGrid,
   imageTreatment,
 } from "./tokens";
+
+/* The campaign type scale (`typography.campaign`) and motion tokens
+   (`motionTokens.campaign`) stay namespaced inside their own modules so the
+   single `campaign` export above is unambiguously the palette. */
 
 export {
   default as typography,
@@ -85,6 +91,22 @@ export { default as AtelierBadge } from "./components/AtelierBadge";
 /* Media and commerce */
 export { default as MediaFrame } from "./components/MediaFrame";
 export { default as ProductCard, formatPrice, discountPercent } from "./components/ProductCard";
+
+/* Campaign primitives (Phase 1 — additive)
+   Editorial reveals, the arrow link and the section label. None of them
+   introduces a global class name, so they are safe on any surface. */
+export { default as InView, useReplayInView } from "./components/InView";
+export { default as MaskReveal, LineReveal, FadeUp } from "./components/Reveal";
+export { default as ArrowLink, Arrow } from "./components/ArrowLink";
+export { default as SectionLabel } from "./components/SectionLabel";
+
+/* Behaviour hooks (Phase 1 — additive). Read-only or self-restoring: they
+   never mutate document state they did not set themselves. */
+export { default as useMediaQuery, matchesMediaQuery } from "./hooks/useMediaQuery";
+export { default as useScrolled } from "./hooks/useScrolled";
+export { default as useLockBody } from "./hooks/useLockBody";
+export { default as useFocusTrap } from "./hooks/useFocusTrap";
+export { default as useEscape } from "./hooks/useEscape";
 
 /* Branding — single canonical rendering seam for the PRATIKSHYA FASHION mark */
 export {
