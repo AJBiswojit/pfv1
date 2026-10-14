@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { Link } from '../../router/index.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -54,14 +55,14 @@ export default function QuickViewModal() {
             <div className="qv__gallery">
               <div className="qv__main">
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.img key={imgIdx} src={product.images[imgIdx]} alt={product.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} />
+                  <motion.img key={imgIdx} src={product.images[imgIdx]} alt={product.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} onError={hideBrokenMedia} />
                 </AnimatePresence>
               </div>
               {product.images.length > 1 && (
                 <div className="qv__thumbs">
                   {product.images.map((src, i) => (
                     <button key={src} type="button" className={i === imgIdx ? 'is-active' : ''} onClick={() => setImgIdx(i)} aria-label={`View image ${i + 1}`}>
-                      <img src={src} alt="" />
+                      <img src={src} alt="" onError={hideBrokenMedia} />
                     </button>
                   ))}
                 </div>

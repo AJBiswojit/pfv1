@@ -38,6 +38,7 @@ from app.models.commerce.wishlist import WishlistModel
 from app.models.commerce.wishlist_item import WishlistItemModel
 from app.schemas.customer.address import AddressCreate
 from app.schemas.customer.customer import ProfileUpdate, SessionSummary
+from app.core.cache import cache
 from app.services.commerce.cart_service import CartService, _cart_line_id
 from app.services.commerce.wishlist_service import WishlistService
 from app.services.customer.customer_service import CustomerService
@@ -128,6 +129,17 @@ def cart_with_item(pid="PF-PRD-1", quantity=2, color="Red", size="M"):
 class CartTotalsTests(unittest.IsolatedAsyncioTestCase):
     async def _totals(self, price, quantity, delivery_method="standard",
                       payment_method="online"):
+        """
+        Price one basket in a clean cache state.
+
+        `CartService.get_cart` caches the whole CartResponse under
+        `cart:{customer_id}` (TTL 300 s, evicted on mutation) and `get_totals`
+        reuses it. Every call here prices a *different* basket for the same
+        customer id, so without this clear the first scenario's subtotal would
+        be served to every later one — which silently turned the shipping
+        assertions into no-ops (each one passes in isolation).
+        """
+        await cache.delete(CartService._cart_cache_key("u1"))
         product = product_stub(price=price, stock=99)
         cart = cart_with_item(quantity=quantity)
         db = make_db([FakeResult([cart]), FakeResult([product]), FakeResult([product])])

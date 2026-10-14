@@ -40,6 +40,12 @@
  */
 
 import { useLocation } from "react-router-dom";
+import { hasNavigationScope } from "../data/products/taxonomy";
+import { routeManifest } from "./navigationConfig";
+/* The port's own path table — the same one its link translator consults, so the
+   catch-all guard and the port's idea of "what this application serves" can
+   never drift apart. */
+import { isRegisteredPath } from "../components/aarna/router/routes.js";
 
 export const STOREFRONT_HOME = Object.freeze({
   atelier: "atelier",
@@ -113,6 +119,190 @@ export const isAarnaHomeEnabled = () => storefrontHomeChoice() === STOREFRONT_HO
 export function useAarnaHome() {
   const { pathname } = useLocation();
   return pathname === STOREFRONT_HOME_PATH && isAarnaHomeEnabled();
+}
+
+/**
+ * PHASE 6 — the second surface the port owns: the product detail page.
+ *
+ * The design's product page is adopted the same way its homepage was — inside
+ * this switch, mounted by `CustomerLayout`, never as a re-skin of the
+ * production route. The pattern is deliberately narrower than "starts with
+ * /product": this application's product route is exactly `/product/:productId`
+ * (`App.jsx`), and anything else — a deeper path, a missing id — stays with the
+ * production router, which owns 404s.
+ *
+ * Still only ever true when the switch asks for the port
+ * (`?home=aarna` in development, `VITE_STOREFRONT_HOME=aarna` in a build), so
+ * the default storefront is untouched.
+ */
+export const AARNA_PRODUCT_PATH = /^\/product\/[^/]+\/?$/;
+
+export function useAarnaProduct() {
+  const { pathname } = useLocation();
+  return AARNA_PRODUCT_PATH.test(pathname) && isAarnaHomeEnabled();
+}
+
+/**
+ * PHASE 7 — the third surface the port owns: the listings.
+ *
+ * The design draws one shop/listing/search shell, and this application serves
+ * it from seven shapes of URL. The set below is not a second route table: it is
+ * exactly the set `App.jsx` already sends to a listing page —
+ *
+ *   · the four dedicated routes: `/shop`, `/explore`, `/search` and the two
+ *     dynamic listing shapes (`/category/:slug`, `/collections/:slug`) plus the
+ *     legacy `/collection/:slug` redirect;
+ *   · every `routeManifest` path the router sends to `CatalogueListing` —
+ *     `hasNavigationScope(pathname)`, the same predicate `App.jsx` uses.
+ *
+ * Everything else keeps its production page, and that includes the manifest
+ * paths that are NOT navigation scopes (`/about`, `/contact`, `/privacy`,
+ * `/terms`, `/account`, `/account/wishlist` — those render `CategoryPage` and
+ * belong to later phases) and every staff portal route. The /cart → /checkout
+ * money path was the one exception Phase 7 recorded here; Phase 9 adopts it as
+ * the fifth surface, below.
+ *
+ * `/category/:slug` and `/collections/:slug` are handed over whole: an unknown
+ * slug resolves to no scope, and the ported page answers it with the port's own
+ * 404 — the same answer the production listing gives.
+ */
+export const AARNA_LISTING_PATHS = new Set([
+  ...routeManifest
+    .map((route) => route.path)
+    .filter((path) => hasNavigationScope(path)),
+  "/shop",
+  "/explore",
+  "/search",
+]);
+
+export const AARNA_LISTING_DYNAMIC = [
+  /^\/category\/[^/]+\/?$/,
+  /^\/collections\/[^/]+\/?$/,
+  /^\/collection\/[^/]+\/?$/,
+];
+
+/** Is THIS path one the port's listing page stands in for? */
+export function isAarnaListingPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return AARNA_LISTING_PATHS.has(bare) || AARNA_LISTING_DYNAMIC.some((pattern) => pattern.test(pathname));
+}
+
+export function useAarnaListing() {
+  const { pathname } = useLocation();
+  return isAarnaListingPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
+ * PHASE 8 — the fourth surface: the wishlist and the application's information
+ * pages.
+ *
+ * `/account/wishlist` is the canonical route and `/wishlist` the legacy entry
+ * that redirects to it (`App.jsx`). Both are handed over together, so the
+ * redirect happens inside the design's shell and the production chrome is never
+ * painted on the way. The four information paths are the ones `routeManifest`
+ * carries; the ported page reads its metadata from that same manifest.
+ */
+export const AARNA_WISHLIST_PATHS = new Set(["/account/wishlist", "/wishlist"]);
+export const AARNA_INFO_PATHS = new Set(["/about", "/contact", "/privacy", "/terms"]);
+
+export function isAarnaWishlistPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return AARNA_WISHLIST_PATHS.has(bare) || AARNA_INFO_PATHS.has(bare);
+}
+
+export function useAarnaWishlist() {
+  const { pathname } = useLocation();
+  return isAarnaWishlistPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
+ * PHASE 9 — the fifth surface: the money path.
+ *
+ * `/cart`, `/checkout` and `/order-success` are the three routes the bag and
+ * the transaction run through, and Phase 9 adopts all three together, because
+ * they are one journey: the bag hands to the checkout, the checkout hands to
+ * the confirmation. The production application remains the only authority for
+ * everything they DO — the same `CartContext`, `CheckoutContext` and
+ * `OrderContext`, the same API clients, the same validators, the same
+ * server-side pricing and the same rule that the bag is cleared only after the
+ * server confirms an order. What changes is the chrome around them.
+ *
+ * `/cart` renders inside the design's own `Layout` (the full shopping shell —
+ * announcement rail, header, mega menu, footer, bag drawer), exactly as the
+ * production bag keeps the full shopping header. `/checkout` and
+ * `/order-success` render inside the port's `JourneyFrame`, the design-language
+ * equivalent of the reduced `CheckoutHeader` production gives the order
+ * journey. Authentication is unchanged: both routes stay behind the
+ * application's own `ProtectedRoute`, so a guest still lands on
+ * `/signin?returnTo=…`.
+ */
+export const AARNA_JOURNEY_PATHS = new Set(["/cart", "/checkout", "/order-success"]);
+
+export function isAarnaJourneyPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return AARNA_JOURNEY_PATHS.has(bare);
+}
+
+export function useAarnaJourney() {
+  const { pathname } = useLocation();
+  return isAarnaJourneyPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
+ * PHASE 8 — the guarded catch-all.
+ *
+ * The design's 404 already answers every *scoped* not-found this application has
+ * (`/product/<unknown>`, `/category/<unknown>`): the port's own route table ends
+ * in a catch-all that resolves a scope, finds none, and renders the design's
+ * page. What it does not answer is a URL this application serves no route for at
+ * all — today that is the production `NotFound`.
+ *
+ * Handing those over needs one guard, and it is the whole risk of the change:
+ *
+ *   · the STAFF PORTALS must never be swallowed. `/login`, `/admin/**`,
+ *     `/super-admin/**` and `/employee/**` are not customer routes, their own
+ *     route trees own their 404s (`AdminNotFound`, the employee portal), and the
+ *     port's route table knows nothing about them. The prefixes are listed here
+ *     explicitly, and `aarnaCatchAll` is false for every path under them;
+ *   · every path the application DOES serve keeps its own page, including the
+ *     ones the port has not adopted — `/account/**`, the order detail /
+ *     tracking / return pages, the auth screens. (Phase 9 adopted the money
+ *     path by name, so `/cart`, `/checkout` and `/order-success` are answered
+ *     by the port's own routes while the switch is on, and by the production
+ *     pages while it is off.) The test is the port's own `isRegisteredPath`,
+ *     the same table its link translator uses, so the two can never disagree
+ *     about what this application serves.
+ */
+export const STAFF_PORTAL_PREFIXES = ["/login", "/admin", "/super-admin", "/employee"];
+
+export function isStaffPortalPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return STAFF_PORTAL_PREFIXES.some((prefix) => bare === prefix || bare.startsWith(`${prefix}/`));
+}
+
+/** A path this application serves no customer route for — and not a portal. */
+export function isAarnaCatchAllPath(pathname) {
+  if (isStaffPortalPath(pathname)) return false;
+  return !isRegisteredPath(pathname);
+}
+
+export function useAarnaCatchAll() {
+  const { pathname } = useLocation();
+  return isAarnaCatchAllPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
+ * The port's whole boundary, in one question: is THIS path one of the design's
+ * pages, and has the switch been asked for the port at all?
+ */
+export function useAarnaStorefront() {
+  const home = useAarnaHome();
+  const product = useAarnaProduct();
+  const listing = useAarnaListing();
+  const wishlist = useAarnaWishlist();
+  const journey = useAarnaJourney();
+  const catchAll = useAarnaCatchAll();
+  return home || product || listing || wishlist || journey || catchAll;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { Link } from '../../router/index.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Eye, Plus, X } from 'lucide-react';
@@ -32,8 +33,8 @@ export default function ProductCard({ product, variant = 'default', onHover, cla
     >
       <div className="pcard__media">
         <Link to={url} className="pcard__imglink" aria-label={product.name} tabIndex={-1}>
-          <img className="pcard__img" src={product.images[0]} alt={product.name} loading="lazy" decoding="async" />
-          {product.images[1] && <img className="pcard__img pcard__img--alt" src={product.images[1]} alt="" aria-hidden="true" loading="lazy" decoding="async" />}
+          <img className="pcard__img" src={product.images[0]} alt={product.name} loading="lazy" decoding="async" onError={hideBrokenMedia} />
+          {product.images[1] && <img className="pcard__img pcard__img--alt" src={product.images[1]} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={hideBrokenMedia} />}
         </Link>
         {product.badge && <span className="pcard__badge">{product.badge}</span>}
         <WishlistButton product={product} className="pcard__wish" />

@@ -434,6 +434,18 @@ test("the announcement rail states the house's own line and can be dismissed", (
   assert.ok(!/UTSAV15|sample offer/i.test(markup), "prototype offer copy is on the customer's page");
 });
 
+test("no prototype copy reaches the customer's page", () => {
+  /* A page-level check, not a per-file one: the design was a prototype, and
+     Phase 3 replaced the last of its sample-catalogue sentences with a
+     statement this house can stand behind. Whatever future edit reintroduces
+     one lands here. */
+  assert.ok(!/prototype|sample catalogue|sample data/i.test(markup), "prototype copy is on the customer's page");
+  assert.ok(
+    markup.includes("A selection from the house catalogue — the backend does not yet expose a verified sales ranking."),
+    "the bestsellers rail no longer says what it is showing",
+  );
+});
+
 test("the port the shell speaks to is the one it renders", () => {
   /* Both halves of the switch, in one place: the DEV query a reviewer uses and
      the production variable a built app needs, resolving to the same surface. */

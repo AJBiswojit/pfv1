@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import {
   ADDED,
   CLOSURE,
+  REWRITES,
   DESIGN_SRC,
   PORT_DIR,
   PORT_RELATIVE,
@@ -95,7 +96,11 @@ test("the port is exactly the design's homepage closure", () => {
     .map((relative) => relative.replace(/\\/g, "/"))
     .sort();
   assert.deepEqual(present, expected, "the port tree does not match the declared closure");
-  assert.equal(Object.keys(CLOSURE).length + Object.keys(REPLACED).length, 54, "54 design files are carried");
+  /* 50 homepage files + the product page and the 404 it renders (Phase 6)
+     + the shop/listing/search page (Phase 7) + the wishlist and the information
+     page (Phase 8). The count moves only when a page of the design is adopted,
+     never when one is edited. */
+  assert.equal(Object.keys(CLOSURE).length + Object.keys(REPLACED).length, 59, "59 design files are carried");
 });
 
 test("every copied file IS the design's file, adapted by exactly the pinned amount", () => {
@@ -142,9 +147,43 @@ test("the adaptations are the documented ones — nothing else moved", () => {
       }
     }
   }
-  assert.equal(rendersLink.length, 19, "nineteen ported files render a destination");
+  /* 20 after Phase 6; the listing page is the 21st (Phase 7); the wishlist and
+     the information page are the 22nd and 23rd (Phase 8). Deliberate, and the
+     only reason this number may move. */
+  assert.equal(rendersLink.length, 23, "twenty-three ported files render a destination");
   assert.match(readPort("components/ui/Logo.jsx"), /import \{ Link \} from '\.\.\/\.\.\/router\/index\.jsx';/);
   assert.match(readPort("components/layout/Header.jsx"), /import \{ Link, NavLink \} from '\.\.\/\.\.\/router\/index\.jsx';/);
+});
+
+/* ── 1b · the rewrite registry ──────────────────────────────────────── */
+
+test("the rewrite registry carries every adopted surface, and edits only the closure", () => {
+  /* One entry per page of the design this application has adopted. The list is
+     checked by identity, so a surface cannot be dropped silently and a new one
+     cannot arrive without naming itself — while the per-file adaptations that
+     ride alongside them are free to grow. */
+  const ids = REWRITES.map((item) => item.id);
+  for (const surface of [
+    "live-catalogue",
+    "product-page",
+    "shop-listing",
+    "wishlist-page",
+    "info-page",
+  ]) {
+    assert.ok(ids.includes(surface), `the registry does not carry the ${surface} surface`);
+  }
+  assert.equal(new Set(ids).size, ids.length, "two rewrites share one id");
+
+  for (const item of REWRITES) {
+    assert.ok(item.files.length > 0, `${item.id} claims no design file`);
+    assert.equal(typeof item.apply, "function", `${item.id} has no transform`);
+    for (const file of item.files) {
+      assert.ok(
+        CLOSURE[file] !== undefined || REPLACED[file] !== undefined,
+        `${item.id} edits ${file}, which the closure does not carry`,
+      );
+    }
+  }
 });
 
 /* ── 2 · the boundary modules ───────────────────────────────────────── */
@@ -191,17 +230,26 @@ test("the catalogue boundary maps the live catalogue and never invents a product
   assert.match(source, /EMPTY IS A VALID ANSWER/);
 });
 
-test("the port's own modules render the design's page, not a second application", () => {
+test("the port's own modules render the design's pages, not a second application", () => {
   const mount = readPort("AarnaStorefront.jsx");
   assert.match(mount, /<div className="aan-root">/);
   assert.match(mount, /<Home \/>/);
-  assert.match(mount, /<Layout>/);
+  assert.match(mount, /<Product \/>/);
   assert.match(mount, /import "\.\/aarna\.css"/);
   /* No AnimatePresence and no exit animation at the mount: the ported shell is
      sticky, and a transform above it would capture it. */
   assert.equal(/AnimatePresence|exit=/.test(mount), false);
   assert.equal(/PageTransition/.test(mount), false);
-  assert.equal(/createBrowserRouter|BrowserRouter|Routes|Route /.test(mount), false, "the host owns routing");
+  /* PHASE 6 — the design's own route table, mounted inside this application's
+     single router (the design's `App.jsx` mounted its pages the same way). It
+     is not a router of its own: the port may never bring one. */
+  assert.match(mount, /<Route element=\{<Layout \/>\}>/, "the design's Layout is the layout route");
+  assert.match(mount, /<Route path="product\/:productId" element=\{<Product \/>\} \/>/);
+  assert.equal(
+    /createBrowserRouter|BrowserRouter|MemoryRouter|HashRouter/.test(mount),
+    false,
+    "the host owns routing",
+  );
   assert.equal(/ShopContext\.Provider|createContext/.test(mount), false, "providers live in the state module");
 });
 

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { useNavigate } from 'react-router-dom';
 import { Link } from '../../router/index.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { useUI } from '../../state/UIContext.jsx';
 import { searchCategories, searchProducts } from '../../services/catalog.js';
+import { useCatalogueRevision } from '../../mock/data/products.js';
 import { popularSearches } from '../../data/index.js';
 import useLockBody from '../../hooks/useLockBody.js';
 import useEscape from '../../hooks/useEscape.js';
@@ -25,8 +27,11 @@ export default function SearchOverlay() {
   useEffect(() => { const t = setTimeout(() => setDebounced(q), 120); return () => clearTimeout(t); }, [q]);
   useEffect(() => { if (!searchOpen) { setQ(''); setDebounced(''); } }, [searchOpen]);
 
-  const results = useMemo(() => searchProducts(debounced, 6), [debounced]);
-  const cats = useMemo(() => searchCategories(debounced), [debounced]);
+  /* The live catalogue arrives from the backend after mount, so this memo
+     depends on the revision its boundary module publishes. */
+  const catalogueRevision = useCatalogueRevision();
+  const results = useMemo(() => searchProducts(debounced, 6), [debounced, catalogueRevision]);
+  const cats = useMemo(() => searchCategories(debounced), [debounced, catalogueRevision]);
 
   const go = (term) => {
     if (!term.trim()) return;
@@ -84,7 +89,7 @@ export default function SearchOverlay() {
                         {results.map((p) => (
                           <li key={p.id}>
                             <Link to={`/product/${p.slug}`} onClick={closeSearch} className="search__hit">
-                              <img src={p.images[0]} alt="" />
+                              <img src={p.images[0]} alt="" onError={hideBrokenMedia} />
                               <span><strong>{p.name}</strong><small>{formatPrice(p.price)}</small></span>
                             </Link>
                           </li>

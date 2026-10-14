@@ -8,8 +8,14 @@ export default function useAddToBag() {
   return useCallback(
     (product, optionValue = null, qty = 1) => {
       const label = optionValue && product.options ? `${product.options[0].name}: ${optionValue}` : null;
-      addToCart(product.id, label, qty);
-      toast(`${product.name} added to bag`, { label: 'View bag', onClick: openCart });
+      const result = addToCart(product.id, label, qty);
+      /* The design's shop answered locally, so its confirmation was always
+         true; this port's add is the application's own and may be refused. */
+      Promise.resolve(result).then((outcome) => {
+        if (outcome && outcome.ok === false) return;
+        toast(`${product.name} added to bag`, { label: 'View bag', onClick: openCart });
+      });
+      return result;
     },
     [addToCart, toast, openCart],
   );

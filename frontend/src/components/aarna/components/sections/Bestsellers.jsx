@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { getFeaturedBy } from '../../services/catalog.js';
+import { useCatalogueRevision } from '../../mock/data/products.js';
 import ProductCard from '../product/ProductCard.jsx';
 import SectionLabel from '../ui/SectionLabel.jsx';
 import ArrowLink from '../ui/ArrowLink.jsx';
@@ -19,7 +20,10 @@ const FILTERS = [
 
 export default function Bestsellers() {
   const [filter, setFilter] = useState('all');
-  const list = useMemo(() => getFeaturedBy(filter, 8), [filter]);
+  /* The live catalogue arrives from the backend after mount, so this memo
+     depends on the revision its boundary module publishes. */
+  const catalogueRevision = useCatalogueRevision();
+  const list = useMemo(() => getFeaturedBy(filter, 8), [filter, catalogueRevision]);
   return (
     <section className="best" aria-labelledby="best-title">
       <div className="container">
@@ -40,7 +44,7 @@ export default function Bestsellers() {
           </div>
           <ArrowLink to="/shop/all" className="best__all">View All</ArrowLink>
         </div>
-        <p className="best__note">A curated selection from our sample catalogue — not a verified sales ranking.</p>
+        <p className="best__note">A selection from the house catalogue — the backend does not yet expose a verified sales ranking.</p>
 
         {/* Quick, shopping-friendly entrance on the wrapper only, so filter/layout animations stay independent */}
         <InView.div initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={inView} transition={{ duration: 0.6, delay: 0.1, ease: ease.out }}>

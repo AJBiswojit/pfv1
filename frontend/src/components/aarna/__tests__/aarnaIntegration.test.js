@@ -27,6 +27,12 @@ import { fileURLToPath } from "node:url";
 import { routeManifest } from "../../../config/navigationConfig.js";
 import { APP_ROUTES, resolveStorefrontPath, isRegisteredPath, routeTable } from "../router/routes.js";
 import {
+  AARNA_INFO_PATHS,
+  AARNA_PRODUCT_PATH,
+  AARNA_WISHLIST_PATHS,
+  isAarnaCatchAllPath,
+  isAarnaWishlistPath,
+  isStaffPortalPath,
   resolveStorefrontHome,
   STOREFRONT_HOME,
 } from "../../../config/storefrontHome.js";
@@ -186,9 +192,15 @@ test("the Phase 2D port is off by default, and only an explicit request turns it
   assert.equal(resolveStorefrontHome({ envValue: "nonsense" }), STOREFRONT_HOME.atelier);
 });
 
-test("the port renders at the customer root only, and the default home is untouched", () => {
+test("the port renders on its own paths only, under the switch, and nothing else moves", () => {
   const layout = read(LAYOUT);
-  assert.match(layout, /useAarnaHome/);
+  /* PHASE 7 — the layout asks ONE boundary question. It used to ask per surface
+     (`useAarnaHome`, then `useAarnaProduct`); the listing surface would have
+     made that a three-term list that can drift out of step, so the layout reads
+     the single predicate that answers for every path the port owns. The pin
+     moves with the boundary, not away from it. */
+  assert.match(layout, /const aarna = useAarnaStorefront\(\);/);
+  assert.equal(/useAarnaHome|useAarnaProduct/.test(layout), false, "the layout went back to one hook per surface");
   assert.match(layout, /<AarnaStorefront \/>/);
   /* The 2C boundary is intact: with the switch off nothing changes. */
   assert.match(layout, /\{!editorialHome &&/);
@@ -203,6 +215,50 @@ test("the port renders at the customer root only, and the default home is untouc
     .filter((file) => !file.includes("__tests__") && !file.includes("/preview/"))
     .filter((file) => /from "[^"]*aarna\/AarnaStorefront/.test(read(file)));
   assert.deepEqual(importers, [LAYOUT], "the port is mounted by the customer layout alone");
+});
+
+test("the Phase 6 surface is the product route exactly, and stays off while the switch is off", () => {
+  assert.equal(AARNA_PRODUCT_PATH.source, "^\\/product\\/[^/]+\\/?$");
+
+  /* Whether the switch is asked for is `isAarnaHomeEnabled()`; these are the
+     paths it may claim when it is. Anything else — a deeper path, the order
+     journey, the cart — is never the port's, whatever the switch says. */
+  for (const path of ["/product/a", "/product/silk-saree", "/product/a/"]) {
+    assert.equal(AARNA_PRODUCT_PATH.test(path), true, `${path} is the product route`);
+  }
+  for (const path of ["/", "/product", "/product/a/b", "/products/a", "/cart", "/checkout"]) {
+    assert.equal(AARNA_PRODUCT_PATH.test(path), false, `${path} is not the product route`);
+  }
+});
+
+test("the Phase 8 surfaces are the wishlist and the four information routes — and the guard is exactly the rest", () => {
+  assert.deepEqual([...AARNA_WISHLIST_PATHS].sort(), ["/account/wishlist", "/wishlist"]);
+  assert.deepEqual([...AARNA_INFO_PATHS].sort(), ["/about", "/contact", "/privacy", "/terms"]);
+
+  /* Every path the boundary claims is either a registered customer route or a
+     path no route serves — never a staff portal, and never a route that exists.
+     The four information routes and the canonical wishlist are registered, so
+     the guard leaves them to the surface that owns them. */
+  for (const path of [...AARNA_WISHLIST_PATHS, ...AARNA_INFO_PATHS]) {
+    assert.equal(isAarnaWishlistPath(path), true, `${path} is not a Phase 8 surface`);
+    assert.equal(isAarnaCatchAllPath(path), false, `${path} fell through to the catch-all`);
+    assert.equal(isRegisteredPath(path), true, `${path} is not a registered route`);
+  }
+
+  /* The guard's own shape: it excludes the portals first, and it asks the port's
+     table for the rest — so a surface added tomorrow is claimed by name here and
+     by nothing else. */
+  assert.equal(isStaffPortalPath("/admin"), true);
+  assert.equal(isStaffPortalPath("/admin/products/new"), true);
+  assert.equal(isStaffPortalPath("/employee/profile"), true);
+  assert.equal(isStaffPortalPath("/super-admin/orders"), true);
+  assert.equal(isStaffPortalPath("/login"), true);
+  assert.equal(isStaffPortalPath("/administrators"), false, "a portal prefix matched too loosely");
+  assert.equal(isStaffPortalPath("/employee"), true);
+  for (const path of ["/admin", "/login", "/employee/profile"]) {
+    assert.equal(isAarnaCatchAllPath(path), false, `${path} was claimed by the catch-all`);
+  }
+  assert.equal(isAarnaCatchAllPath("/no-such-page"), true);
 });
 
 /* ── 3 · fixture isolation ──────────────────────────────────────────── */

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { useNavigate } from 'react-router-dom';
 import { Link } from '../../router/index.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,10 +24,10 @@ export default function CartDrawer() {
   useEscape(cartOpen, closeCart);
   useFocusTrap(ref, cartOpen);
 
-  const onApply = (e) => {
+  const onApply = async (e) => {
     e.preventDefault();
     if (!code.trim()) return;
-    const res = applyPromo(code);
+    const res = await applyPromo(code);
     setCodeMsg(res.ok ? { ok: true, text: `${res.promo.code} applied — ${res.promo.discountLabel}.` } : { ok: false, text: res.message });
     if (res.ok) setCode('');
   };
@@ -65,7 +66,7 @@ export default function CartDrawer() {
                     {lines.map((l) => (
                       <motion.li key={l.key} className="cline" layout exit={{ opacity: 0, x: 40, transition: { duration: 0.25 } }}>
                         <Link to={`/product/${l.product.slug}`} onClick={closeCart} className="cline__img">
-                          <img src={l.product.images[0]} alt={l.product.name} />
+                          <img src={l.product.images[0]} alt={l.product.name} onError={hideBrokenMedia} />
                         </Link>
                         <div className="cline__body">
                           <Link to={`/product/${l.product.slug}`} onClick={closeCart} className="cline__name">{l.product.name}</Link>
@@ -104,11 +105,12 @@ export default function CartDrawer() {
                   <dl className="totals">
                     <div><dt>Subtotal</dt><dd>{formatPrice(totals.subtotal)}</dd></div>
                     {totals.discount > 0 && <div className="totals__disc"><dt>{totals.promo.scopeLabel ?? 'Offer'} discount</dt><dd>− {formatPrice(totals.discount)}</dd></div>}
-                    {totals.promo && totals.discount === 0 && <div className="totals__note"><dt>No eligible items in the bag yet</dt><dd /></div>}
+                    {totals.promo && totals.discount === 0 && <div className="totals__note"><dt>{totals.priced ? 'No eligible items in the bag yet' : 'The offer is applied — its amount is confirmed when your order is placed.'}</dt><dd /></div>}
                     <div><dt>Delivery</dt><dd>Calculated at checkout</dd></div>
                     <div className="totals__grand"><dt>Total</dt><dd>{formatPrice(totals.total)}</dd></div>
                   </dl>
                   <Button className="btn--block" onClick={() => { closeCart(); navigate('/checkout'); }}>Proceed to Checkout</Button>
+                  <button type="button" className="drawer__continue" onClick={() => { closeCart(); navigate('/cart'); }}>View bag</button>
                   <button type="button" className="drawer__continue" onClick={closeCart}>Continue shopping</button>
                 </div>
               </>

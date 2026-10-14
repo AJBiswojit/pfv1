@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { images, kurtiCollections } from '../../data/index.js';
 import { getByIds, getProductsFor } from '../../services/catalog.js';
+import { useCatalogueRevision } from '../../mock/data/products.js';
 import ProductCard from '../product/ProductCard.jsx';
 import SectionLabel from '../ui/SectionLabel.jsx';
 import ArrowLink from '../ui/ArrowLink.jsx';
@@ -20,11 +21,14 @@ const PAIRING_KEYS = ['kurtis'];
 export default function KurtiLookbook() {
   const [active, setActive] = useState('anarkalis');
   const mood = MOODS[active];
+  /* The live catalogue arrives from the backend after mount, so this memo
+     depends on the revision its boundary module publishes. */
+  const catalogueRevision = useCatalogueRevision();
   const items = useMemo(() => {
     const own = getProductsFor(active).filter((p) => p.type === 'kurtis');
     const fill = PAIRING_KEYS.flatMap(getProductsFor).filter((p) => !own.includes(p)).slice(0, Math.max(0, 4 - own.length));
     return [...own.map((p) => ({ p, pairing: false })), ...fill.map((p) => ({ p, pairing: true }))];
-  }, [active]);
+  }, [active, catalogueRevision]);
   const ownCount = items.filter((x) => !x.pairing).length;
 
   return (

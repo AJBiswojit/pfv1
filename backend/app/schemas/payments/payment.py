@@ -121,6 +121,14 @@ class VerifyPaymentRequest(BaseModel):
 class CancelSessionRequest(BaseModel):
     """
     POST /payments/session/{sessionId}/cancel
+
+    Accepts both spellings of the guest identity: the camelCase alias
+    `guestEmail` and the field name `guest_email` that the storefront's API
+    layer actually sends. Without `populate_by_name` the snake_case key is
+    silently dropped, the ownership check then sees no guest email at all and
+    every guest cancellation is rejected with 403 — so the flag is part of the
+    contract here, exactly as it is on CreatePaymentSessionRequest and
+    VerifyPaymentRequest above.
     """
     reason: Optional[str] = Field(None, description="Reason for cancellation")
     guest_email: Optional[str] = Field(
@@ -129,6 +137,8 @@ class CancelSessionRequest(BaseModel):
         max_length=255,
         description="Guest order owner email (required for guest-owned orders)",
     )
+
+    model_config = {"populate_by_name": True}
 
 
 # ---------------------------------------------------------------------------

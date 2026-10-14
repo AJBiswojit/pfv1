@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { Link } from '../../router/index.jsx';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { images, jewelleryTypes } from '../../data/index.js';
 import { getByDepartment } from '../../services/catalog.js';
+import { useCatalogueRevision } from '../../mock/data/products.js';
 import ProductCard from '../product/ProductCard.jsx';
 import Price from '../product/Price.jsx';
 import SectionLabel from '../ui/SectionLabel.jsx';
@@ -12,7 +14,10 @@ import { cx } from '../../utils/format.js';
 import { ease } from '../../utils/motion.js';
 
 export default function JewelleryTheatre() {
-  const all = useMemo(() => getByDepartment('jewellery'), []);
+  /* The live catalogue arrives from the backend after mount, so this memo
+     depends on the revision its boundary module publishes. */
+  const catalogueRevision = useCatalogueRevision();
+  const all = useMemo(() => getByDepartment('jewellery'), [catalogueRevision]);
   const [type, setType] = useState('all');
   const [spot, setSpot] = useState(null);
   const list = type === 'all' ? all : all.filter((p) => p.type === type);
@@ -33,7 +38,7 @@ export default function JewelleryTheatre() {
                 transition={{ duration: 0.55, ease: ease.out }}
               >
                 {spot ? (
-                  <img src={spot.images[0]} alt={spot.name} style={{ transform: 'none' }} />
+                  <img src={spot.images[0]} alt={spot.name} style={{ transform: 'none' }} onError={hideBrokenMedia} />
                 ) : (
                   <img src={images.jewelStage} alt="Profile portrait wearing temple jhumkas, a layered kundan necklace and maang tikka" />
                 )}

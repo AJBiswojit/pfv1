@@ -14,8 +14,10 @@
  *
  *   design              ←  this application
  *   lines[key,id,option,qty,product]  ←  cart.items[line.id, product, colour+size]
- *   totals{subtotal,discount,total,count,promo}
+ *   totals{subtotal,discount,total,count,promo,priced}
  *                       ←  cart.totals{subtotal,couponDiscount,total} + coupon
+ *                          (`priced` = the totals came from the server, not
+ *                           from the guest presentation calculation)
  *   wishlist[]          ←  WishlistContext.saved
  *   addToCart(id, option, qty)
  *                       ←  cart.addToCart(product, {size|colour, quantity})
@@ -111,8 +113,12 @@ export function ShopProvider({ children }) {
       total: cart.totals?.total ?? 0,
       count: cart.count ?? 0,
       promo: promotionFor(cart.couponCode ?? cart.coupon?.code),
+      /* Whether the numbers above are the server's own pricing or the guest
+         presentation calculation. The drawer states an offer's amount
+         differently in each case (see the port's `promo-feedback` rewrite). */
+      priced: Boolean(cart.priced),
     }),
-    [cart.totals, cart.count, cart.couponCode, cart.coupon],
+    [cart.totals, cart.count, cart.couponCode, cart.coupon, cart.priced],
   );
 
   const addToCart = useCallback(

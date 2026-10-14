@@ -210,6 +210,17 @@ export const toApiScopeFields = (draft = {}) => {
   return scope;
 };
 
+/**
+ * The coupon shape the cart/checkout pricing helpers read.
+ *
+ * `appliesTo(product)` is the backend offer model's canonical product rule
+ * (`isProductEligible` — exclusions first, then ALL_PRODUCTS /
+ * SPECIFIC_PRODUCTS / CATEGORY / COLLECTION), attached here because this is
+ * the one place an offer becomes a coupon for the order summary. Without it
+ * `calculateEligibleSubtotal` had no eligibility predicate to call at all
+ * (the Phase 4 defect: `coupon.appliesTo is not a function`, which crashed
+ * the cart page and the bag drawer for every guest who applied a code).
+ */
 export const toCheckoutCoupon = (offer) => {
   if (!offer) return null;
   return {
@@ -217,6 +228,7 @@ export const toCheckoutCoupon = (offer) => {
     summary: formatOfferDiscount(offer),
     validFrom: offer.startDate || null,
     validTo: offer.endDate || null,
+    appliesTo: (product) => isProductEligible(offer, product),
   };
 };
 
