@@ -170,6 +170,18 @@ export const ADDED = [
   "pages/Cart.jsx",
   "pages/Checkout.jsx",
   "pages/OrderSuccess.jsx",
+  /* PHASE 10 — the authentication screens. The design drew NONE: its `/account`
+     is a prototype that stores a name in `localStorage` and says "no server
+     account is created" on the page, so there is nothing to carry over. These
+     are the application's own sign-in, create-account and password-recovery
+     request screens, written in the design's vocabulary and bound to the real
+     contexts — `/reset-password` deliberately stays production-side (its
+     screen cannot complete a reset; see `docs/PHASE-10-AUTHENTICATION-UI.md`
+     §7). Declared, so the closure check knows them and never writes them. */
+  "aarna.auth.css",
+  "pages/ForgotPassword.jsx",
+  "pages/SignIn.jsx",
+  "pages/SignUp.jsx",
 ];
 
 /* ─────────────────────────── the pinned rewrites ────────────────────────── */

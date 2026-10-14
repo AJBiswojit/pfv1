@@ -261,11 +261,15 @@ test("the application's customer catch-all is still the production 404 — Phase
   assert.match(read("src/pages/NotFound.jsx"), /eyebrow="Error 404"/, "the production 404's own copy changed");
 });
 
-test("the account and the auth screens never move, with the switch on or off", () => {
-  /* PHASE 9 adopted `/cart`, `/checkout` and `/order-success` — those three DO
-     mount the port now (pinned by their own suites). What must never move is
-     the rest of the production surface, and this is it. */
-  for (const path of ["/signin", "/account/orders", "/account/addresses"]) {
+test("the account and the reset screen never move, with the switch on or off", () => {
+  /* PHASE 9 adopted `/cart`, `/checkout` and `/order-success`, and PHASE 10 the
+     three customer auth screens `/signin`, `/signup` and `/forgot-password` —
+     those six DO mount the port now (pinned by their own suites). What must
+     never move is the rest of the production surface, and this is it — with
+     `/reset-password` standing where `/signin` stood: the one auth screen Phase
+     10 deliberately kept production-side, because its flow cannot complete a
+     reset (see `docs/PHASE-10-AUTHENTICATION-UI.md` §7). */
+  for (const path of ["/reset-password", "/account/orders", "/account/addresses"]) {
     for (const [name, view] of [["on", on], ["off", off]]) {
       const markup = view.render(path);
       assert.equal(/class="aan-root"/.test(markup), false, `${path} mounted the port with the switch ${name}`);

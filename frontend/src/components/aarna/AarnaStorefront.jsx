@@ -39,6 +39,9 @@ import Info from "./pages/Info.jsx";
 import Cart from "./pages/Cart.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import OrderSuccess from "./pages/OrderSuccess.jsx";
+import SignIn from "./pages/SignIn.jsx";
+import SignUp from "./pages/SignUp.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 import JourneyFrame from "./components/layout/JourneyFrame.jsx";
 import ProtectedRoute from "../auth/ProtectedRoute.jsx";
 import { ShopProvider } from "./state/ShopContext.jsx";
@@ -50,6 +53,7 @@ import "./aarna.host.css";
 import "./aarna.listing.css";
 import "./aarna.wishlist.css";
 import "./aarna.checkout.css";
+import "./aarna.auth.css";
 
 /**
  * The legacy collection entry (`/collection/:slug`), which this application
@@ -132,6 +136,29 @@ export default function AarnaStorefront() {
                 <Route path="contact" element={<Info />} />
                 <Route path="privacy" element={<Info />} />
                 <Route path="terms" element={<Info />} />
+                {/*
+                  PHASE 10 — the customer authentication screens.
+
+                  The design never drew one: its `/account` is a prototype that
+                  stores a name in `localStorage` and says "no server account is
+                  created" on the page. So these three pages are written in the
+                  design's vocabulary and have no design counterpart — the tool
+                  checks they exist and never writes them (see ADDED in
+                  `scripts/aarna-port.js`). They are the application's own
+                  screens, mounted here exactly as Phase 9 mounted the bag:
+                  only while the switch asks for the port, inside the design's
+                  full shell — the chrome production gives them too.
+
+                  `/reset-password` is deliberately NOT here. Its production
+                  screen cannot complete a reset (`ResetPasswordRequest`
+                  requires a `userId`/`token` pair the screen never reads), and
+                  dressing an unreachable flow would be staging. It keeps the
+                  production page; so do the staff portals and `/account/**`.
+                  Recorded in `docs/PHASE-10-AUTHENTICATION-UI.md` §7.
+                */}
+                <Route path="signin" element={<SignIn />} />
+                <Route path="signup" element={<SignUp />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
                 {/* The navigation-scope register (`/women/sarees/silk`, …) and
                     `/collections` — the paths `App.jsx` sends to its navigation
                     listing. Anything else the boundary hands over resolves to

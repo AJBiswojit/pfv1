@@ -249,6 +249,45 @@ export function useAarnaJourney() {
 }
 
 /**
+ * PHASE 10 — the sixth surface: the customer authentication screens.
+ *
+ * Phase 10 asked which authentication surfaces could be adopted honestly, and
+ * the audit (`docs/PHASE-10-AUTHENTICATION-UI.md`) answered from the code: the
+ * design has NO authentication screens — its `/account` is a fifty-line
+ * prototype that stores a name in `localStorage` and says so on the page — so
+ * these three pages are written in the design's own vocabulary and carry every
+ * behaviour of the production screens unchanged. They are the application's own
+ * sign-in, create-account and password-recovery-REQUEST pages, and nothing
+ * about them is simulated: the same `AuthContext`, the same Google button, the
+ * same validators, the same `POST /auth/customer/*` calls.
+ *
+ * `/reset-password` is deliberately NOT in this set. Its production screen
+ * never reads the `userId`/`token` pair the backend requires
+ * (`ResetPasswordRequest`, `backend/app/schemas/auth/login.py`), so every
+ * submit is refused before a password can change. Dressing that flow in the
+ * design would stage a screen that cannot work; it stays on the production
+ * implementation, together with the staff portals (`/login`, `/admin/**`,
+ * `/super-admin/**`, `/employee/**`) and every `/account/**` page. The defect
+ * is recorded, not hidden: §7 of the phase document.
+ *
+ * The three paths are adopted by name — the same pattern as every surface
+ * before them — so the catch-all's semantics are untouched: they are paths this
+ * application REGISTERS, and a registered path was never the catch-all's to
+ * answer.
+ */
+export const AARNA_AUTH_PATHS = new Set(["/signin", "/signup", "/forgot-password"]);
+
+export function isAarnaAuthPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return AARNA_AUTH_PATHS.has(bare);
+}
+
+export function useAarnaAuth() {
+  const { pathname } = useLocation();
+  return isAarnaAuthPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
  * PHASE 8 — the guarded catch-all.
  *
  * The design's 404 already answers every *scoped* not-found this application has
@@ -266,10 +305,12 @@ export function useAarnaJourney() {
  *     explicitly, and `aarnaCatchAll` is false for every path under them;
  *   · every path the application DOES serve keeps its own page, including the
  *     ones the port has not adopted — `/account/**`, the order detail /
- *     tracking / return pages, the auth screens. (Phase 9 adopted the money
- *     path by name, so `/cart`, `/checkout` and `/order-success` are answered
- *     by the port's own routes while the switch is on, and by the production
- *     pages while it is off.) The test is the port's own `isRegisteredPath`,
+ *     tracking / return pages, `/reset-password` and the staff portals.
+ *     (Phase 9 adopted the money path by name, and Phase 10 the three customer
+ *     auth screens, so `/cart`, `/checkout`, `/order-success`, `/signin`,
+ *     `/signup` and `/forgot-password` are answered by the port's own routes
+ *     while the switch is on, and by the production pages while it is off.)
+ *     The test is the port's own `isRegisteredPath`,
  *     the same table its link translator uses, so the two can never disagree
  *     about what this application serves.
  */
@@ -301,8 +342,9 @@ export function useAarnaStorefront() {
   const listing = useAarnaListing();
   const wishlist = useAarnaWishlist();
   const journey = useAarnaJourney();
+  const auth = useAarnaAuth();
   const catchAll = useAarnaCatchAll();
-  return home || product || listing || wishlist || journey || catchAll;
+  return home || product || listing || wishlist || journey || auth || catchAll;
 }
 
 /**
