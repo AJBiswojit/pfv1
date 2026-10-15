@@ -396,7 +396,10 @@
 
    Every selector is written one class deeper than the rule it has to outweigh:
    the read-only input IS a `.form input`, and the design's own rule for that is
-   (0,2,1) — so it is addressed as `.pf-form .pf-account__readonly` (0,3,0). */
+   (0,2,1) — so it is addressed as `.pf-form .pf-account__readonly` (0,3,0), and
+   the screen-reader-only upload input inside `.pf-form` is addressed as
+   `.pf-form .sr-only` (0,3,0) so `.form input` / `.pf-form input` cannot expand
+   it to `width: 100%`. */
 
 .aan-root .pf-account__portrait-row {
   display: flex;
@@ -431,8 +434,16 @@
 }
 
 .aan-root .pf-account__portrait-meta {
+  position: relative;
   flex: 1 1 240px;
   min-width: 0;
+}
+
+.aan-root .pf-form .sr-only {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
 }
 
 .aan-root .pf-form .pf-account__readonly {

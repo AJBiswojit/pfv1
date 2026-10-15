@@ -142,6 +142,9 @@ async function mount() {
     { CheckoutProvider },
     { UIProvider },
     { ShopProvider },
+    catalogStore,
+    aiSessionStore,
+    aiShoppingService,
   ] = await Promise.all([
     load('/src/components/aarna/pages/account/AiMirror.jsx'),
     load('/src/components/aarna/pages/account/AiShopping.jsx'),
@@ -153,6 +156,9 @@ async function mount() {
     load('/src/context/CheckoutContext.jsx'),
     load('/src/components/aarna/state/UIContext.jsx'),
     load('/src/components/aarna/state/ShopContext.jsx'),
+    load('/src/services/catalog/catalogStore.js'),
+    load('/src/services/ai/aiSessionStore.js'),
+    load('/src/services/ai/shopping/aiShoppingService.js'),
   ]);
 
   const Providers = ({ children }) => {
@@ -188,6 +194,9 @@ async function mount() {
   return {
     vite,
     render,
+    catalogStore,
+    aiSessionStore,
+    aiShoppingService,
     mirror: (path = '/account/ai-mirror') => render(AiMirror, path),
     shopping: (path = '/account/ai-shopping') => render(AiShopping, path),
   };
@@ -637,4 +646,342 @@ test('the renderer’s own attribute order is not what is being asserted', () =>
      `aarnaOrdersPage` does for the same reason. */
   const markup = app.mirror();
   assert.equal(markup.includes('<div class="'), true);
+});
+
+/* ── 7 · Gate 5 — catalogue synchronization, session integrity & service freshness ── */
+
+test('Defect A: AI Shopping subscribes to CATALOG_CHANGED_EVENT and updates context strip and conversation when the catalogue hydrates or refreshes', () => {
+  const page = code(SHOPPING);
+  assert.match(page, /import \{ CATALOG_CHANGED_EVENT \} from '\.\.\/\.\.\/\.\.\/\.\.\/services\/catalog\/catalogStore\.js';/,
+    'AiShopping.jsx does not import CATALOG_CHANGED_EVENT from catalogStore');
+  assert.match(page, /window\.addEventListener\(CATALOG_CHANGED_EVENT, sync\);/,
+    'AiShopping.jsx does not subscribe to CATALOG_CHANGED_EVENT');
+  assert.match(page, /window\.removeEventListener\(CATALOG_CHANGED_EVENT, sync\);/,
+    'AiShopping.jsx does not clean up its CATALOG_CHANGED_EVENT listener');
+  assert.match(page, /setMessages\(\(current\) => rehydrateMessages\(current\)\);/,
+    'AiShopping.jsx does not rehydrate messages when a catalogue event fires');
+
+  /* Before catalogue hydration, `?product=prod-gate5-saree` cannot resolve. */
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
+  const beforeMarkup = app.shopping('/account/ai-shopping?product=prod-gate5-saree');
+  assert.equal(/pf-ai__context/.test(beforeMarkup), false, 'context strip rendered before catalogue hydration');
+
+  /* Hydrate catalogue: the context strip resolves and renders the piece. */
+  app.catalogStore.applyCatalogSnapshot({
+    products: [
+      {
+        id: 'prod-gate5-saree',
+        name: 'Pratikshya Crimson Organza Saree',
+        slug: 'crimson-organza-saree',
+        department: 'women',
+        category: 'sarees',
+        subcategory: 'silk',
+        fabric: 'Organza',
+        colors: ['Crimson'],
+        occasion: ['Cocktail'],
+        collection: 'Festive Atelier',
+        collections: ['Festive Atelier'],
+        price: 14500,
+        availability: 'in-stock',
+        stock: 5,
+        status: 'PUBLISHED',
+        image: '/aarna-design/p-saree-ivory.webp',
+      },
+    ],
+    categories: [{ id: 'sarees', name: 'Sarees', slug: 'sarees', status: 'ACTIVE' }],
+    collections: [{ id: 'festive-atelier', name: 'Festive Atelier', slug: 'festive-atelier', status: 'ACTIVE' }],
+  });
+
+  const afterMarkup = app.shopping('/account/ai-shopping?product=prod-gate5-saree');
+  assert.match(afterMarkup, /class="pf-ai__context"/, 'context strip did not appear after catalogue hydration');
+  assert.match(afterMarkup, /Pratikshya Crimson Organza Saree/, 'context strip did not render hydrated product name');
+  assert.match(afterMarkup, /href="\/product\/crimson-organza-saree"/, 'context strip did not link to hydrated product slug');
+
+  /* Refresh catalogue with updated product metadata: UI reflects the refreshed product. */
+  app.catalogStore.applyCatalogSnapshot({
+    products: [
+      {
+        id: 'prod-gate5-saree',
+        name: 'Pratikshya Emerald Organza Saree',
+        slug: 'emerald-organza-saree',
+        department: 'women',
+        category: 'sarees',
+        subcategory: 'silk',
+        fabric: 'Organza',
+        colors: ['Emerald'],
+        occasion: ['Cocktail'],
+        price: 15800,
+        availability: 'in-stock',
+        stock: 3,
+        status: 'PUBLISHED',
+        image: '/aarna-design/p-saree-ivory.webp',
+      },
+    ],
+    categories: [{ id: 'sarees', name: 'Sarees', slug: 'sarees', status: 'ACTIVE' }],
+    collections: [],
+  });
+
+  const refreshedMarkup = app.shopping('/account/ai-shopping?product=prod-gate5-saree');
+  assert.match(refreshedMarkup, /Pratikshya Emerald Organza Saree/, 'context strip did not update after catalogue refresh');
+  assert.match(refreshedMarkup, /href="\/product\/emerald-organza-saree"/);
+
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
+});
+
+test('Defect B: persisted conversation product IDs survive unhydrated restores and early writes, then resolve once the catalogue hydrates', () => {
+  const { AI_SESSION_SCOPES, saveAiSession, loadAiSession, clearAiSession } = app.aiSessionStore;
+  storage.clear();
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
+
+  /* 1. Seed a conversation with all five product-reference shapes plus a genuinely empty TEXT message. */
+  saveAiSession(AI_SESSION_SCOPES.SHOPPING, 'guest', [
+    {
+      id: 'msg-empty',
+      role: 'assistant',
+      type: 'TEXT',
+      text: 'Welcome to the atelier.',
+      products: [],
+    },
+    {
+      id: 'msg-recs',
+      role: 'assistant',
+      type: 'PRODUCT_RECOMMENDATIONS',
+      text: 'Here are the sarees I would point you to first.',
+      products: [
+        { product: { id: 'prod-gate5-1', name: 'Crimson Saree' }, reason: 'matches' },
+        { product: { id: 'prod-gate5-missing', name: 'Retired Piece' }, reason: 'matches' },
+      ],
+      outfit: {
+        main: { id: 'prod-gate5-1' },
+        pieces: [{ id: 'prod-gate5-2' }],
+      },
+      product: { id: 'prod-gate5-1' },
+      comparison: {
+        products: [{ id: 'prod-gate5-1' }, { id: 'prod-gate5-2' }],
+        rows: [],
+        verdict: '',
+      },
+    },
+  ]);
+
+  /* 2. Restore the session while the catalogue is still unhydrated (empty). */
+  const restoredUnhydrated = loadAiSession(AI_SESSION_SCOPES.SHOPPING, 'guest');
+  assert.equal(restoredUnhydrated.length, 2);
+  assert.deepEqual(restoredUnhydrated[0].productIds, [], 'genuinely empty message did not stay empty');
+  assert.equal(restoredUnhydrated[0].outfitMainId, null);
+  assert.deepEqual(restoredUnhydrated[0].outfitPieceIds, []);
+  assert.equal(restoredUnhydrated[0].singleProductId, null);
+  assert.deepEqual(restoredUnhydrated[0].comparisonIds, []);
+
+  assert.deepEqual(restoredUnhydrated[1].productIds, ['prod-gate5-1', 'prod-gate5-missing'],
+    'loadAiSession wiped persisted productIds');
+  assert.equal(restoredUnhydrated[1].outfitMainId, 'prod-gate5-1',
+    'loadAiSession wiped persisted outfitMainId');
+  assert.deepEqual(restoredUnhydrated[1].outfitPieceIds, ['prod-gate5-2'],
+    'loadAiSession wiped persisted outfitPieceIds');
+  assert.equal(restoredUnhydrated[1].singleProductId, 'prod-gate5-1',
+    'loadAiSession wiped persisted singleProductId');
+  assert.deepEqual(restoredUnhydrated[1].comparisonIds, ['prod-gate5-1', 'prod-gate5-2'],
+    'loadAiSession wiped persisted comparisonIds');
+
+  /* 3. Render AI Shopping while catalogue is unhydrated, then simulate the early
+     persistence write that occurs before catalogue hydration finishes. */
+  const unhydratedMarkup = app.shopping('/account/ai-shopping');
+  assert.match(unhydratedMarkup, /Here are the sarees I would point you to first\./);
+  assert.equal(/Crimson Saree/.test(unhydratedMarkup), false,
+    'unhydrated render fabricated a product card before catalogue hydration');
+
+  /* Simulate the early persistence effect writing the unhydrated rehydrated message
+     (`products: []`, `outfit: undefined`, `product: undefined`, `comparison: undefined`). */
+  const unhydratedRehydrated = restoredUnhydrated.map((msg) => ({
+    ...msg,
+    products: [],
+    outfit: undefined,
+    product: undefined,
+    comparison: undefined,
+  }));
+  saveAiSession(AI_SESSION_SCOPES.SHOPPING, 'guest', unhydratedRehydrated);
+
+  const afterEarlySave = loadAiSession(AI_SESSION_SCOPES.SHOPPING, 'guest');
+  assert.deepEqual(afterEarlySave[1].productIds, ['prod-gate5-1', 'prod-gate5-missing'],
+    'early save before catalogue hydration overwrote productIds with []');
+  assert.equal(afterEarlySave[1].outfitMainId, 'prod-gate5-1',
+    'early save before catalogue hydration overwrote outfitMainId with null');
+  assert.deepEqual(afterEarlySave[1].outfitPieceIds, ['prod-gate5-2'],
+    'early save before catalogue hydration overwrote outfitPieceIds with []');
+  assert.equal(afterEarlySave[1].singleProductId, 'prod-gate5-1',
+    'early save before catalogue hydration overwrote singleProductId with null');
+  assert.deepEqual(afterEarlySave[1].comparisonIds, ['prod-gate5-1', 'prod-gate5-2'],
+    'early save before catalogue hydration overwrote comparisonIds with []');
+
+  /* 4. Hydrate catalogue (`prod-gate5-1` and `prod-gate5-2` resolve; `prod-gate5-missing`
+     stays permanently unavailable without crashing). */
+  app.catalogStore.applyCatalogSnapshot({
+    products: [
+      {
+        id: 'prod-gate5-1',
+        name: 'Pratikshya Crimson Silk Saree',
+        slug: 'crimson-silk-saree',
+        department: 'women',
+        category: 'sarees',
+        subcategory: 'silk',
+        fabric: 'Silk',
+        colors: ['Crimson'],
+        occasion: ['Wedding'],
+        price: 18500,
+        availability: 'in-stock',
+        stock: 4,
+        status: 'PUBLISHED',
+        image: '/aarna-design/p-saree-ivory.webp',
+      },
+      {
+        id: 'prod-gate5-2',
+        name: 'Pratikshya Gold Brocade Dupatta',
+        slug: 'gold-brocade-dupatta',
+        department: 'women',
+        category: 'essentials',
+        subcategory: 'dupattas-stoles',
+        fabric: 'Brocade',
+        colors: ['Gold'],
+        occasion: ['Wedding'],
+        price: 4500,
+        availability: 'in-stock',
+        stock: 6,
+        status: 'PUBLISHED',
+        image: '/aarna-design/p-saree-ivory.webp',
+      },
+    ],
+    categories: [
+      { id: 'sarees', name: 'Sarees', slug: 'sarees', status: 'ACTIVE' },
+      { id: 'essentials', name: 'Essentials', slug: 'essentials', status: 'ACTIVE' },
+    ],
+    collections: [],
+  });
+
+  const hydratedMarkup = app.shopping('/account/ai-shopping');
+  assert.match(hydratedMarkup, /Pratikshya Crimson Silk Saree/,
+    'hydrated render did not reconstruct saved recommendation product card');
+  assert.match(hydratedMarkup, /Pratikshya Gold Brocade Dupatta/,
+    'hydrated render did not reconstruct saved outfit/comparison companion piece');
+
+  /* 5. Malformed persisted session payloads are handled safely without throwing. */
+  storage.set('pratikshya_ai_shopping_session_malformed', JSON.stringify({ version: 1, messages: 'invalid' }));
+  assert.deepEqual(loadAiSession(AI_SESSION_SCOPES.SHOPPING, 'malformed'), []);
+  storage.set('pratikshya_ai_shopping_session_malformed', JSON.stringify({
+    version: 1,
+    messages: [null, 42, { id: 'm-ok', role: 'assistant', text: 'Safe', productIds: [null, '', 'prod-gate5-1'] }],
+  }));
+  const malformedLoaded = loadAiSession(AI_SESSION_SCOPES.SHOPPING, 'malformed');
+  assert.equal(malformedLoaded.length, 1);
+  assert.deepEqual(malformedLoaded[0].productIds, ['prod-gate5-1']);
+
+  clearAiSession(AI_SESSION_SCOPES.SHOPPING, 'guest');
+  storage.clear();
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
+});
+
+test('Defect C: aiShoppingService updates keyword vocabularies and product lookups when catalogue data arrives or refreshes after module import', () => {
+  const {
+    CATEGORY_KEYWORDS,
+    FABRIC_KEYWORDS,
+    COLOUR_KEYWORDS,
+    OCCASION_KEYWORDS,
+    COLLECTION_KEYWORDS,
+    resolveShoppingIntent,
+    answerShoppingQuestion,
+  } = app.aiShoppingService;
+
+  /* 1. Start with an empty catalogue (simulating module import before hydration). */
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
+  assert.equal(COLOUR_KEYWORDS.length, 0, 'empty catalogue should have zero product-derived colours');
+
+  /* 2. Hydrate catalogue with attributes that only exist in runtime data. */
+  app.catalogStore.applyCatalogSnapshot({
+    products: [
+      {
+        id: 'prod-gate5-organza',
+        name: 'Pratikshya Crimson Organza Saree',
+        slug: 'crimson-organza-saree',
+        department: 'women',
+        category: 'sarees',
+        subcategory: 'silk',
+        style: 'Kanjeevaram',
+        fabric: 'Organza',
+        colors: ['Crimson'],
+        occasion: ['Cocktail'],
+        collection: 'Royal Heritage',
+        collections: ['Royal Heritage'],
+        price: 16500,
+        availability: 'in-stock',
+        stock: 4,
+        status: 'PUBLISHED',
+      },
+    ],
+    categories: [
+      { id: 'sarees', name: 'Sarees', slug: 'sarees', status: 'ACTIVE' },
+      { id: 'kaftans', name: 'Kaftans', slug: 'kaftans', department: 'women', status: 'ACTIVE' },
+    ],
+    collections: [
+      { id: 'royal-heritage', name: 'Royal Heritage', slug: 'royal-heritage', status: 'ACTIVE' },
+    ],
+  });
+
+  assert.ok(COLOUR_KEYWORDS.some((group) => group.id === 'Crimson'),
+    'COLOUR_KEYWORDS did not update with hydrated product colour');
+  assert.ok(FABRIC_KEYWORDS.some((group) => group.id === 'Organza'),
+    'FABRIC_KEYWORDS did not update with hydrated product fabric');
+  assert.ok(OCCASION_KEYWORDS.some((group) => group.id === 'Cocktail'),
+    'OCCASION_KEYWORDS did not update with hydrated product occasion');
+  assert.ok(COLLECTION_KEYWORDS.some((group) => group.id === 'Royal Heritage'),
+    'COLLECTION_KEYWORDS did not update with hydrated collection');
+  assert.ok(CATEGORY_KEYWORDS.some((group) => group.id === 'kaftans'),
+    'CATEGORY_KEYWORDS did not include newly hydrated active category');
+
+  const intent = resolveShoppingIntent('Show me crimson organza sarees for cocktail from Royal Heritage');
+  assert.equal(intent.category?.id, 'sarees');
+  assert.equal(intent.colour?.id, 'Crimson');
+  assert.equal(intent.fabric?.id, 'Organza');
+  assert.equal(intent.occasion?.id, 'Cocktail');
+  assert.equal(intent.collection?.id, 'Royal Heritage');
+
+  const answer = answerShoppingQuestion({
+    question: 'Show me crimson organza sarees for cocktail',
+    products: app.catalogStore.getAllProducts(),
+  });
+  assert.equal(answer.type, 'PRODUCT_RECOMMENDATIONS');
+  assert.equal(answer.products.length, 1);
+  assert.equal(answer.products[0].product.id, 'prod-gate5-organza');
+
+  /* 3. Subsequent catalogue refresh updates vocabularies and lookups again. */
+  app.catalogStore.applyCatalogSnapshot({
+    products: [
+      {
+        id: 'prod-gate5-velvet',
+        name: 'Pratikshya Sapphire Velvet Lehenga',
+        slug: 'sapphire-velvet-lehenga',
+        department: 'women',
+        category: 'lehengas',
+        subcategory: 'bridal',
+        fabric: 'Velvet',
+        colors: ['Sapphire'],
+        occasion: ['Reception'],
+        collection: 'Moonlight Edit',
+        collections: ['Moonlight Edit'],
+        price: 28000,
+        availability: 'in-stock',
+        stock: 2,
+        status: 'PUBLISHED',
+      },
+    ],
+    categories: [{ id: 'lehengas', name: 'Lehengas', slug: 'lehengas', status: 'ACTIVE' }],
+    collections: [{ id: 'moonlight-edit', name: 'Moonlight Edit', slug: 'moonlight-edit', status: 'ACTIVE' }],
+  });
+
+  const refreshedIntent = resolveShoppingIntent('Show me sapphire velvet lehengas for reception');
+  assert.equal(refreshedIntent.category?.id, 'lehengas');
+  assert.equal(refreshedIntent.colour?.id, 'Sapphire');
+  assert.equal(refreshedIntent.fabric?.id, 'Velvet');
+  assert.equal(refreshedIntent.occasion?.id, 'Reception');
+
+  app.catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
 });

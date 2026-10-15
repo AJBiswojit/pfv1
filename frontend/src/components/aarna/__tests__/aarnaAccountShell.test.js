@@ -261,6 +261,14 @@ async function mount(define) {
     { default: ProductionAccountNav },
     { default: PortedAccountNav },
     { ACCOUNT_NAV_ITEMS },
+    { default: AarnaLayout },
+    { UIProvider },
+    { ShopProvider },
+    { default: AccountShell },
+    { default: AccountSettings },
+    { default: AccountSecurity },
+    { default: AccountPreferences },
+    { default: InstagramRewards },
   ] = await Promise.all([
     load("/src/layouts/CustomerLayout.jsx"),
     load("/src/context/AuthContext.jsx"),
@@ -275,6 +283,14 @@ async function mount(define) {
     load("/src/components/account/AccountNav.jsx"),
     load("/src/components/aarna/pages/account/AccountNav.jsx"),
     load("/src/components/account/AccountNav.jsx"),
+    load("/src/components/aarna/components/layout/Layout.jsx"),
+    load("/src/components/aarna/state/UIContext.jsx"),
+    load("/src/components/aarna/state/ShopContext.jsx"),
+    load("/src/components/account/AccountShell.jsx"),
+    load("/src/pages/account/AccountSettings.jsx"),
+    load("/src/pages/account/AccountSecurity.jsx"),
+    load("/src/pages/account/AccountPreferences.jsx"),
+    load("/src/pages/account/InstagramRewards.jsx"),
   ]);
 
   /* The stack the real application builds — ShoppingContext mounts the wishlist
@@ -304,10 +320,29 @@ async function mount(define) {
     ProductionAccountNav,
     PortedAccountNav,
     ACCOUNT_NAV_ITEMS,
+    AccountShell,
+    AccountSettings,
+    AccountSecurity,
+    AccountPreferences,
+    InstagramRewards,
     /* The whole application chrome, exactly as a browser reaches it. */
     render: (path) => atPath(React.createElement(CustomerLayout), path),
     /* One component, inside the application's own providers. */
     element: (element, path) => atPath(element, path),
+    /* One screen mounted inside the Aarna layout shell (`<main id="main">`). */
+    aarnaPage: (element, path) =>
+      atPath(
+        React.createElement(
+          "div",
+          { className: "aan-root" },
+          React.createElement(
+            UIProvider,
+            null,
+            React.createElement(ShopProvider, null, React.createElement(AarnaLayout, null, element)),
+          ),
+        ),
+        path,
+      ),
     /* The frame, for shell-level assertions. */
     frame: (path, props = {}) =>
       atPath(React.createElement(AccountFrame, props, React.createElement("p", null, "body")), path),
@@ -743,5 +778,37 @@ test("the port's registry declares its own account files, once each", () => {
   ]) {
     assert.equal(count(added, `"${entry}"`), 1, `${entry} is not declared exactly once in the registry`);
     assert.ok(existsSync(join(ROOT, "src/components/aarna", entry)), `${entry} is declared but does not exist`);
+  }
+});
+
+test("the four production AccountShell screens render one primary <main> landmark with zero nested <main> elements in both Aarna and Atelier modes", () => {
+  const screens = [
+    { path: "/account/settings", Component: on.AccountSettings, OffComponent: off.AccountSettings, crumb: "Settings &amp; Preferences" },
+    { path: "/account/security", Component: on.AccountSecurity, OffComponent: off.AccountSecurity, crumb: "Security" },
+    { path: "/account/preferences", Component: on.AccountPreferences, OffComponent: off.AccountPreferences, crumb: "Style Preferences" },
+    { path: "/account/instagram-rewards", Component: on.InstagramRewards, OffComponent: off.InstagramRewards, crumb: "Share &amp; Earn" },
+  ];
+
+  for (const { path, Component, OffComponent, crumb } of screens) {
+    /* Aarna mode: the outer `Layout` owns `<main id="main">`; `AccountShell`
+       must not wrap its section in a second `<main>`. */
+    const aarnaMarkup = on.aarnaPage(React.createElement(Component, null), path);
+    assert.equal(count(aarnaMarkup, "<main"), 1, `${path} in Aarna mode did not render exactly one <main> opening tag`);
+    assert.equal(count(aarnaMarkup, "</main>"), 1, `${path} in Aarna mode did not render exactly one </main> closing tag`);
+    assert.match(aarnaMarkup, /<main id="main">/, `${path} in Aarna mode lost the outer <main id="main"> landmark`);
+    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(aarnaMarkup), false, `${path} in Aarna mode nested a <main> inside <main id="main">`);
+    assert.match(aarnaMarkup, /class="skip-link"/, `${path} in Aarna mode lost the Aarna layout shell`);
+    assert.match(aarnaMarkup, /aria-label="Account navigation"/, `${path} in Aarna mode lost the AccountShell navigation`);
+    assert.match(aarnaMarkup, new RegExp(crumb), `${path} in Aarna mode lost its breadcrumb/content`);
+
+    /* Non-Aarna / Atelier mode: `CustomerLayout` has no `<main>`, so
+       `AccountShell` retains the primary `<main>` landmark. */
+    const atelierMarkup = off.element(React.createElement(OffComponent, null), path);
+    assert.equal(count(atelierMarkup, "<main"), 1, `${path} in Atelier mode did not render exactly one <main> opening tag`);
+    assert.equal(count(atelierMarkup, "</main>"), 1, `${path} in Atelier mode did not render exactly one </main> closing tag`);
+    assert.match(atelierMarkup, /^<main><section\b/, `${path} in Atelier mode lost AccountShell's primary <main> landmark`);
+    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(atelierMarkup), false, `${path} in Atelier mode nested a <main>`);
+    assert.match(atelierMarkup, /aria-label="Account navigation"/, `${path} in Atelier mode lost the AccountShell navigation`);
+    assert.match(atelierMarkup, new RegExp(crumb), `${path} in Atelier mode lost its breadcrumb/content`);
   }
 });

@@ -188,7 +188,7 @@ async function mount(define) {
   const load = (path) => vite.ssrLoadModule(path);
   const [
     { default: CustomerLayout },
-    { AuthProvider },
+    { default: AuthContext, AuthProvider },
     { AccountProvider },
     { InventoryProvider },
     { ShoppingProvider },
@@ -210,10 +210,23 @@ async function mount(define) {
     load("/src/utils/shopping.js"),
   ]);
 
-  let tree = React.createElement(CustomerLayout);
-  for (const Provider of [CheckoutProvider, OrderProvider, ShoppingProvider, InventoryProvider, AccountProvider, AuthProvider]) {
-    tree = React.createElement(Provider, null, tree);
+  let innerTree = React.createElement(CustomerLayout);
+  for (const Provider of [CheckoutProvider, OrderProvider, ShoppingProvider, InventoryProvider, AccountProvider]) {
+    innerTree = React.createElement(Provider, null, innerTree);
   }
+  const tree = React.createElement(AuthProvider, null, innerTree);
+  const signedInTree = React.createElement(
+    AuthContext.Provider,
+    {
+      value: {
+        user: { id: "cust-1", firstName: "Ananya", lastName: "Sharma", email: "ananya@example.com" },
+        isAuthenticated: true,
+        isLoading: false,
+        signOut: NOOP,
+      },
+    },
+    innerTree,
+  );
 
   return {
     vite,
@@ -226,6 +239,14 @@ async function mount(define) {
           MemoryRouter,
           { initialEntries: [path] },
           React.createElement(Suspense, { fallback: null }, tree),
+        ),
+      ),
+    renderSignedIn: (path) =>
+      renderToStaticMarkup(
+        React.createElement(
+          MemoryRouter,
+          { initialEntries: [path] },
+          React.createElement(Suspense, { fallback: null }, signedInTree),
         ),
       ),
   };
@@ -472,4 +493,57 @@ test("the ported file is the design's file, adapted by exactly the pinned amount
   assert.match(ported, /<div className="grid-4">/);
   assert.match(ported, /<ProductCard product=\{card\} \/>/);
   assert.match(design, /getByIds\(wishlist\)/, "the design file changed — the pin in the port tool needs re-measuring");
+});
+
+/* ── 6 · account-frame integration for signed-in shoppers vs guest access ─── */
+
+test("guest `/account/wishlist` and `/wishlist` keep the standalone wishlist shell with no account navigation", () => {
+  saveGuestWishlist([]);
+  const guestCanonical = on.render("/account/wishlist");
+  assert.match(guestCanonical, /class="shop container"/, "guest `/account/wishlist` lost the standalone shop container");
+  assert.equal(/class="info container account pf-account"/.test(guestCanonical), false, "guest `/account/wishlist` rendered the signed-in account frame");
+  assert.equal(/aria-label="Account navigation"/.test(guestCanonical), false, "guest `/account/wishlist` rendered authenticated account navigation");
+  assert.equal((guestCanonical.match(/aria-label="Breadcrumb"/g) ?? []).length, 1, "guest `/account/wishlist` rendered duplicate breadcrumbs");
+
+  const guestLegacy = on.render("/wishlist");
+  assert.match(guestLegacy, /class="aan-root"/, "guest `/wishlist` did not mount the port");
+  assert.equal(/aria-label="Account navigation"/.test(guestLegacy), false, "guest `/wishlist` rendered authenticated account navigation");
+});
+
+test("signed-in `/account/wishlist` renders inside `AccountFrame` with active Wishlist navigation and preserves wishlist state and actions", () => {
+  saveGuestWishlist([]);
+  const emptySignedIn = on.renderSignedIn("/account/wishlist");
+
+  assert.match(emptySignedIn, /class="info container account pf-account"/, "signed-in `/account/wishlist` did not render inside `AccountFrame`");
+  assert.equal(/class="shop container"/.test(emptySignedIn), false, "signed-in `/account/wishlist` rendered a duplicate standalone `.shop.container` wrapper");
+  assert.match(emptySignedIn, /<nav class="pf-account__nav" aria-label="Account navigation">/, "signed-in `/account/wishlist` is missing the shared account navigation");
+  assert.equal((emptySignedIn.match(/aria-label="Breadcrumb"/g) ?? []).length, 1, "signed-in `/account/wishlist` rendered duplicate breadcrumb trails");
+  assert.equal((emptySignedIn.match(/<h1\b/g) ?? []).length, 1, "signed-in `/account/wishlist` rendered more than one `<h1>` heading");
+  assert.match(emptySignedIn, /<h1 class="display pf-account__name">Wishlist<\/h1>/, "signed-in `/account/wishlist` did not title the account frame `Wishlist`");
+  assert.match(emptySignedIn, /<h2 class="display shop__title">Your <em>wishlist<\/em><\/h2>/, "signed-in `/account/wishlist` lost its section heading");
+  assert.match(emptySignedIn, /<span aria-current="page">Wishlist<\/span>/, "signed-in `/account/wishlist` breadcrumb does not end on Wishlist");
+
+  const navLinks = [...emptySignedIn.matchAll(/<a ([^>]*class="[^"]*pf-account__nav-link[^"]*"[^>]*)>([\s\S]*?)<\/a>/g)].map(([, attrs, inner]) => ({
+    href: (attrs.match(/href="([^"]*)"/) ?? [])[1] ?? null,
+    className: (attrs.match(/class="([^"]*)"/) ?? [])[1] ?? "",
+    ariaCurrent: (attrs.match(/aria-current="([^"]*)"/) ?? [])[1] ?? null,
+    inner,
+  }));
+  assert.equal(navLinks.length, 11, "signed-in `/account/wishlist` did not render all eleven account navigation tabs");
+  const activeLinks = navLinks.filter((link) => link.ariaCurrent === "page" || link.className.includes("is-active"));
+  assert.deepEqual(activeLinks.map((link) => link.href), ["/account/wishlist"], "the Wishlist tab is not the sole active account navigation item on `/account/wishlist`");
+  assert.equal(/pf-account__nav-count/.test(emptySignedIn), false, "an empty signed-in wishlist rendered a badge count");
+
+  /* Populated state inside the signed-in account frame preserves cards, counts, and actions. */
+  saveGuestWishlist(["phase8-banarasi", "phase8-blouse", "phase8-sold-out", GONE_ID]);
+  const populatedSignedIn = on.renderSignedIn("/account/wishlist");
+  assert.match(populatedSignedIn, /<span class="pf-account__nav-count">4<\/span>/, "signed-in account navigation did not show the saved count badge on the Wishlist tab");
+  assert.match(populatedSignedIn, /class="shop__count">4 pieces saved</, "signed-in `/account/wishlist` did not state the saved count");
+  assert.match(populatedSignedIn, /Phase 8 Banarasi/, "signed-in `/account/wishlist` did not render saved product cards");
+  assert.match(populatedSignedIn, /<span>Add to bag<\/span>/, "signed-in `/account/wishlist` lost the add-to-bag action");
+  assert.match(populatedSignedIn, /<span>Choose options<\/span>/, "signed-in `/account/wishlist` lost the variant-choice action");
+  assert.match(populatedSignedIn, /<span>Unavailable<\/span>/, "signed-in `/account/wishlist` lost the unavailable state");
+  assert.match(populatedSignedIn, /class="wishlist-gone__title">No longer available</, "signed-in `/account/wishlist` lost the gone-piece state");
+  assert.match(populatedSignedIn, /class="wishlist-remove"[^>]*>Remove</, "signed-in `/account/wishlist` lost the remove action");
+  saveGuestWishlist([]);
 });

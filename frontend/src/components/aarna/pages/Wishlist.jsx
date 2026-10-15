@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from '../router/index.jsx';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext.jsx';
 import { useWishlist } from '../../../context/WishlistContext.jsx';
 import { useShopping } from '../../../context/ShoppingContext.jsx';
 import { useProductCovers } from '../../../hooks/useMedia.js';
 import { normalizeMediaReference } from '../../../services/media/mediaPaths.js';
 import { productHref } from '../../../data/products/index.js';
 import { requiresVariantChoice } from '../../../utils/shopping.js';
+import AccountFrame from './account/AccountFrame.jsx';
 import ProductCard from '../components/product/ProductCard.jsx';
 import Button from '../components/ui/Button.jsx';
 import { toDesignProduct } from '../mock/data/products.js';
 import { useUI } from '../state/UIContext.jsx';
 
 export default function Wishlist() {
+  const { isAuthenticated } = useAuth();
   const wishlist = useWishlist();
   /* The move between the bag and the list, from this application's own
      shopping state — the same action the production wishlist calls. */
@@ -62,14 +65,9 @@ export default function Wishlist() {
     if (ok) openCart();
   };
   const remove = (entry) => wishlist.remove(entry.product ?? entry.id);
-  return (
-    <div className="shop container">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Wishlist</span></nav>
-      <header className="shop__head">
-        <p className="label">Saved pieces</p>
-        <h1 className="display shop__title">Wishlist</h1>
-        <p className="shop__count">{firstLoad ? 'Loading…' : countLabel}</p>
-      </header>
+
+  const content = (
+    <>
       {failed ? (
         <WishlistError status={wishlist.errorStatus} />
       ) : firstLoad ? (
@@ -100,6 +98,39 @@ export default function Wishlist() {
           ))}
         </div>
       )}
+    </>
+  );
+
+  /* Signed-in shoppers view `/account/wishlist` inside the shared customer
+     account frame and navigation (`OrderFrame`'s own rule); guests keep the
+     standalone wishlist shell without fabricated account chrome. */
+  if (isAuthenticated) {
+    return (
+      <AccountFrame
+        breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Wishlist' }]}
+        label="Your account"
+        title="Wishlist"
+      >
+        <section className="pf-account__section" aria-label="Saved pieces">
+          <header className="shop__head">
+            <p className="label">Saved pieces</p>
+            <h2 className="display shop__title">Your <em>wishlist</em></h2>
+            <p className="shop__count">{firstLoad ? 'Loading…' : countLabel}</p>
+          </header>
+          {content}
+        </section>
+      </AccountFrame>
+    );
+  }
+  return (
+    <div className="shop container">
+      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Wishlist</span></nav>
+      <header className="shop__head">
+        <p className="label">Saved pieces</p>
+        <h1 className="display shop__title">Wishlist</h1>
+        <p className="shop__count">{firstLoad ? 'Loading…' : countLabel}</p>
+      </header>
+      {content}
     </div>
   );
 }
