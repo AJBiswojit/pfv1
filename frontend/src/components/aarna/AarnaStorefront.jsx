@@ -26,7 +26,7 @@
  * reachable from a customer's page.
  */
 
-import { useEffect } from "react";
+import { lazy, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
@@ -42,6 +42,34 @@ import OrderSuccess from "./pages/OrderSuccess.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+/* PHASE 11 — the migrated account screens. The port's own pages are imported
+   where the port mounts them (as the bag, the journey and the auth screens above
+   are): the boundary's chunk carries them, and the account's route-level code
+   splitting is unchanged — `App.jsx` keeps its own lazy pages for the Atelier
+   storefront, and this file keeps its own component for the port. Stage 2.2
+   redrew `/account`; Stage 2.3 redrew the profile and the addresses; Stage 2.4
+   redrew the four order screens. Their names are the port's own, deliberately
+   distinct from the `lazy` declarations below, so the two kinds of route can
+   never be confused: everything declared `lazy` below is still production's page,
+   and a name that is not in that list is this boundary's own. */
+import AccountOverview from "./pages/account/Overview.jsx";
+import AccountProfilePage from "./pages/account/Profile.jsx";
+import AccountAddressesPage from "./pages/account/Addresses.jsx";
+/* The order screens share one frame (`pages/account/OrderFrame.jsx`) — the
+   port's equivalent of production's `OrderPageShell`, which is what keeps the
+   guest-order surface open: a guest gets the order and the two ways to keep it,
+   a signed-in customer gets the account frame, and none of them is behind a
+   guard production does not put them behind. */
+import AccountOrdersPage from "./pages/account/Orders.jsx";
+import AccountOrderDetailPage from "./pages/account/OrderDetail.jsx";
+import AccountOrderTrackingPage from "./pages/account/OrderTracking.jsx";
+import AccountOrderReturnPage from "./pages/account/OrderReturn.jsx";
+/* Stage 2.5 redrew the two AI screens. Both sit inside the family's own guard
+   (production wraps them in the same `ProtectedRoute`), and both reuse the
+   production widgets they were built on — the pages here are the port's, the
+   machines inside them are production's, unchanged. */
+import AccountAiMirrorPage from "./pages/account/AiMirror.jsx";
+import AccountAiShoppingPage from "./pages/account/AiShopping.jsx";
 import JourneyFrame from "./components/layout/JourneyFrame.jsx";
 import ProtectedRoute from "../auth/ProtectedRoute.jsx";
 import { ShopProvider } from "./state/ShopContext.jsx";
@@ -54,6 +82,27 @@ import "./aarna.listing.css";
 import "./aarna.wishlist.css";
 import "./aarna.checkout.css";
 import "./aarna.auth.css";
+import "./aarna.account.css";
+import "./aarna.orders.css";
+import "./aarna.ai.css";
+
+/*
+  PHASE 11 — the customer account's thirteen pages.
+
+  The boundary adopts the whole account family (see the route table below), but
+  the pages themselves migrate one at a time. A screen that has not been redrawn
+  yet renders the production component, imported here exactly as `App.jsx`
+  imports it and lazy for exactly the reason `App.jsx` loads it lazily — the
+  route-level code splitting around the account is unchanged, and a page that
+  suspends falls to the application's own `Suspense` boundary either way. A
+  screen that HAS been redrawn (the overview, at the top of this file) renders
+  the port's own page inside the shared frame, so the two kinds of route are
+  never confused: everything declared `lazy` below is still production's.
+*/
+const AccountSettings = lazy(() => import("../../pages/account/AccountSettings.jsx"));
+const AccountSecurity = lazy(() => import("../../pages/account/AccountSecurity.jsx"));
+const AccountPreferences = lazy(() => import("../../pages/account/AccountPreferences.jsx"));
+const InstagramRewards = lazy(() => import("../../pages/account/InstagramRewards.jsx"));
 
 /**
  * The legacy collection entry (`/collection/:slug`), which this application
@@ -153,12 +202,63 @@ export default function AarnaStorefront() {
                   screen cannot complete a reset (`ResetPasswordRequest`
                   requires a `userId`/`token` pair the screen never reads), and
                   dressing an unreachable flow would be staging. It keeps the
-                  production page; so do the staff portals and `/account/**`.
+                  production page; so do the staff portals. (`/account/**` was
+                  still production-side then — PHASE 11 adopts it below.)
                   Recorded in `docs/PHASE-10-AUTHENTICATION-UI.md` §7.
                 */}
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />
+                {/*
+                  PHASE 11 — the customer account.
+
+                  Thirteen URLs, under the two guards production already draws:
+                  the ten account SCREENS stand behind the same `ProtectedRoute`
+                  the production tree wraps them in, while the three order PAGES
+                  stay UNGUARDED on purpose — they are the guest-order surface
+                  (`OrderPageShell` branches on `isAuthenticated`, handing a
+                  guest the `/signin?returnTo=%2Faccount%2Forders` and
+                  `/signup?returnTo=%2Faccount%2Forders` links, and
+                  `claimGuestOrders` attaches the order after sign-in). The
+                  `/account/wishlist` route above is not part of this family: it
+                  belongs to the wishlist surface Phase 8 adopted.
+
+                  Phase 11 is a UI migration, one page at a time. Until a page
+                  is redrawn, the element below is the PRODUCTION page — the
+                  same component, the same contexts, the same validators, the
+                  same lazy boundary — so the boundary can move without a
+                  single behaviour moving with it. Each later step swaps one
+                  element for its ported page, rendered inside the shared
+                  `pages/account/AccountFrame.jsx`.
+
+                  The swaps are the index route first (`/account` renders the
+                  port's `Overview`), then the profile and the addresses (Stage
+                  2.3), then the four order screens (Stage 2.4) — each one reading
+                  the same contexts its production page reads, stating the same
+                  facts from them and calling the same context methods for every
+                  action. The production pages themselves are untouched and still
+                  serve these paths in the Atelier storefront (`App.jsx`), and the
+                  guards these routes sit behind are unchanged: the order list
+                  stays inside `ProtectedRoute`, and the three single-order URLs
+                  stay open to a guest, because they are the guest-order surface
+                  (`OrderFrame` branches on the session exactly as production's
+                  `OrderPageShell` does).
+                */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="account" element={<AccountOverview />} />
+                  <Route path="account/profile" element={<AccountProfilePage />} />
+                  <Route path="account/addresses" element={<AccountAddressesPage />} />
+                  <Route path="account/orders" element={<AccountOrdersPage />} />
+                  <Route path="account/settings" element={<AccountSettings />} />
+                  <Route path="account/security" element={<AccountSecurity />} />
+                  <Route path="account/preferences" element={<AccountPreferences />} />
+                  <Route path="account/ai-mirror" element={<AccountAiMirrorPage />} />
+                  <Route path="account/ai-shopping" element={<AccountAiShoppingPage />} />
+                  <Route path="account/instagram-rewards" element={<InstagramRewards />} />
+                </Route>
+                <Route path="account/orders/:orderId" element={<AccountOrderDetailPage />} />
+                <Route path="account/orders/:orderId/track" element={<AccountOrderTrackingPage />} />
+                <Route path="account/orders/:orderId/return" element={<AccountOrderReturnPage />} />
                 {/* The navigation-scope register (`/women/sarees/silk`, …) and
                     `/collections` — the paths `App.jsx` sends to its navigation
                     listing. Anything else the boundary hands over resolves to

@@ -279,12 +279,17 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
   assert.equal(/Saved pieces/.test(legacy), false, "/wishlist rendered the design's wishlist instead of redirecting");
   assert.equal(/pratikshya-wishlist|Wishlist<\/h1>/.test(legacy), false, "/wishlist rendered a production wishlist page");
 
-  /* The account stays production-side: it is one of the routes the switch
-     deliberately does not own. (PHASE 9 handed the money path over by name,
-     so the line this pin used to draw through `/cart` now runs through the
-     account instead.) */
+  /* The account is not this surface's either — and since PHASE 11 it is the
+     port's own, which is exactly what this pin now says: the wishlist's two
+     routes and the account's thirteen are different families, and a guest
+     asking for the guarded one paints neither a wishlist nor an account screen
+     on the server (a static render cannot paint the guard's effect-driven
+     redirect — see `aarnaAccountShell.test.js`). (PHASE 9 handed the money path
+     over by name, PHASE 10 the auth screens, PHASE 11 the account.) */
   const account = on.render("/account/orders?home=aarna");
-  assert.equal(/aan-root/.test(account), false, "/account/orders was handed to the port");
+  assert.match(account, /class="aan-root"/, "/account/orders is not the port's, though Phase 11 adopted the account");
+  assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
+  assert.equal(/Saved pieces/.test(account), false, "/account/orders was served as the wishlist");
 });
 
 /* ── 2 · the empty list, and the sentence the design got wrong ────────────── */

@@ -227,15 +227,13 @@ test("the switch stops at the routes it does not own", () => {
     const markup = on.render(path);
     assert.equal(/listing-controls/.test(markup), false, `${path} was handed to the port's listing`);
   }
-  /* …and these are not the port's at all: the account and the reset screen
-     keep the production pages they have always had. (PHASE 9 adopted the money
-     path by name and PHASE 10 the three customer auth screens — `/cart`,
-     `/checkout`, `/signin`, `/signup` and `/forgot-password` mount the port
-     now — so the line that used to run through them runs through the account
-     and `/reset-password` instead; those pages' own suites pin that boundary.) */
-  for (const path of ["/account/orders?home=aarna", "/reset-password?home=aarna"]) {
-    assert.equal(/aan-root/.test(on.render(path)), false, `${path} mounted the port at all`);
-  }
+  /* …and this one is not the port's at all: `/reset-password` keeps the
+     production page it has always had. (PHASE 9 adopted the money path by name,
+     PHASE 10 the three customer auth screens and PHASE 11 the account — so the
+     line that used to run through the account now ends here; the account's own
+     suite pins its boundary, and that it is not the LISTING's is asserted with
+     the other nine routes above.) */
+  assert.equal(/aan-root/.test(on.render("/reset-password?home=aarna")), false, "/reset-password mounted the port at all");
 });
 
 test("Phase 8's own surfaces mount the port, and never the listing", () => {

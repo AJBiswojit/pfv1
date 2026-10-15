@@ -267,8 +267,9 @@ export function useAarnaJourney() {
  * submit is refused before a password can change. Dressing that flow in the
  * design would stage a screen that cannot work; it stays on the production
  * implementation, together with the staff portals (`/login`, `/admin/**`,
- * `/super-admin/**`, `/employee/**`) and every `/account/**` page. The defect
- * is recorded, not hidden: §7 of the phase document.
+ * `/super-admin/**`, `/employee/**`). (PHASE 11 later adopted the account by
+ * name — the section below.) The defect is recorded, not hidden: §7 of the
+ * phase document.
  *
  * The three paths are adopted by name — the same pattern as every surface
  * before them — so the catch-all's semantics are untouched: they are paths this
@@ -288,6 +289,67 @@ export function useAarnaAuth() {
 }
 
 /**
+ * PHASE 11 — the seventh surface: the customer account.
+ *
+ * Thirteen URLs, one family, and TWO guards — the split production already
+ * draws, adopted here unchanged:
+ *
+ *   · the ten account SCREENS (`/account` … `/account/instagram-rewards`) are
+ *     behind the same `ProtectedRoute` the production tree wraps them in, so a
+ *     guest still lands on `/signin?returnTo=…`;
+ *   · the three order PAGES (`/account/orders/:orderId` and its `/track` and
+ *     `/return` steps) are deliberately UNGUARDED. They are the guest-order
+ *     surface: `components/orders/OrderPageShell` branches on `isAuthenticated`
+ *     — the account shell for a member, the "guest order from this browser"
+ *     note for a guest, with its `/signin?returnTo=%2Faccount%2Forders` and
+ *     `/signup?returnTo=%2Faccount%2Forders` links — and `claimGuestOrders`
+ *     attaches those orders after sign-in. Both behaviours are preserved by
+ *     adopting the same split, not by re-deciding it.
+ *
+ * `/account/wishlist` is NOT in this set. It never was a screen of this
+ * family's migration: Phase 8 adopted it with the wishlist surface
+ * (`AARNA_WISHLIST_PATHS`), where it stays — guest-accessible, exactly as
+ * production serves it — and the two sets are disjoint by construction.
+ *
+ * Phase 11 is a UI migration: the pages themselves move one at a time, and
+ * until a page is redrawn its route renders the production page unchanged. This
+ * set can therefore name the whole family without any behaviour moving with it.
+ */
+export const AARNA_ACCOUNT_PATHS = new Set([
+  "/account",
+  "/account/profile",
+  "/account/addresses",
+  "/account/orders",
+  "/account/settings",
+  "/account/security",
+  "/account/preferences",
+  "/account/ai-mirror",
+  "/account/ai-shopping",
+  "/account/instagram-rewards",
+]);
+
+/**
+ * The three order pages a guest may open from their own browser — unguarded,
+ * exactly as production leaves them. `/account/orders` itself (the LIST) is not
+ * one of them: it is the guarded screen above.
+ */
+export const AARNA_ACCOUNT_GUEST_PATTERNS = [
+  /^\/account\/orders\/[^/]+$/,
+  /^\/account\/orders\/[^/]+\/track$/,
+  /^\/account\/orders\/[^/]+\/return$/,
+];
+
+export function isAarnaAccountPath(pathname) {
+  const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
+  return AARNA_ACCOUNT_PATHS.has(bare) || AARNA_ACCOUNT_GUEST_PATTERNS.some((pattern) => pattern.test(bare));
+}
+
+export function useAarnaAccount() {
+  const { pathname } = useLocation();
+  return isAarnaAccountPath(pathname) && isAarnaHomeEnabled();
+}
+
+/**
  * PHASE 8 — the guarded catch-all.
  *
  * The design's 404 already answers every *scoped* not-found this application has
@@ -304,12 +366,12 @@ export function useAarnaAuth() {
  *     port's route table knows nothing about them. The prefixes are listed here
  *     explicitly, and `aarnaCatchAll` is false for every path under them;
  *   · every path the application DOES serve keeps its own page, including the
- *     ones the port has not adopted — `/account/**`, the order detail /
- *     tracking / return pages, `/reset-password` and the staff portals.
- *     (Phase 9 adopted the money path by name, and Phase 10 the three customer
- *     auth screens, so `/cart`, `/checkout`, `/order-success`, `/signin`,
- *     `/signup` and `/forgot-password` are answered by the port's own routes
- *     while the switch is on, and by the production pages while it is off.)
+ *     ones the port has not adopted — `/reset-password` and the staff portals.
+ *     (Phase 9 adopted the money path by name, Phase 10 the three customer auth
+ *     screens and Phase 11 the account, so `/cart`, `/checkout`,
+ *     `/order-success`, `/signin`, `/signup`, `/forgot-password` and every
+ *     `/account/**` path are answered by the port's own routes while the switch
+ *     is on, and by the production pages while it is off.)
  *     The test is the port's own `isRegisteredPath`,
  *     the same table its link translator uses, so the two can never disagree
  *     about what this application serves.
@@ -343,8 +405,9 @@ export function useAarnaStorefront() {
   const wishlist = useAarnaWishlist();
   const journey = useAarnaJourney();
   const auth = useAarnaAuth();
+  const account = useAarnaAccount();
   const catchAll = useAarnaCatchAll();
-  return home || product || listing || wishlist || journey || auth || catchAll;
+  return home || product || listing || wishlist || journey || auth || account || catchAll;
 }
 
 /**

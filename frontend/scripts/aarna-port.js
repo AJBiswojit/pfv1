@@ -182,7 +182,50 @@ export const ADDED = [
   "pages/ForgotPassword.jsx",
   "pages/SignIn.jsx",
   "pages/SignUp.jsx",
-];
+  /* PHASE 11 — the account frame. The design's `/account` is a fifty-line
+     prototype (three links, no navigation, no server account), so the shared
+     shell every migrated account screen renders inside — and the navigation
+     that reaches all eleven destinations — are written in the design's own
+     vocabulary. The account PAGES carry over one at a time; each one declared
+     here as it is written. Declared, so the closure check knows them and never
+     writes them. */
+  "aarna.account.css",
+  /* ...and, one stage later, the order screens' own sheet: the design never drew
+     an order, so the four redrawn order screens' chrome is written in the
+     design's vocabulary too, scoped to the port the same way. */
+  "aarna.orders.css",
+  /* ...and, one stage later again, the two AI screens' own sheet: the design
+    never drew an assistant either, so the chrome the mirror and the shopping
+    conversation are drawn in — the notes band, the two-column bodies, the
+    arriving product, the recent-look rail and the conversation's column — is
+    written in the design's vocabulary, scoped to the port the same way. */
+  "aarna.ai.css",
+  "pages/account/AccountFrame.jsx",
+  "pages/account/AccountNav.jsx",
+  /* PHASE 11 · the migrated screens, declared as each one is written: the
+     overview `/account` renders inside the frame above, from this application's
+     own account, order, bag and wishlist contexts (Stage 2.2), then the profile
+     and the addresses (Stage 2.3), which read the same account context their
+     production pages read, then the four order screens (Stage 2.4) and the
+     `OrderFrame` they share — the port's equivalent of production's
+     `OrderPageShell`, which is what keeps the single-order URLs open to a guest. */
+  "pages/account/Overview.jsx",
+  "pages/account/Profile.jsx",
+  "pages/account/Addresses.jsx",
+  "pages/account/Orders.jsx",
+  "pages/account/OrderDetail.jsx",
+  "pages/account/OrderTracking.jsx",
+  "pages/account/OrderReturn.jsx",
+  "pages/account/OrderFrame.jsx",
+  /* PHASE 11 · STAGE 2.5 — the two AI screens. Both keep production's own
+    machines (the try-on service and the assistant service, the session store,
+    the widgets) and are redrawn around them in the design's own vocabulary:
+    the mirror's stage, edit and selected look, and the shopping conversation
+    with its rail. Declared, so the closure check knows them and never writes
+    them. */
+  "pages/account/AiMirror.jsx",
+  "pages/account/AiShopping.jsx",
+  ];
 
 /* ─────────────────────────── the pinned rewrites ────────────────────────── */
 

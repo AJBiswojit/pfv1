@@ -1,0 +1,492 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PHASE 11 · STAGE 2.5 — the two AI screens' own chrome.
+
+   `/account/ai-mirror` and `/account/ai-shopping` are drawn out of what the
+   design already has: the page frame, the label/display/lead register, the
+   button and chip, the empty state and the product-card plate all live in
+   `aarna.css`, and the account frame they render inside lives in
+   `aarna.account.css`. This file carries only what none of them drew, because
+   the design never drew an assistant: the notes band, the route notice, the
+   mirror's two-column body, the conversation's own column, the product the
+   customer arrived with, the recent-look rail and the closing facts band.
+
+   Nothing here restates a rule another sheet already owns, and no other sheet
+   may carry an AI screen's chrome. Every declaration is scoped to `.aan-root`,
+   every value is a design token (`--c-*`, `--f-*`, `--fs-*`, `--track-label`,
+   `--r-*`, `--ease-out`, `--t-fast`), and no colour, size or curve is written
+   by hand.
+
+   THE TWO WIDGETS ARE PRODUCTION'S AND KEEP THEIR OWN SKIN. `AiMirrorStage`,
+   `AiMirrorProductSelector`, `AiMirrorSelectedLook`, `AiComposer`,
+   `AiConversationLog`, `AiQuickPrompts`, `AiShoppingMessage` and
+   `AiThinkingIndicator` are imported exactly as production imports them, so
+   what is styled here is only the page AROUND them: their own surfaces,
+   hairlines and type are theirs and are not overwritten — the two exceptions
+   are named and reasoned where they occur (the conversation's height, which
+   production also sets from the page, and nothing else).
+
+   The rules that had to reach a small screen are in the three blocks at the
+   end of this file, beside each other, so the sheet reads in one direction.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── what both screens share: the notes band, the notice, the panels ───────── */
+
+.aan-root .pf-ai__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aan-root .pf-ai__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.aan-root .pf-ai__note svg {
+  flex: none;
+  color: var(--c-cocoa);
+}
+
+/* The route's own notice — a `?product=` that resolved nowhere, or a catalogue
+   that answered with nothing. The sentence is production's; only the band is
+   the design's. */
+
+.aan-root .pf-ai__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--c-line-strong);
+  background: var(--c-paper);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--c-ink-2);
+}
+
+.aan-root .pf-ai__notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--c-espresso);
+}
+
+.aan-root .pf-ai__notice p {
+  margin: 0;
+}
+
+/* The aside's panels: the design's paper insert, one step up from the canvas. */
+
+.aan-root .pf-ai__panel {
+  padding: 20px;
+  border: 1px solid var(--c-line);
+  background: var(--c-paper);
+}
+
+.aan-root .pf-ai__panel .label {
+  margin: 0;
+}
+
+.aan-root .pf-ai__panel-title {
+  margin: 6px 0 16px;
+  font-family: var(--f-serif);
+  font-size: var(--fs-display-s);
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--c-ink);
+}
+
+/* ── the mirror's body: the stage beside its two panels ───────────────────── */
+
+.aan-root .pf-ai__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  gap: clamp(22px, 2.6vw, 40px);
+  margin-top: clamp(24px, 3vw, 36px);
+  align-items: start;
+}
+
+/* The stage keeps its own frame; the port only owns the column it sits in. */
+
+.aan-root .pf-ai__stage {
+  min-width: 0;
+}
+
+.aan-root .pf-ai__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* ── the recent-look rail ─────────────────────────────────────────────────── */
+
+.aan-root .pf-ai__recent {
+  margin-top: var(--sec-y-sm);
+  padding-top: 28px;
+  border-top: 1px solid var(--c-line-strong);
+}
+
+.aan-root .pf-ai__recent-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 20px;
+}
+
+.aan-root .pf-ai__recent-title {
+  margin: 4px 0 0;
+  font-size: var(--fs-display-l);
+}
+
+.aan-root .pf-ai__recent-note {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.aan-root .pf-ai__recent-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: clamp(12px, 1.6vw, 22px);
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aan-root .pf-ai__recent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.aan-root .pf-ai__recent-media {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--r-portrait);
+  overflow: hidden;
+  background: var(--c-bg-2);
+}
+
+.aan-root .pf-ai__recent-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.4s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .aan-root .pf-ai__recent-card:hover .pf-ai__recent-img {
+    transform: scale(1.04);
+  }
+}
+
+.aan-root .pf-ai__recent-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 7px;
+  background: var(--c-bg);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-espresso);
+}
+
+.aan-root .pf-ai__recent-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--c-ink);
+}
+
+.aan-root .pf-ai__recent-when {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+/* ── the mirror's closing band: what the demo does, and what it never does ── */
+
+.aan-root .pf-ai__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 2.4vw, 34px);
+  margin-top: var(--sec-y-sm);
+  padding-top: 30px;
+  border-top: 1px solid var(--c-line);
+}
+
+.aan-root .pf-ai__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aan-root .pf-ai__fact svg {
+  color: var(--c-cocoa);
+}
+
+.aan-root .pf-ai__fact-title {
+  margin: 0;
+  font-family: var(--f-serif);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--c-ink);
+}
+
+.aan-root .pf-ai__fact p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--c-ink-2);
+}
+
+/* ── AI Shopping: the header's own row, the piece in hand ─────────────────── */
+
+.aan-root .pf-ai__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 18px;
+}
+
+/* The chip that says what is answering — the design's chip register, quieter. */
+
+.aan-root .pf-ai__demo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line-strong);
+  background: var(--c-paper);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.aan-root .pf-ai__context {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--c-line);
+  background: var(--c-paper);
+}
+
+.aan-root .pf-ai__context-media {
+  display: block;
+  width: 44px;
+  aspect-ratio: var(--r-portrait);
+  overflow: hidden;
+  background: var(--c-bg-2);
+}
+
+.aan-root .pf-ai__context-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aan-root .pf-ai__context-body {
+  min-width: 0;
+}
+
+.aan-root .pf-ai__context-body .label {
+  margin: 0;
+}
+
+.aan-root .pf-ai__context-name {
+  margin: 6px 0 2px;
+  font-family: var(--f-serif);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--c-ink);
+}
+
+.aan-root .pf-ai__context-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-ink-3);
+}
+
+.aan-root .pf-ai__context-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aan-root .pf-ai__context-actions .btn {
+  min-height: 34px;
+  padding: 0 16px;
+}
+
+.aan-root .pf-ai__context-clear {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--c-line-strong);
+  color: var(--c-ink-2);
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.aan-root .pf-ai__context-clear:hover {
+  color: var(--c-espresso);
+  border-color: var(--c-espresso);
+}
+
+/* ── AI Shopping: the conversation and the rail beside it ─────────────────── */
+
+.aan-root .pf-ai__chat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  gap: clamp(22px, 2.6vw, 40px);
+  margin-top: clamp(24px, 3vw, 36px);
+  align-items: start;
+}
+
+.aan-root .pf-ai__chat-main {
+  min-width: 0;
+}
+
+/* The conversation's own region is the widget's: it draws its hairline, its
+   canvas and its own padding. Production gives it its height from the page
+   (`h-[520px] sm:h-[560px]`) so the log scrolls instead of growing without
+   bound; the port states the same two heights and nothing else there. */
+
+.aan-root .pf-ai__log {
+  height: 520px;
+}
+
+.aan-root .pf-ai__composer {
+  margin-top: 16px;
+}
+
+.aan-root .pf-ai__footnote {
+  margin-top: 10px;
+  max-width: 62ch;
+  font-size: 11.5px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--c-ink-3);
+}
+
+.aan-root .pf-ai__aside .pf-ai__footnote {
+  margin-top: 0;
+}
+
+.aan-root .pf-ai__error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-espresso);
+  background: var(--c-paper);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--c-espresso);
+}
+
+.aan-root .pf-ai__links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aan-root .pf-ai__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-ink);
+  transition: color var(--t-fast);
+}
+
+.aan-root .pf-ai__links a:hover {
+  color: var(--c-espresso);
+}
+
+/* ── the small screens ────────────────────────────────────────────────────── */
+
+@media (max-width: 899px) {
+  /* One column: the stage above its panels, the conversation above its rail. */
+
+  .aan-root .pf-ai__grid,
+  .aan-root .pf-ai__chat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aan-root .pf-ai__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .aan-root .pf-ai__notes {
+    gap: 8px 18px;
+  }
+
+  .aan-root .pf-ai__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aan-root .pf-ai__recent-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  /* The piece in hand: its image and name keep the row, its two actions move
+     under them. */
+
+  .aan-root .pf-ai__context {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .aan-root .pf-ai__context-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* From the design's own second breakpoint: the conversation keeps production's
+   taller log once the layout has room for it. */
+
+@media (min-width: 640px) {
+  .aan-root .pf-ai__log {
+    height: 560px;
+  }
+}

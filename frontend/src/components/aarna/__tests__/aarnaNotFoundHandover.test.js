@@ -261,30 +261,48 @@ test("the application's customer catch-all is still the production 404 — Phase
   assert.match(read("src/pages/NotFound.jsx"), /eyebrow="Error 404"/, "the production 404's own copy changed");
 });
 
-test("the account and the reset screen never move, with the switch on or off", () => {
-  /* PHASE 9 adopted `/cart`, `/checkout` and `/order-success`, and PHASE 10 the
-     three customer auth screens `/signin`, `/signup` and `/forgot-password` —
-     those six DO mount the port now (pinned by their own suites). What must
-     never move is the rest of the production surface, and this is it — with
-     `/reset-password` standing where `/signin` stood: the one auth screen Phase
-     10 deliberately kept production-side, because its flow cannot complete a
-     reset (see `docs/PHASE-10-AUTHENTICATION-UI.md` §7). */
-  for (const path of ["/reset-password", "/account/orders", "/account/addresses"]) {
-    for (const [name, view] of [["on", on], ["off", off]]) {
-      const markup = view.render(path);
-      assert.equal(/class="aan-root"/.test(markup), false, `${path} mounted the port with the switch ${name}`);
-    }
+test("the reset screen never moves, on either switch — and the account is the port's own now", () => {
+  /* PHASE 9 adopted the money path, PHASE 10 the three customer auth screens and
+     PHASE 11 the account — so what is left of the customer surface that must not
+     move is `/reset-password`: the one auth screen Phase 10 deliberately kept
+     production-side, because its flow cannot complete a reset (see
+     `docs/PHASE-10-AUTHENTICATION-UI.md` §7). The two account URLs this test
+     used to pin here were superseded by the approved phase; they keep the two
+     properties that mattered — production while the switch is off, and a real
+     page while it is on, never a blank or a dummy account. */
+  for (const [name, view] of [["on", on], ["off", off]]) {
+    const markup = view.render("/reset-password");
+    assert.equal(/class="aan-root"/.test(markup), false, `/reset-password mounted the port with the switch ${name}`);
+  }
+  for (const path of ["/account/orders", "/account/addresses"]) {
+    assert.equal(/class="aan-root"/.test(off.render(path)), false, `${path} mounted the port with the switch off`);
+    const handed = on.render(path);
+    assert.match(handed, /class="aan-root"/, `${path} was not handed to the port while the switch is on`);
+    /* A static render proves one thing here: no account chrome is painted
+       synchronously for a guest. The redirect is effect-driven and a lazy page
+       suspends, so this cannot by itself prove the guard ran — the guard is
+       pinned at the source level: the port's nesting and its parity with
+       `App.jsx` in `aarnaAccountShell.test.js`, and `ProtectedRoute`'s own
+       `returnTo` encoding in `aarnaCheckoutPage.test.js`. */
+    assert.equal(/pf-account/.test(handed), false, `${path} painted account chrome on the server render — a guest must be shown none`);
+    assert.equal(/pf-account__nav/.test(handed), false, `${path} drew account chrome for a guest`);
   }
 });
 
 test("a customer URL that IS served keeps its own page while the switch is on", () => {
-  /* The listing, the product page, the wishlist and (PHASE 9) the money path
-     are the port's own — and the account is not: the boundary tells them
-     apart. */
+  /* The listing, the product page, the wishlist, (PHASE 9) the money path and
+     (PHASE 10) the auth screens are the port's own. PHASE 11 adopted the
+     account as well, so `/account/orders` is handed over too — through the same
+     `ProtectedRoute` production wraps it in. A guest's static render shows the
+     port's empty page slot (the redirect is effect-driven — see above), so what
+     this pins is the boundary's paint: the port owns the URL and paints no
+     account chrome on the server, never an `aan-root` wrapping an unguarded
+     account. */
   assert.match(on.render("/shop"), /class="aan-root"/, "/shop is served by the port yet was not handed over");
   assert.match(on.render("/cart"), /class="aan-root"/, "/cart is served by the port yet was not handed over");
   const account = on.render("/account/orders");
-  assert.equal(/class="aan-root"/.test(account), false, "/account/orders was handed over");
+  assert.match(account, /class="aan-root"/, "/account/orders was not handed over while the switch is on");
+  assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
   const wishlist = on.render("/account/wishlist");
   assert.match(wishlist, /class="aan-root"/, "/account/wishlist is served by the port yet was not handed over");
 });
