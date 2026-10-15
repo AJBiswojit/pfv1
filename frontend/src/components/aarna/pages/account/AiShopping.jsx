@@ -107,6 +107,7 @@ import {
   AI_SHOPPING_PRODUCT_PROMPTS,
   AI_SHOPPING_QUICK_PROMPTS,
 } from '../../../../services/ai/shopping/aiShoppingMockData.js';
+import { CATALOG_CHANGED_EVENT } from '../../../../services/catalog/catalogStore.js';
 import { PRODUCTS_CHANGED_EVENT } from '../../../../services/catalogRepository.js';
 import { MEDIA_CHANGED_EVENT } from '../../../../services/media/mediaRepository.js';
 import { TAXONOMY_CHANGED_EVENT } from '../../../../services/taxonomyRepository.js';
@@ -155,6 +156,39 @@ const rehydrateMessage = (message) => {
   return next;
 };
 
+const hasResolvedProductsChanged = (previous, next) => {
+  const prevProducts = previous.products ?? [];
+  const nextProducts = next.products ?? [];
+  if (prevProducts.length !== nextProducts.length) return true;
+  if (nextProducts.some((entry, index) => entry?.product !== prevProducts[index]?.product)) {
+    return true;
+  }
+  if ((previous.outfit?.main ?? null) !== (next.outfit?.main ?? null)) return true;
+  const prevPieces = previous.outfit?.pieces ?? [];
+  const nextPieces = next.outfit?.pieces ?? [];
+  if (prevPieces.length !== nextPieces.length) return true;
+  if (nextPieces.some((piece, index) => piece !== prevPieces[index])) return true;
+  if ((previous.product ?? null) !== (next.product ?? null)) return true;
+  const prevCompared = previous.comparison?.products ?? [];
+  const nextCompared = next.comparison?.products ?? [];
+  if (prevCompared.length !== nextCompared.length) return true;
+  if (nextCompared.some((product, index) => product !== prevCompared[index])) return true;
+  return false;
+};
+
+const rehydrateMessages = (list) => {
+  let changed = false;
+  const nextList = list.map((message) => {
+    const next = rehydrateMessage(message);
+    if (hasResolvedProductsChanged(message, next)) {
+      changed = true;
+      return next;
+    }
+    return message;
+  });
+  return changed ? nextList : list;
+};
+
 export default function AiShopping() {
   const { user } = useAuth();
   const cart = useCart();
@@ -173,6 +207,7 @@ export default function AiShopping() {
   const [error, setError] = useState('');
   const logRef = useRef(null);
   const sessionLogged = useRef(false);
+  const scopeRef = useRef(user?.id);
 
   const products = useMemo(() => getLiveStorefrontProducts(), [catalogueRevision]);
 
@@ -194,11 +229,16 @@ export default function AiShopping() {
 
   /* Keep the rail honest if the catalogue, the taxonomy or the media change. */
   useEffect(() => {
-    const sync = () => setCatalogueRevision((value) => value + 1);
+    const sync = () => {
+      setCatalogueRevision((value) => value + 1);
+      setMessages((current) => rehydrateMessages(current));
+    };
+    window.addEventListener(CATALOG_CHANGED_EVENT, sync);
     window.addEventListener(PRODUCTS_CHANGED_EVENT, sync);
     window.addEventListener(TAXONOMY_CHANGED_EVENT, sync);
     window.addEventListener(MEDIA_CHANGED_EVENT, sync);
     return () => {
+      window.removeEventListener(CATALOG_CHANGED_EVENT, sync);
       window.removeEventListener(PRODUCTS_CHANGED_EVENT, sync);
       window.removeEventListener(TAXONOMY_CHANGED_EVENT, sync);
       window.removeEventListener(MEDIA_CHANGED_EVENT, sync);
@@ -215,6 +255,14 @@ export default function AiShopping() {
 
   /* Demo persistence — customer-scoped, product ids only. */
   useEffect(() => {
+    if (scopeRef.current !== user?.id) {
+      scopeRef.current = user?.id;
+      const restored = loadAiSession(AI_SESSION_SCOPES.SHOPPING, user?.id).map(rehydrateMessage);
+      if (restored.length) {
+        setMessages(restored);
+        return;
+      }
+    }
     saveAiSession(AI_SESSION_SCOPES.SHOPPING, user?.id, messages);
   }, [messages, user?.id]);
 

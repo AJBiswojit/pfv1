@@ -17,9 +17,44 @@ const MAX_MESSAGES = 80;
 
 const scopeKey = (prefix, scopeId) => `${prefix}${String(scopeId || "guest")}`;
 
+const cleanIdList = (ids) =>
+  Array.isArray(ids)
+    ? ids.map((id) => (id == null ? "" : String(id).trim())).filter(Boolean)
+    : [];
+
+const cleanSingleId = (id) => {
+  if (id == null) return null;
+  const value = String(id).trim();
+  return value || null;
+};
+
 /** Reduces a message to its persistable essence. */
 const sanitizeMessage = (message) => {
   if (!message || typeof message !== "object") return null;
+
+  const resolvedProductIds = Array.isArray(message.products)
+    ? message.products
+        .map((entry) => String(entry?.product?.id ?? entry?.id ?? "").trim())
+        .filter(Boolean)
+    : [];
+  const storedProductIds = cleanIdList(message.productIds);
+
+  const resolvedOutfitMainId = cleanSingleId(message.outfit?.main?.id);
+  const storedOutfitMainId = cleanSingleId(message.outfitMainId);
+
+  const resolvedOutfitPieceIds = Array.isArray(message.outfit?.pieces)
+    ? message.outfit.pieces.map((product) => String(product?.id ?? "").trim()).filter(Boolean)
+    : [];
+  const storedOutfitPieceIds = cleanIdList(message.outfitPieceIds);
+
+  const resolvedSingleProductId = cleanSingleId(message.product?.id);
+  const storedSingleProductId = cleanSingleId(message.singleProductId);
+
+  const resolvedComparisonIds = Array.isArray(message.comparison?.products)
+    ? message.comparison.products.map((product) => String(product?.id ?? "").trim()).filter(Boolean)
+    : [];
+  const storedComparisonIds = cleanIdList(message.comparisonIds);
+
   return {
     id: String(message.id || ""),
     role: message.role === "user" ? "user" : "assistant",
@@ -29,18 +64,20 @@ const sanitizeMessage = (message) => {
     createdAt: message.createdAt || new Date().toISOString(),
     /* Products are referenced by id only and re-resolved from the live
        catalogue on restore, so a persisted session can never carry stale
-       prices or availability. */
-    productIds: Array.isArray(message.products)
-      ? message.products.map((entry) => String(entry?.product?.id ?? entry?.id ?? "")).filter(Boolean)
-      : [],
-    outfitMainId: message.outfit?.main?.id ? String(message.outfit.main.id) : null,
-    outfitPieceIds: Array.isArray(message.outfit?.pieces)
-      ? message.outfit.pieces.map((product) => String(product.id))
-      : [],
-    singleProductId: message.product?.id ? String(message.product.id) : null,
-    comparisonIds: Array.isArray(message.comparison?.products)
-      ? message.comparison.products.map((product) => String(product.id))
-      : [],
+       prices or availability. Persisted ids are retained when a session is
+       loaded or saved before catalogue hydration has resolved its products. */
+    productIds:
+      storedProductIds.length > resolvedProductIds.length ? storedProductIds : resolvedProductIds,
+    outfitMainId: resolvedOutfitMainId ?? storedOutfitMainId,
+    outfitPieceIds:
+      storedOutfitPieceIds.length > resolvedOutfitPieceIds.length
+        ? storedOutfitPieceIds
+        : resolvedOutfitPieceIds,
+    singleProductId: resolvedSingleProductId ?? storedSingleProductId,
+    comparisonIds:
+      storedComparisonIds.length > resolvedComparisonIds.length
+        ? storedComparisonIds
+        : resolvedComparisonIds,
     suggestions: Array.isArray(message.suggestions) ? message.suggestions.slice(0, 4) : [],
     source: message.source || "",
     periodLabel: message.periodLabel || "",

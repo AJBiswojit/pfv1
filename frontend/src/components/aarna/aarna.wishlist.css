@@ -76,14 +76,16 @@
 
 /* ── the note a move-to-bag leaves behind ────────────────────────────────── */
 
-.aan-root .wishlist-note {
+/* One class deeper than `.info p` (0,2,1), so a wishlist rendered inside the
+   signed-in account frame keeps the note's own margin and colour. */
+.aan-root .wishlist-row .wishlist-note {
   flex: 1 0 100%;
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--c-ink-3);
 }
 
-.aan-root .wishlist-note.is-err {
+.aan-root .wishlist-row .wishlist-note.is-err {
   color: var(--c-espresso);
 }
 
@@ -103,7 +105,7 @@
   border-radius: var(--radius);
 }
 
-.aan-root .wishlist-gone__title {
+.aan-root .wishlist-gone .wishlist-gone__title {
   font-family: var(--f-serif);
   font-size: var(--fs-md);
   font-style: italic;
@@ -111,7 +113,8 @@
   margin-bottom: 8px;
 }
 
-.aan-root .wishlist-gone__body {
+.aan-root .wishlist-gone .wishlist-gone__body {
+  margin-bottom: 0;
   font-size: var(--fs-sm);
   color: var(--c-ink-2);
 }
