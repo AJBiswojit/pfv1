@@ -1,0 +1,799 @@
+/* ══════════════════════════════════════════════════════════════════════
+   PRATIKSHYA FASHION — Storefront shell geometry (Phase 2A).
+
+   A faithful port of Project B's announcement bar, header, mega menu and
+   mobile menu. Every selector is namespaced `.pf-shell*` and every custom
+   property is declared on those same scoped classes, so this file cannot
+   reach `:root`, `body`, a heading, an image, a button or any generic class
+   used by the Admin, Super Admin or Employee portals. It adds no utility
+   class and no global element rule.
+
+   Palette, type and motion values are read from the application's own theme
+   custom properties (`src/index.css` `@theme`, mirrored from
+   `src/design-system/tokens.js`) — the shell never re-declares a brand hex.
+   Only geometry that is unique to the shell is declared here.
+
+   Values are Project B's (styles/layout.css): announcement 34px, header
+   64px / 56px below 900px, nav hover rail, 3/4 mega feature plate, 420px
+   mobile panel. The two documented adjustments are marked ADJUSTED.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared geometry ──────────────────────────────────────────────────── */
+
+.pf-shell__announce,
+.pf-shell__header,
+.pf-shell__mobile {
+  /* B's `--header-h: 64px`, `--gutter: clamp(16px, 3.6vw, 56px)`,
+     `--maxw: 1440px`, `--ease-out` — scoped, as the hero scopes its own. */
+  --pf-shell-header-h: 64px;
+  --pf-shell-gutter: clamp(16px, 3.6vw, 56px);
+  --pf-shell-maxw: 1440px;
+  --pf-shell-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --pf-shell-track-label: 0.22em;
+  --pf-shell-fs-xs: 0.6875rem;
+}
+
+@media (max-width: 899px) {
+  .pf-shell__announce,
+  .pf-shell__header,
+  .pf-shell__mobile {
+    --pf-shell-header-h: 56px;
+  }
+}
+
+/* The campaign canvas. Applied by whoever frames the shell (the preview
+   harness today; the approved shell integration later) instead of a global
+   `body` background, which would repaint every portal. */
+.pf-shell__surface {
+  background: var(--color-blush-canvas);
+  color: var(--color-espresso);
+}
+
+/* ── Announcement bar ─────────────────────────────────────────────────── */
+
+.pf-shell__announce {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  background: var(--color-burgundy);
+  color: var(--color-blush-canvas);
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pf-shell__announce-track {
+  overflow: hidden;
+  padding: 0 44px;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pf-shell__announce-track p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.pf-shell__announce-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.25s var(--pf-shell-ease);
+}
+
+.pf-shell__announce-close:hover,
+.pf-shell__announce-close:focus-visible {
+  opacity: 1;
+}
+
+.pf-shell__announce :focus-visible {
+  outline: 1.5px solid var(--color-blush-canvas);
+  outline-offset: 2px;
+}
+
+@media (max-width: 599px) {
+  .pf-shell__announce {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+
+.pf-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  /* Fallback first, then the 86% blush of B's design for browsers that can
+     mix colours. Never a repaint of anything outside the shell. */
+  background: var(--color-blush-canvas);
+  background: color-mix(in srgb, var(--color-blush-canvas) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.2) blur(12px);
+  backdrop-filter: saturate(1.2) blur(12px);
+  border-bottom: 1px solid transparent;
+  /* `clip`, not `hidden`: horizontal overflow can never scroll the page,
+     while the vertical axis stays visible so the mega panel still escapes
+     the header. */
+  overflow-x: clip;
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--color-espresso);
+  transition: box-shadow 0.5s var(--pf-shell-ease), border-color 0.5s var(--pf-shell-ease),
+    background 0.5s var(--pf-shell-ease);
+}
+
+.pf-shell__header.is-scrolled {
+  background: color-mix(in srgb, var(--color-blush-canvas) 94%, transparent);
+  border-bottom-color: var(--color-burgundy-line);
+  box-shadow: 0 8px 28px -20px rgba(58, 24, 6, 0.45);
+}
+
+.pf-shell__header.has-mega {
+  background: var(--color-blush-canvas);
+}
+
+.pf-shell__inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: var(--pf-shell-maxw);
+  height: var(--pf-shell-header-h);
+  margin-inline: auto;
+  padding-inline: var(--pf-shell-gutter);
+}
+
+.pf-shell__left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* No `min-width: 0` — B's own header does not shrink this column, and that
+     constraint is what keeps the rail off the centred brand between 1024px and
+     ~1100px: the `1fr` track refuses to go below the rail's min-content width
+     and takes its space from the free space instead. Measured: the five-group
+     rail needs ~347px at 1024px, and with the shrink allowed the column was
+     given 324px, so the tail of the rail — the last group — ran under the
+     brand. */
+}
+
+.pf-shell__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+/* The burger REPLACES the rail below the rail's breakpoint (B hides the nav and
+   shows the burger at the same width). It has to be able to win: `.pf-shell__icon`
+   is declared later in this file with its own `display`, so at equal specificity
+   the icon rule painted a hamburger at every width — an extra 30px in the left
+   column, which is what squeezed the rail into the centred brand. */
+.pf-shell__icon.pf-shell__burger {
+  display: none;
+}
+
+.pf-shell__burger {
+  margin-left: -10px;
+}
+
+.pf-shell__nav {
+  display: flex;
+  align-items: center;
+  /* ADJUSTED (B: clamp(14px, 2vw, 30px)) — the production information
+     architecture has five primary groups where B authored four, so the rail
+     tightens by 2–4px per gap to keep one line at 1024px and above. */
+  gap: clamp(12px, 1.7vw, 26px);
+}
+
+.pf-shell__nav-item {
+  position: relative;
+}
+
+.pf-shell__nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--pf-shell-header-h);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-espresso);
+  white-space: nowrap;
+}
+
+.pf-shell__nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 1px;
+  background: var(--color-burgundy);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s var(--pf-shell-ease);
+}
+
+.pf-shell__nav-link:hover::after,
+.pf-shell__nav-link.is-active::after {
+  transform: scaleX(1);
+}
+
+/* The accent group (the ceremony department) — B's `nav__link--accent`. */
+.pf-shell__nav-link--accent {
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--color-burgundy);
+}
+
+.pf-shell__nav-link--accent::after {
+  bottom: 20px;
+}
+
+/* The account trigger's own positioning context for the existing dropdown. */
+.pf-shell__account {
+  position: relative;
+}
+
+.pf-shell__explore {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--pf-shell-header-h);
+  padding-inline: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-espresso);
+  white-space: nowrap;
+}
+
+.pf-shell__explore::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 18px;
+  height: 1px;
+  background: var(--color-burgundy);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s var(--pf-shell-ease);
+}
+
+.pf-shell__explore:hover::after,
+.pf-shell__explore.is-active::after {
+  transform: scaleX(1);
+}
+
+.pf-shell__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-espresso);
+  cursor: pointer;
+  transition: background 0.25s var(--pf-shell-ease);
+}
+
+.pf-shell__icon:hover,
+.pf-shell__icon[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--color-burgundy) 7%, transparent);
+}
+
+.pf-shell__dot {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-burgundy);
+  color: var(--color-blush-canvas);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.pf-shell__bag {
+  width: auto;
+  padding: 0 12px 0 10px;
+  border-radius: 20px;
+  gap: 7px;
+}
+
+.pf-shell__bag-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pf-shell__bag-count {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--color-burgundy);
+  color: var(--color-blush-canvas);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Focus: one hairline ring, campaign accent, inside the shell only. */
+.pf-shell__announce a:focus-visible,
+.pf-shell__header a:focus-visible,
+.pf-shell__header button:focus-visible,
+.pf-shell__mobile a:focus-visible,
+.pf-shell__mobile button:focus-visible,
+.pf-shell__mega a:focus-visible {
+  outline: 1.5px solid var(--color-burgundy);
+  outline-offset: 3px;
+}
+
+.pf-shell__announce a:focus-visible {
+  outline-color: var(--color-blush-canvas);
+}
+
+@media (max-width: 1023px) {
+  /* Below the desktop rail the primary groups live in the mobile panel only
+     (B's own breakpoint: the rail is hidden, the burger takes over). The rail
+     is `white-space: nowrap` in a `min-width: 0` grid track, so leaving it in
+     flow let its tail — the last group — run under the centred brand. */
+  .pf-shell__nav,
+  .pf-shell__explore {
+    display: none;
+  }
+
+  .pf-shell__icon.pf-shell__burger {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-shell__hide-sm {
+    display: none;
+  }
+
+  .pf-shell__bag-label {
+    display: none;
+  }
+
+  /* Side columns size to their icons so the full lockup (mark + name) gets
+     the middle (B, ≤599px). */
+  .pf-shell__inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .pf-shell__brand {
+    justify-self: center;
+  }
+}
+
+@media (max-width: 419px) {
+  .pf-shell__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .pf-shell__right {
+    gap: 0;
+  }
+}
+
+/* ── Mega menu ────────────────────────────────────────────────────────── */
+
+.pf-shell__mega {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: var(--color-blush-canvas);
+  border-top: 1px solid var(--color-burgundy-line);
+  border-bottom: 1px solid var(--color-burgundy-line);
+  box-shadow: 0 30px 60px -40px rgba(58, 24, 6, 0.5);
+}
+
+.pf-shell__mega-inner {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 48px;
+  width: 100%;
+  max-width: var(--pf-shell-maxw);
+  margin-inline: auto;
+  padding-inline: var(--pf-shell-gutter);
+  padding-block: 32px 36px;
+}
+
+/* ADJUSTED (B: repeat(3, minmax(0, 220px))) — `auto-fit` gives the same
+   220px columns for a four- or five-column group while letting the three-
+   and two-column groups the production taxonomy defines stay at their own
+   natural width instead of reserving an empty track. */
+.pf-shell__mega-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 220px));
+  gap: 40px;
+}
+
+.pf-shell__mega-title {
+  margin: 0 0 14px;
+  font-size: var(--pf-shell-fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--pf-shell-track-label);
+  text-transform: uppercase;
+  color: var(--color-cocoa-muted);
+}
+
+.pf-shell__mega-col ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pf-shell__mega-col li a {
+  display: inline-block;
+  padding: 5px 0;
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  line-height: 1.2;
+  color: var(--color-espresso);
+  transition: color 0.25s var(--pf-shell-ease), transform 0.35s var(--pf-shell-ease);
+}
+
+.pf-shell__mega-col li a:hover {
+  color: var(--color-burgundy);
+  transform: translateX(4px);
+  font-style: italic;
+}
+
+.pf-shell__mega-feature {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 20px;
+  align-items: end;
+  padding: 14px;
+  background: var(--color-blush-warm);
+}
+
+.pf-shell__mega-feature-img {
+  min-width: 0;
+}
+
+.pf-shell__mega-feature-img img {
+  transition: transform 0.9s var(--pf-shell-ease);
+}
+
+.pf-shell__mega-feature:hover .pf-shell__mega-feature-img img {
+  transform: scale(1.05);
+}
+
+.pf-shell__mega-feature-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 6px;
+  min-width: 0;
+}
+
+.pf-shell__mega-kicker {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--pf-shell-track-label);
+  text-transform: uppercase;
+  color: var(--color-cocoa-muted);
+}
+
+.pf-shell__mega-ftitle {
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-style: italic;
+  line-height: 1.05;
+  color: var(--color-espresso);
+}
+
+.pf-shell__mega-fcta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-espresso);
+}
+
+/* Sits behind the header's own stacking context, so it dims the page and
+   never the rail (the previous shell used the same `-z-10` device). */
+.pf-shell__header-scrim {
+  position: fixed;
+  inset: 0;
+  /* ADJUSTED (Phase 2D.2): the dim is now the header's sibling — it cannot sit
+     at `-10` any more or it would paint behind the page it is meant to dim, and
+     inside the header its fixed box was clipped to the header's own height by
+     the header's `backdrop-filter`. Under the header's 60, over everything else. */
+  z-index: 50;
+  background: rgba(43, 17, 5, 0.2);
+}
+
+/* No columns to show: the feature keeps the right-hand slot. */
+.pf-shell__mega-inner--solo {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+.pf-shell__mega-inner--solo .pf-shell__mega-feature {
+  grid-column: 2;
+}
+
+@media (max-width: 1199px) {
+  .pf-shell__mega-inner {
+    grid-template-columns: 1fr 300px;
+    gap: 32px;
+  }
+
+  .pf-shell__mega-feature {
+    grid-template-columns: 140px 1fr;
+    gap: 16px;
+  }
+
+  .pf-shell__mega-inner--solo {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+/* ── Scrim & mobile menu ──────────────────────────────────────────────── */
+
+.pf-shell__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(43, 17, 5, 0.42);
+}
+
+.pf-shell__mmenu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 90vw);
+  background: var(--color-blush-canvas);
+  color: var(--color-espresso);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.pf-shell__mmenu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 12px 20px;
+  border-bottom: 1px solid var(--color-burgundy-line);
+}
+
+.pf-shell__mmenu-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 20px 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-burgundy-line-strong);
+  background: none;
+  color: var(--color-espresso-meta);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pf-shell__mmenu-search:hover {
+  border-color: var(--color-burgundy);
+}
+
+.pf-shell__mmenu-auth {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 20px 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--color-blush-warm) 45%, transparent);
+  font-size: 12px;
+}
+
+.pf-shell__mmenu-auth-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.pf-shell__mmenu-auth button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  color: var(--color-espresso-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pf-shell__mmenu-nav {
+  padding: 8px 20px;
+}
+
+.pf-shell__mmenu-group {
+  border-bottom: 1px solid var(--color-burgundy-line);
+}
+
+.pf-shell__mmenu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 0;
+  border: 0;
+  background: none;
+  color: var(--color-espresso);
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pf-shell__mmenu-toggle--accent {
+  font-style: italic;
+  color: var(--color-burgundy);
+}
+
+.pf-shell__mmenu-panel {
+  overflow: hidden;
+}
+
+.pf-shell__mmenu-feature {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 8px;
+  background: var(--color-blush-warm);
+}
+
+.pf-shell__mmenu-feature-txt {
+  display: flex;
+  flex-direction: column;
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--color-espresso);
+}
+
+.pf-shell__mmenu-feature-txt em {
+  margin-bottom: 4px;
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-cocoa-muted);
+}
+
+.pf-shell__mmenu-col {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 14px;
+}
+
+.pf-shell__mmenu-col p {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-cocoa-muted);
+}
+
+.pf-shell__mmenu-col a {
+  padding: 7px 0;
+  font-size: 15px;
+  color: var(--color-espresso);
+}
+
+.pf-shell__mmenu-col a:hover {
+  color: var(--color-burgundy);
+}
+
+.pf-shell__mmenu-feature-img {
+  width: 76px;
+}
+
+.pf-shell__mmenu-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 16px 20px 0;
+  list-style: none;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-espresso-meta);
+}
+
+.pf-shell__mmenu-legal a {
+  color: inherit;
+}
+
+.pf-shell__mmenu-legal a:hover {
+  color: var(--color-burgundy);
+}
+
+.pf-shell__mmenu-foot {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--color-burgundy-line);
+}
+
+.pf-shell__mmenu-foot a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-espresso);
+}
+
+.pf-shell__mmenu-foot a + a {
+  border-left: 1px solid var(--color-burgundy-line);
+}
+
+.pf-shell__mmenu-count {
+  color: var(--color-burgundy);
+}

@@ -144,6 +144,57 @@ export const price = {
 /** Uppercase micro-label used by badges. */
 export const badge = "text-[9px] uppercase tracking-widest";
 
+/* ------------------------------------------------------------------ */
+/* Campaign / editorial scale (Phase 1 — additive)                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The storefront campaign typography: editorial serif headlines with an
+ * italic closing line, and a narrow uppercase sans for kickers, labels and
+ * arrow links.
+ *
+ * Typeface reality — IMPORTANT, DOCUMENTED LIMITATION:
+ * Project B (the visual source of truth for the storefront) sets its
+ * supporting text in `Manrope Variable`. This application does **not** load
+ * Manrope: `index.html` requests Cormorant Garamond, Instrument Sans and
+ * Playfair Display only, and Phase 1 forbids adding font packages. The
+ * campaign scale therefore uses the *existing* families — Cormorant Garamond
+ * for display (`font-display`) and Instrument Sans for supporting text
+ * (`font-ui`). Both are already loaded, so nothing is downloaded twice.
+ * Manrope is a deliberate, recorded gap; see `docs/PHASE-1-DESIGN-FOUNDATION.md`
+ * at the repository root.
+ */
+export const campaign = {
+  /** Campaign kicker / eyebrow above a headline. */
+  kicker: "font-ui text-[11px] font-semibold uppercase tracking-[0.22em]",
+  /** Micro label (SectionLabel at its smallest). */
+  label: "font-ui text-[11px] font-semibold uppercase tracking-[0.22em]",
+  /** Arrow-link / button lettering. */
+  action: "font-ui text-[11px] font-bold uppercase tracking-[0.2em]",
+
+  /** Editorial display serif, roman and italic. */
+  display: "font-display font-normal leading-[0.94] tracking-[-0.02em]",
+  /** The closing line of a campaign headline is set in italic. */
+  displayItalic: "italic",
+  displaySizes: {
+    /** Full-bleed hero headline. */
+    xl: "text-[clamp(3.1rem,7.4vw,7.2rem)]",
+    /** `right` layout headline. */
+    l: "text-[clamp(2.8rem,5.8vw,5.8rem)]",
+    /** `split` / `top` layout headline. */
+    m: "text-[clamp(2.8rem,5.6vw,5.6rem)]",
+    /** Stacked mobile headline. */
+    s: "text-[clamp(2.6rem,12vw,3.4rem)]",
+  },
+
+  /** Supporting copy under a campaign headline. */
+  lead: "font-ui text-[1.0625rem] leading-[1.65]",
+  /** The same line in the tighter `top` layout. */
+  leadCompact: "font-ui text-[0.9375rem] leading-[1.65]",
+  /** Editorial measure for a campaign paragraph. */
+  measure: "max-w-[40ch]",
+};
+
 export const typography = {
   fonts,
   fontFamilies,
@@ -155,6 +206,7 @@ export const typography = {
   body,
   price,
   badge,
+  campaign,
 };
 
 export default typography;

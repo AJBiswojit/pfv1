@@ -165,11 +165,34 @@ export const calculateProductDiscounts = (items) =>
     return total;
   }, 0);
 
+/**
+ * Whether a coupon covers a product.
+ *
+ * A coupon that carries its own eligibility predicate decides for itself —
+ * `toCheckoutCoupon` (offerRepository) attaches the backend offer model's
+ * canonical rule, so collection/category/product-scoped offers are scoped
+ * here exactly as the register scopes them.
+ *
+ * A coupon WITHOUT a predicate carries no per-product scope the client may
+ * invent. The guest cart's coupon is the code alone while the server is the
+ * only thing that prices it, and an unscoped offer is ALL_PRODUCTS in the
+ * backend's own model; either way the caller must not crash on a missing
+ * method (the Phase 4 defect this replaced) and must not narrow a coupon
+ * the server accepted. Fractions are never fabricated: the amount still
+ * comes from the coupon's own `type`/`discountValue` and, at order time,
+ * from the server.
+ */
+export const couponCoversProduct = (coupon, product) => {
+  if (!coupon) return false;
+  if (typeof coupon.appliesTo === "function") return Boolean(coupon.appliesTo(product));
+  return true;
+};
+
 /** The portion of the subtotal a coupon may act on. */
 export const calculateEligibleSubtotal = (items, coupon) =>
   items.reduce(
     (total, item) =>
-      coupon && coupon.appliesTo(item.product)
+      couponCoversProduct(coupon, item.product)
         ? total + item.product.price * item.quantity
         : total,
     0
@@ -256,6 +279,7 @@ export default {
   calculateProductDiscounts,
   calculateEligibleSubtotal,
   calculateCouponDiscount,
+  couponCoversProduct,
   calculateShipping,
   calculateCartTotals,
 };

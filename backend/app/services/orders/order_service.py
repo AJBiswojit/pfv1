@@ -601,7 +601,17 @@ class OrderService:
         return await _attach_customer_info(self.db, order)
 
     async def _find_order_by_number(self, order_number: str) -> Optional[OrderModel]:
-        stmt = select(OrderModel).where(OrderModel.order_number == order_number)
+        # The eager-load options are REQUIRED here, not an optimisation: this is
+        # the idempotent replay path of POST /orders, and OrderResponse
+        # serialises `items` / `status_history` / `returns`. An async session
+        # cannot lazy-load them during serialisation, so a bare select would
+        # turn a retried checkout attempt into a 500 instead of returning the
+        # original order.
+        stmt = (
+            select(OrderModel)
+            .where(OrderModel.order_number == order_number)
+            .options(*_order_load_options())
+        )
         result = await self.db.execute(stmt)
         return result.scalars().first()
 

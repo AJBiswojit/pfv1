@@ -134,6 +134,52 @@ export const zoom = {
   strong: "transition-transform duration-700 group-hover:scale-[1.05]",
 };
 
+/* ------------------------------------------------------------------ */
+/* Campaign motion (Phase 1 — additive)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The editorial campaign motion language, ported from Project B's hero.
+ *
+ * One curve (`silk`) drives every layer of a slide change — image, panel and
+ * copy move as a single gesture. `autoplayMs` is the campaign cadence; it is
+ * deliberately slower than the Atelier page cadence so a hero never feels
+ * hurried. Pausing keeps the time already elapsed on the current slide, so
+ * resuming continues the countdown instead of restarting it.
+ */
+export const campaign = {
+  /** Seconds for the incoming frame to fully settle. */
+  swap: 1.25,
+  /** Autoplay cadence (the hero pauses on hover, focus, offscreen, hidden tab). */
+  autoplayMs: 7000,
+  /**
+   * Floor for the remaining countdown when autoplay resumes. A visitor who
+   * pauses and resumes at 6.9s would otherwise see an immediate jump.
+   */
+  minResumeMs: 400,
+  /** Horizontal travel (px) that counts as a swipe. */
+  swipePx: 48,
+  /** A swipe must beat vertical drift by this factor to count. */
+  swipeRatio: 1.3,
+  /** Copy choreography: generous on first load, brisk on a slide change. */
+  beat: {
+    first: { kicker: 0.6, head: 0.75, copy: 1.15, cta: 1.3, line: 1.05 },
+    next: { kicker: 0.05, head: 0.1, copy: 0.38, cta: 0.5, line: 0.85 },
+  },
+  /** Framer easing arrays. */
+  ease: {
+    /** Slow-in, long soft-out — the campaign signature. */
+    silk: [0.45, 0, 0.15, 1],
+    out: [0.22, 1, 0.36, 1],
+    inOut: [0.65, 0, 0.35, 1],
+    soft: [0.33, 1, 0.68, 1],
+  },
+  /** Scroll-reveal viewport: reveal at the trigger line, reset well outside it. */
+  viewport: { once: false, amount: 0.35, margin: "0px 0px -12% 0px" },
+  /** How far outside the viewport an element must travel before replaying. */
+  resetMargin: "20% 0px 20% 0px",
+};
+
 export const motionTokens = {
   duration,
   durationClass,
@@ -143,6 +189,7 @@ export const motionTokens = {
   pageTransition,
   transition,
   zoom,
+  campaign,
 };
 
 export default motionTokens;

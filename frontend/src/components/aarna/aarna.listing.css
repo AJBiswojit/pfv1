@@ -1,0 +1,242 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PHASE 7 — the listing page's own chrome.
+
+   Everything the design's shop draws is drawn by the design's own stylesheets
+   (`aarna.css`, scoped under `.aan-root` and compared against the design on
+   every port run). This file carries only what the design never drew and this
+   application's listing has always had: the refine control's chip row, the
+   facet groups inside the design's drawer, the row of active selections,
+   Load more, and the states a fetched catalogue has that a bundled one never
+   needed.
+
+   Every declaration is scoped to `.aan-root` and every value is a design token
+   (`--c-*`, `--f-*`), so these rules read as the design's own do and can never
+   reach the host application's pages.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── the listing's controls, in the design's bar ─────────────────────────── */
+
+.aan-root .listing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.aan-root .listing-controls > .chip {
+  gap: 8px;
+}
+
+/* ── the active selections ───────────────────────────────────────────────── */
+
+.aan-root .listing-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.aan-root .listing-chips .chip {
+  gap: 6px;
+}
+
+.aan-root .listing-chips__clear {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--c-espresso);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ── the facet groups, inside the design's drawer ────────────────────────── */
+
+.aan-root .listing-groups {
+  padding-top: 4px;
+}
+
+.aan-root .listing-group {
+  border-bottom: 1px solid var(--c-line);
+  padding: 14px 0;
+}
+
+.aan-root .listing-group__head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  color: var(--c-ink);
+}
+
+.aan-root .listing-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.aan-root .listing-group__options .chip {
+  gap: 6px;
+}
+
+.aan-root .listing-group__count {
+  color: var(--c-ink-3);
+  font-size: 11px;
+}
+
+.aan-root .listing-group__options .chip.is-active .listing-group__count {
+  color: var(--c-bg-2);
+}
+
+.aan-root .listing-group__swatch {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ── the search surface, below the design's shop head ────────────────────── */
+
+.aan-root .listing-search {
+  padding: 4px 0 26px;
+  max-width: 620px;
+}
+
+.aan-root .listing-search .search__form {
+  padding: 4px 0;
+}
+
+.aan-root .listing-search .search__form input {
+  font-size: clamp(20px, 2.4vw, 30px);
+}
+
+.aan-root .listing-search__submit {
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--c-espresso);
+}
+
+.aan-root .listing-search__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ── Load more, and the tail of a fully-loaded edit ──────────────────────── */
+
+.aan-root .listing-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 0 8px;
+}
+
+.aan-root .listing-more__note,
+.aan-root .listing-tail {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.aan-root .listing-tail {
+  padding: 48px 0 8px;
+  text-align: center;
+}
+
+/* ── the states a fetched catalogue has ──────────────────────────────────── */
+
+/* The design's own grid, holding its own plate proportions, while the
+   catalogue is in flight. Nothing is written into it: no name, no price. */
+.aan-root .listing-skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 1.8vw, 28px) clamp(12px, 1.6vw, 24px);
+}
+
+.aan-root .listing-skeleton__plate {
+  aspect-ratio: 4 / 5;
+  background: var(--c-bg-2);
+  opacity: 0.45;
+}
+
+.aan-root .listing-skeleton__line {
+  height: 12px;
+  margin-top: 14px;
+  background: var(--c-bg-2);
+  opacity: 0.45;
+}
+
+@media (max-width: 900px) {
+  .aan-root .listing-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── the Explore insert ──────────────────────────────────────────────────── */
+
+/* An advertisement or an editorial frame from the placement register, spanning
+   the design's four-column grid. It carries no product and no price — the same
+   rule the production Explore grid holds. */
+.aan-root .listing-insert {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 3vw, 40px);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  padding: clamp(16px, 2vw, 28px);
+}
+
+.aan-root .listing-insert__media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--c-bg-2);
+}
+
+.aan-root .listing-insert__title {
+  font-family: var(--f-serif);
+  font-size: clamp(22px, 2.4vw, 34px);
+  font-weight: 500;
+  padding: 10px 0 6px;
+}
+
+.aan-root .listing-insert__body {
+  color: var(--c-ink-2);
+}
+
+.aan-root .listing-insert__cta {
+  display: inline-block;
+  padding-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--c-espresso);
+}
+
+@media (max-width: 720px) {
+  .aan-root .listing-insert {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── a crumb step, which the design draws inline ─────────────────────────── */
+
+.aan-root .crumbs__step {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}

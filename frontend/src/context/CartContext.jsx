@@ -280,6 +280,16 @@ export function CartProvider({ children }) {
     const id = intent.guestLineId;
     const target = getProductById(productId) ?? product;
     const maximum = target ? guestMaximumFor(target) : 99;
+    /**
+     * A piece the catalogue marks unavailable has a ceiling of zero (the same
+     * `getMaxQuantity` rule the product page validates against). The clamp
+     * below would then leave the bag unchanged while this function still
+     * reported success — a fabricated confirmation for a piece that was never
+     * added. Refuse it here, with the same message the product page uses.
+     */
+    if (target && maximum < 1) {
+      return { ok: false, message: "This piece is currently unavailable." };
+    }
     setLines((current) => {
       const existing = findCartLine(current, productId, selection) ??
         current.find((line) => line.id === id);
@@ -463,6 +473,13 @@ export function CartProvider({ children }) {
       : null,
     couponCode,
     couponLapsed,
+    /**
+     * True when `totals` is the server's own pricing (`GET /cart`). False
+     * means they are the guest presentation calculation, which the server
+     * re-validates and re-prices when the order is placed — the distinction
+     * a surface needs to state an offer's amount honestly.
+     */
+    priced: authenticated,
     /** True while the authenticated cart has not been confirmed by the server. */
     isLoading,
     /** True while a cart mutation is in flight (disables duplicate mutations). */
@@ -472,8 +489,8 @@ export function CartProvider({ children }) {
     getCartItemQuantity, applyCoupon, removeCoupon,
     refreshCart: loadCart,
     isDrawerOpen, openDrawer, closeDrawer,
-  }), [items, count, totals, couponCode, serverCoupon, couponLapsed, isLoading,
-      isSyncing, error, errorStatus, addToCart, removeFromCart,
+  }), [items, count, totals, couponCode, serverCoupon, couponLapsed, authenticated,
+      isLoading, isSyncing, error, errorStatus, addToCart, removeFromCart,
       updateCartQuantity, clearCart, getCartItemQuantity, applyCoupon, removeCoupon,
       loadCart, isDrawerOpen, openDrawer, closeDrawer]);
 
@@ -483,7 +500,7 @@ export function CartProvider({ children }) {
 export function useCart() {
   return useContext(CartContext) ?? {
     items: [], count: 0, totals: calculateCartTotals([]), coupon: null,
-    couponCode: null, couponLapsed: false, isLoading: false, isSyncing: false,
+    couponCode: null, couponLapsed: false, priced: false, isLoading: false, isSyncing: false,
     error: null, errorStatus: null,
     addToCart:           () => ({ ok: false, message: "" }),
     removeFromCart:      () => ({ ok: false, message: "" }),

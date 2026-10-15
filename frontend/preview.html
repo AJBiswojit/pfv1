@@ -1,0 +1,129 @@
+<!doctype html>
+<!--
+  PRATIKSHYA FASHION — Phase 1.5 hero preview harness (DEVELOPMENT ONLY).
+
+  This file is a standalone dev entry for `vite --config vite.preview.config.js`.
+  It is NOT an input of `npm run build` (Vite's default build input is
+  `index.html` only), it is not served by the production `vite preview` server,
+  and nothing in the application links to it. The harness itself also refuses
+  to render outside `import.meta.env.DEV`.
+
+  Open http://localhost:5173/preview.html while the preview dev server runs.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>PRATIKSHYA FASHION — editorial hero preview (development only)</title>
+  </head>
+  <body>
+    <div id="preview-root"></div>
+    <script type="module" src="/src/components/storefront/preview/main.jsx"></script>
+    <!--
+      Dev-server self-heal (development only; the ONLY script in this file that
+      is not the harness entry).
+
+      The harness entry imports React, React DOM and React Router from
+      `/node_modules/.vite/deps/*.js?v=<hash>` — URLs owned by the Vite
+      dependency optimizer. Whenever that optimizer re-runs (a dev-server
+      restart, a config change, a newly discovered dependency), it mints new
+      hashes and answers every PREVIOUS hash with `504 Outdated Optimize Dep`
+      (empty body, nothing logged in the terminal). A page holding a stale hash
+      — already open, or loading while the optimizer churns — cannot fetch its
+      imports, so the entry never executes and the page stays blank: no error in
+      the page, nothing in the terminal.
+
+      So: if a module fails to load, say what it looks like and reload ONCE with
+      a fresh module graph. It is not a loop (a 20s window is recorded in
+      sessionStorage, and a tab reloads at most once inside it) and it hides
+      nothing — a module that fails for any other reason is reported below as a
+      code error, without reloading.
+    -->
+    <script>
+      (function () {
+        var TITLE = "[preview harness]";
+        var KEY = "pratikshya:preview-harness-reloaded-at";
+        var WINDOW_MS = 20000;
+        var container = document.getElementById("preview-root");
+        var reloaded = false;
+
+        if (!container) {
+          console.error(
+            TITLE +
+              " This document has no #preview-root element, so nothing can mount. It is not the harness document — check what the dev server returns for / ."
+          );
+          return;
+        }
+
+        function reloadOnce(why) {
+          if (reloaded) return;
+          reloaded = true;
+          var previous = 0;
+          try {
+            previous = Number(window.sessionStorage.getItem(KEY) || 0);
+          } catch (error) {
+            previous = 0;
+          }
+          var now = Date.now();
+          if (now - previous < WINDOW_MS) {
+            console.error(
+              TITLE +
+                " " +
+                why +
+                " Not reloading again automatically (this tab already reloaded within the last 20s) — the dev server itself is failing; read the terminal that runs it."
+            );
+            return;
+          }
+          try {
+            window.sessionStorage.setItem(KEY, String(now));
+          } catch (error) {
+            /* Storage blocked (private mode, frames): reload anyway, once. */
+          }
+          console.warn(
+            TITLE +
+              " " +
+              why +
+              " Reloading once with a fresh module graph — a Vite dependency hash that the dev server has already replaced answers `504 Outdated Optimize Dep` and looks exactly like this."
+          );
+          window.location.reload();
+        }
+
+        function watch(entry) {
+          entry.addEventListener("error", function () {
+            reloadOnce("A module failed to load: " + (entry.src || "(inline)"));
+          });
+          entry.addEventListener("load", function () {
+            window.setTimeout(function () {
+              var root = document.getElementById("preview-root");
+              if (root && root.childElementCount === 0) {
+                console.error(
+                  TITLE +
+                    " The module graph loaded but nothing was mounted into #preview-root — that is a code error, not a stale dev-server cache, so this page is not reloading. The stack is in the console above."
+                );
+              }
+            }, 1500);
+          });
+        }
+
+        /* Prefer the harness entry; fall back to every module script. */
+        var scripts = document.scripts;
+        var entry = null;
+        var index;
+        for (index = 0; index < scripts.length; index += 1) {
+          if (scripts[index].type === "module" && /\/preview\/main\.jsx/.test(scripts[index].src)) {
+            entry = scripts[index];
+            break;
+          }
+        }
+        if (entry) {
+          watch(entry);
+          return;
+        }
+        for (index = 0; index < scripts.length; index += 1) {
+          if (scripts[index].type === "module") watch(scripts[index]);
+        }
+      })();
+    </script>
+  </body>
+</html>

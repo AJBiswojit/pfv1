@@ -1,0 +1,1981 @@
+/* ══════════════════════════════════════════════════════════════════════
+   PRATIKSHYA FASHION — Homepage content sections geometry (Phase 2B).
+
+   A faithful port of Project B's homepage sections 02–10 and 12 (the hero
+   is 01, Phase 1; the newsletter is 11 and is not built — see
+   docs/PHASE-2B-HOMEPAGE-CONTENT-SECTIONS.md).
+
+   Every selector is namespaced `.pf-sec*` and every custom property is
+   declared INSIDE `.pf-sec`, so this file cannot reach `:root`, `body`, a
+   heading, an image or any generic class used by the Admin, Super Admin or
+   Employee portals. Palette, type and motion read the application's own
+   theme custom properties (`src/index.css` @theme, mirrored from
+   `design-system/tokens.js`) — no brand hex is re-declared here.
+
+   Geometry values are Project B's (styles/sections.css), unchanged unless a
+   comment marks them ADJUSTED.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* The wrapper the composer renders: no box of its own, just a stable
+   containing block for the sections and their absolutely-placed asides. */
+.pf-sec-host {
+  display: flow-root;
+  position: relative;
+}
+
+.pf-sec {
+  /* Campaign palette (scoped — mirrors `campaign` in design-system/tokens.js) */
+  --pf-blush: var(--color-blush-canvas);
+  --pf-blush-warm: var(--color-blush-warm);
+  --pf-blush-soft: var(--color-blush-soft);
+  --pf-blush-deep: #e3c6b6;
+  --pf-paper: var(--color-blush-paper);
+  --pf-neutral: var(--color-neutral-soft);
+  --pf-cocoa: var(--color-cocoa-muted);
+  --pf-burgundy: var(--color-burgundy);
+  --pf-burgundy-deep: var(--color-burgundy-deep);
+  --pf-night: var(--color-night);
+  --pf-night-soft: var(--color-night-soft);
+  --pf-ink: var(--color-espresso);
+  --pf-ink-soft: var(--color-espresso-soft);
+  --pf-ink-meta: var(--color-espresso-meta);
+  --pf-line: var(--color-burgundy-line);
+  --pf-line-strong: var(--color-burgundy-line-strong);
+  --pf-on-dark: var(--color-blush-canvas);
+  --pf-on-dark-soft: rgba(247, 238, 237, 0.68);
+
+  /* Layout + motion (scoped) */
+  --pf-maxw: 1440px;
+  --pf-gutter: clamp(16px, 3.6vw, 56px);
+  --pf-sec-y: clamp(56px, 7.5vw, 104px);
+  --pf-sec-y-sm: clamp(40px, 5vw, 72px);
+  --pf-header-h: 64px;
+  --pf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --pf-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --pf-shadow-soft: 0 10px 40px -18px rgba(58, 24, 6, 0.35);
+
+  /* Type scale (Project B's, in this app's available faces) */
+  --pf-fs-xs: 0.6875rem;
+  --pf-fs-sm: 0.8125rem;
+  --pf-fs-base: 0.9375rem;
+  --pf-fs-md: 1.0625rem;
+  --pf-fs-display-xl: clamp(3.1rem, 7.4vw, 7.2rem);
+  --pf-fs-display-l: clamp(2.5rem, 5.2vw, 5rem);
+  --pf-fs-display-m: clamp(2.1rem, 3.8vw, 3.6rem);
+  --pf-fs-display-s: clamp(1.6rem, 2.4vw, 2.2rem);
+  --pf-track-label: 0.22em;
+
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--pf-ink);
+}
+
+@media (max-width: 899px) {
+  .pf-sec {
+    --pf-header-h: 56px;
+  }
+}
+
+/* ── Shared furniture ────────────────────────────────────────────────── */
+
+.pf-sec__container {
+  width: 100%;
+  max-width: var(--pf-maxw);
+  margin-inline: auto;
+  padding-inline: var(--pf-gutter);
+}
+
+.pf-sec__display {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  color: var(--pf-ink);
+}
+
+.pf-sec__display--italic {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.pf-sec__lead {
+  margin: 0;
+  color: var(--pf-ink-soft);
+  font-size: var(--pf-fs-base);
+  line-height: 1.65;
+}
+
+/* Honest note line — used where a source's ranking/copy cannot be verified. */
+.pf-sec__note {
+  margin: 0;
+  color: var(--pf-ink-meta);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pf-sec__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+/* One campaign focus ring for every interactive element this module renders
+   on a light surface; the dark sections override the colour below. */
+.pf-sec a:focus-visible,
+.pf-sec button:focus-visible {
+  outline: 1.5px solid var(--pf-burgundy);
+  outline-offset: 3px;
+}
+
+.pf-sec-bridal a:focus-visible,
+.pf-sec-bridal button:focus-visible,
+.pf-sec-offer a:focus-visible,
+.pf-sec-offer button:focus-visible,
+.pf-sec-jewel a:focus-visible,
+.pf-sec-jewel button:focus-visible {
+  outline-color: var(--pf-blush-warm);
+}
+
+/* Image plate: cover, clipped, no invented fallback (PratikshyaImage decides). */
+.pf-sec__plate {
+  position: relative;
+  overflow: hidden;
+  background: var(--pf-blush-warm);
+}
+
+.pf-sec__plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.4s var(--pf-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-sec__plate img {
+    transition: none;
+  }
+}
+
+/* ══════════════ 02 · CATEGORY COLLAGE ══════════════ */
+
+.pf-sec-collage {
+  padding: var(--pf-sec-y) 0 calc(var(--pf-sec-y) * 0.8);
+  background: var(--pf-paper);
+}
+
+.pf-sec-collage__grid {
+  display: grid;
+  gap: clamp(12px, 1.5vw, 22px);
+  grid-template-columns: 1.2fr 0.8fr 0.8fr 1fr;
+  grid-template-rows: auto clamp(300px, 27vw, 400px);
+  grid-template-areas:
+    "women head head men"
+    "women kids ess men";
+}
+
+.pf-sec-collage__head {
+  grid-area: head;
+  align-self: end;
+  padding: 0 0 clamp(16px, 2vw, 32px) clamp(0px, 1.5vw, 20px);
+}
+
+.pf-sec-collage__title {
+  font-size: var(--pf-fs-display-l);
+  margin-top: 18px;
+}
+
+.pf-sec-collage__intro {
+  margin: 14px 0 0;
+  max-width: 36ch;
+  color: var(--pf-ink-soft);
+}
+
+.pf-sec-collage__tile {
+  position: relative;
+  min-height: 0;
+}
+
+.pf-sec-collage__tile--0 {
+  grid-area: women;
+  min-height: clamp(560px, 50vw, 760px);
+}
+
+.pf-sec-collage__tile--1 {
+  grid-area: men;
+  margin-top: clamp(40px, 6vw, 96px);
+}
+
+.pf-sec-collage__tile--2 {
+  grid-area: kids;
+}
+
+.pf-sec-collage__tile--3 {
+  grid-area: ess;
+}
+
+.pf-sec-collage__link {
+  position: relative;
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  background: var(--pf-blush-warm);
+}
+
+.pf-sec-collage__img {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.pf-sec-collage__link:hover .pf-sec-collage__img img,
+.pf-sec-collage__link:focus-visible .pf-sec-collage__img img {
+  transform: scale(1.06);
+}
+
+.pf-sec-collage__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(43, 17, 5, 0.62) 0%, rgba(43, 17, 5, 0) 46%);
+}
+
+.pf-sec-collage__cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  align-items: baseline;
+  padding: clamp(16px, 2vw, 28px);
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-collage__num {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  opacity: 0.75;
+}
+
+.pf-sec-collage__name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1;
+}
+
+.pf-sec-collage__tile--0 .pf-sec-collage__name {
+  font-size: clamp(48px, 5.6vw, 88px);
+  font-style: italic;
+}
+
+.pf-sec-collage__note {
+  grid-column: 2;
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.82;
+}
+
+.pf-sec-collage__cta {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(247, 238, 237, 0.32);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Tile 2 sits on paper, caption beneath the plate. */
+.pf-sec-collage__tile--2 .pf-sec-collage__link {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: var(--pf-paper);
+}
+
+.pf-sec-collage__tile--2 .pf-sec-collage__img {
+  position: relative;
+  inset: auto;
+}
+
+.pf-sec-collage__tile--2 .pf-sec-collage__link::after {
+  display: none;
+}
+
+.pf-sec-collage__tile--2 .pf-sec-collage__cap {
+  position: relative;
+  padding: 14px 0 0;
+  color: var(--pf-ink);
+}
+
+.pf-sec-collage__tile--2 .pf-sec-collage__cta {
+  border-top-color: var(--pf-line);
+}
+
+.pf-sec-collage__tile--2 .pf-sec-collage__name {
+  font-size: 30px;
+}
+
+/* Tile 3 carries an inset paper card. */
+.pf-sec-collage__tile--3 .pf-sec-collage__link::after {
+  display: none;
+}
+
+.pf-sec-collage__tile--3 .pf-sec-collage__cap {
+  left: auto;
+  right: 12px;
+  bottom: 12px;
+  width: min(78%, 220px);
+  padding: 14px 16px;
+  background: var(--pf-paper);
+  color: var(--pf-ink);
+}
+
+.pf-sec-collage__tile--3 .pf-sec-collage__cta {
+  border-top-color: var(--pf-line);
+}
+
+.pf-sec-collage__tile--3 .pf-sec-collage__name {
+  font-size: 28px;
+}
+
+@media (max-width: 1023px) {
+  .pf-sec-collage__grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto 340px 300px;
+    grid-template-areas:
+      "head head head"
+      "women women men"
+      "kids ess ess";
+  }
+
+  .pf-sec-collage__tile--0 {
+    min-height: 0;
+  }
+
+  .pf-sec-collage__tile--1 {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-collage__grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 112vw 64vw 56vw;
+    grid-template-areas:
+      "head head"
+      "women women"
+      "men kids"
+      "ess ess";
+    gap: 10px;
+  }
+
+  .pf-sec-collage__head {
+    padding: 0 0 12px;
+  }
+
+  .pf-sec-collage__note {
+    display: none;
+  }
+
+  .pf-sec-collage__tile--1 .pf-sec-collage__name,
+  .pf-sec-collage__tile--2 .pf-sec-collage__name {
+    font-size: 26px;
+  }
+
+  .pf-sec-collage__tile--1 .pf-sec-collage__cap {
+    padding: 12px;
+  }
+
+  .pf-sec-collage__cta {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+  }
+}
+
+/* ══════════════ 03 · SAREE EDITS ══════════════ */
+
+.pf-sec-saree {
+  position: relative;
+  overflow: hidden;
+  padding: var(--pf-sec-y) 0 var(--pf-sec-y-sm);
+  background: var(--pf-blush-warm);
+}
+
+.pf-sec-saree__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.pf-sec-saree__visual {
+  grid-column: 1 / 7;
+  position: relative;
+  padding-bottom: 96px;
+}
+
+.pf-sec-saree__main {
+  width: 84%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--pf-neutral);
+}
+
+.pf-sec-saree__word {
+  position: absolute;
+  top: 6%;
+  right: -8%;
+  z-index: 2;
+  pointer-events: none;
+  writing-mode: vertical-rl;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(100px, 12vw, 210px);
+  line-height: 0.8;
+  letter-spacing: -0.03em;
+  color: var(--pf-burgundy);
+  opacity: 0.9;
+}
+
+.pf-sec-saree__strip {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  gap: 12px;
+}
+
+.pf-sec-saree__frame {
+  width: clamp(110px, 10vw, 158px);
+  margin: 0;
+  padding: 6px 6px 0;
+  background: var(--pf-blush);
+  box-shadow: var(--pf-shadow-soft);
+}
+
+.pf-sec-saree__frame:nth-child(2) {
+  transform: translateY(-26px);
+}
+
+.pf-sec-saree__frame .pf-sec__plate {
+  aspect-ratio: 3 / 4;
+}
+
+.pf-sec-saree__frame figcaption {
+  padding: 8px 2px 9px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec-saree__copy {
+  grid-column: 8 / 13;
+  padding-top: clamp(8px, 3vw, 48px);
+}
+
+.pf-sec-saree__title {
+  font-size: var(--pf-fs-display-l);
+  margin: 20px 0 24px;
+}
+
+.pf-sec-saree__lead {
+  max-width: 46ch;
+}
+
+.pf-sec-saree__list {
+  margin: 34px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--pf-line-strong);
+}
+
+.pf-sec-saree__row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto 24px;
+  column-gap: 14px;
+  align-items: center;
+  padding: 16px 6px;
+  border-bottom: 1px solid var(--pf-line-strong);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.5s var(--pf-ease), padding 0.5s var(--pf-ease);
+}
+
+.pf-sec-saree__row:hover,
+.pf-sec-saree__row:focus-visible {
+  padding-left: 14px;
+  background: rgba(247, 238, 237, 0.55);
+}
+
+.pf-sec-saree__idx {
+  grid-row: span 2;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--pf-cocoa);
+}
+
+.pf-sec-saree__name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.1;
+}
+
+.pf-sec-saree__row:hover .pf-sec-saree__name {
+  font-style: italic;
+}
+
+.pf-sec-saree__note {
+  grid-column: 2;
+  font-size: 12.5px;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec-saree__count {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pf-ink-soft);
+}
+
+.pf-sec-saree__arrow {
+  grid-column: 4;
+  grid-row: 1 / 3;
+  display: inline-flex;
+  color: var(--pf-burgundy);
+}
+
+.pf-sec-saree__products {
+  margin-top: clamp(48px, 6vw, 88px);
+}
+
+.pf-sec__rail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--pf-line-strong);
+}
+
+.pf-sec__rail-head h3 {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: var(--pf-fs-display-s);
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.pf-sec__rail-head p {
+  flex: 1;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec__grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.pf-sec__grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.pf-sec__grid-3 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+}
+
+@media (min-width: 768px) {
+  .pf-sec__grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pf-sec__grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .pf-sec-saree__visual,
+  .pf-sec-saree__copy {
+    grid-column: 1 / -1;
+  }
+
+  .pf-sec-saree__visual {
+    padding-bottom: 80px;
+  }
+
+  .pf-sec-saree__main {
+    width: 88%;
+  }
+
+  .pf-sec-saree__word {
+    right: -2%;
+    font-size: 96px;
+  }
+
+  .pf-sec-saree__copy {
+    padding-top: 12px;
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-saree__frame {
+    width: 27vw;
+  }
+
+  .pf-sec-saree__row {
+    grid-template-columns: 28px 1fr auto 20px;
+    padding-inline: 0;
+  }
+
+  .pf-sec-saree__count {
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* ══════════════ 04 · BRIDAL ══════════════ */
+
+.pf-sec-bridal {
+  position: relative;
+  overflow: hidden;
+  padding: var(--pf-sec-y) 0;
+  color: var(--pf-on-dark);
+  background:
+    radial-gradient(90% 60% at 85% 0%, rgba(101, 8, 31, 0.6), transparent 65%),
+    radial-gradient(60% 50% at 0% 100%, rgba(160, 112, 92, 0.18), transparent 60%),
+    var(--pf-night);
+}
+
+.pf-sec-bridal__head {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+  align-items: end;
+  margin-bottom: clamp(32px, 4vw, 56px);
+}
+
+.pf-sec-bridal__title {
+  grid-column: 1 / 8;
+  color: var(--pf-on-dark);
+  font-size: var(--pf-fs-display-xl);
+}
+
+.pf-sec-bridal__title .pf-sec__display--italic {
+  color: var(--pf-blush-warm);
+  padding-left: 0.6em;
+}
+
+.pf-sec-bridal__intro {
+  grid-column: 9 / 13;
+  padding-bottom: 10px;
+  max-width: 38ch;
+  color: var(--pf-on-dark-soft);
+}
+
+.pf-sec-bridal__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.pf-sec-bridal__bride {
+  grid-column: 1 / 8;
+  position: relative;
+  display: flex;
+  align-self: stretch;
+}
+
+.pf-sec-bridal__bride-plate {
+  flex: 1;
+  width: 100%;
+  min-height: 720px;
+}
+
+.pf-sec-bridal__bride:hover .pf-sec__plate img,
+.pf-sec-bridal__groom:hover .pf-sec__plate img {
+  transform: scale(1.03);
+}
+
+.pf-sec-bridal__bride-txt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 120px clamp(24px, 3.4vw, 48px) clamp(24px, 3.4vw, 48px);
+  background: linear-gradient(
+    0deg,
+    rgba(43, 17, 5, 0.92) 0%,
+    rgba(43, 17, 5, 0.55) 55%,
+    rgba(43, 17, 5, 0) 100%
+  );
+}
+
+.pf-sec-bridal__kicker {
+  margin: 0;
+  font-size: var(--pf-fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: var(--pf-neutral);
+}
+
+.pf-sec-bridal__name {
+  margin: 12px 0 16px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 400;
+  font-size: var(--pf-fs-display-m);
+  line-height: 0.98;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-bridal__copy {
+  margin: 0 0 22px;
+  max-width: 42ch;
+  color: var(--pf-on-dark-soft);
+}
+
+.pf-sec-bridal__copy strong {
+  color: var(--pf-on-dark);
+  font-weight: 600;
+}
+
+.pf-sec-bridal__groom {
+  grid-column: 8 / 13;
+  margin-top: clamp(120px, 12.5vw, 176px);
+  padding: clamp(24px, 2.6vw, 40px) clamp(20px, 2.4vw, 36px) 0;
+  background: var(--pf-blush-warm);
+  color: var(--pf-ink);
+}
+
+.pf-sec-bridal__groom-txt {
+  margin-bottom: 26px;
+}
+
+.pf-sec-bridal__groom .pf-sec-bridal__kicker {
+  color: var(--pf-cocoa);
+}
+
+.pf-sec-bridal__groom .pf-sec-bridal__name {
+  color: var(--pf-ink);
+}
+
+.pf-sec-bridal__groom .pf-sec-bridal__copy {
+  color: var(--pf-ink-soft);
+}
+
+.pf-sec-bridal__groom .pf-sec-bridal__copy strong {
+  color: var(--pf-ink);
+}
+
+.pf-sec-bridal__groom-plate {
+  aspect-ratio: 1 / 1.08;
+  margin-inline: calc(clamp(20px, 2.4vw, 36px) * -1);
+}
+
+.pf-sec-bridal__pair {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: calc(58.33% + 26px);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+}
+
+.pf-sec-bridal__pair a {
+  display: block;
+  flex: none;
+  width: clamp(104px, 9vw, 132px);
+  overflow: hidden;
+  border: 5px solid var(--pf-night);
+  border-radius: 999px 999px 0 0;
+}
+
+.pf-sec-bridal__pair .pf-sec__plate {
+  aspect-ratio: 3 / 4.3;
+}
+
+.pf-sec-bridal__pair a:hover .pf-sec__plate img {
+  transform: scale(1.06);
+}
+
+.pf-sec-bridal__pair figcaption {
+  max-width: 9ch;
+  padding-bottom: 40px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.05;
+  color: var(--pf-on-dark-soft);
+}
+
+@media (max-width: 899px) {
+  .pf-sec-bridal__title,
+  .pf-sec-bridal__intro,
+  .pf-sec-bridal__bride,
+  .pf-sec-bridal__groom {
+    grid-column: 1 / -1;
+  }
+
+  .pf-sec-bridal__bride {
+    display: block;
+  }
+
+  .pf-sec-bridal__bride-plate {
+    min-height: 0;
+    aspect-ratio: 4 / 5;
+  }
+
+  .pf-sec-bridal__groom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: end;
+    margin-top: 0;
+    padding: 20px;
+  }
+
+  .pf-sec-bridal__groom-txt {
+    margin: 0;
+  }
+
+  .pf-sec-bridal__groom-plate {
+    margin: 0;
+  }
+
+  .pf-sec-bridal__pair {
+    display: none;
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-bridal__bride-plate {
+    aspect-ratio: 3 / 4;
+  }
+
+  .pf-sec-bridal__groom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-bridal__groom-plate {
+    order: -1;
+    aspect-ratio: 4 / 5;
+    margin: -20px -20px 0;
+  }
+}
+
+/* ══════════════ 05 · FINISHING TOUCHES (B's jewellery theatre) ══════════════ */
+
+.pf-sec-jewel {
+  padding: var(--pf-sec-y) 0;
+  background: var(--pf-paper);
+}
+
+.pf-sec-jewel__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: start;
+}
+
+.pf-sec-jewel__stage {
+  position: sticky;
+  top: calc(var(--pf-header-h) + 20px);
+  padding: 14px 14px 0;
+  background: var(--pf-night);
+  /* ADJUSTED: B bleeds the dark stage 20px past its column. On the narrowest
+     screens the page gutter is only 16px, so the bleed is capped at the gutter
+     instead of pushing a scrollbar onto the page. Desktop is unchanged. */
+  margin-inline: max(-20px, calc(var(--pf-gutter) * -1));
+}
+
+.pf-sec-jewel__stage-frame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--pf-night-soft);
+}
+
+.pf-sec-jewel__stage-img {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.pf-sec-jewel__stage-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 35%;
+}
+
+.pf-sec-jewel__stage-cap {
+  min-height: 104px;
+  padding: 18px 6px 20px;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-jewel__stage-kicker {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: var(--pf-neutral);
+}
+
+.pf-sec-jewel__stage-name {
+  display: block;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.1;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-jewel__title {
+  margin: 18px 0 14px;
+  font-size: var(--pf-fs-display-l);
+}
+
+.pf-sec-jewel__lead {
+  max-width: 46ch;
+}
+
+.pf-sec-jewel__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 26px 0 22px;
+}
+
+.pf-sec-jewel__tab {
+  position: relative;
+  isolation: isolate;
+  padding: 8px 16px;
+  border: 1px solid var(--pf-line-strong);
+  border-radius: 999px;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--pf-ink-soft);
+  cursor: pointer;
+  transition: color 0.25s var(--pf-ease), border-color 0.25s var(--pf-ease),
+    background 0.25s var(--pf-ease);
+}
+
+.pf-sec-jewel__tab sup {
+  margin-left: 3px;
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.pf-sec-jewel__tab[aria-pressed="true"] {
+  border-color: var(--pf-burgundy);
+  background: var(--pf-burgundy);
+  color: var(--pf-blush);
+}
+
+.pf-sec-jewel__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 14px;
+}
+
+.pf-sec-jewel__more a {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  aspect-ratio: 1;
+  padding: 20px;
+  background: var(--pf-blush-warm);
+  color: var(--pf-ink);
+  text-decoration: none;
+  transition: background 0.5s var(--pf-ease);
+}
+
+.pf-sec-jewel__more a:hover {
+  background: var(--pf-neutral);
+}
+
+.pf-sec-jewel__more-n {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 64px;
+  line-height: 0.9;
+  color: var(--pf-burgundy);
+}
+
+.pf-sec-jewel__more-t {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.pf-sec-jewel__empty {
+  grid-column: 1 / -1;
+  padding: 28px 0;
+  color: var(--pf-ink-meta);
+  font-size: 13px;
+}
+
+@media (max-width: 899px) {
+  .pf-sec-jewel__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-jewel__stage {
+    position: relative;
+    top: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .pf-sec-jewel__stage-cap {
+    align-self: end;
+    padding: 8px 0;
+  }
+
+  .pf-sec-jewel__side {
+    order: -1;
+  }
+
+  .pf-sec-jewel__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-jewel__tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: calc(var(--pf-gutter) * -1);
+    padding-inline: var(--pf-gutter);
+    scrollbar-width: none;
+  }
+
+  .pf-sec-jewel__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pf-sec-jewel__tab {
+    flex: none;
+  }
+}
+
+/* ══════════════ 06 · OFFER (B's promo spread) ══════════════ */
+
+.pf-sec-offer {
+  --pf-promo-pad: clamp(36px, 4.4vw, 64px);
+  --pf-promo-over: clamp(36px, 4.6vw, 76px);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: var(--pf-promo-pad);
+  background: var(--pf-blush);
+}
+
+.pf-sec-offer__band {
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 24%;
+  top: calc(var(--pf-promo-pad) + var(--pf-promo-over));
+  bottom: calc(var(--pf-promo-pad) + var(--pf-promo-over));
+  background:
+    radial-gradient(90% 120% at 0% 100%, rgba(160, 112, 92, 0.26), transparent 62%),
+    linear-gradient(115deg, var(--pf-burgundy) 0%, var(--pf-burgundy-deep) 58%, var(--pf-night) 100%);
+}
+
+.pf-sec-offer__wrap {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: clamp(16px, 2vw, 28px);
+  grid-template-rows: var(--pf-promo-over) auto var(--pf-promo-over);
+}
+
+/* No campaign plate resolved: the offer copy spans the whole band. */
+.pf-sec-offer__wrap--copy-only .pf-sec-offer__content {
+  grid-column: 1 / 13;
+}
+
+.pf-sec-offer__content {
+  grid-column: 1 / 8;
+  grid-row: 2;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: clamp(400px, 34vw, 520px);
+  padding: clamp(40px, 4.6vw, 72px) clamp(8px, 2vw, 40px) clamp(40px, 4.6vw, 72px) 0;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-offer__label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--pf-fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: var(--pf-blush-warm);
+}
+
+.pf-sec-offer__label span {
+  padding: 4px 8px;
+  border: 1px solid rgba(247, 238, 237, 0.4);
+  font-size: 10px;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-offer__title {
+  margin: 24px 0 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5.3vw, 5.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-offer__body {
+  margin-top: 22px;
+}
+
+.pf-sec-offer__copy {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--pf-on-dark-soft);
+}
+
+.pf-sec-offer__ledger {
+  display: flex;
+  margin: 28px 0 0;
+  max-width: 520px;
+  border-top: 1px solid rgba(247, 238, 237, 0.2);
+  border-bottom: 1px solid rgba(247, 238, 237, 0.2);
+}
+
+.pf-sec-offer__ledger > div {
+  flex: 1;
+  padding: 14px 18px 13px 0;
+}
+
+.pf-sec-offer__ledger > div + div {
+  padding-left: 18px;
+  border-left: 1px solid rgba(247, 238, 237, 0.2);
+}
+
+.pf-sec-offer__ledger dt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: var(--pf-neutral);
+}
+
+.pf-sec-offer__ledger dd {
+  margin: 6px 0 0;
+  white-space: nowrap;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(19px, 1.6vw, 23px);
+  line-height: 1.1;
+  color: var(--pf-on-dark);
+}
+
+.pf-sec-offer__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.pf-sec-offer__code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px dashed rgba(247, 238, 237, 0.5);
+  background: none;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pf-on-dark);
+  cursor: pointer;
+  transition: background 0.25s var(--pf-ease), border-color 0.25s var(--pf-ease);
+}
+
+.pf-sec-offer__code strong {
+  letter-spacing: 0.18em;
+}
+
+.pf-sec-offer__code:hover {
+  background: rgba(247, 238, 237, 0.08);
+  border-color: rgba(247, 238, 237, 0.8);
+}
+
+.pf-sec-offer__terms {
+  margin: 18px 0 0;
+  max-width: 46ch;
+  font-size: 11.5px;
+  color: var(--pf-on-dark-soft);
+}
+
+.pf-sec-offer__media {
+  grid-column: 8 / 13;
+  grid-row: 1 / 4;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+}
+
+.pf-sec-offer__frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--pf-night-soft);
+  box-shadow: 0 40px 70px -40px rgba(43, 17, 5, 0.55);
+}
+
+.pf-sec-offer__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pf-sec-offer__media::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  z-index: 3;
+  border: 1px solid rgba(247, 238, 237, 0.35);
+  pointer-events: none;
+}
+
+.pf-sec-offer__num {
+  position: absolute;
+  z-index: 4;
+  left: -0.6em;
+  bottom: 9%;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(120px, 13vw, 210px);
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1.2px rgba(233, 208, 193, 0.9);
+  pointer-events: none;
+}
+
+.pf-sec-offer__num small {
+  margin-left: 0.04em;
+  font-size: 0.38em;
+  vertical-align: top;
+}
+
+.pf-sec-offer__cap {
+  position: absolute;
+  z-index: 4;
+  top: 30px;
+  right: 30px;
+  writing-mode: vertical-rl;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: rgba(247, 238, 237, 0.85);
+}
+
+@media (max-width: 899px) {
+  .pf-sec-offer {
+    padding-block: 0 var(--pf-promo-pad);
+  }
+
+  .pf-sec-offer__band {
+    display: none;
+  }
+
+  .pf-sec-offer__wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .pf-sec-offer__media {
+    grid-column: 1;
+    grid-row: 1;
+    aspect-ratio: 4 / 4.4;
+    max-height: 78svh;
+  }
+
+  .pf-sec-offer__num {
+    left: auto;
+    right: var(--pf-gutter);
+    bottom: 56px;
+    font-size: clamp(96px, 26vw, 150px);
+  }
+
+  .pf-sec-offer__content {
+    grid-column: 1;
+    grid-row: 2;
+    z-index: 3;
+    min-height: 0;
+    margin: -48px var(--pf-gutter) 0;
+    padding: 34px clamp(22px, 5vw, 40px);
+    background: linear-gradient(150deg, var(--pf-burgundy) 0%, var(--pf-burgundy-deep) 100%);
+  }
+}
+
+@media (max-width: 479px) {
+  .pf-sec-offer__ledger {
+    flex-wrap: wrap;
+  }
+
+  .pf-sec-offer__ledger > div:nth-child(3) {
+    flex-basis: 100%;
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(247, 238, 237, 0.2);
+  }
+}
+
+/* ══════════════ 07 · MEN ══════════════ */
+
+.pf-sec-men {
+  padding: var(--pf-sec-y) 0 var(--pf-sec-y-sm);
+  background: var(--pf-blush);
+}
+
+/* No menswear plate resolved: the copy takes the full measure instead of
+   leaving a dead column — the same shape the 899px breakpoint already uses. */
+.pf-sec-men__top--copy-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pf-sec-men__top {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: clamp(24px, 3vw, 48px);
+  align-items: end;
+  margin-bottom: clamp(24px, 3vw, 40px);
+}
+
+/* The copy column of the menswear spread. */
+.pf-sec-men__head {
+  min-width: 0;
+}
+
+.pf-sec-men__title {
+  margin: 16px 0 14px;
+  font-size: var(--pf-fs-display-m);
+}
+
+.pf-sec-men__lead {
+  max-width: 34ch;
+}
+
+.pf-sec-men__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pf-sec-men__types a {
+  display: inline-block;
+  padding: 7px 12px;
+  border: 1px solid var(--pf-line-strong);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.25s var(--pf-ease), color 0.25s var(--pf-ease);
+}
+
+.pf-sec-men__types a:hover {
+  border-color: var(--pf-burgundy);
+  background: var(--pf-burgundy);
+  color: var(--pf-blush);
+}
+
+.pf-sec-men__img {
+  position: relative;
+  aspect-ratio: 16 / 7;
+}
+
+.pf-sec-men__img img {
+  object-position: 50% 16%;
+}
+
+.pf-sec-men__img:hover .pf-sec__plate img {
+  transform: scale(1.03);
+}
+
+.pf-sec-men__tag {
+  position: absolute;
+  left: 56%;
+  top: 52%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 10px;
+  background: rgba(247, 238, 237, 0.94);
+  box-shadow: var(--pf-shadow-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pf-ink);
+  text-decoration: none;
+  transition: transform 0.5s var(--pf-ease);
+}
+
+.pf-sec-men__tag:hover {
+  transform: translateY(-3px);
+}
+
+.pf-sec-men__tag small {
+  display: block;
+  font-weight: 500;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec-men__tag-dot {
+  position: relative;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pf-burgundy);
+}
+
+@media (max-width: 899px) {
+  .pf-sec-men__top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-men__img {
+    aspect-ratio: 4 / 3;
+  }
+
+  .pf-sec-men__tag {
+    left: auto;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+  }
+}
+
+/* ══════════════ 08 · KIDS ══════════════ */
+
+.pf-sec-kids {
+  padding: var(--pf-sec-y) 0;
+  background: var(--pf-blush-soft);
+  overflow: hidden;
+}
+
+/* No collage plate resolved: the copy reads full-width. */
+.pf-sec-kids__grid--copy-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pf-sec-kids__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 80px);
+  align-items: center;
+}
+
+.pf-sec-kids__collage {
+  position: relative;
+  padding: 24px 22% 64px 0;
+}
+
+.pf-sec-kids__main {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: var(--pf-shadow-soft);
+}
+
+.pf-sec-kids__mini {
+  position: absolute;
+  width: 32%;
+  padding: 7px 7px 0;
+  border-radius: 10px;
+  background: var(--pf-paper);
+  box-shadow: var(--pf-shadow-soft);
+}
+
+.pf-sec-kids__mini .pf-sec__plate {
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+}
+
+.pf-sec-kids__mini span {
+  display: block;
+  padding: 6px 0 8px;
+  text-align: center;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 19px;
+  color: var(--pf-ink);
+}
+
+.pf-sec-kids__mini--a {
+  right: 2%;
+  top: 4%;
+}
+
+.pf-sec-kids__mini--b {
+  right: 10%;
+  bottom: 0;
+}
+
+.pf-sec-kids__sticker {
+  position: absolute;
+  left: -14px;
+  bottom: 26px;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--pf-burgundy);
+  color: var(--pf-blush);
+  text-align: center;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  line-height: 0.95;
+}
+
+/* The copy column: never allowed to push the grid wider than the viewport. */
+.pf-sec-kids__body {
+  min-width: 0;
+}
+
+.pf-sec-kids__title {
+  margin: 16px 0 14px;
+  font-size: var(--pf-fs-display-l);
+}
+
+.pf-sec-kids__lead {
+  max-width: 40ch;
+}
+
+.pf-sec-kids__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 26px;
+}
+
+.pf-sec-kids__chip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--pf-line);
+  border-radius: 999px;
+  background: var(--pf-paper);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s var(--pf-ease);
+}
+
+.pf-sec-kids__chip:hover {
+  transform: translateY(-3px) rotate(-2deg);
+  background: var(--pf-blush-warm);
+}
+
+.pf-sec-kids__chip strong {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.pf-sec-kids__chip span {
+  font-size: 11px;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec-kids__products {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+@media (max-width: 899px) {
+  .pf-sec-kids__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-kids__collage {
+    max-width: 560px;
+    padding: 10px 24% 54px 0;
+  }
+}
+
+/* ══════════════ 09 · RAIL (B's bestsellers) ══════════════ */
+
+.pf-sec-best {
+  padding: var(--pf-sec-y) 0;
+  background: var(--pf-blush);
+}
+
+.pf-sec-best__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  align-items: end;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--pf-line-strong);
+}
+
+.pf-sec-best__title {
+  margin-top: 10px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: var(--pf-fs-display-m);
+  line-height: 1;
+  color: var(--pf-ink);
+}
+
+.pf-sec-best__filters {
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 2vw, 30px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pf-sec-best__filters::-webkit-scrollbar {
+  display: none;
+}
+
+.pf-sec-best__filter {
+  position: relative;
+  flex: none;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pf-ink-meta);
+  cursor: pointer;
+  transition: color 0.25s var(--pf-ease);
+}
+
+.pf-sec-best__filter:hover,
+.pf-sec-best__filter[aria-pressed="true"] {
+  color: var(--pf-ink);
+}
+
+.pf-sec-best__filter-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -15px;
+  height: 2px;
+  background: var(--pf-burgundy);
+}
+
+.pf-sec-best__note {
+  margin: 14px 0 26px;
+}
+
+.pf-sec-best__empty {
+  padding: 32px 0;
+  color: var(--pf-ink-meta);
+  font-size: 13px;
+}
+
+@media (max-width: 899px) {
+  .pf-sec-best__head {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pf-sec-best__filters {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    margin-inline: calc(var(--pf-gutter) * -1);
+    padding-inline: var(--pf-gutter);
+  }
+
+  .pf-sec-best__filter-line {
+    bottom: -7px;
+  }
+}
+
+/* ══════════════ 10 · COLLECTIONS LOOKBOOK ══════════════ */
+
+.pf-sec-look {
+  padding: var(--pf-sec-y) 0;
+  background: var(--pf-blush-warm);
+}
+
+.pf-sec-look__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(32px, 5vw, 88px);
+  align-items: start;
+}
+
+/* ADJUSTED (Phase 2D.2): the framed column exists only while a collection can
+   fill it. With no cover there is no frame and no empty column — the body takes
+   the whole row instead of leaving a blank framed block above the service
+   strip. */
+.pf-sec-look__grid--body-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pf-sec-look__visual {
+  position: relative;
+  margin-top: clamp(24px, 4vw, 64px);
+  margin-left: clamp(0px, 2vw, 24px);
+}
+
+.pf-sec-look__imgwrap {
+  position: relative;
+}
+
+.pf-sec-look__frame {
+  position: absolute;
+  z-index: 0;
+  /* ADJUSTED: as above — the frame's outward offset stops at the page gutter. */
+  top: -18px;
+  right: 18px;
+  bottom: 18px;
+  left: max(-18px, calc(var(--pf-gutter) * -1));
+  border: 1px solid var(--pf-cocoa);
+  pointer-events: none;
+}
+
+.pf-sec-look__img {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--pf-blush-soft);
+}
+
+.pf-sec-look__mood {
+  min-height: 2.6em;
+  margin: 36px 0 0;
+  max-width: 30ch;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--pf-ink-soft);
+}
+
+.pf-sec-look__title {
+  margin-top: 16px;
+  font-size: var(--pf-fs-display-l);
+}
+
+.pf-sec-look__selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 28px;
+  margin: 28px 0 0;
+  border-bottom: 1px solid var(--pf-line-strong);
+}
+
+.pf-sec-look__mood-tab {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 0 14px;
+  border: 0;
+  background: none;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(20px, 2vw, 27px);
+  color: var(--pf-ink-meta);
+  cursor: pointer;
+  transition: color 0.25s var(--pf-ease);
+}
+
+.pf-sec-look__mood-tab sup {
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.pf-sec-look__mood-tab:hover {
+  color: var(--pf-ink-soft);
+}
+
+.pf-sec-look__mood-tab[aria-pressed="true"] {
+  font-style: italic;
+  color: var(--pf-ink);
+}
+
+.pf-sec-look__mood-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--pf-burgundy);
+}
+
+.pf-sec-look__list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+
+@media (max-width: 899px) {
+  .pf-sec-look__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-look__visual {
+    max-width: 460px;
+    margin: 18px 0 0 18px;
+  }
+
+  .pf-sec-look__body {
+    order: -1;
+  }
+
+  .pf-sec-look__selector {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0 20px;
+    scrollbar-width: none;
+  }
+
+  .pf-sec-look__selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pf-sec-look__mood-tab {
+    flex: none;
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-look__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ══════════════ 12 · SERVICE STRIP ══════════════ */
+
+.pf-sec-trust {
+  border-top: 1px solid var(--pf-line);
+  background: var(--pf-blush);
+}
+
+.pf-sec-trust__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pf-sec-trust__list li + li {
+  border-left: 1px solid var(--pf-line);
+}
+
+.pf-sec-trust__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px clamp(12px, 1.6vw, 24px);
+  color: inherit;
+  text-decoration: none;
+}
+
+.pf-sec-trust__item span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pf-sec-trust__item strong {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pf-sec-trust__item small {
+  font-size: 12px;
+  color: var(--pf-ink-meta);
+}
+
+.pf-sec-trust__static {
+  cursor: default;
+}
+
+@media (max-width: 899px) {
+  .pf-sec-trust__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pf-sec-trust__list li:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .pf-sec-trust__list li:nth-child(n + 3) {
+    border-top: 1px solid var(--pf-line);
+  }
+}
+
+@media (max-width: 599px) {
+  .pf-sec-trust__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-sec-trust__list li + li {
+    border-left: 0;
+    border-top: 1px solid var(--pf-line);
+  }
+}

@@ -23,6 +23,12 @@
  *     the backend does not promote one either; the list is simply re-read.
  *   - The authenticated identity snapshot in AuthContext is refreshed only
  *     from the backend response, never from arbitrary form input.
+ *   - An account belongs to ONE identity. The account held for a previous
+ *     identity is dropped in the render that first sees the signed-in identity
+ *     change — never after it, and never on screen — so one customer's profile,
+ *     addresses or error can never be shown under another's session. A session
+ *     that still owes a read is loading from its first render, and never
+ *     presented as an account with nothing on file.
  */
 
 import {
@@ -71,17 +77,54 @@ const EMPTY_ACCOUNT = {
 
 export function AccountProvider({ children }) {
   const { user, updateUser } = useAuth();
+
+  /* The identity the account belongs to, and whether this session owes a read
+     at all: an account is read only for a signed-in customer holding a
+     customer token. */
+  const identity = user?.id ?? null;
+  const hasSession = Boolean(identity) && Boolean(getAccessToken("customer"));
+
   const [accountData, setAccountData] = useState(EMPTY_ACCOUNT);
-  const [isLoading, setIsLoading] = useState(false);
+  /* A customer session that is about to be read is loading from its FIRST
+     render — not empty. Without this the page draws "no phone added / 0
+     addresses saved" for the render between the session appearing and the
+     fetch starting, and reports missing data as data that is not there. */
+  const [isLoading, setIsLoading] = useState(() => Boolean(getAccessToken("customer")));
   const [loadError, setLoadError] = useState(null);
   const [loadErrorStatus, setLoadErrorStatus] = useState(null);
+  const [sessionIdentity, setSessionIdentity] = useState(identity);
 
-  // When the authenticated user changes, fetch fresh data from the backend
+  /* An account belongs to one identity: when the signed-in identity changes —
+     another customer signs in, the session ends, the customer token goes — the
+     account held for the previous identity is dropped HERE, during the render
+     that first sees the change. Nothing is committed, so nothing is painted,
+     with one customer's profile, addresses, default address or error under
+     another's session, and a read is expected again for the new identity. This
+     is React's own pattern for state that must follow a prop; an effect would
+     leave exactly one committed render showing the previous account.
+
+     An unchanged identity — any re-render, a profile update, an ordinary
+     refresh of the same customer — leaves the held account and its loading
+     state exactly as they are. */
+  if (sessionIdentity !== identity) {
+    setSessionIdentity(identity);
+    setAccountData(EMPTY_ACCOUNT);
+    setLoadError(null);
+    setLoadErrorStatus(null);
+    setIsLoading(hasSession);
+  }
+
+  // When the authenticated user changes, fetch fresh data from the backend.
+  // The previous identity's account was dropped above, in this same render, so
+  // this effect only ever reads the account of the identity now signed in. The
+  // fetch's own cleanup deliberately does NOT clear the loading flag: the run
+  // that replaces it owns that flag from the moment it sets it.
   useEffect(() => {
     if (!user?.id) {
       setAccountData(EMPTY_ACCOUNT);
       setLoadError(null);
       setLoadErrorStatus(null);
+      setIsLoading(false);
       return undefined;
     }
 
@@ -89,6 +132,7 @@ export function AccountProvider({ children }) {
       setAccountData(EMPTY_ACCOUNT);
       setLoadError(null);
       setLoadErrorStatus(null);
+      setIsLoading(false);
       return undefined;
     }
     let cancelled = false;

@@ -1,0 +1,461 @@
+/* ══════════════════════════════════════════════════════════════════════
+   PRATIKSHYA FASHION — Editorial hero geometry (Phase 1).
+
+   A faithful port of Project B's hero block. Every selector is namespaced
+   `.pf-hero*` and every custom property is declared INSIDE `.pf-hero`, so
+   this file cannot reach `:root`, `body`, a heading, an image or any
+   generic class used by the Admin, Super Admin or Employee portals. It is
+   the only stylesheet the new hero adds, and it is imported by exactly one
+   module (`HeroEditorial.jsx`).
+
+   Values are B's, unchanged: the palette lives in `src/design-system/
+   tokens.js` (`campaign`), the type scale in `typography.js`, and the
+   motion curves in `motion.js` — this file is the geometry those tokens
+   describe.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.pf-hero {
+  /* Campaign palette (scoped — mirrors `campaign` in design-system/tokens.js) */
+  --pf-blush: #f7eeed;
+  --pf-blush-warm: #e9d0c1;
+  --pf-blush-warm-deep: #e3c6b6;
+  --pf-neutral: #caafa5;
+  --pf-cocoa: #a0705c;
+  --pf-burgundy: #65081f;
+  --pf-burgundy-deep: #420619;
+  --pf-ink: #3a1806;
+  --pf-ink-soft: #5b3a2a;
+  --pf-night: #2b1105;
+  --pf-on-dark: #f7eeed;
+  --pf-on-dark-soft: rgba(247, 238, 237, 0.68);
+
+  /* Layout + motion (scoped) */
+  --pf-gutter: clamp(16px, 3.6vw, 56px);
+  --pf-maxw: 1440px;
+  --pf-header-h: 64px;
+  --pf-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --pf-track-label: 0.22em;
+  --pf-fs-xs: 0.6875rem;
+  --pf-fs-base: 0.9375rem;
+  --pf-fs-md: 1.0625rem;
+  --pf-fs-display-xl: clamp(3.1rem, 7.4vw, 7.2rem);
+
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  height: clamp(580px, calc(100svh - var(--pf-header-h) - 34px), 880px);
+  background: var(--pf-blush-warm);
+  transition: background-color 0.8s var(--pf-ease-out);
+  /* Supporting text is the sans face the portals already load; the display
+     face is Cormorant Garamond, as in Project B. */
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* A single, high-contrast focus ring for the whole carousel — the slide
+   regions themselves are never focusable. */
+.pf-hero:focus {
+  outline: none;
+}
+.pf-hero:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  z-index: 5;
+  border: 1px solid var(--pf-burgundy);
+  box-shadow: 0 0 0 1px rgba(247, 238, 237, 0.8);
+  pointer-events: none;
+}
+
+.pf-hero__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.pf-hero__img {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: clip-path;
+}
+.pf-hero__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Split (jewellery) slide: the photograph fills only the frame left of the
+   panel, so its crop is computed on what is actually visible; a container
+   query picks the wide or portrait art direction. */
+.pf-hero__img--split {
+  right: 40%;
+  container-type: size;
+}
+.pf-hero__pic--tall {
+  display: none;
+  position: absolute;
+  inset: 0;
+}
+@container (max-aspect-ratio: 1 / 1) {
+  .pf-hero__pic--wide {
+    display: none;
+  }
+  .pf-hero__pic--tall {
+    display: block;
+  }
+}
+
+.pf-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.pf-hero__scrim--left {
+  background: linear-gradient(
+    90deg,
+    rgba(247, 238, 237, 0.9) 0%,
+    rgba(247, 238, 237, 0.62) 30%,
+    rgba(247, 238, 237, 0) 56%
+  );
+}
+.pf-hero__scrim--right {
+  background: linear-gradient(
+    270deg,
+    rgba(247, 238, 237, 0.95) 0%,
+    rgba(247, 238, 237, 0.82) 30%,
+    rgba(247, 238, 237, 0) 54%
+  );
+}
+.pf-hero__scrim--panel {
+  background: linear-gradient(0deg, rgba(43, 17, 5, 0.35) 0%, rgba(43, 17, 5, 0) 30%);
+}
+.pf-hero__scrim--split {
+  background: linear-gradient(90deg, rgba(43, 17, 5, 0) 70%, rgba(43, 17, 5, 0.12) 100%);
+}
+.pf-hero__scrim--top {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(247, 238, 237, 0.9) 0%,
+      rgba(247, 238, 237, 0.55) 34%,
+      rgba(247, 238, 237, 0) 58%
+    ),
+    linear-gradient(90deg, rgba(247, 238, 237, 0.55) 0%, rgba(247, 238, 237, 0) 45%);
+}
+
+/* Offset editorial panels: burgundy wipes in from the left, blush from the
+   right. */
+.pf-hero__panelbg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 41%;
+  z-index: 1;
+  background:
+    radial-gradient(120% 70% at 0% 100%, rgba(160, 112, 92, 0.28), transparent 60%),
+    linear-gradient(160deg, var(--pf-burgundy) 0%, var(--pf-burgundy-deep) 100%);
+}
+.pf-hero__panelbg--split {
+  left: auto;
+  right: 0;
+  width: 40%;
+  background: linear-gradient(180deg, var(--pf-blush-warm) 0%, var(--pf-blush-warm-deep) 100%);
+  box-shadow: inset 1px 0 0 rgba(101, 8, 31, 0.12);
+}
+.pf-hero__panelbg--split::before {
+  content: "";
+  position: absolute;
+  inset: 22px 22px 22px 22px;
+  border: 1px solid rgba(101, 8, 31, 0.16);
+  border-radius: 999px 999px 0 0 / 220px 220px 0 0;
+  pointer-events: none;
+}
+
+/* ── Copy column ───────────────────────────────────────────────────── */
+
+.pf-hero__content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  width: 100%;
+  max-width: var(--pf-maxw);
+  margin-inline: auto;
+  padding-inline: var(--pf-gutter);
+  display: flex;
+  align-items: center;
+  padding-block: clamp(28px, 4vh, 44px);
+}
+.pf-hero__sizer {
+  display: none;
+}
+.pf-hero__text {
+  max-width: 560px;
+}
+.pf-hero__text--panel {
+  max-width: min(500px, calc(41vw - var(--pf-gutter) * 1.6));
+}
+.pf-hero__text--right {
+  margin-left: auto;
+  max-width: 420px;
+  align-self: flex-end;
+  margin-bottom: clamp(16px, 4vh, 40px);
+}
+.pf-hero__text--split {
+  margin-left: auto;
+  width: min(440px, calc(40vw - var(--pf-gutter) * 1.4));
+  max-width: none;
+}
+.pf-hero__text--top {
+  max-width: 760px;
+}
+
+.pf-hero__kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+  font-size: var(--pf-fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--pf-track-label);
+  text-transform: uppercase;
+  color: var(--pf-cocoa);
+}
+.pf-hero__kicker-line {
+  width: 36px;
+  height: 1px;
+  background: currentColor;
+  flex: none;
+}
+
+.pf-hero__title {
+  font-family: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: var(--pf-fs-display-xl);
+  line-height: 0.94;
+  letter-spacing: -0.02em;
+  color: var(--pf-ink);
+}
+.pf-hero__text--right .pf-hero__title {
+  font-size: clamp(2.8rem, 5.8vw, 5.8rem);
+}
+.pf-hero__text--split .pf-hero__title,
+.pf-hero__text--top .pf-hero__title {
+  font-size: clamp(2.8rem, 5.6vw, 5.6rem);
+}
+
+/* Line masks — the local equivalent of B's global `.line-mask` / `.line-inner`. */
+.pf-hero__line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.pf-hero__line-inner {
+  display: block;
+  will-change: transform;
+}
+.pf-hero__line-inner--italic {
+  font-style: italic;
+}
+
+.pf-hero__copy {
+  margin-top: 26px;
+  max-width: 40ch;
+  font-size: var(--pf-fs-md);
+  line-height: 1.65;
+  color: var(--pf-ink-soft);
+}
+.pf-hero__ctas {
+  margin-top: 34px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+/* Sizing ghost for the invisible mobile sizer: mirrors the CTA's box without
+   being focusable (`aria-hidden` containers must not hold focus). */
+.pf-hero__cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 32px;
+  font-size: var(--pf-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Copy on the burgundy panel */
+.pf-hero__text--light .pf-hero__title {
+  color: var(--pf-on-dark);
+}
+.pf-hero__text--light .pf-hero__kicker {
+  color: var(--pf-neutral);
+}
+.pf-hero__text--light .pf-hero__copy {
+  color: var(--pf-on-dark-soft);
+}
+
+/* ── The `top` layout: copy and CTA share one band with a hairline rule ── */
+
+.pf-hero--top .pf-hero__content {
+  align-items: flex-start;
+  padding-top: clamp(40px, 6vh, 72px);
+}
+.pf-hero__text--top .pf-hero__body {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-top: 24px;
+}
+.pf-hero__text--top .pf-hero__copy {
+  margin-top: 0;
+  max-width: 34ch;
+  padding-right: 28px;
+  border-right: 1px solid rgba(101, 8, 31, 0.25);
+  font-size: var(--pf-fs-base);
+}
+.pf-hero__text--top .pf-hero__ctas {
+  margin-top: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* ── Tablet ────────────────────────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .pf-hero__panelbg--split {
+    width: 46%;
+  }
+  .pf-hero__img--split {
+    right: 46%;
+  }
+  .pf-hero__text--split {
+    width: calc(46vw - var(--pf-gutter) * 1.4);
+  }
+  .pf-hero__panelbg {
+    width: 52%;
+  }
+  .pf-hero__text--panel {
+    max-width: calc(52vw - var(--pf-gutter) * 1.6);
+  }
+}
+
+@media (max-width: 899px) {
+  .pf-hero {
+    --pf-header-h: 56px;
+  }
+}
+
+/* ── Stacked mobile: photograph on top, copy below ──────────────────── */
+
+@media (max-width: 719px) {
+  .pf-hero {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--pf-blush);
+  }
+  /* The burgundy panel is the slide's own background when stacked. */
+  .pf-hero--panel {
+    background: var(--pf-burgundy);
+  }
+  .pf-hero__stage {
+    position: relative;
+    height: 58svh;
+    min-height: 360px;
+    max-height: 560px;
+  }
+  .pf-hero__scrim--left,
+  .pf-hero__scrim--right {
+    background: linear-gradient(0deg, rgba(247, 238, 237, 0.55) 0%, rgba(247, 238, 237, 0) 35%);
+  }
+  .pf-hero__scrim--split,
+  .pf-hero__scrim--top {
+    background: linear-gradient(0deg, rgba(247, 238, 237, 0.55) 0%, rgba(247, 238, 237, 0) 35%);
+  }
+  .pf-hero__panelbg {
+    display: none;
+  }
+  .pf-hero__img--split {
+    right: 0;
+  }
+  .pf-hero__content {
+    height: auto;
+    min-height: 0;
+    padding-top: 28px;
+    padding-bottom: 40px;
+    display: grid;
+    align-items: start;
+  }
+  .pf-hero__content > .pf-hero__text {
+    grid-area: 1 / 1;
+  }
+  .pf-hero__sizer {
+    display: block;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .pf-hero__text,
+  .pf-hero__text--right,
+  .pf-hero__text--panel,
+  .pf-hero__text--split,
+  .pf-hero__text--top {
+    max-width: none;
+    width: auto;
+    margin: 0;
+    align-self: auto;
+    transform: none;
+  }
+  .pf-hero--top .pf-hero__content {
+    padding-top: 28px;
+  }
+  .pf-hero__text--top .pf-hero__body {
+    display: block;
+    margin-top: 0;
+  }
+  .pf-hero__text--top .pf-hero__copy {
+    margin-top: 16px;
+    padding-right: 0;
+    border-right: 0;
+  }
+  .pf-hero__text--top .pf-hero__ctas {
+    margin-top: 22px;
+    flex-direction: row;
+    align-items: center;
+    gap: 18px;
+  }
+  .pf-hero__title,
+  .pf-hero__text--right .pf-hero__title,
+  .pf-hero__text--split .pf-hero__title,
+  .pf-hero__text--top .pf-hero__title {
+    font-size: clamp(2.6rem, 12vw, 3.4rem);
+  }
+  .pf-hero__kicker {
+    margin-bottom: 16px;
+  }
+  .pf-hero__copy {
+    margin-top: 16px;
+    font-size: var(--pf-fs-base);
+  }
+  .pf-hero__ctas {
+    margin-top: 22px;
+    gap: 18px;
+  }
+}
+
+/* Reduced motion: the transform-driven entrances are already disabled by the
+   component; this removes the remaining opacity fades. */
+@media (prefers-reduced-motion: reduce) {
+  .pf-hero {
+    transition: none;
+  }
+  .pf-hero__scrim {
+    transition: none;
+  }
+}

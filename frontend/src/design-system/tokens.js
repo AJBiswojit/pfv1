@@ -68,6 +68,70 @@ export const colorClasses = {
 };
 
 /* ------------------------------------------------------------------ */
+/* Campaign / editorial palette (Phase 1 — additive)                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The storefront campaign identity: deep burgundy, blush, muted cocoa and
+ * soft neutral, plus the tonal variations the editorial layouts derive from
+ * them. Every value is ADDITIVE — no token in `colors` above is redefined,
+ * so Admin, Super Admin and Employee surfaces are untouched.
+ *
+ * The CSS mirror lives in the Phase 1 block of `src/index.css` (`@theme`),
+ * which is what Tailwind compiles the `bg-burgundy`, `text-blush-canvas`,
+ * `border-burgundy-line`, ... utilities from. Keep the two in sync.
+ */
+export const campaign = {
+  /* Core palette */
+  burgundy: "#65081f", // brand accent — deep burgundy
+  blushCanvas: "#f7eeed", // campaign background
+  blushWarm: "#e9d0c1", // secondary campaign background
+  cocoaMuted: "#a0705c", // muted cocoa accent
+  neutralSoft: "#caafa5", // soft neutral (captions on dark)
+
+  /* Derived tonal variations */
+  burgundyDeep: "#420619", // accent hovers & accent gradients
+  burgundyNight: "#2a0410", // darkest end of the accent gradient
+  blushSoft: "#f2e2db", // between canvas and warm
+  blushPaper: "#fbf6f5", // pale paper insert
+  espresso: "#3a1806", // body & headlines
+  espressoSoft: "#5b3a2a", // secondary text
+  espressoMeta: "#8a6555", // tertiary text / meta
+  night: "#2b1105", // bridal / jewellery depth
+  nightSoft: "#3f1907", // its lighter pair
+
+  /* Lines */
+  line: "rgba(101, 8, 31, 0.16)",
+  lineStrong: "rgba(101, 8, 31, 0.32)",
+  lineOnDark: "rgba(247, 238, 237, 0.2)",
+
+  /* Foreground on the campaign's dark surfaces */
+  onDark: "#f7eeed",
+  onDarkSoft: "rgba(247, 238, 237, 0.68)",
+};
+
+/** Semantic class names for the campaign palette. */
+export const campaignClasses = {
+  canvas: "bg-blush-canvas",
+  canvasWarm: "bg-blush-warm",
+  canvasSoft: "bg-blush-soft",
+  paper: "bg-blush-paper",
+  accent: "bg-burgundy",
+  accentDeep: "bg-burgundy-deep",
+  deepSurface: "bg-night text-blush-canvas",
+  ink: "text-espresso",
+  inkSoft: "text-espresso-soft",
+  meta: "text-espresso-meta",
+  muted: "text-cocoa-muted",
+  neutral: "text-neutral-soft",
+  onDark: "text-blush-canvas",
+  onDarkSoft: "text-blush-canvas/70",
+  hairline: "border-burgundy-line",
+  hairlineStrong: "border-burgundy-line-strong",
+  hairlineOnDark: "border-blush-line",
+};
+
+/* ------------------------------------------------------------------ */
 /* Surface tones                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -140,6 +204,8 @@ export const imageTreatment = {
 export const tokens = {
   colors,
   colorClasses,
+  campaign,
+  campaignClasses,
   tones,
   radius,
   shadows,
