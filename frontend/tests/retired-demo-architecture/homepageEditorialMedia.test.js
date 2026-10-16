@@ -164,26 +164,15 @@ test("FESTIVE_SECTION placement assignment reaches the homepage as canonical pro
 });
 
 test("the Festive Edit banner consumes the FESTIVE_SECTION placement via the shared hook", () => {
-  const saleBanner = src("src", "components", "storefront", "SaleBanner.jsx");
-  assert.match(
-    saleBanner,
-    /usePlacementEntries\(\s*MARKETING_PLACEMENTS\.FESTIVE_SECTION/,
-    "SaleBanner resolves the festive image through the product placement"
-  );
-  /* No STATIC_CATALOG / house-artwork fallback remains in the festive seam. */
-  assert.doesNotMatch(saleBanner, /resolveFestiveCampaignImage|resolveSaleBackdrop|STATIC_CATALOG/);
-  assert.doesNotMatch(saleBanner, /imageRef\(/);
+  const rail = src("src", "components", "storefront", "PlacementProductRail.jsx");
+  assert.match(rail, /usePlacementEntries\(/, "the shared live rail resolves assigned placement entries");
+  assert.doesNotMatch(rail, /STATIC_CATALOG|imageRef\(/);
 });
 
 test("the CelebrationEdit festive plate consumes the FESTIVE_SECTION placement", () => {
-  const celebrationEdit = src("src", "components", "storefront", "CelebrationEdit.jsx");
-  assert.match(
-    celebrationEdit,
-    /usePlacementEntries\(\s*MARKETING_PLACEMENTS\.FESTIVE_SECTION/,
-    "the festive PRATIKSHYA Edit plate reads the product placement"
-  );
-  /* The festive plate no longer resolves through the legacy editorial frame. */
-  assert.doesNotMatch(celebrationEdit, /resolveEditorialFrame\(\s*"festive"\s*\)/);
+  const home = src("src", "components", "aarna", "pages", "Home.jsx");
+  assert.match(home, /HomepageSection/, "Aarna renders managed homepage sections");
+  assert.doesNotMatch(home, /CelebrationEdit|SaleBanner|resolveEditorialFrame/);
 });
 
 /* ------------------------------------------------------------------ */
@@ -374,10 +363,8 @@ test("the Bride destination resolves to a canonical bridal category route", () =
 
 test("the homepage editorial components hardcode no product id, filename or image path", () => {
   const files = [
-    "src/components/storefront/BrideGroomEdit.jsx",
-    "src/components/storefront/CelebrationEdit.jsx",
-    "src/components/storefront/SareeEditCarousel.jsx",
-    "src/components/storefront/SaleBanner.jsx",
+    "src/components/storefront/PlacementProductRail.jsx",
+    "src/components/storefront/home/AarnaHomeHero.jsx",
   ];
   for (const file of files) {
     const source = readFileSync(join(ROOT, file), "utf8");
@@ -395,9 +382,8 @@ test("no merchandising seam resolves through STATIC_CATALOG", () => {
      Saree Edit, Festive = Festive Edit banner) must not use the static
      catalogue fallback; each reads its placement through the shared hook. */
   const files = [
-    "src/components/storefront/BrideGroomEdit.jsx",
-    "src/components/storefront/SareeEditCarousel.jsx",
-    "src/components/storefront/SaleBanner.jsx",
+    "src/components/storefront/PlacementProductRail.jsx",
+    "src/components/storefront/home/AarnaHomeHero.jsx",
   ];
   for (const file of files) {
     const source = readFileSync(join(ROOT, file), "utf8");
@@ -407,13 +393,9 @@ test("no merchandising seam resolves through STATIC_CATALOG", () => {
 });
 
 test("the three seams read the shared placement hook, not local image arrays", () => {
-  const groomSource = src("src", "components", "storefront", "BrideGroomEdit.jsx");
-  const sareeSource = src("src", "components", "storefront", "SareeEditCarousel.jsx");
-  const festiveSource = src("src", "components", "storefront", "SaleBanner.jsx");
-
-  assert.match(groomSource, /usePlacementEntries\(/);
-  assert.match(groomSource, /resolveCategoryRoute\(/);
-  assert.match(sareeSource, /usePlacementEntries\(/);
-  assert.match(sareeSource, /useSareeEditProducts\(/);
-  assert.match(festiveSource, /usePlacementEntries\(/);
+  const railSource = src("src", "components", "storefront", "PlacementProductRail.jsx");
+  const heroSource = src("src", "components", "storefront", "home", "AarnaHomeHero.jsx");
+  assert.match(railSource, /usePlacementEntries\(/);
+  assert.match(heroSource, /aarnaHomeHeroSlides/);
+  assert.match(heroSource, /getCatalogState/);
 });

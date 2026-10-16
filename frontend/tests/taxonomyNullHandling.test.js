@@ -2,7 +2,7 @@
  * Regression: optional taxonomy lookups must not crash when the catalog
  * snapshot is empty or the referenced category/collection is absent.
  *
- * SareeEditCarousel / BrideGroomEdit call resolveCategoryRoute("sarees")
+ * Aarna product listings call resolveCategoryRoute("sarees")
  * (and similar ids) on first paint, before hydrateCatalog finishes — and
  * also when the backend simply has no matching ACTIVE row. The routing
  * layer must return null so the UI can skip the item, never invent an id.

@@ -368,8 +368,8 @@ test("no production module imports the preview fixtures", async () => {
   }
   /* The live homepage is still the production page, and still the index route. */
   const app = read("src/App.jsx");
-  assert.ok(app.includes('import AtelierDesign from "./pages/AtelierDesign"'));
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\}/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.match(read("src/layouts/CustomerLayout.jsx"), /<AarnaStorefront \/>/);
 });
 
 test("fixture products carry no live price and are visibly marked", async () => {

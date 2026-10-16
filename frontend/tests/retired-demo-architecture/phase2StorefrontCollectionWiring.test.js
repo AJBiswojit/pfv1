@@ -260,7 +260,7 @@ test("source files do not contain hardcoded collection product arrays or obsolet
     "src/components/aarna/pages/account/Orders.jsx",
     "src/components/aarna/pages/account/Overview.jsx",
     "src/components/storefront/CatalogueBrowser.jsx",
-    "src/components/storefront/NewArrivals.jsx",
+    "src/components/aarna/pages/Shop.jsx",
     "src/services/taxonomyRouting.js",
   ];
 

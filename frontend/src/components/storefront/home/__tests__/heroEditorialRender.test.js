@@ -251,25 +251,16 @@ function sourceFiles(directory = join(ROOT, "src"), found = []) {
   return found;
 }
 
-test("nothing mounts the phase 1 hero — the live homepage route is unchanged", () => {
+test("the live customer homepage belongs to Aarna, not the retired editorial composition", () => {
   const app = readFileSync(join(ROOT, "src/App.jsx"), "utf8");
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
+  const layout = readFileSync(join(ROOT, "src/layouts/CustomerLayout.jsx"), "utf8");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.match(layout, /<AarnaStorefront \/>/);
   assert.equal(app.includes("HeroEditorial"), false);
 
-  /* Import references only — a module may still *name* the hero in a comment.
-     Two deliberate exceptions, both keeping the live homepage itself untouched:
-
-       · the Phase 1.5 preview harness under
-         `src/components/storefront/preview/` renders the hero for visual review
-         (a development-only document: not in the application graph, not a build
-         input, dev-gated, removed with the harness);
-       · `src/components/storefront/StorefrontHome.jsx` — the Phase 2C
-         integrated composition (2A shell + this hero + the 2B sections), which
-         is mounted by `CustomerLayout` for the customer root ONLY while
-         `src/config/storefrontHome.js` asks for it. That switch is OFF by
-         default, so the index route below still renders `AtelierDesign`; the
-         Phase 2C suite (`storefront/__tests__/homeIntegration.test.js`) pins
-         that mounting rule, the rollback and the default. */
+  /* Import references only: preview harnesses and the unmounted legacy
+     StorefrontHome composition may still retain this editorial module. Neither
+     is part of the active customer route graph. */
   const allowed = [join("home", "HeroEditorial.jsx"), join("storefront", "StorefrontHome.jsx")];
   const offenders = sourceFiles()
     .filter((path) => !path.includes(join("storefront", "preview")))
