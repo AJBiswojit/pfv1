@@ -8,8 +8,7 @@
  * hand-written list, so the inventory cannot silently drift:
  *
  *   1. every customer path `App.jsx` declares (and every manifest path) is either
- *      served by the port's boundary, or is on the EXPLICIT production-remaining
- *      list below — and that list is exactly `/reset-password` (Phase 10 D1–D3);
+ *      served by the port's boundary; there are no remaining production-side customer routes;
  *   2. the staff portals are never claimed by the port;
  *   3. the four account screens that have not been redrawn yet (Phase 11 steps
  *      5–6) are still the production components, not silently ported or dropped;
@@ -53,15 +52,11 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
-/* The one customer route the port deliberately does not answer. Its production
-   screen cannot complete a reset (Phase 10 §7, D1–D3). Removing it from this list
-   is a decision that requires the reset flow to be fixed first. */
-const PRODUCTION_REMAINING = ["/reset-password"];
+/* All registered customer routes are answered by Aarna; staff routes are excluded. */
+const PRODUCTION_REMAINING = [];
 
-/* The four account screens (Phase 12: now the port's own pages; production still
-   serves the same paths from App.jsx).
-   (`AarnaStorefront.jsx`), by route. Each is guarded by ProtectedRoute and renders
-   the production component inside the port's shell. */
+/* The four account screens now mount Aarna-native pages while App.jsx keeps its
+   original route entries for explicitly selected Atelier mode. */
 const PRODUCTION_ACCOUNT_SCREENS = {
   "account/settings": "AccountSettings",
   "account/security": "AccountSecurity",
@@ -111,9 +106,12 @@ test("every customer route is answered by the port, or is on the explicit produc
   );
 });
 
-test("the production-remaining reset route is registered, so the catch-all cannot swallow it", () => {
+test("the reset route is explicitly served by Aarna's auth surface", () => {
+  assert.equal(isAarnaAuthPath("/reset-password"), true);
   assert.equal(isAarnaCatchAllPath("/reset-password"), false);
-  assert.equal(servedByPort("/reset-password"), false);
+  assert.equal(servedByPort("/reset-password"), true);
+  const mount = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
 
 test("the staff portals are never claimed by the port's boundary", () => {

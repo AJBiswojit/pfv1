@@ -19,11 +19,9 @@
  *     toasts, scroll restoration) and the design's `Home` renders the twelve
  *     sections inside it.
  *
- * It is mounted by `layouts/CustomerLayout.jsx`, at the customer root, only
- * while the switch asks for it (`?home=aarna` in development,
- * `VITE_STOREFRONT_HOME=aarna` in a deployed build) — see
- * `config/storefrontHome.js`. With the switch off, nothing in this folder is
- * reachable from a customer's page.
+ * It is mounted by `layouts/CustomerLayout.jsx` at the customer root by
+ * default; explicit `atelier` or `editorial` build modes and development review
+ * URLs remain reversible alternatives — see `config/storefrontHome.js`.
  */
 
 import { useEffect } from "react";
@@ -42,6 +40,7 @@ import OrderSuccess from "./pages/OrderSuccess.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 /* PHASE 11 — the migrated account screens. The port's own pages are imported
    where the port mounts them (as the bag, the journey and the auth screens above
    are): the boundary's chunk carries them, and the account's route-level code
@@ -188,29 +187,19 @@ export default function AarnaStorefront() {
                 <Route path="privacy" element={<Info />} />
                 <Route path="terms" element={<Info />} />
                 {/*
-                  PHASE 10 — the customer authentication screens.
-
-                  The design never drew one: its `/account` is a prototype that
-                  stores a name in `localStorage` and says "no server account is
-                  created" on the page. So these three pages are written in the
-                  design's vocabulary and have no design counterpart — the tool
-                  checks they exist and never writes them (see ADDED in
-                  `scripts/aarna-port.js`). They are the application's own
-                  screens, mounted here exactly as Phase 9 mounted the bag:
-                  only while the switch asks for the port, inside the design's
-                  full shell — the chrome production gives them too.
-
-                  `/reset-password` is deliberately NOT here. Its production
-                  screen cannot complete a reset (`ResetPasswordRequest`
-                  requires a `userId`/`token` pair the screen never reads), and
-                  dressing an unreachable flow would be staging. It keeps the
-                  production page; so do the staff portals. (`/account/**` was
-                  still production-side then — PHASE 11 adopts it below.)
-                  Recorded in `docs/PHASE-10-AUTHENTICATION-UI.md` §7.
+                  Customer authentication pages are implemented in Aarna's
+                  vocabulary and use the existing AuthContext. The reset page
+                  reads the existing userId/token query pair and calls the same
+                  reset service as the production page; no backend auth is changed.
+                  The existing forgot-password endpoint still does not dispatch
+                  reset emails, so an email reset journey remains unavailable
+                  until that backend capability exists. Staff portals keep their
+                  original routes.
                 */}
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="reset-password" element={<ResetPassword />} />
                 {/*
                   PHASE 11 — the customer account.
 

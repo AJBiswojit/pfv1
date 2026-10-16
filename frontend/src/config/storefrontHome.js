@@ -1,42 +1,26 @@
 /**
  * PRATIKSHYA FASHION — controlled homepage integration switch (Phase 2C).
  *
- * THE RULE: the production homepage is the existing `AtelierDesign` unless
- * someone explicitly asks for the integrated editorial home. Nothing a customer
- * can do — a URL, a session, storage — changes that.
+ * THE RULE: the production homepage is the Aarna storefront unless a build
+ * explicitly selects another supported mode. Development URL overrides are
+ * limited to local review and do not affect production builds.
  *
- * Two homes:
+ * Three homes (Aarna is the default):
  *
- *   "atelier"    the existing homepage (`src/pages/AtelierDesign.jsx`) — the
- *                DEFAULT, and the fallback this switch is reversible to.
+ *   "atelier"    the existing homepage (`src/pages/AtelierDesign.jsx`) —
+ *                available when explicitly selected as a reversible fallback.
  *   "editorial"  the integrated composition (`components/storefront/StorefrontHome.jsx`):
  *                the Phase 2A shell (announcement bar + header), the approved
  *                Phase 1 editorial hero, and the Phase 2B homepage sections.
- *   "aarna"      the Phase 2D EXACT PORT of the approved `home-page/` design
- *                (`components/aarna/AarnaStorefront.jsx`): its own announcement
- *                bar, header, mega menu, mobile menu, footer, drawers and all
- *                twelve homepage sections, carried over file-by-file, scoped
- *                under `.aan-root`, wired to this application's catalogue,
- *                routes, cart, wishlist and account. Also OFF by default and
- *                also requested through `?home=aarna` / `VITE_STOREFRONT_HOME`.
+ *   "aarna"      the port of the approved `home-page/` design
+ *                (`components/aarna/AarnaStorefront.jsx`), wired to this
+ *                application's catalogue, routes, cart, wishlist and account.
+ *                It is selected when no supported build value is specified.
  *
- * How "editorial" is requested:
- *
- *   · A deployed build: `VITE_STOREFRONT_HOME=editorial` set when the build
- *     runs. That is an explicit, one-variable deploy decision — the switch is
- *     off in every build that does not set it, and rolling back means building
- *     again without it (or with `atelier`).
- *   · A local dev server: the same variable, and additionally `?home=editorial`
- *     on the URL, so the homepage can be flipped for review without a rebuild.
- *
- * `?home=` is honoured ONLY in a development build (`import.meta.env.DEV`), so a
- * customer can never switch the storefront by editing the URL. `?home=atelier`
- * is the escape hatch that always returns a local review to the existing
- * homepage, whatever the environment variable says.
- *
- * Anything unrecognised — a typo, an empty value, a missing variable — resolves
- * to "atelier". There is no path through this module that leaves the storefront
- * with no homepage to render.
+ * A build may explicitly set `VITE_STOREFRONT_HOME` to `atelier`, `editorial`
+ * or `aarna`. In development, `?home=` may also select one for local review;
+ * deployed URLs cannot switch modes. `atelier` remains the reversible fallback
+ * option, while missing, empty or unsupported values resolve safely to Aarna.
  */
 
 import { useLocation } from "react-router-dom";
@@ -87,7 +71,7 @@ export function resolveStorefrontHome({ dev = false, envValue = "", search = "" 
     }
     if (VALUES.includes(requested)) return requested;
   }
-  return VALUES.includes(envValue) ? envValue : STOREFRONT_HOME.atelier;
+  return VALUES.includes(envValue) ? envValue : STOREFRONT_HOME.aarna;
 }
 
 /** The homepage this build/page is asking for right now. */
@@ -276,7 +260,7 @@ export function useAarnaJourney() {
  * application REGISTERS, and a registered path was never the catch-all's to
  * answer.
  */
-export const AARNA_AUTH_PATHS = new Set(["/signin", "/signup", "/forgot-password"]);
+export const AARNA_AUTH_PATHS = new Set(["/signin", "/signup", "/forgot-password", "/reset-password"]);
 
 export function isAarnaAuthPath(pathname) {
   const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";

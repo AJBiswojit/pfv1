@@ -7,7 +7,7 @@
  * description of them.
  *
  * Covered here:
- *   · the switch: off by default, dev-only URL review, build-time flag,
+ *   · the switch: Aarna by default, dev-only URL review, build-time flag,
  *     rollback, and no way for a customer's URL to change the homepage;
  *   · the composition mounts at the customer root ONLY, and only when asked;
  *   · the existing `AtelierDesign` homepage is the fallback and the rollback;
@@ -163,19 +163,17 @@ const countOf = (html, pattern) => (html.match(pattern) ?? []).length;
 
 /* ── the switch ──────────────────────────────────────────────────────── */
 
-test("the homepage switch is OFF by default, in every combination that is not an explicit request", () => {
+test("Aarna is the default when no recognized mode is explicitly requested", () => {
   const { resolveStorefrontHome, STOREFRONT_HOME } = modules.switch;
-  const atelier = STOREFRONT_HOME.atelier;
+  const aarna = STOREFRONT_HOME.aarna;
 
-  /* Nothing asked for it. */
-  assert.equal(resolveStorefrontHome(), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: "" }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: "yes" }), atelier);
+  assert.equal(resolveStorefrontHome(), aarna);
+  assert.equal(resolveStorefrontHome({ dev: true }), aarna);
+  assert.equal(resolveStorefrontHome({ dev: true, envValue: "" }), aarna);
+  assert.equal(resolveStorefrontHome({ dev: true, envValue: "yes" }), aarna);
 
-  /* Something asked for it, but not in a recognised way. */
   for (const search of ["?home=", "?home=next", "?home=editorial ", "?home=EDITORIAL", "?other=editorial", "?home"]) {
-    assert.equal(resolveStorefrontHome({ dev: true, search }), atelier, `${search} must not enable the new homepage`);
+    assert.equal(resolveStorefrontHome({ dev: true, search }), aarna, `${search} must use the default Aarna mode`);
   }
 });
 
@@ -194,8 +192,8 @@ test("the switch asks for the integrated homepage only in the two documented way
   assert.equal(resolveStorefrontHome({ dev: true, envValue: editorial, search: "?home=atelier" }), atelier);
 
   /* A customer editing the URL of a deployed build cannot move the homepage. */
-  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=editorial" }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: false, envValue: "", search: "?home=editorial" }), atelier);
+  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=editorial" }), STOREFRONT_HOME.aarna);
+  assert.equal(resolveStorefrontHome({ dev: false, envValue: "", search: "?home=editorial" }), STOREFRONT_HOME.aarna);
 });
 
 test("the live switch reads the browser URL through the development gate only", () => {
@@ -203,7 +201,7 @@ test("the live switch reads the browser URL through the development gate only", 
 
   /* Vite's SSR pipeline runs this module as a development build, with no
      window: the homepage is the default one. */
-  assert.equal(storefrontHomeChoice(), STOREFRONT_HOME.atelier);
+  assert.equal(storefrontHomeChoice(), STOREFRONT_HOME.aarna);
 
   /* The reviewer's URL param, in that development build. */
   const withSearch = (search) => {
@@ -218,7 +216,7 @@ test("the live switch reads the browser URL through the development gate only", 
   };
   assert.equal(withSearch(`?${STOREFRONT_HOME_PARAM}=editorial`), STOREFRONT_HOME.editorial);
   assert.equal(withSearch(`?${STOREFRONT_HOME_PARAM}=atelier`), STOREFRONT_HOME.atelier);
-  assert.equal(withSearch("?view=home&data=fixture"), STOREFRONT_HOME.atelier);
+  assert.equal(withSearch("?view=home&data=fixture"), STOREFRONT_HOME.aarna);
 
   /* The gate itself must be in the module, not only in the callers. */
   const source = read(SWITCH);
@@ -245,10 +243,10 @@ test("the composition is mounted at the customer root only, by the customer layo
   assert.match(layout, /\{!editorialHome &&/);
 });
 
-test("the existing AtelierDesign homepage stays the fallback and the rollback", () => {
+test("the existing AtelierDesign route remains available for explicit rollback", () => {
   const app = read("src/App.jsx");
-  /* The root route is untouched: with the switch off (the default) the layout
-     renders the outlet, which is still the reviewed homepage. */
+  /* The root index route stays mounted for an explicitly selected Atelier mode;
+     Aarna is selected when the mode is absent. */
   assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
   assert.equal(app.includes("StorefrontHome"), false);
   assert.equal(app.includes("storefrontHome"), false);
@@ -524,18 +522,14 @@ async function renderLayout({ search = "" } = {}) {
   }
 }
 
-test("with the switch off the customer root renders the existing homepage and its existing shell", async () => {
+test("with no mode configured the customer root renders the Aarna storefront", async () => {
   const html = await renderLayout({ search: "" });
 
-  /* The application's own header and its offset are what the customer sees. */
-  assert.match(html, /fixed top-0 left-0 right-0 z-50/, "the existing header");
-  assert.match(html, /pt-16 md:pt-20/, "its existing offset");
-  assert.equal(html.includes("data-storefront-header"), false, "the 2A header must not be mounted");
-  assert.equal(html.includes("pf-sec-host"), false, "the 2B sections must not be mounted");
+  assert.match(html, /class="aan-root"/, "the default Aarna boundary");
+  assert.equal(html.includes("data-storefront-header"), false, "the editorial header must not be mounted");
+  assert.equal(html.includes("pf-sec-host"), false, "the editorial sections must not be mounted");
   assert.equal(html.includes("data-home-surface"), false);
-
-  /* The existing footer is still there, once. */
-  assert.equal(countOf(html, /<footer/g), 1);
+  assert.equal(countOf(html, /<footer/g), 1, "Aarna renders its own footer once");
 });
 
 test("with a local-review URL the customer root renders the integrated homepage, once, over the same footer", async () => {

@@ -24,7 +24,7 @@
  *
  *   2. `/account/wishlist` IS NOT IN THE FAMILY. Phase 8 adopted it with the
  *      wishlist; it stays there, guest-accessible, and the two sets are
- *      disjoint by construction. `/reset-password` stays production-side.
+ *      disjoint by construction. `/reset-password` belongs to the auth surface.
  *
  *   3. THE SWITCH STILL DECIDES. Off, the account is the production surface,
  *      untouched — the harness renders it, so this is measured, not assumed.
@@ -613,12 +613,10 @@ test("with the switch on, a guest asking for a guarded screen paints no account 
   assert.equal(/pf-account/.test(signIn), false, "the sign-in page drew account chrome");
 });
 
-test("the reset screen stays production-side, with the switch on or off", () => {
-  for (const [name, view] of [["on", on], ["off", off]]) {
-    const markup = view.render("/reset-password");
-    assert.equal(/class="aan-root"/.test(markup), false, `/reset-password mounted the port with the switch ${name}`);
-  }
+test("reset-password belongs to the auth surface, not the account surface", () => {
+  assert.equal(on.boundary.isAarnaAuthPath("/reset-password"), true);
   assert.equal(on.boundary.isAarnaAccountPath("/reset-password"), false);
+  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /aan-root/);
 });
 
 /* ── 4 · the frame and its navigation ───────────────────────────────────── */

@@ -2,13 +2,13 @@
  * PRATIKSHYA FASHION — PHASE 2D · integration and isolation.
  *
  * The port is only useful if it is wired to THIS application — real routes, the
- * real cart and wishlist, the real catalogue, the real (off-by-default) switch —
+ * real cart and wishlist, the real catalogue, the real Aarna-default switch —
  * and only safe if its preview fixtures can never reach a customer. These tests
  * pin both, from the source tree and from the modules themselves:
  *
  *   1. every destination the design wrote resolves to a route the application
  *      registers, so no ported link can land on a 404;
- *   2. the switch is off by default, dev-only through the URL, and mounted by
+ *   2. Aarna is the default, with dev-only URL review and the boundary mounted by
  *      `CustomerLayout` alone — `App.jsx` does not know the port exists;
  *   3. the fixtures have exactly one importer (the DEV-gated reference
  *      surface), the production graph cannot reach the harness, and none of the
@@ -179,17 +179,18 @@ test("the translation table only names routes the application registers", () => 
 
 /* ── 2 · the switch ─────────────────────────────────────────────────── */
 
-test("the Phase 2D port is off by default, and only an explicit request turns it on", () => {
+test("Aarna is the default, with explicit supported overrides and safe fallbacks", () => {
   assert.equal(STOREFRONT_HOME.aarna, "aarna");
-  assert.equal(resolveStorefrontHome(), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=" }), STOREFRONT_HOME.atelier);
+  assert.equal(resolveStorefrontHome(), STOREFRONT_HOME.aarna);
+  assert.equal(resolveStorefrontHome({ dev: true, search: "" }), STOREFRONT_HOME.aarna);
+  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=" }), STOREFRONT_HOME.aarna);
   assert.equal(resolveStorefrontHome({ dev: true, search: "?home=editorial" }), STOREFRONT_HOME.editorial);
   assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna2" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=aarna" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ envValue: "aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ envValue: "nonsense" }), STOREFRONT_HOME.atelier);
+  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna2" }), STOREFRONT_HOME.aarna);
+  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=aarna" }), STOREFRONT_HOME.aarna);
+  assert.equal(resolveStorefrontHome({ envValue: "atelier" }), STOREFRONT_HOME.atelier);
+  assert.equal(resolveStorefrontHome({ envValue: "editorial" }), STOREFRONT_HOME.editorial);
+  assert.equal(resolveStorefrontHome({ envValue: "nonsense" }), STOREFRONT_HOME.aarna);
 });
 
 test("the port renders on its own paths only, under the switch, and nothing else moves", () => {

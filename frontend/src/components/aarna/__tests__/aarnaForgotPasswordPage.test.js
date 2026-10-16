@@ -10,14 +10,9 @@
  * import, the messages, the single `setSubmitted` inside the accepted branch,
  * and the confirmation's two actions.
  *
- * THE ONE THING THIS FILE EXISTS TO KEEP HONEST. The reset screen itself
- * (`/reset-password`) cannot complete a reset: it never reads the
- * `userId`/`token` pair the backend's `ResetPasswordRequest` requires, so every
- * submit is refused. Phase 10 recorded that (§7 of
- * `docs/PHASE-10-AUTHENTICATION-UI.md`), kept the screen production-side, and
- * kept this page's copy exactly as production wrote it — it promises
- * "instructions", never a changed password. The pins below enforce both: the
- * exclusion, and the honesty.
+ * The reset screen is a separate Aarna route, while this page remains honest
+ * about the existing forgot-password endpoint's response. It never claims that
+ * an email was sent when the backend only confirms receipt of the request.
  *
  * Nothing here is an end-to-end verification: there is no backend in this
  * sandbox, so the request itself is not exercised — the pins are that the page
@@ -155,14 +150,15 @@ test("with the switch on, /forgot-password is the port — inside the design's f
   assert.equal(/pf-journey/.test(markup), false, "the recovery page rendered the quiet journey chrome instead");
 });
 
-test("the reset screen is NOT adopted: it stays production-side even with the switch on", () => {
+test("the reset screen is adopted by Aarna and remains in its customer auth surface", () => {
   const { boundary } = on;
   assert.equal(boundary.isAarnaAuthPath("/forgot-password"), true);
-  assert.equal(boundary.AARNA_AUTH_PATHS.has("/reset-password"), false, "the reset screen was claimed by the auth surface");
-  assert.equal(boundary.isAarnaAuthPath("/reset-password"), false);
-  const markup = on.render("/reset-password?home=aarna");
-  assert.equal(/aan-root/.test(markup), false, "the reset screen mounted the port");
-  assert.equal(/pf-auth/.test(markup), false, "the reset screen rendered the design's auth page");
+  assert.equal(boundary.AARNA_AUTH_PATHS.has("/reset-password"), true);
+  assert.equal(boundary.isAarnaAuthPath("/reset-password"), true);
+  const markup = on.render("/reset-password?userId=user-1&token=token-1");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /Create new/);
+  assert.match(markup, /aarna-reset-password/);
 });
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */

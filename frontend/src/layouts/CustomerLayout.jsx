@@ -34,7 +34,8 @@ import { useAarnaStorefront, useEditorialHome } from "../config/storefrontHome";
  * and wired to this application's catalogue, routes, cart, wishlist and account.
  * It brings its own shell, so for that one route this frame also drops the
  * application footer and the application mini-cart (the ported page has both).
- * Off by default, like the 2C switch, and reversible the same way.
+ * Selected by default when no explicit build value is provided; an explicit
+ * `atelier` or `editorial` value remains available for rollback/review.
  *
  * PHASE 2C — the controlled homepage boundary lives HERE.
  *

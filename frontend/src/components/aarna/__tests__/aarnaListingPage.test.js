@@ -227,13 +227,10 @@ test("the switch stops at the routes it does not own", () => {
     const markup = on.render(path);
     assert.equal(/listing-controls/.test(markup), false, `${path} was handed to the port's listing`);
   }
-  /* …and this one is not the port's at all: `/reset-password` keeps the
-     production page it has always had. (PHASE 9 adopted the money path by name,
-     PHASE 10 the three customer auth screens and PHASE 11 the account — so the
-     line that used to run through the account now ends here; the account's own
-     suite pins its boundary, and that it is not the LISTING's is asserted with
-     the other nine routes above.) */
-  assert.equal(/aan-root/.test(on.render("/reset-password?home=aarna")), false, "/reset-password mounted the port at all");
+  /* Reset-password now belongs to the Aarna auth route, never the listing. */
+  const reset = on.render("/reset-password?userId=user-1&token=token-1");
+  assert.match(reset, /aan-root/, "reset-password did not render in the Aarna shell");
+  assert.equal(/listing-controls/.test(reset), false, "reset-password rendered listing controls");
 });
 
 test("Phase 8's own surfaces mount the port, and never the listing", () => {

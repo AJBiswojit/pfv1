@@ -25,9 +25,9 @@
  *      redirect, the guest link's `/account → /shop` rule, and the SHARED
  *      Google button — all pinned at the source, because none of them can be
  *      exercised without a backend and a browser.
- *   3. WHAT THE PHASE DELIBERATELY LEFT ALONE. `/reset-password` and the staff
- *      portals keep their production pages; the auth surface is disjoint from
- *      the journey, listing and catch-all surfaces.
+ *   3. WHAT THE BOUNDARY LEAVES ALONE. Staff portals keep their production
+ *      pages; reset-password joins Aarna auth and remains disjoint from the
+ *      journey, listing and catch-all surfaces.
  *
  * WHAT THIS CANNOT PROVE: clicks, focus order and layout (no DOM here); a real
  * credential exchange, a real Google login and the reset flow (no backend, no
@@ -197,13 +197,13 @@ test("the auth surface is the three customer screens, and nothing else joins it"
   const { boundary } = on;
   assert.deepEqual(
     [...boundary.AARNA_AUTH_PATHS].sort(),
-    ["/forgot-password", "/signin", "/signup"],
-    "the auth set is not the three routes Phase 10 adopted",
+    ["/forgot-password", "/reset-password", "/signin", "/signup"],
+    "the auth set does not include all supported customer auth routes",
   );
-  for (const path of ["/signin", "/signup", "/forgot-password", "/signin/"]) {
+  for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password", "/signin/"]) {
     assert.equal(boundary.isAarnaAuthPath(path), true, `${path} is not treated as an auth path`);
   }
-  for (const path of ["/reset-password", "/login", "/admin/login", "/employee/profile", "/account", "/signin/extra", "/cart"]) {
+  for (const path of ["/login", "/admin/login", "/employee/profile", "/account", "/signin/extra", "/cart"]) {
     assert.equal(boundary.isAarnaAuthPath(path), false, `${path} was claimed by the auth paths`);
   }
 });
@@ -222,6 +222,7 @@ test("the port's route table declares the three screens, and App.jsx is not touc
   assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
   assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
   assert.match(mount, /<Route path="forgot-password" element=\{<ForgotPassword \/>\} \/>/);
+  assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
   assert.match(mount, /import "\.\/aarna\.auth\.css";/, "the auth stylesheet is not carried by the mount");
   /* Phase 10 needed no routing change: the production route table is the one it
      was, and the auth routes still belong to the customer layout group. */

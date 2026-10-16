@@ -81,7 +81,6 @@ const KEPT_ON_PRODUCTION = [
   "/signin",
   "/signup",
   "/forgot-password",
-  "/reset-password",
 ];
 
 /* Paths no route serves: not a customer page, not a portal page. */
@@ -261,19 +260,9 @@ test("the application's customer catch-all is still the production 404 — Phase
   assert.match(read("src/pages/NotFound.jsx"), /eyebrow="Error 404"/, "the production 404's own copy changed");
 });
 
-test("the reset screen never moves, on either switch — and the account is the port's own now", () => {
-  /* PHASE 9 adopted the money path, PHASE 10 the three customer auth screens and
-     PHASE 11 the account — so what is left of the customer surface that must not
-     move is `/reset-password`: the one auth screen Phase 10 deliberately kept
-     production-side, because its flow cannot complete a reset (see
-     `docs/PHASE-10-AUTHENTICATION-UI.md` §7). The two account URLs this test
-     used to pin here were superseded by the approved phase; they keep the two
-     properties that mattered — production while the switch is off, and a real
-     page while it is on, never a blank or a dummy account. */
-  for (const [name, view] of [["on", on], ["off", off]]) {
-    const markup = view.render("/reset-password");
-    assert.equal(/class="aan-root"/.test(markup), false, `/reset-password mounted the port with the switch ${name}`);
-  }
+test("the reset route moves into Aarna while accounts remain correctly routed", () => {
+  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /class="aan-root"/);
+  assert.equal(/class="aan-root"/.test(off.render("/reset-password")), false, "explicit Atelier mode must retain its route");
   for (const path of ["/account/orders", "/account/addresses"]) {
     assert.equal(/class="aan-root"/.test(off.render(path)), false, `${path} mounted the port with the switch off`);
     const handed = on.render(path);
