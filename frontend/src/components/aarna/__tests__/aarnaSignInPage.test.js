@@ -161,24 +161,14 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, the three auth paths are the production pages", () => {
-  for (const path of ["/signin", "/signup", "/forgot-password"]) {
+test("all customer auth paths render Aarna irrespective of former selector values", () => {
+  for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password"]) {
     const markup = off.render(path);
     assert.ok(markup.length > 0, `${path} rendered nothing at all`);
-    assert.equal(/aan-root/.test(markup), false, `${path} mounted the port with the switch off`);
-    assert.equal(/pf-auth/.test(markup), false, `${path} rendered the design's auth page with the switch off`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render an Aarna auth UI`);
   }
-  /* What a switch-off render shows is the production layout's own shell: the
-     production pages are mounted through `lazy`, so their markup is still
-     suspended in a server render — the port's markers are what must be absent,
-     and the production root is what must be present. */
-  const markup = off.render("/signin");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production customer layout did not render");
-  /* …and the pages a browser reaches are App.jsx's own lazily-loaded modules. */
-  const app = read("src/App.jsx");
-  assert.match(app, /const SignIn = lazy\(\(\) => import\("\.\/pages\/auth\/SignIn"\)\);/);
-  assert.match(app, /const SignUp = lazy\(\(\) => import\("\.\/pages\/auth\/SignUp"\)\);/);
-  assert.match(app, /const ForgotPassword = lazy\(\(\) => import\("\.\/pages\/auth\/ForgotPassword"\)\);/);
+  assert.match(read("src/components/aarna/AarnaStorefront.jsx"), /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
 
 test("with the switch on, /signin is the port — inside the design's full shell", () => {

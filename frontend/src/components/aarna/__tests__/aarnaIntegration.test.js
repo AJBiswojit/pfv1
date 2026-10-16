@@ -33,8 +33,6 @@ import {
   isAarnaCatchAllPath,
   isAarnaWishlistPath,
   isStaffPortalPath,
-  resolveStorefrontHome,
-  STOREFRONT_HOME,
 } from "../../../config/storefrontHome.js";
 
 function projectRoot() {
@@ -108,8 +106,8 @@ test("the route table is this application's own — checked against App.jsx and 
   const app = read("src/App.jsx");
   /* Every literal customer path the resolver keeps as-is is declared by App.jsx. */
   for (const path of APP_ROUTES) {
-    /* The customer root is declared as the router's index route. */
-    const declared = path === "/" ? /<Route index element=\{<AtelierDesign \/>\} \/>/.test(app) : app.includes(`path="${path}"`);
+    /* Root is handled by the customer catch-all route; nested Aarna routing owns it. */
+    const declared = path === "/" ? /<Route path="\*"/.test(app) : app.includes(`path="${path}"`);
     assert.ok(declared, `routes.js lists ${path}, which App.jsx does not declare`);
   }
   /* …and every path the manifest carries is a route too. */
@@ -177,45 +175,21 @@ test("the translation table only names routes the application registers", () => 
   }
 });
 
-/* ── 2 · the switch ─────────────────────────────────────────────────── */
+/* ── 2 · the single customer storefront ─────────────────────────────── */
 
-test("Aarna is the default, with explicit supported overrides and safe fallbacks", () => {
-  assert.equal(STOREFRONT_HOME.aarna, "aarna");
-  assert.equal(resolveStorefrontHome(), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=editorial" }), STOREFRONT_HOME.editorial);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna2" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ envValue: "atelier" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ envValue: "editorial" }), STOREFRONT_HOME.editorial);
-  assert.equal(resolveStorefrontHome({ envValue: "nonsense" }), STOREFRONT_HOME.aarna);
-});
-
-test("the port renders on its own paths only, under the switch, and nothing else moves", () => {
+test("the customer layout always mounts Aarna and App.jsx no longer selects Atelier/editorial", () => {
   const layout = read(LAYOUT);
-  /* PHASE 7 — the layout asks ONE boundary question. It used to ask per surface
-     (`useAarnaHome`, then `useAarnaProduct`); the listing surface would have
-     made that a three-term list that can drift out of step, so the layout reads
-     the single predicate that answers for every path the port owns. The pin
-     moves with the boundary, not away from it. */
-  assert.match(layout, /const aarna = useAarnaStorefront\(\);/);
-  assert.equal(/useAarnaHome|useAarnaProduct/.test(layout), false, "the layout went back to one hook per surface");
   assert.match(layout, /<AarnaStorefront \/>/);
-  /* The 2C boundary is intact: with the switch off nothing changes. */
-  assert.match(layout, /\{!editorialHome &&/);
-  assert.match(layout, /editorialHome \? \(/);
-  assert.match(layout, /editorialHome \? "flex-1" : "flex-1 pt-16 md:pt-20"/);
+  assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|useEditorialHome|useAarnaStorefront/);
 
   const app = read("src/App.jsx");
-  assert.equal(/aarna|Aarna/.test(app), false, "App.jsx must not know about the port");
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
+  assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
+  assert.match(app, /<Route path="\*" element=\{<NotFound \/>\} \/>/);
 
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__") && !file.includes("/preview/"))
     .filter((file) => /from "[^"]*aarna\/AarnaStorefront/.test(read(file)));
-  assert.deepEqual(importers, [LAYOUT], "the port is mounted by the customer layout alone");
+  assert.deepEqual(importers, [LAYOUT], "Aarna is mounted by the customer layout alone");
 });
 
 test("the Phase 6 surface is the product route exactly, and stays off while the switch is off", () => {

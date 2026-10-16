@@ -240,17 +240,11 @@ test("with the switch on, an unknown customer URL is the design's 404 inside the
   }
 });
 
-test("with the switch off, an unknown customer URL is the application's own 404 — untouched", () => {
+test("unknown customer URLs always render Aarna's own 404 inside its shell", () => {
   const markup = off.render("/no-such-page");
-  assert.equal(/aan-root/.test(markup), false, "/no-such-page mounted the port with the switch off");
-  assert.equal(/class="notfound/.test(markup), false, "/no-such-page rendered the design's 404 with the switch off");
-  /* The application's own shell is around it — the frame the production 404 has
-     always been drawn inside. Its body is withheld from a server render
-     (`PageTransition` mounts it in the browser), so what is pinned here is the
-     switch: the port is not involved, and the production page is what is
-     mounted. The words on that page are the browser probe's to check. */
-  assert.match(markup, /class="min-h-screen flex flex-col bg-canvas text-ink font-display/, "the production shell is gone");
-  assert.match(markup, /<footer/, "the production shell lost its footer");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="notfound|404/i);
+  assert.match(markup, /class="footer"/);
 });
 
 test("the application's customer catch-all is still the production 404 — Phase 8 did not edit it", () => {
@@ -262,9 +256,9 @@ test("the application's customer catch-all is still the production 404 — Phase
 
 test("the reset route moves into Aarna while accounts remain correctly routed", () => {
   assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /class="aan-root"/);
-  assert.equal(/class="aan-root"/.test(off.render("/reset-password")), false, "explicit Atelier mode must retain its route");
+  assert.match(off.render("/reset-password"), /class="aan-root"/, "reset-password must always render Aarna");
   for (const path of ["/account/orders", "/account/addresses"]) {
-    assert.equal(/class="aan-root"/.test(off.render(path)), false, `${path} mounted the port with the switch off`);
+    assert.match(off.render(path), /class="aan-root"/, `${path} must always render Aarna`);
     const handed = on.render(path);
     assert.match(handed, /class="aan-root"/, `${path} was not handed to the port while the switch is on`);
     /* A static render proves one thing here: no account chrome is painted

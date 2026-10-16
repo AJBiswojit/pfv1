@@ -443,8 +443,8 @@ test("the hook and the union read the account surface, gated by the same switch"
   assert.match(source, /export function isAarnaAccountPath\(pathname\) \{/);
   assert.match(source, /return AARNA_ACCOUNT_PATHS\.has\(bare\) \|\| AARNA_ACCOUNT_GUEST_PATTERNS\.some\(\(pattern\) => pattern\.test\(bare\)\);/,
     "the classifier is no longer the family plus the two order shapes");
-  assert.match(source, /export function useAarnaAccount\(\) \{\n  const \{ pathname \} = useLocation\(\);\n  return isAarnaAccountPath\(pathname\) && isAarnaHomeEnabled\(\);/,
-    "the account hook no longer gates the surface on the switch");
+  assert.match(source, /export function useAarnaAccount\(\) \{\n  const \{ pathname \} = useLocation\(\);\n  return isAarnaAccountPath\(pathname\);/,
+    "the account route classifier is no longer the active customer ownership rule");
   assert.match(source, /const account = useAarnaAccount\(\);/);
   assert.match(source, /return home \|\| product \|\| listing \|\| wishlist \|\| journey \|\| auth \|\| account \|\| catchAll;/,
     "the union the layout reads no longer includes the account");
@@ -552,16 +552,11 @@ test("guard parity: the ten screens stand behind ProtectedRoute in BOTH trees, t
 
 /* ── 3 · what a browser gets, on both switches ──────────────────────────── */
 
-test("with the switch off, the account is the production surface — all thirteen URLs", () => {
+test("the account and wishlist paths always enter the Aarna shell", () => {
   for (const path of [...GUARDED_SCREENS, ...GUEST_ORDER_URLS, "/account/wishlist"]) {
     const markup = off.render(path);
-    assert.equal(/class="aan-root"/.test(markup), false, `${path} mounted the port with the switch off`);
-    assert.equal(/pf-account__nav/.test(markup), false, `${path} mounted the port's account frame with the switch off`);
-    /* The production customer header, from its own source: `SiteHeader`
-       (`components/shell/SiteHeader.jsx:137`) is the header `CustomerLayout`
-       mounts on all fourteen of these paths, and the Aarna port carries no such
-       class (`pf-shell__header` belongs to the editorial-home header). */
-    assert.match(markup, /class="fixed top-0 left-0 right-0 z-50"/, `${path} rendered nothing of the production application`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the retired host header`);
   }
 });
 
@@ -786,7 +781,7 @@ test("the port's registry declares its own account files, once each", () => {
   }
 });
 
-test("the four production AccountShell screens render one primary <main> landmark with zero nested <main> elements in both Aarna and Atelier modes", () => {
+test("account screens keep one primary landmark under both empty and legacy override environments", () => {
   const screens = [
     { path: "/account/settings", Component: on.AccountSettings, OffComponent: off.AccountSettings, crumb: "Settings &amp; Preferences" },
     { path: "/account/security", Component: on.AccountSecurity, OffComponent: off.AccountSecurity, crumb: "Security" },
@@ -806,14 +801,14 @@ test("the four production AccountShell screens render one primary <main> landmar
     assert.match(aarnaMarkup, /aria-label="Account navigation"/, `${path} in Aarna mode lost the AccountShell navigation`);
     assert.match(aarnaMarkup, new RegExp(crumb), `${path} in Aarna mode lost its breadcrumb/content`);
 
-    /* Non-Aarna / Atelier mode: `CustomerLayout` has no `<main>`, so
-       `AccountShell` retains the primary `<main>` landmark. */
-    const atelierMarkup = off.element(React.createElement(OffComponent, null), path);
-    assert.equal(count(atelierMarkup, "<main"), 1, `${path} in Atelier mode did not render exactly one <main> opening tag`);
-    assert.equal(count(atelierMarkup, "</main>"), 1, `${path} in Atelier mode did not render exactly one </main> closing tag`);
-    assert.match(atelierMarkup, /^<main><section\b/, `${path} in Atelier mode lost AccountShell's primary <main> landmark`);
-    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(atelierMarkup), false, `${path} in Atelier mode nested a <main>`);
-    assert.match(atelierMarkup, /aria-label="Account navigation"/, `${path} in Atelier mode lost the AccountShell navigation`);
-    assert.match(atelierMarkup, new RegExp(crumb), `${path} in Atelier mode lost its breadcrumb/content`);
+    /* An explicit legacy env value cannot restore the old layout: the same
+       Aarna outer main remains the sole primary landmark. */
+    const legacyEnvMarkup = off.aarnaPage(React.createElement(OffComponent, null), path);
+    assert.equal(count(legacyEnvMarkup, "<main"), 1, `${path} under the legacy env value rendered multiple main landmarks`);
+    assert.equal(count(legacyEnvMarkup, "</main>"), 1, `${path} under the legacy env value lost its main landmark`);
+    assert.match(legacyEnvMarkup, /<main id="main">/);
+    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(legacyEnvMarkup), false, `${path} nested a main landmark`);
+    assert.match(legacyEnvMarkup, /aria-label="Account navigation"/);
+    assert.match(legacyEnvMarkup, new RegExp(crumb));
   }
 });

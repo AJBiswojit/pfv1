@@ -154,10 +154,11 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the guard, and no fabricated confirmation ──────────────────────── */
 
-test("with the switch off, /order-success is production's own guarded route", () => {
+test("/order-success always renders Aarna's confirmation route without inventing an order", () => {
   const markup = off.renderRoute("/order-success");
   assert.ok(markup.length > 0, "/order-success rendered nothing at all");
-  assert.equal(/aan-root|pf-confirm/.test(markup), false, "/order-success mounted the port with the switch off");
+  assert.match(markup, /class="aan-root"/);
+  assert.equal(/Order Confirmed|Thank you,/.test(markup), false, "a direct visit fabricated a confirmation");
 });
 
 test("with the switch on, a direct visit confirms nothing — no order, no number, no claim", () => {

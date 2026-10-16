@@ -271,11 +271,11 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, /cart is the production bag and nothing of the port", () => {
+test("/cart always renders Aarna's bag regardless of the former override", () => {
   const markup = off.render("/cart");
   assert.ok(markup.length > 0, "/cart rendered nothing at all");
-  assert.equal(/aan-root/.test(markup), false, "/cart mounted the port with the switch off");
-  assert.equal(/pf-bag__grid/.test(markup), false, "/cart rendered the design's bag with the switch off");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="container pf-bag"/);
 });
 
 test("with the switch on, /cart is the port — inside the design's full shell", () => {

@@ -273,13 +273,13 @@ after(async () => {
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, both wishlist routes are the production pages and nothing of the port", () => {
-  for (const path of ["/account/wishlist", "/wishlist"]) {
-    const markup = off.render(path);
-    assert.equal(/aan-root/.test(markup), false, `${path} mounted the port with the switch off`);
-    assert.equal(/Saved pieces/.test(markup), false, `${path} rendered the design's wishlist with the switch off`);
-    assert.ok(markup.length > 0, `${path} rendered nothing at all`);
-  }
+test("the canonical wishlist renders in Aarna and its legacy route remains an in-shell redirect", () => {
+  const canonical = off.render("/account/wishlist");
+  assert.match(canonical, /class="aan-root"/);
+  assert.match(canonical, /Saved pieces/);
+  const legacy = off.render("/wishlist");
+  assert.match(legacy, /class="aan-root"/);
+  assert.equal(/Saved pieces/.test(legacy), false, "the legacy URL rendered the page instead of redirecting");
 });
 
 test("with the switch on, the design's wishlist owns /account/wishlist — and the cart does not move", () => {

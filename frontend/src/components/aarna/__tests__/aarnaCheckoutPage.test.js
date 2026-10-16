@@ -213,11 +213,11 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the switch, the guard, and the quiet chrome ────────────────────── */
 
-test("with the switch off, /checkout is production's own guarded route", () => {
+test("/checkout always uses Aarna's guarded journey UI", () => {
   const markup = off.renderRoute("/checkout");
   assert.ok(markup.length > 0, "/checkout rendered nothing at all");
-  assert.equal(/aan-root|pf-progress|pf-journey__grid/.test(markup), false, "/checkout mounted the port with the switch off");
-  assert.match(markup, /pt-16 md:pt-20/, "the production shell is missing from /checkout");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /pf-journey/);
 });
 
 test("with the switch on, the design's quiet journey chrome wraps the route — and the page stays guarded", () => {

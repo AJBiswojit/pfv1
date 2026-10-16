@@ -22,7 +22,6 @@ import SuperAdminProtectedRoute from "./components/admin/SuperAdminProtectedRout
 import CustomerLayout from "./layouts/CustomerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import AtelierDesign from "./pages/AtelierDesign";
 import CatalogueListing from "./pages/CatalogueListing";
 import CategoryPage from "./pages/CategoryPage";
 import Explore from "./pages/Explore";
@@ -459,7 +458,6 @@ export default function App() {
                       </Route>
 
                       <Route element={<CustomerLayout />}>
-                        <Route index element={<AtelierDesign />} />
 
                         <Route path="/shop" element={<Shop />} />
                         <Route path="/explore" element={<Explore />} />

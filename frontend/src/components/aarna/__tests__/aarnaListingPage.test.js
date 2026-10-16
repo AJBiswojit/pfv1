@@ -202,12 +202,11 @@ after(async () => {
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, the listing routes are the application's own pages and nothing of the port", () => {
+test("listing routes always render Aarna's listing UI regardless of the former override", () => {
   for (const path of ["/shop", "/explore", "/search?q=silk", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = off.render(path);
-    assert.equal(/aan-root/.test(markup), false, `${path} rendered the port with the switch off`);
-    assert.equal(/class="shop container"/.test(markup), false, `${path} rendered the design's listing with the switch off`);
-    assert.ok(markup.length > 0, `${path} rendered nothing at all`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="shop container"/, `${path} did not render Aarna's listing`);
   }
 });
 

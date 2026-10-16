@@ -130,12 +130,11 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, /signup is the production page and nothing of the port", () => {
+test("/signup always renders Aarna's sign-up screen regardless of the former override", () => {
   const markup = off.render("/signup");
   assert.ok(markup.length > 0, "/signup rendered nothing at all");
-  assert.equal(/aan-root/.test(markup), false, "/signup mounted the port with the switch off");
-  assert.equal(/pf-auth/.test(markup), false, "/signup rendered the design's auth page with the switch off");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production layout did not render");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /signup is the port — inside the design's full shell", () => {

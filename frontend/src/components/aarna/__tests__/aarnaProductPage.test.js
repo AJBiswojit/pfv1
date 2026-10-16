@@ -210,12 +210,10 @@ const seed = () => on.store.applyCatalogSnapshot({ products: RECORDS });
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, the product path is the application's own page and nothing of the port", () => {
+test("the product path always enters Aarna's product page despite a former Atelier override", () => {
   const markup = off.render(`/product/${RECORD_IN_STOCK.id}`);
-  assert.equal(/aan-root/.test(markup), false, "the port rendered with the switch off");
-  assert.equal(/class="pdp/.test(markup), false, "the design's product page rendered with the switch off");
-  assert.equal(/Opening this piece/.test(markup), false, "the port's loading frame rendered with the switch off");
-  assert.ok(markup.length > 0, "the production product path rendered nothing at all");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pdp container"|Opening this piece|This page has slipped/);
 });
 
 test("with the switch on, the design's product page owns the product path", () => {

@@ -133,12 +133,11 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, /forgot-password is the production page and nothing of the port", () => {
+test("/forgot-password always renders Aarna's auth screen regardless of the former override", () => {
   const markup = off.render("/forgot-password");
   assert.ok(markup.length > 0, "/forgot-password rendered nothing at all");
-  assert.equal(/aan-root/.test(markup), false, "/forgot-password mounted the port with the switch off");
-  assert.equal(/pf-auth/.test(markup), false, "/forgot-password rendered the design's auth page with the switch off");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production layout did not render");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /forgot-password is the port — inside the design's full shell", () => {
