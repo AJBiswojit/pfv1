@@ -181,12 +181,11 @@ test("Aarna is the only customer surface mounted by the outer catch-all", () => 
   assert.deepEqual(importers, [LAYOUT], "Aarna is mounted by the customer layout alone");
 });
 
-test("the Phase 6 surface is the product route exactly, and stays off while the switch is off", () => {
+test("the Aarna product predicate matches only a single product route", () => {
   assert.equal(AARNA_PRODUCT_PATH.source, "^\\/product\\/[^/]+\\/?$");
 
-  /* Whether the switch is asked for is `isAarnaHomeEnabled()`; these are the
-     paths it may claim when it is. Anything else — a deeper path, the order
-     journey, the cart — is never the port's, whatever the switch says. */
+  /* The route matcher is independent of any storefront selector. These cases
+     pin the product URL shape, leaving deeper paths and other journeys alone. */
   for (const path of ["/product/a", "/product/silk-saree", "/product/a/"]) {
     assert.equal(AARNA_PRODUCT_PATH.test(path), true, `${path} is the product route`);
   }

@@ -144,7 +144,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [

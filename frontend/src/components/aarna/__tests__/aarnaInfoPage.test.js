@@ -115,15 +115,13 @@ const escaped = (text) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {

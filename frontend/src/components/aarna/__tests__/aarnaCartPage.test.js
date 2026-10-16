@@ -5,10 +5,8 @@
  * listing and Phase 8 the wishlist: the page is written in the design's own
  * vocabulary (`.container`, `.crumbs`, `.label`, `.display`, `.totals`, the
  * `.btn` register, the drawer's `qty` control, the `.empty` block) and bound to
- * `CartContext` — the same context the production bag reads. It is reachable
- * only through the existing `?home=aarna` / `VITE_STOREFRONT_HOME=aarna`
- * switch, and with the switch off `/cart` is the production page, byte for
- * byte, untouched.
+ * `CartContext` — the Aarna bag's shared commerce state. It is reachable on
+ * the customer route without an environment flag or query-string selector.
  *
  * What these tests render is the real composition: `CustomerLayout` inside this
  * application's provider stack, at the route a browser reaches, through Vite's
@@ -235,15 +233,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   off.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   saveGuestCart(STORED);
@@ -279,7 +275,7 @@ test("/cart always renders Aarna's bag regardless of the former override", () =>
 });
 
 test("with the switch on, /cart is the port — inside the design's full shell", () => {
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, /class="aan-root"/, "the canonical route did not mount the port");
   assert.match(markup, /class="container pf-bag"/, "/cart did not render the ported bag page");
   /* The bag keeps the SHOPPING chrome, unlike the two quiet order-journey
@@ -312,7 +308,7 @@ test("the money path is a journey path by name, and nothing else joins it", () =
 /* ── 2 · the bag is the application's own ───────────────────────────────── */
 
 test("every resolvable line renders with the application's own name, variant and quantity", () => {
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, /class="pf-line"/, "no line rendered at all");
   assert.match(markup, rx("Phase 9 Banarasi"), "a piece in the bag is missing");
   assert.match(markup, rx("Phase 9 Blouse"), "a piece in the bag is missing");
@@ -327,7 +323,7 @@ test("every resolvable line renders with the application's own name, variant and
 
 test("the money is the bag's own: every figure is `calculateCartTotals` on the same records", () => {
   const totals = expectedTotals(LINES);
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   const rupees = (value) => rx(on.shopping.formatINR(value));
 
   assert.match(markup, rupees(totals.subtotal), "the subtotal is not the application's");
@@ -381,7 +377,7 @@ test("the offer field is the application's coupon path, and it never claims an a
   assert.match(source, /cart\.applyCoupon\(/, "the offer field no longer applies through the context");
   assert.match(source, /cart\.removeCoupon\(/, "the offer field no longer removes through the context");
   assert.match(source, /cart\.couponLapsed/, "the lapsed-offer state is gone");
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, /class="promo-form"/, "the design's offer field is missing from the bag");
   assert.match(markup, /name="offer"|id="bag-offer"/, "the offer field lost its input");
 });
@@ -395,19 +391,19 @@ test("the quantity ceiling is the application's, and the bag says when it is rea
   assert.match(source, /disabled=\{busy \|\| item\.quantity >= maximum\}/, "the ceiling no longer disables the control");
   /* The blouse is stocked at 2 and the bag holds 2 — the design's own note
      ("only N left") is not copied: the page states what the bag holds. */
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, /All 2 in your bag/, "the ceiling note is missing for a line at its ceiling");
   assert.equal(/Only \d+ left/.test(markup), false, "the page imported the design's stock-scare copy");
 });
 
 test("an archived piece already in the bag is shown as itself, never re-priced", () => {
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, rx("Phase 9 Archived"), "an archived piece in the bag was silently dropped");
   assert.match(markup, /₹\s?9,900/, "the archived piece lost its own price");
 });
 
 test("a line the catalogue cannot resolve is not replaced with a substitute", () => {
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.equal(markup.includes(GONE_ID), false, "the unresolvable line rendered its raw id");
   /* `CartContext` resolves every line against the catalogue and filters what it
      cannot resolve — production's own rule. The page must not invent a row for
@@ -419,7 +415,7 @@ test("a line the catalogue cannot resolve is not replaced with a substitute", ()
 
 test("an empty bag explains itself and offers the two ways out that exist", () => {
   saveGuestCart({ lines: [], coupon: null });
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.match(markup, /class="empty"/, "the design's empty block is gone");
   assert.match(markup, /Your collection is waiting\./, "the empty bag lost its own sentence");
   assert.match(markup, /href="\/shop"/, "the empty bag lost its way to the collection");
@@ -456,7 +452,7 @@ test("the closing rail is the application's recommender, not a second catalogue"
   assert.match(source, /toDesignProduct\(row\)/, "the rail no longer maps catalogue records to the design's card shape");
   /* SSR runs no effects, so the recommender has answered nothing: an empty
      answer must be an empty rail, never a substituted one. */
-  const markup = on.render("/cart?home=aarna");
+  const markup = on.render("/cart");
   assert.equal(/pf-rail/.test(markup), false, "an empty recommendation answer still drew the rail");
 });
 

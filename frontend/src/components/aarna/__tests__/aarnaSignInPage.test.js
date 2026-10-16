@@ -6,9 +6,8 @@
  * written in the design's own vocabulary (`.container`, `.info`, `.crumbs`,
  * `.label`, `.display`, `.info__lead`, `.form`, `.form__err`, `.form__note`,
  * the `.btn` register) and bound to `AuthContext` — the same context the
- * production screen reads. It is reachable only through the existing
- * `?home=aarna` / `VITE_STOREFRONT_HOME=aarna` switch, and with the switch off
- * `/signin` is the production page, byte for byte, untouched.
+ * current Aarna customer route reads. The route no longer depends on an
+ * environment flag or query-string selector.
  *
  * What these tests render is the real composition: `CustomerLayout` inside this
  * application's provider stack, at the route a browser reaches, through Vite's
@@ -134,15 +133,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -172,7 +169,7 @@ test("all customer auth paths render Aarna irrespective of former selector value
 });
 
 test("with the switch on, /signin is the port — inside the design's full shell", () => {
-  const markup = on.render("/signin?home=aarna");
+  const markup = on.render("/signin");
   assert.match(markup, /class="aan-root"/, "the canonical route did not mount the port");
   assert.match(markup, /class="info container pf-auth"/, "/signin did not render the ported page");
   /* Production gives the auth screens the SHOPPING chrome (`isOrderJourney` is
@@ -245,7 +242,7 @@ test("identifiers, autofill hints and the reveal toggle are production's", () =>
   assert.match(text, /aria-pressed=\{showPassword\}/);
   /* The id the port assigns is the id production assigns, so password managers
      and autofill see the same form they always did. */
-  const production = read("src/pages/auth/SignIn.jsx");
+  const production = read("src/components/aarna/pages/SignIn.jsx");
   for (const id of ["signin-identifier", "signin-password"]) {
     assert.match(production, rx(`id="${id}"`), `production no longer carries ${id}`);
   }
@@ -253,7 +250,7 @@ test("identifiers, autofill hints and the reveal toggle are production's", () =>
 
 test("every message is the production string, and validation stops before the API call", () => {
   const text = source();
-  const production = read("src/pages/auth/SignIn.jsx");
+  const production = read("src/components/aarna/pages/SignIn.jsx");
   const messages = [
     "Please enter your registered email address or phone number.",
     "Please enter your account password.",
@@ -320,7 +317,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 /* ── 3 · rendered against the real providers ────────────────────────────── */
 
 test("the rendered page is the design's frame around the application's form", () => {
-  const markup = on.render("/signin?home=aarna");
+  const markup = on.render("/signin");
   assert.match(markup, /class="crumbs"/);
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /class="form pf-auth__form"/);

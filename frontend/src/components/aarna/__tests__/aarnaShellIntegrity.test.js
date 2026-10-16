@@ -8,7 +8,7 @@
  * the switch are wired. Neither renders the surface the browser gets. These
  * tests do: the application's own provider stack, wrapped around
  * `CustomerLayout`, with the Phase 2D switch on — the DOM behind
- * `/?home=aarna` — composed exactly as `src/App.jsx` composes it.
+ * `/` — composed exactly as `src/App.jsx` composes it.
  *
  *   1. the ported shell IS the design's file, line for line, minus the pinned
  *      adapter lines below (the router import, `Layout`'s slot, the footer's
@@ -196,9 +196,6 @@ before(async () => {
     logLevel: "error",
     server: { middlewareMode: true },
     appType: "custom",
-    /* The production switch, mirrored: a deployed build reaches this surface
-       through `VITE_STOREFRONT_HOME`; `?home=` is the DEV gate a reviewer uses. */
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
   });
 
   const load = (path) => vite.ssrLoadModule(path);
@@ -248,7 +245,7 @@ before(async () => {
   markup = renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
-      { initialEntries: ["/?home=aarna"] },
+      { initialEntries: ["/"] },
       React.createElement(Suspense, { fallback: null }, tree),
     ),
   );

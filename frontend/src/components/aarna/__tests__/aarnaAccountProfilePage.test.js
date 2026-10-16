@@ -72,7 +72,7 @@ const PAGE = "src/components/aarna/pages/account/Profile.jsx";
 const FRAME = "src/components/aarna/pages/account/AccountFrame.jsx";
 const MOUNT = "src/components/aarna/AarnaStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
-const PRODUCTION_PAGE = "src/pages/account/AccountProfile.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/Profile.jsx";
 const SHEET = "src/components/aarna/aarna.account.css";
 /* The sheets a ported account page may lean on: the design's own, the port's
    shared form register (`pf-form`, `pf-lab`, `pf-req`, `pf-hint`, `pf-alert` —
@@ -198,15 +198,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -491,15 +489,13 @@ test("a read that has not landed is loading, and a read that failed is named as 
   assert.equal(/Try again|onRetry/.test(code()), false, "the page invents a retry the account context does not expose");
 });
 
-test("the tab title is production's own, restored on unmount", () => {
+test("Aarna's profile tab title is restored on unmount", () => {
   const page = read(PAGE);
-  const production = read(PRODUCTION_PAGE);
 
   assert.match(page, /document\.title = PROFILE_TITLE;/, "the page no longer states its own tab title");
   assert.match(page, /return \(\) => \{\n\s+document\.title = previous;\n\s+\};/, "the tab title is no longer restored");
-  assert.ok(production.includes('document.title = "Profile — PRATIKSHYA FASHION";'), "production's own tab title moved");
-  assert.ok(page.includes("const PROFILE_TITLE = 'Profile — PRATIKSHYA FASHION';"),
-    "the port's tab title is no longer production's own string");
+  assert.match(page, /const PROFILE_TITLE = 'Profile — PRATIKSHYA FASHION';/,
+    "Aarna's profile tab title is missing");
 });
 
 /* ── 4 · the page invents nothing ──────────────────────────────────────────── */

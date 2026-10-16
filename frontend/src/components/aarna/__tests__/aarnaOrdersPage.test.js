@@ -73,7 +73,7 @@ const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PAGE = "src/components/aarna/pages/account/Orders.jsx";
 const FRAME = "src/components/aarna/pages/account/OrderFrame.jsx";
 const MOUNT = "src/components/aarna/AarnaStorefront.jsx";
-const PRODUCTION_SCREEN = "src/pages/account/AccountOrders.jsx";
+const PRODUCTION_SCREEN = "src/components/aarna/pages/account/Orders.jsx";
 
 /* ── the browser a server-rendered page still has to believe in ─────────────── */
 
@@ -150,7 +150,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [

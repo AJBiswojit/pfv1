@@ -55,7 +55,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 const PAGE = "src/components/aarna/pages/account/OrderDetail.jsx";
-const PRODUCTION_PAGE = "src/pages/account/OrderDetail.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/OrderDetail.jsx";
 const CONFIRM_DIALOG = "src/components/orders/ConfirmDialog.jsx";
 const INVOICE = "src/components/orders/InvoicePreview.jsx";
 
@@ -83,7 +83,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [

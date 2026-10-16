@@ -38,21 +38,21 @@ const NAV = "src/components/aarna/pages/account/AccountNav.jsx";
    screens, Stage 2.5 the two AI screens. Each entry names the port's OWN page (a
    name deliberately not in the mount's `lazy` list, so a migrated route can never
    be mistaken for one still served by production), the file it is imported from,
-   and the production page that still serves the path in the Atelier storefront. */
+   and the current Aarna route that serves the path. */
 const MIGRATED_SCREENS = [
-  { path: "account", component: "AccountOverview", page: "Overview.jsx", production: "AccountDashboard" },
-  { path: "account/profile", component: "AccountProfilePage", page: "Profile.jsx", production: "AccountProfile" },
-  { path: "account/addresses", component: "AccountAddressesPage", page: "Addresses.jsx", production: "AccountAddresses" },
-  { path: "account/orders", component: "AccountOrdersPage", page: "Orders.jsx", production: "AccountOrders" },
-  { path: "account/orders/:orderId", component: "AccountOrderDetailPage", page: "OrderDetail.jsx", production: "OrderDetail" },
-  { path: "account/orders/:orderId/track", component: "AccountOrderTrackingPage", page: "OrderTracking.jsx", production: "OrderTracking" },
-  { path: "account/orders/:orderId/return", component: "AccountOrderReturnPage", page: "OrderReturn.jsx", production: "OrderReturn" },
-  { path: "account/ai-mirror", component: "AccountAiMirrorPage", page: "AiMirror.jsx", production: "AiMirror" },
-  { path: "account/ai-shopping", component: "AccountAiShoppingPage", page: "AiShopping.jsx", production: "AiShoppingAssistant" },
-  { path: "account/settings", component: "AccountSettings", page: "Settings.jsx", production: "AccountSettings" },
-  { path: "account/security", component: "AccountSecurity", page: "Security.jsx", production: "AccountSecurity" },
-  { path: "account/preferences", component: "AccountPreferences", page: "Preferences.jsx", production: "AccountPreferences" },
-  { path: "account/instagram-rewards", component: "InstagramRewards", page: "InstagramRewards.jsx", production: "InstagramRewards" },
+  { path: "account", component: "AccountOverview", page: "Overview.jsx", production: "AarnaOverview" },
+  { path: "account/profile", component: "AccountProfilePage", page: "Profile.jsx", production: "AarnaProfile" },
+  { path: "account/addresses", component: "AccountAddressesPage", page: "Addresses.jsx", production: "AarnaAddresses" },
+  { path: "account/orders", component: "AccountOrdersPage", page: "Orders.jsx", production: "AarnaOrders" },
+  { path: "account/orders/:orderId", component: "AccountOrderDetailPage", page: "OrderDetail.jsx", production: "AarnaOrderDetail" },
+  { path: "account/orders/:orderId/track", component: "AccountOrderTrackingPage", page: "OrderTracking.jsx", production: "AarnaOrderTracking" },
+  { path: "account/orders/:orderId/return", component: "AccountOrderReturnPage", page: "OrderReturn.jsx", production: "AarnaOrderReturn" },
+  { path: "account/ai-mirror", component: "AccountAiMirrorPage", page: "AiMirror.jsx", production: "AarnaAiMirror" },
+  { path: "account/ai-shopping", component: "AccountAiShoppingPage", page: "AiShopping.jsx", production: "AarnaAiShopping" },
+  { path: "account/settings", component: "AccountSettings", page: "Settings.jsx", production: "AarnaSettings" },
+  { path: "account/security", component: "AccountSecurity", page: "Security.jsx", production: "AarnaSecurity" },
+  { path: "account/preferences", component: "AccountPreferences", page: "Preferences.jsx", production: "AarnaPreferences" },
+  { path: "account/instagram-rewards", component: "InstagramRewards", page: "InstagramRewards.jsx", production: "AarnaInstagramRewards" },
 ];
 const REDRAWN_PAGES = MIGRATED_SCREENS.map((screen) => `src/components/aarna/pages/account/${screen.page}`);
 /* The order screens' shared frame — the port's equivalent of production's
@@ -243,10 +243,10 @@ async function mount(define) {
     load("/src/components/aarna/state/UIContext.jsx"),
     load("/src/components/aarna/state/ShopContext.jsx"),
     load("/src/components/account/AccountShell.jsx"),
-    load("/src/pages/account/AccountSettings.jsx"),
-    load("/src/pages/account/AccountSecurity.jsx"),
-    load("/src/pages/account/AccountPreferences.jsx"),
-    load("/src/pages/account/InstagramRewards.jsx"),
+    load("/src/components/aarna/pages/account/Settings.jsx"),
+    load("/src/components/aarna/pages/account/Security.jsx"),
+    load("/src/components/aarna/pages/account/Preferences.jsx"),
+    load("/src/components/aarna/pages/account/InstagramRewards.jsx"),
   ]);
 
   /* The stack the real application builds — ShoppingContext mounts the wishlist
@@ -305,15 +305,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -659,15 +657,15 @@ test("the port's registry declares its own account files, once each", () => {
   }
 });
 
-test("account screens keep one primary landmark under both empty and legacy override environments", () => {
+test("Aarna account screens keep one primary landmark in the active customer layout", () => {
   const screens = [
-    { path: "/account/settings", Component: on.AccountSettings, OffComponent: off.AccountSettings, crumb: "Settings &amp; Preferences" },
-    { path: "/account/security", Component: on.AccountSecurity, OffComponent: off.AccountSecurity, crumb: "Security" },
-    { path: "/account/preferences", Component: on.AccountPreferences, OffComponent: off.AccountPreferences, crumb: "Style Preferences" },
-    { path: "/account/instagram-rewards", Component: on.InstagramRewards, OffComponent: off.InstagramRewards, crumb: "Share &amp; Earn" },
+    { path: "/account/settings", Component: on.AccountSettings, crumb: "Settings &amp; Preferences" },
+    { path: "/account/security", Component: on.AccountSecurity, crumb: "Security" },
+    { path: "/account/preferences", Component: on.AccountPreferences, crumb: "Style Preferences" },
+    { path: "/account/instagram-rewards", Component: on.InstagramRewards, crumb: "Share &amp; Earn" },
   ];
 
-  for (const { path, Component, OffComponent, crumb } of screens) {
+  for (const { path, Component, crumb } of screens) {
     /* Aarna mode: the outer `Layout` owns `<main id="main">`; `AccountShell`
        must not wrap its section in a second `<main>`. */
     const aarnaMarkup = on.aarnaPage(React.createElement(Component, null), path);
@@ -679,14 +677,6 @@ test("account screens keep one primary landmark under both empty and legacy over
     assert.match(aarnaMarkup, /aria-label="Account navigation"/, `${path} in Aarna mode lost the AccountShell navigation`);
     assert.match(aarnaMarkup, new RegExp(crumb), `${path} in Aarna mode lost its breadcrumb/content`);
 
-    /* An explicit legacy env value cannot restore the old layout: the same
-       Aarna outer main remains the sole primary landmark. */
-    const legacyEnvMarkup = off.aarnaPage(React.createElement(OffComponent, null), path);
-    assert.equal(count(legacyEnvMarkup, "<main"), 1, `${path} under the legacy env value rendered multiple main landmarks`);
-    assert.equal(count(legacyEnvMarkup, "</main>"), 1, `${path} under the legacy env value lost its main landmark`);
-    assert.match(legacyEnvMarkup, /<main id="main">/);
-    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(legacyEnvMarkup), false, `${path} nested a main landmark`);
-    assert.match(legacyEnvMarkup, /aria-label="Account navigation"/);
-    assert.match(legacyEnvMarkup, new RegExp(crumb));
+
   }
 });

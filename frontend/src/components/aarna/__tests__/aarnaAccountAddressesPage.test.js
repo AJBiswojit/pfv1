@@ -72,7 +72,7 @@ const NAV = "src/components/aarna/pages/account/AccountNav.jsx";
 const OVERVIEW = "src/components/aarna/pages/account/Overview.jsx";
 const MOUNT = "src/components/aarna/AarnaStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
-const PRODUCTION_PAGE = "src/pages/account/AccountAddresses.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/Addresses.jsx";
 const MODAL = "src/components/account/AddressModal.jsx";
 const DIALOG = "src/components/orders/ConfirmDialog.jsx";
 const SHEET = "src/components/aarna/aarna.account.css";
@@ -193,15 +193,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -429,11 +427,9 @@ test("a deletion is asked about first, through the application's existing confir
   }
   assert.match(dialog, /isOpen=\{Boolean\(pendingRemoval\)\}/, "the dialog is no longer opened by the address it asks about");
 
-  /* And the divergence from the production screen is stated where it lives. */
-  assert.match(read(PAGE), /Production removes it on the single click/,
-    "the page no longer records that production deletes without asking");
-  assert.ok(read(PRODUCTION_PAGE).includes("onClick={() => handleDelete(address.id)}"),
-    "production's own single-click removal moved — the recorded divergence is stale");
+  /* Aarna deliberately requires confirmation before invoking the shared delete action. */
+  assert.match(page, /handleConfirmRemoval/);
+  assert.match(page, /onConfirm=\{handleConfirmRemoval\}/);
 });
 
 test("the default address changes only through the explicit action, and never optimistically", () => {
@@ -521,15 +517,13 @@ test("the feedback is the context's own message, clears itself, and is stated on
   assert.match(page, /setFeedback\(\{ ok: result\.ok, message: result\.message \}\);/, "the feedback is not the context's answer");
 });
 
-test("the tab title is production's own, restored on unmount", () => {
+test("Aarna's tab title is restored on unmount", () => {
   const page = read(PAGE);
-  const production = read(PRODUCTION_PAGE);
 
   assert.match(page, /document\.title = ADDRESSES_TITLE;/, "the page no longer states its own tab title");
   assert.match(page, /return \(\) => \{\n\s+document\.title = previous;\n\s+\};/, "the tab title is no longer restored");
-  assert.ok(production.includes('document.title = "Addresses — PRATIKSHYA FASHION";'), "production's own tab title moved");
-  assert.ok(page.includes("const ADDRESSES_TITLE = 'Addresses — PRATIKSHYA FASHION';"),
-    "the port's tab title is no longer production's own string");
+  assert.match(page, /const ADDRESSES_TITLE = 'Addresses — PRATIKSHYA FASHION';/,
+    "Aarna's accessible tab title is missing");
 });
 
 /* ── 4 · the page invents nothing ──────────────────────────────────────────── */

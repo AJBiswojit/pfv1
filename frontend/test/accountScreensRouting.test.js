@@ -12,13 +12,15 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const read = (relative) => readFileSync(new URL(relative, `file://${ROOT}`), "utf8");
 
 const STOREFRONT = "src/components/aarna/AarnaStorefront.jsx";
+const AARNA_ACCOUNT = "src/components/aarna/pages/account/Overview.jsx";
+const DESIGN_REFERENCE_ACCOUNT = "../home-page/src/pages/Account.jsx";
 const NATIVE = {
   "account/settings": ["./pages/account/Settings.jsx", "AccountSettings"],
   "account/security": ["./pages/account/Security.jsx", "AccountSecurity"],
   "account/preferences": ["./pages/account/Preferences.jsx", "AccountPreferences"],
   "account/instagram-rewards": ["./pages/account/InstagramRewards.jsx", "InstagramRewards"],
 };
-const LEGACY = ["AccountSettings.jsx", "AccountSecurity.jsx", "AccountPreferences.jsx", "InstagramRewards.jsx"];
+const REMOVED_LEGACY = ["AccountSettings.jsx", "AccountSecurity.jsx", "AccountPreferences.jsx", "InstagramRewards.jsx"];
 
 test("each migrated account path is mounted on its native Aarna page", () => {
   const source = read(STOREFRONT);
@@ -28,16 +30,23 @@ test("each migrated account path is mounted on its native Aarna page", () => {
   }
 });
 
-test("the outer route tree does not import test-retained legacy pages", () => {
+test("Aarna keeps server-backed account ownership while the home-page prototype remains device-local", () => {
+  const aarna = read(AARNA_ACCOUNT);
+  const designReference = read(DESIGN_REFERENCE_ACCOUNT);
+  assert.match(aarna, /useAccount\(\)/, "the active account reads the application's account context");
+  assert.match(designReference, /load\(KEY, null\)/, "the untouched home-page prototype remains a local demo");
+  assert.equal(read("src/App.jsx").includes("home-page/"), false, "the prototype was imported into the production application");
+});
+
+test("legacy account pages are retired and Aarna owns their canonical routes", () => {
   const source = read(STOREFRONT);
   const app = read("src/App.jsx");
-  for (const production of LEGACY) {
-    assert.equal(source.includes(`../../pages/account/${production}`), false, `${production} is not imported by Aarna`);
-    assert.equal(app.includes(`pages/account/${production}`), false, `${production} is not imported by App`);
-    /* These four modules remain solely because the Aarna account shell test
-       SSR-imports them for comparison; none is reachable through a customer route. */
-    assert.ok(existsSync(new URL(`src/pages/account/${production}`, `file://${ROOT}`)), `${production} remains a test-only comparison fixture`);
+  for (const page of REMOVED_LEGACY) {
+    assert.equal(source.includes(`../../pages/account/${page}`), false, `${page} is not imported by Aarna`);
+    assert.equal(app.includes(`pages/account/${page}`), false, `${page} is not imported by App`);
+    assert.equal(existsSync(new URL(`src/pages/account/${page}`, `file://${ROOT}`)), false, `${page} was retired`);
   }
+  assert.ok(existsSync(new URL("src/pages/auth/StaffLogin.jsx", `file://${ROOT}`)), "StaffLogin remains available");
 });
 
 test("the four screens remain inside the same ProtectedRoute as other account pages", () => {

@@ -53,7 +53,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 const PAGE = "src/components/aarna/pages/account/OrderReturn.jsx";
-const PRODUCTION_PAGE = "src/pages/account/OrderReturn.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/OrderReturn.jsx";
 const CONFIG = "src/config/orderConfig.js";
 const MOUNT = "src/components/aarna/AarnaStorefront.jsx";
 
@@ -81,7 +81,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -245,9 +245,8 @@ test("the form asks exactly what the backend accepts, per line", () => {
   assert.equal(app.orderConfig.RETURN_REASONS.every((entry) => typeof entry.id === "string" && typeof entry.label === "string"), true, "the reason list changed shape");
 });
 
-test("the form's own messages are production's, word for word", () => {
+test("the return form states each validation message and stops before submission", () => {
   const page = source();
-  const production = read(PRODUCTION_PAGE);
 
   const messages = [
     "Choose at least one piece to return.",
@@ -255,8 +254,7 @@ test("the form's own messages are production's, word for word", () => {
     "Your return request could not be submitted.",
   ];
   for (const message of messages) {
-    assert.ok(production.includes(`"${message}"`), `production no longer says: ${message}`);
-    assert.ok(page.includes(`'${message}'`), `the port no longer says production's own words: ${message}`);
+    assert.ok(page.includes(`'${message}'`), `Aarna no longer states its validation message: ${message}`);
   }
 
   const code_ = code();

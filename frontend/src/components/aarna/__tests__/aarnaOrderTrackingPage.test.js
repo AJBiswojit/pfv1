@@ -51,7 +51,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 const PAGE = "src/components/aarna/pages/account/OrderTracking.jsx";
-const PRODUCTION_PAGE = "src/pages/account/OrderTracking.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/OrderTracking.jsx";
 const SERVICE = "src/services/orders/trackingService.js";
 
 const storage = new Map();
@@ -78,7 +78,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [

@@ -41,7 +41,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PORTED = "src/components/aarna/pages/ForgotPassword.jsx";
-const PRODUCTION = "src/pages/auth/ForgotPassword.jsx";
+const PRODUCTION = "src/components/aarna/pages/ForgotPassword.jsx";
 
 const storage = new Map();
 const localStorageStub = {
@@ -109,15 +109,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -141,7 +139,7 @@ test("/forgot-password always renders Aarna's auth screen regardless of the form
 });
 
 test("with the switch on, /forgot-password is the port — inside the design's full shell", () => {
-  const markup = on.render("/forgot-password?home=aarna");
+  const markup = on.render("/forgot-password");
   assert.match(markup, /class="aan-root"/);
   assert.match(markup, /class="info container pf-auth"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the recovery page");
@@ -240,7 +238,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 /* ── 3 · rendered against the real providers ────────────────────────────── */
 
 test("the rendered page is the design's frame around the application's form", () => {
-  const markup = on.render("/forgot-password?home=aarna");
+  const markup = on.render("/forgot-password");
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /Account Recovery/);
   assert.match(markup, /id="forgot-identifier"/);

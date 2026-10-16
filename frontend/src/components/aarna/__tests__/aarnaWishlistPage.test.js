@@ -4,7 +4,7 @@
  * Phase 8 adopts `home-page/src/pages/Wishlist.jsx` the way Phase 6 adopted the
  * product page and Phase 7 the listing: the design's file carried over by
  * `scripts/aarna-port.js`, adapted only by named rewrites, reachable only
- * through the existing `?home=aarna` / `VITE_STOREFRONT_HOME=aarna` switch, and
+ * mounted on the Aarna customer route with no storefront selector, and
  * bound to `WishlistContext` / `ShoppingContext` instead of the design's bundled
  * catalogue.
  *
@@ -252,15 +252,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   off.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   saveGuestWishlist([]);
@@ -283,7 +281,7 @@ test("the canonical wishlist renders in Aarna and its legacy route remains an in
 });
 
 test("with the switch on, the design's wishlist owns /account/wishlist — and the cart does not move", () => {
-  const canonical = on.render("/account/wishlist?home=aarna");
+  const canonical = on.render("/account/wishlist");
   assert.match(canonical, /class="aan-root"/, "the canonical route did not mount the port");
   assert.match(canonical, /class="shop container"/, "the canonical route did not render the design's wishlist shell");
   assert.match(canonical, /class="label">Saved pieces</, "the design's eyebrow is gone");
@@ -295,7 +293,7 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
      not its source, so what is asserted here is that the port took the route and
      the production wishlist did not; the redirect itself is exercised in the
      browser probe. */
-  const legacy = on.render("/wishlist?home=aarna");
+  const legacy = on.render("/wishlist");
   assert.match(legacy, /class="aan-root"/, "/wishlist did not mount the port");
   assert.equal(/Saved pieces/.test(legacy), false, "/wishlist rendered the design's wishlist instead of redirecting");
   assert.equal(/pratikshya-wishlist|Wishlist<\/h1>/.test(legacy), false, "/wishlist rendered a production wishlist page");
@@ -307,7 +305,7 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
      on the server (a static render cannot paint the guard's effect-driven
      redirect — see `aarnaAccountShell.test.js`). (PHASE 9 handed the money path
      over by name, PHASE 10 the auth screens, PHASE 11 the account.) */
-  const account = on.render("/account/orders?home=aarna");
+  const account = on.render("/account/orders");
   assert.match(account, /class="aan-root"/, "/account/orders is not the port's, though Phase 11 adopted the account");
   assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
   assert.equal(/Saved pieces/.test(account), false, "/account/orders was served as the wishlist");

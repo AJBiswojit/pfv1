@@ -84,8 +84,8 @@ const SHEET = 'src/components/aarna/aarna.ai.css';
 const DESIGN_SHEET = 'src/components/aarna/aarna.css';
 const REGISTRY = 'scripts/aarna-port.js';
 
-const PRODUCTION_MIRROR = 'src/pages/account/AiMirror.jsx';
-const PRODUCTION_SHOPPING = 'src/pages/account/AiShoppingAssistant.jsx';
+const PRODUCTION_MIRROR = 'src/components/aarna/pages/account/AiMirror.jsx';
+const PRODUCTION_SHOPPING = 'src/components/aarna/pages/account/AiShopping.jsx';
 
 const MIRROR_WIDGETS = [
   'src/components/aiMirror/AiMirrorStage.jsx',
@@ -128,7 +128,7 @@ async function mount() {
     logLevel: 'error',
     server: { middlewareMode: true, hmr: false },
     appType: 'custom',
-    define: { 'import.meta.env.VITE_STOREFRONT_HOME': '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -397,11 +397,11 @@ test('the mirror’s widgets are production’s own files, not copies', () => {
   assert.equal(existsSync(join(ROOT, 'src/components/aarna/components/aiMirror')), false,
     'a second copy of the mirror widgets was added to the port');
 
-  /* And production’s own file is untouched: it is still the page App.jsx renders. */
-  const production = code(PRODUCTION_MIRROR);
-  assert.match(production, /<AccountShell breadcrumbItems=\{\[\{ label: "My PRATIKSHYA", to: "\/account" \}, \{ label: "AI Mirror" \}\]\}>/,
-    'the production screen changed');
-  assert.equal(production.includes('pf-ai__'), false, 'the production screen was given the port’s classes');
+  /* The Aarna page owns its frame and its distinctive stylesheet vocabulary. */
+  const aarnaPage = code(PRODUCTION_MIRROR);
+  assert.match(aarnaPage, /import AccountFrame from '\.\/AccountFrame\.jsx';/);
+  assert.match(aarnaPage, /pf-ai__/);
+  assert.match(read('src/components/aarna/AarnaStorefront.jsx'), /import AccountAiMirrorPage from "\.\/pages\/account\/AiMirror\.jsx"/);
 });
 
 test('the mirror states the demo plainly and claims no preview it cannot produce', () => {
@@ -507,11 +507,11 @@ test('the shopping page’s widgets are production’s own files, not copies', (
   assert.match(page, /<AiQuickPrompts\n\s+prompts=\{quickPrompts\}\n\s+onPick=\{send\}\n\s+disabled=\{thinking\}/);
   assert.match(page, /<AiThinkingIndicator stage=\{stage\} label="PRATIKSHYA AI is preparing recommendations" \/>/);
 
-  /* And production's own screen is untouched. */
-  const production = code(PRODUCTION_SHOPPING);
-  assert.equal(production.includes('pf-ai__'), false, 'the production screen was given the port’s classes');
-  assert.match(production, /<AccountShell breadcrumbItems=\{\[\{ label: "My PRATIKSHYA", to: "\/account" \}, \{ label: "AI Shopping" \}\]\}>/,
-    'the production screen changed');
+  /* The active Aarna route uses the account frame and keeps its own styling. */
+  const aarnaPage = code(PRODUCTION_SHOPPING);
+  assert.match(aarnaPage, /import AccountFrame from '\.\/AccountFrame\.jsx';/);
+  assert.match(aarnaPage, /pf-ai__/);
+  assert.match(read('src/components/aarna/AarnaStorefront.jsx'), /import AccountAiShoppingPage from "\.\/pages\/account\/AiShopping\.jsx"/);
 });
 
 test('the shopping page labels the demo provider, and never prints the business assistant’s label on it', () => {

@@ -167,15 +167,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   off.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
 });

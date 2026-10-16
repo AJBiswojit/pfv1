@@ -14,7 +14,7 @@
  * TWO LEVELS ARE PINNED, and the difference matters:
  *
  *   · THE ROUTE, exactly as a browser reaches it — `CustomerLayout` under the
- *     switch, at `/checkout?home=aarna`. This is where the guard shows: the
+ *     switch, at `/checkout`. This is where the guard shows: the
  *     page does not render for a signed-out visitor, because the route is
  *     wrapped in the application's own `ProtectedRoute`, unchanged.
  *   · THE PAGE, rendered directly with this application's real provider stack
@@ -187,15 +187,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   off.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   saveGuestCart(STORED);
@@ -221,7 +219,7 @@ test("/checkout always uses Aarna's guarded journey UI", () => {
 });
 
 test("with the switch on, the design's quiet journey chrome wraps the route — and the page stays guarded", () => {
-  const markup = on.renderRoute("/checkout?home=aarna");
+  const markup = on.renderRoute("/checkout");
   assert.match(markup, /class="aan-root"/, "the port did not mount at /checkout");
   assert.match(markup, /<main class="pf-journey">/, "the checkout did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
