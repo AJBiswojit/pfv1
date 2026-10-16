@@ -185,11 +185,12 @@ test("every message is the production string, and validation stops before the AP
     "Please enter your registered email address or phone number.",
     "Please enter a valid email format or 10-digit mobile number.",
     "Unable to send reset instructions.",
-    "We have prepared password reset instructions for",
+    "Password reset emails are not yet connected to this storefront",
   ];
+  const flat = (value) => value.replace(/\s+/g, " ");
   for (const message of messages) {
-    assert.ok(text.includes(message), `the ported page lost the production message: ${message}`);
-    assert.ok(production.includes(message), `production no longer carries: ${message}`);
+    assert.ok(flat(text).includes(message), `the ported page lost the production message: ${message}`);
+    assert.ok(flat(production).includes(message), `production no longer carries: ${message}`);
   }
   assert.ok(text.indexOf(messages[0]) < text.indexOf("setIsSubmitting(true)"));
   assert.ok(text.indexOf(messages[1]) < text.indexOf("setIsSubmitting(true)"));
@@ -206,26 +207,28 @@ test("the request goes through AuthContext, and the confirmation only through it
   assert.match(text, /setError\(result\.error \|\| 'Unable to send reset instructions\.'\);/);
 });
 
-test("the page promises instructions, never a changed password", () => {
+test("the page never claims an email was sent, nor a changed password", () => {
   const text = source();
-  /* The copy the customer reads is production's own — and it is about an email
-     that has been prepared, not a password that has been changed. */
-  assert.match(text, /We have prepared password reset instructions for\{' '\}/);
+  /* Phase 12: no reset email is dispatched by the backend yet, so the
+     confirmation says so, names the identifier that was submitted, and claims
+     neither an email nor a reset. */
+  assert.match(text, /Password reset\s+emails are not yet connected to this storefront, so no reset email has been sent\./);
   assert.match(text, /<strong>\{identifier\}<\/strong>/);
-  const FORBIDDEN = /password (has been|was) (reset|updated|changed)|reset successfully|password updated/i;
-  assert.equal(FORBIDDEN.test(text), false, "the ported page claimed a reset it cannot perform");
+  const FORBIDDEN = /password (has been|was) (reset|updated|changed)|reset successfully|password updated|instructions (have been|were) (sent|dispatched)|prepared password reset instructions|check your\s+<em>inbox|Instructions Dispatched/i;
+  assert.equal(FORBIDDEN.test(text), false, "the ported page claimed an email or a reset it cannot perform");
 });
 
-test("the confirmation's actions are production's, and the record of the defect travels with the page", () => {
+test("the confirmation offers only the way back to sign-in, not an unlinked reset screen", () => {
   const text = source();
-  assert.match(text, /onClick=\{\(\) => navigate\('\/reset-password'\)\}/);
+  assert.equal(/navigate\('\/reset-password'\)/.test(text), false, "the confirmation still sends the customer to a reset screen with no link");
+  assert.equal(/Proceed to Reset Password/.test(text), false, "the misleading CTA is back");
   assert.match(text, /to="\/signin"/);
   assert.match(text, />\s*Return to Sign In\s*</);
-  assert.match(text, />\s*Proceed to Reset Password\s*</);
   assert.match(text, /Back to Sign In/);
   /* The header comment names the reason this phase left the reset flow alone,
      so the next reader does not have to rediscover it. */
-  assert.match(text, /ResetPasswordRequest/);
+  assert.match(text, /PHASE 12/);
+  assert.match(text, /no reset email is dispatched yet/);
 });
 
 test("the tab title is set and restored, and the page adds no dependency", () => {
@@ -246,7 +249,7 @@ test("the rendered page is the design's frame around the application's form", ()
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /Account Recovery/);
   assert.match(markup, /id="forgot-identifier"/);
-  assert.match(markup, /Send Reset Link/);
+  assert.match(markup, /Submit Request/);
   assert.match(markup, /class="crumbs"/);
   /* Before anything is submitted there is no confirmation and no error. */
   assert.equal(/pf-auth__sent/.test(markup), false, "the confirmation rendered before any request");

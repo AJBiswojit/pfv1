@@ -13,7 +13,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { readBackendSrc } from "./helpers/backendRoot.js";
+import { readBackendSrc } from "../test/helpers/backendRoot.js";
 
 const src = (rel) => readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), "utf8");
 
@@ -222,9 +222,9 @@ test("Issue 4: SUPER_EMPLOYEE with people.manage can view team-access", async ()
   assert.equal(hasPermission(actor, "employees.managePermissions"), false);
 });
 
-test("Issue 4: SUPER_ADMIN home stays on /admin and is not employee-gated", async () => {
+test("Issue 4: SUPER_ADMIN home is its own workspace and the admin layout is not employee-gated", async () => {
   const { homeForAccountLevel, ACCOUNT_LEVELS } = await import("../src/config/rbacModel.js");
-  assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_ADMIN), "/admin");
+  assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_ADMIN), "/super-admin");
   const layout = src("layouts/AdminLayout.jsx");
   assert.doesNotMatch(layout, /dashboard\.view/);
   assert.doesNotMatch(layout, /requiredPermissionForPath/);

@@ -55,6 +55,31 @@ export const validatePassword = (password) => {
 /**
  * Validates password and confirm password match.
  */
+/**
+ * Reset-password rule, mirroring `ResetPasswordRequest` in
+ * `backend/app/schemas/auth/login.py` (newPassword: min 8, max 128; the
+ * confirmation must match). Sign-up keeps `validatePassword` (min 6), which the
+ * backend's sign-up schema accepts. Do not reuse this for sign-up.
+ */
+export const RESET_PASSWORD_MIN = 8;
+export const RESET_PASSWORD_MAX = 128;
+
+export const validateResetPassword = (password, confirmPassword) => {
+  if (!password || typeof password !== "string") {
+    return { ok: false, message: "Please enter a new password." };
+  }
+  if (password.length < RESET_PASSWORD_MIN) {
+    return { ok: false, message: `Password must be at least ${RESET_PASSWORD_MIN} characters.` };
+  }
+  if (password.length > RESET_PASSWORD_MAX) {
+    return { ok: false, message: `Password must be ${RESET_PASSWORD_MAX} characters or fewer.` };
+  }
+  if (password !== confirmPassword) {
+    return { ok: false, message: "Passwords do not match." };
+  }
+  return { ok: true, message: "" };
+};
+
 export const validatePasswordMatch = (password, confirmPassword) => {
   const pwdVal = validatePassword(password);
   if (!pwdVal.ok) return pwdVal;
@@ -113,6 +138,7 @@ export default {
   isValidPincode,
   validatePassword,
   validatePasswordMatch,
+  validateResetPassword,
   isValidIdentifier,
   sanitizeReturnUrl,
 };

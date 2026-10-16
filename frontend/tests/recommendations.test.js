@@ -94,7 +94,14 @@ test("placements preserve canonical card/media/navigation and have no fake repos
   for (const path of ["services/api/recommendationsApi.js", "hooks/useRecommendations.js", "components/product/RecommendationSections.jsx"]) {
     assert.doesNotMatch(read(path), /localStorage|\/images\/|mock|demoProduct|seedProduct/i);
   }
-  assert.ok(!existsSync(new URL("../src/data/products/recommendations.js", import.meta.url)));
+  /* The retired recommendation engine is a comment-only tombstone with no
+     importers. It may remain on disk, but it must not regain code: no exports, no
+     imports, and no fake repository behind a recommendations surface. */
+  const tombstone = new URL("../src/data/products/recommendations.js", import.meta.url);
+  if (existsSync(tombstone)) {
+    const body = readFileSync(tombstone, "utf8");
+    assert.doesNotMatch(body, /^\s*(export|import)\b/m, "the retired recommendation file regained code");
+  }
   assert.match(read("pages/account/AiMirror.jsx"), /RecommendationSections placement="mirror"/);
   assert.match(read("pages/AtelierDesign.jsx"), /RecommendationSections placement="home"/);
   assert.match(read("hooks/useRecommendations.js"), /state.key === key/);

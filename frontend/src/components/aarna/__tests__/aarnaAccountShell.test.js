@@ -97,6 +97,10 @@ const MIGRATED_SCREENS = [
   { path: "account/orders/:orderId/return", component: "AccountOrderReturnPage", page: "OrderReturn.jsx", production: "OrderReturn" },
   { path: "account/ai-mirror", component: "AccountAiMirrorPage", page: "AiMirror.jsx", production: "AiMirror" },
   { path: "account/ai-shopping", component: "AccountAiShoppingPage", page: "AiShopping.jsx", production: "AiShoppingAssistant" },
+  { path: "account/settings", component: "AccountSettings", page: "Settings.jsx", production: "AccountSettings" },
+  { path: "account/security", component: "AccountSecurity", page: "Security.jsx", production: "AccountSecurity" },
+  { path: "account/preferences", component: "AccountPreferences", page: "Preferences.jsx", production: "AccountPreferences" },
+  { path: "account/instagram-rewards", component: "InstagramRewards", page: "InstagramRewards.jsx", production: "InstagramRewards" },
 ];
 const REDRAWN_PAGES = MIGRATED_SCREENS.map((screen) => `src/components/aarna/pages/account/${screen.page}`);
 /* The order screens' shared frame — the port's equivalent of production's
@@ -469,7 +473,10 @@ test("the port declares the family once, and every element is a production page 
   const portLazy = lazyDeclarations(read(MOUNT));
   const appLazy = lazyDeclarations(read(PRODUCTION_APP));
   const appByPath = new Map(app.map((route) => [route.path, route]));
-  const migrated = port.filter((route) => !appLazy.has(route.component));
+  /* A route is migrated when its element is not production's lazy page — or,
+     for the Phase 12 screens, when the port imports the same name STATICALLY
+     (production still lazy-loads it). Either way the port owns the element. */
+  const migrated = port.filter((route) => !appLazy.has(route.component) || !portLazy.has(route.component));
 
   assert.deepEqual(
     migrated.map((route) => route.path).sort(),

@@ -176,6 +176,9 @@ def order_stub(**overrides):
         cancelled_at=None,
         cancellation_reason=None,
         cancelled_by=None,
+        # OrderModel.coupon_id is a nullable column; cancellation reads it
+        # (`_release_coupon_reservation`), so the stub must carry it.
+        coupon_id=None,
     )
     base.update(overrides)
     return SimpleNamespace(**base)

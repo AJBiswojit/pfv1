@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --import ./scripts/node-loader/register.mjs --test \"tests/*.test.js\"",
+    "test": "node --import ./scripts/node-loader/register.mjs --test \"tests/*.test.js\" \"test/*.test.js\"",
     "qa:marketing-assignment": "node --import ./scripts/node-loader/register-jsx.mjs scripts/qa-marketing-assignment.mjs",
     "audit:explore": "node --import ./scripts/node-loader/register.mjs scripts/audit-explore.mjs",
     "audit:homepage": "node --import ./scripts/node-loader/register.mjs scripts/audit-homepage.mjs",

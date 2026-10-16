@@ -44,8 +44,11 @@ const authApi = src("services/api/authApi.js");
 
 // ── A–D: account level → workspace home ──────────────────────────────────
 
-test("SUPER_ADMIN routes to /admin", () => {
-  assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_ADMIN), "/admin");
+/* SUPER_ADMIN has its own exclusive workspace (`/super-admin`, guarded by
+   SuperAdminProtectedRoute). Admin-workspace guards redirect a super admin there,
+   so this pin follows that deliberate split rather than the older shared home. */
+test("SUPER_ADMIN routes to /super-admin (exclusive workspace)", () => {
+  assert.equal(homeForAccountLevel(ACCOUNT_LEVELS.SUPER_ADMIN), "/super-admin");
 });
 
 test("ADMIN routes to /admin", () => {
@@ -67,10 +70,10 @@ test("unknown/customer levels have no staff workspace home", () => {
   assert.equal(homeForAccountLevel("NOPE"), null);
 });
 
-test("the mapping is closed over the four-level hierarchy — nothing else", () => {
+test("the mapping is closed over the level hierarchy — nothing else", () => {
   for (const level of ACCOUNT_LEVEL_ORDER) {
     assert.ok(
-      homeForAccountLevel(level) === "/admin" || homeForAccountLevel(level) === "/employee",
+      ["/admin", "/super-admin", "/employee"].includes(homeForAccountLevel(level)),
       `${level} must map to a workspace home`,
     );
   }
@@ -82,7 +85,8 @@ test("/login routes by accountLevel (with workspace only as a legacy fallback)",
   assert.match(app, /path="\/login" element=\{<StaffLogin \/>\}/);
   assert.match(staffLogin, /homeForAccountLevel\(result\.accountLevel\)/);
   assert.match(staffLogin, /result\.workspace === "admin" \? "\/admin" : "\/employee"/);
-  assert.match(staffLogin, /if \(home === "\/admin"\)/);
+  assert.match(staffLogin, /const isAdminWorkspace = home === "\/admin" \|\| home === "\/super-admin"/);
+  assert.match(staffLogin, /if \(isAdminWorkspace\)/);
 });
 
 test("/login never guesses the destination from the typed identifier", () => {
@@ -146,7 +150,7 @@ test("ADMIN/SUPER_ADMIN post-login routing stays on the admin workspace", () => 
   // The admin branch navigates to the sanitized admin returnTo (default
   // /admin); only the employee branch consults mustChangePassword.
   assert.match(staffLogin, /sanitizeAdminReturnUrl/);
-  const adminBranch = staffLogin.split("if (home === \"/admin\")")[1].split("await refreshEmployeeSession")[0];
+  const adminBranch = staffLogin.split("if (isAdminWorkspace)")[1].split("await refreshEmployeeSession")[0];
   assert.match(adminBranch, /refreshAdminSession/);
   assert.doesNotMatch(adminBranch, /change-password/);
 });
@@ -163,5 +167,6 @@ test("session restore re-derives the workspace from accountLevel (browser refres
   assert.match(employeeGuard, /useEmployeeAuth/);
   assert.match(employeeGuard, /\/login\?returnTo=/);
   assert.match(adminGuard, /\/login\?returnTo=/);
-  assert.doesNotMatch(adminGuard, /isSuperAdmin\b/);
+  /* A super admin is sent to its own workspace, by the guard, on purpose. */
+  assert.match(adminGuard, /if \(isSuperAdmin\) \{\s*return <Navigate to="\/super-admin" replace \/>;/);
 });

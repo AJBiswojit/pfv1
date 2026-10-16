@@ -517,9 +517,9 @@ test('the shopping page labels the demo provider, and never prints the business 
   const page = code(SHOPPING);
 
   assert.match(page, /const demoProvider = isMockAiProvider\(\);/);
-  assert.match(page, /\{demoProvider \? 'Demo assistant · deterministic' : AI_PROVIDER_LABEL\}/,
+  assert.match(page, /\{demoProvider \? 'Demo assistant · deterministic' : AI_SHOPPING_PROVIDER_LABEL\}/,
     'the demo chip is no longer gated on the provider');
-  assert.match(page, /\{demoProvider\n\s+\? AI_SHOPPING_BRAND\.demoNote\n\s+: `\$\{AI_PROVIDER_LABEL\} · answers from the live catalogue`\}/,
+  assert.match(page, /\{demoProvider\n\s+\? AI_SHOPPING_BRAND\.demoNote\n\s+: `\$\{AI_SHOPPING_PROVIDER_LABEL\} · answers from the live catalogue`\}/,
     'the composer footnote no longer names the provider that is actually answering');
   assert.ok(page.includes('Conversations stay on this device and never store images.'));
   assert.ok(page.includes('grounded in the live catalogue — deterministic, not a trained model.'));
@@ -528,6 +528,8 @@ test('the shopping page labels the demo provider, and never prints the business 
      provider’s note for the demo provider, the provider’s label otherwise. */
   const aiService = read('src/services/ai/aiService.js');
   assert.match(aiService, /export const AI_PROVIDER_LABEL = "PRATIKSHYA AI \(live business data\)";/);
+  /* The shopping fallback is the shopping provider's own label, never the business one. */
+  assert.match(aiService, /export const AI_SHOPPING_PROVIDER_LABEL = activeProvider\.label;/);
   assert.match(aiService, /export const isMockAiProvider = \(\) => activeProvider\.id === "mock";/);
   assert.match(read('src/services/ai/shopping/aiShoppingMockData.js'),
     /demoNote: "Demo assistant · grounded in the live catalogue",/);

@@ -69,13 +69,13 @@ test("STATIC: return mutations no longer refetch the 100-order snapshot", () => 
 });
 
 test("STATIC: the backend list endpoint enriches records for the desk", () => {
-  const source = read("../pratikshya-backend/app/services/orders/return_service.py");
+  const source = read("../backend/app/services/orders/return_service.py");
   assert.match(source, /_attach_order_summaries/, "bounded enrichment helper must exist");
   assert.match(source, /order_number, record\.customer_name/);
 });
 
 test("STATIC: the admin return schema carries the display fields", () => {
-  const source = read("../pratikshya-backend/app/schemas/orders/order.py");
+  const source = read("../backend/app/schemas/orders/order.py");
   assert.match(source, /order_number: Optional\[str\] = None/);
   assert.match(source, /customer_name: Optional\[str\] = None/);
 });

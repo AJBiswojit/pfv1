@@ -449,11 +449,16 @@ test("App.jsx, the portals, auth and the commerce routes are untouched by the in
   for (const file of ["src/layouts/AdminLayout.jsx", "src/layouts/EmployeeLayout.jsx"]) {
     assert.equal(read(file).includes("StorefrontHome"), false);
   }
-  /* The switch is referenced by the customer layout only. */
+  /* The switch is referenced by the customer layout, and by the production
+     account shell, which reads it to drop its own chrome when a production
+     account page is mounted inside the Aarna storefront (`AccountShell.jsx`,
+     the Phase 11 boundary). No other file may read it. */
+  const ACCOUNT_SHELL = "src/components/account/AccountShell.jsx";
   const switchImporters = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
-    .filter((file) => importsModule(file, "src/config/storefrontHome"));
-  assert.deepEqual(switchImporters, [LAYOUT]);
+    .filter((file) => importsModule(file, "src/config/storefrontHome"))
+    .sort();
+  assert.deepEqual(switchImporters, [ACCOUNT_SHELL, LAYOUT].sort());
 
   /* And the portal layouts never mount the composition's shell. */
   const shellImporters = sourceFiles()

@@ -165,6 +165,30 @@ test("the shell asks the host for nothing: no host classes, no application impor
 let markup = "";
 let data = null;
 let vite = null;
+let restoreFetch = null;
+
+/* The catalogue is hydrated before the page is rendered. Without it the
+   homepage sections are in their honest loading state (\"Loading homepage
+   content…\") and the page this suite pins never appears. The store is hydrated
+   through its own `hydrateCatalog()` with the backend's read endpoints answered
+   by an empty, valid envelope: no products, and a home read that carries no
+   `homepageContent` — which the sections read as the design's own copy (the
+   `legacy` mode). Nothing about the shell under test is faked. */
+const emptyCatalogueFetch = () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const href = String(input?.url ?? input);
+    const body = href.includes("/products")
+      ? { items: [], total: 0, page: 1, pageSize: 100 }
+      : href.includes("/offers")
+        ? { offers: [], total: 0 }
+        : href.includes("/categories") || href.includes("/collections")
+          ? { items: [], total: 0 }
+          : {};
+    return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  return () => { globalThis.fetch = original; };
+};
 
 before(async () => {
   vite = await createServer({
@@ -200,7 +224,19 @@ before(async () => {
     load("/src/components/aarna/router/routes.js"),
     load("/src/components/aarna/components/navigation/MegaMenu.jsx"),
     load("/src/components/aarna/data/index.js"),
+    load("/src/services/catalog/catalogStore.js"),
   ]);
+  const catalogStore = (await load("/src/services/catalog/catalogStore.js"));
+  restoreFetch = emptyCatalogueFetch();
+  try {
+    await catalogStore.hydrateCatalog({ force: true });
+  } finally {
+    restoreFetch();
+    restoreFetch = null;
+  }
+  if (catalogStore.getCatalogState().status !== "ready") {
+    throw new Error(`the catalogue did not hydrate: ${catalogStore.getCatalogState().status}`);
+  }
 
   data = { ...site, resolveStorefrontPath: router.resolveStorefrontPath, MegaMenu, load };
 
@@ -345,13 +381,19 @@ test("each of the design's four mega panels renders its columns, its plate and o
 test("the footer closes the page, after the last section, exactly once", () => {
   const sections = [...markup.matchAll(/<section[^>]*?class="([^"]+)"/g)].map((match) => match[1].split(" ")[0]);
   const design = ["hero", "collage", "saree", "bridal", "jewel", "promo", "men", "kids", "best", "kurti", "news", "trust"];
-  /* The promo band is conditional on an active offer, so it may or may not be
-     in this render; every other section is fixed. */
+  /* The hero and the promo band are conditional: the hero renders only when the
+     backend's /home feed carries active slides (an empty successful response is
+     authoritative — `AarnaHomeHero` returns nothing), and the promo band only
+     when an offer is active. Every other section is fixed. */
+  const CONDITIONAL = ["hero", "promo"];
   assert.deepEqual(
-    sections.filter((name) => name !== "promo"),
-    design.filter((name) => name !== "promo"),
+    sections.filter((name) => !CONDITIONAL.includes(name)),
+    design.filter((name) => !CONDITIONAL.includes(name)),
     "the homepage sections are not in the design's order",
   );
+  if (sections.includes("hero")) {
+    assert.equal(sections[0], "hero", "the hero is not the first section");
+  }
   if (sections.includes("promo")) {
     assert.deepEqual(sections.slice(4, 7), ["jewel", "promo", "men"], "the promo band moved");
   }

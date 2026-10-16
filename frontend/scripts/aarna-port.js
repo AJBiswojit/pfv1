@@ -226,6 +226,15 @@ export const ADDED = [
     them. */
   "pages/account/AiMirror.jsx",
   "pages/account/AiShopping.jsx",
+  /* PHASE 12 — the four remaining account screens (settings, security, style
+     preferences, Instagram rewards). The design drew none of them, so they are
+     written in the design's vocabulary and bound to the application's own
+     contexts, services and validation — the same production APIs production's
+     pages call. Declared, so the closure check knows them and never writes them. */
+  "pages/account/Settings.jsx",
+  "pages/account/Security.jsx",
+  "pages/account/Preferences.jsx",
+  "pages/account/InstagramRewards.jsx",
   ];
 
 /* ─────────────────────────── the pinned rewrites ────────────────────────── */

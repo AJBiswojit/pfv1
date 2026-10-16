@@ -301,9 +301,9 @@ class StaffSignInAccountLevelTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ForbiddenException):
                 await require_super_admin_user(admin, session)
 
-            await get_current_account_manager(admin, session)
+            await get_current_account_manager(admin)
             with self.assertRaises(ForbiddenException):
-                await get_current_account_manager(employee, session)
+                await get_current_account_manager(employee)
 
 
 @unittest.skipUnless(HAS_AIOSQLITE, "aiosqlite is not installed")

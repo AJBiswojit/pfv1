@@ -44,7 +44,7 @@
  * ("Demo assistant · deterministic") and ends the composer with
  * `AI_SHOPPING_BRAND.demoNote` ("Demo assistant · grounded in the live
  * catalogue") while the provider is the demo one, falling back to the
- * provider's own `AI_PROVIDER_LABEL` only if a real provider is ever configured.
+ * the active shopping provider's own `AI_SHOPPING_PROVIDER_LABEL` only if a real provider is ever configured — never the business label.
  * Production's own words for exactly this state are the ones used — nothing here
  * claims a trained model, and the closing note repeats the two facts that
  * matter: the conversation is deterministic, and it stays on this device.
@@ -93,7 +93,7 @@ import {
   getProductByIdentifier,
 } from '../../../../data/products/index.js';
 import { useRecentlyViewed } from '../../../../hooks/useRecentlyViewed.js';
-import aiService, { AI_PROVIDER_LABEL, isMockAiProvider } from '../../../../services/ai/aiService.js';
+import aiService, { AI_SHOPPING_PROVIDER_LABEL, isMockAiProvider } from '../../../../services/ai/aiService.js';
 import {
   AI_SESSION_SCOPES,
   clearAiSession,
@@ -410,7 +410,7 @@ export default function AiShopping() {
 
       <div className="pf-ai__head-actions">
         <p className="pf-ai__demo">
-          {demoProvider ? 'Demo assistant · deterministic' : AI_PROVIDER_LABEL}
+          {demoProvider ? 'Demo assistant · deterministic' : AI_SHOPPING_PROVIDER_LABEL}
         </p>
         <Button variant="ghost" onClick={startNewConversation}>
           <RotateCcw size={11} aria-hidden="true" /> New conversation
@@ -492,7 +492,7 @@ export default function AiShopping() {
             <p className="pf-ai__footnote">
               {demoProvider
                 ? AI_SHOPPING_BRAND.demoNote
-                : `${AI_PROVIDER_LABEL} · answers from the live catalogue`}
+                : `${AI_SHOPPING_PROVIDER_LABEL} · answers from the live catalogue`}
             </p>
           </div>
         </div>
