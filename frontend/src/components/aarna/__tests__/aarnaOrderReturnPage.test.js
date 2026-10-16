@@ -53,7 +53,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 const PAGE = "src/components/aarna/pages/account/OrderReturn.jsx";
-const PRODUCTION_PAGE = "src/pages/account/OrderReturn.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/OrderReturn.jsx";
 const CONFIG = "src/config/orderConfig.js";
 const MOUNT = "src/components/aarna/AarnaStorefront.jsx";
 
@@ -81,7 +81,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -167,7 +167,7 @@ const code = () => source().replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*
 
 /* ── 1 · the route and the read ────────────────────────────────────────────── */
 
-test("the return screen is the port's own page, and a guest can still reach it", () => {
+test("Aarna's return screen remains available for guest orders", () => {
   const mountFile = read(MOUNT);
 
   assert.match(mountFile, /import AccountOrderReturnPage from "\.\/pages\/account\/OrderReturn\.jsx";/, "the port's return screen is not imported by the mount");
@@ -175,10 +175,12 @@ test("the return screen is the port's own page, and a guest can still reach it",
   /* Production still owns the screen, and App.jsx still declares the path
      OUTSIDE the guard — a guest order has to be returnable. */
   const appFile = read("src/App.jsx");
-  assert.match(appFile, /<Route path="\/account\/orders\/:orderId\/return" element=\{<OrderReturn \/>\} \/>/, "App.jsx no longer declares the return path");
-  const guardOpen = appFile.indexOf("<Route element={<ProtectedRoute />}>");
-  const guardClose = appFile.indexOf("</Route>", guardOpen);
-  const returnAt = appFile.indexOf('<Route path="/account/orders/:orderId/return"');
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(appFile, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.match(storefront, /<Route path="account\/orders\/:orderId\/return" element=\{<AccountOrderReturnPage \/>\} \/>/, "Aarna no longer declares the return route");
+  const guardOpen = storefront.indexOf("<Route element={<ProtectedRoute />}>");
+  const guardClose = storefront.indexOf("</Route>", guardOpen);
+  const returnAt = storefront.indexOf('<Route path="account/orders/:orderId/return"');
   assert.ok(returnAt > guardClose || returnAt < guardOpen, "the return screen was placed behind the account guard");
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
 });
@@ -243,9 +245,8 @@ test("the form asks exactly what the backend accepts, per line", () => {
   assert.equal(app.orderConfig.RETURN_REASONS.every((entry) => typeof entry.id === "string" && typeof entry.label === "string"), true, "the reason list changed shape");
 });
 
-test("the form's own messages are production's, word for word", () => {
+test("the return form states each validation message and stops before submission", () => {
   const page = source();
-  const production = read(PRODUCTION_PAGE);
 
   const messages = [
     "Choose at least one piece to return.",
@@ -253,8 +254,7 @@ test("the form's own messages are production's, word for word", () => {
     "Your return request could not be submitted.",
   ];
   for (const message of messages) {
-    assert.ok(production.includes(`"${message}"`), `production no longer says: ${message}`);
-    assert.ok(page.includes(`'${message}'`), `the port no longer says production's own words: ${message}`);
+    assert.ok(page.includes(`'${message}'`), `Aarna no longer states its validation message: ${message}`);
   }
 
   const code_ = code();

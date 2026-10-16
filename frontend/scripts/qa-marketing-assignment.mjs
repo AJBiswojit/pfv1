@@ -30,8 +30,8 @@ import { commands } from "../src/services/workflow/productWorkflowCommands.js";
 import { setupCanonicalState, FIXTURE_IDS } from "../tests/helpers/workflowTestState.js";
 import ProductCatalogSelector from "../src/components/admin/ProductCatalogSelector.jsx";
 import AdminMarketingMedia from "../src/pages/admin/media/AdminMarketingMedia.jsx";
+import AdminAuthContext from "../src/context/AdminAuthContext.jsx";
 import PlacementProductRail from "../src/components/storefront/PlacementProductRail.jsx";
-import SareeEditCarousel from "../src/components/storefront/SareeEditCarousel.jsx";
 
 const failures = [];
 const check = (label, condition) => {
@@ -137,14 +137,6 @@ try {
 }
 
 try {
-  const carousel = render(createElement(SareeEditCarousel));
-  check("saree carousel paints the assigned cotton fixture", carousel.includes("Cotton Saree Fixture"));
-  check("saree carousel does not invent Banarasi copy", !/Banarasi|Vasanti/i.test(carousel));
-} catch (error) {
-  check(`saree carousel renders (${error.message})`, false);
-}
-
-try {
   const rail = render(createElement(PlacementProductRail, { placementId: MARKETING_PLACEMENTS.KIDS_SECTION }));
   check("kids rail markup includes the Kids Product ID or name", rail.includes(FIXTURE_IDS.KIDS) || rail.includes("Kids Dress Fixture"));
 } catch (error) {
@@ -159,7 +151,18 @@ try {
 }
 
 try {
-  const desk = render(createElement(AdminMarketingMedia), ["/admin/media/marketing"]);
+  const adminContext = {
+    admin: { adminId: "PF-ADM-QA", accountLevel: "SUPER_ADMIN", status: "ACTIVE" },
+    isAuthenticated: true,
+    isLoading: false,
+    isSuperAdmin: true,
+    hasAdminWorkspaceAccess: true,
+    hasPermission: () => true,
+  };
+  const desk = render(
+    createElement(AdminAuthContext.Provider, { value: adminContext }, createElement(AdminMarketingMedia)),
+    ["/admin/media/marketing"]
+  );
   check("admin marketing desk renders without a static catalogue", desk.length > 0);
   check("admin marketing desk still distinguishes product vs generic placements", /product catalog|generic|hero/i.test(desk));
 } catch (error) {

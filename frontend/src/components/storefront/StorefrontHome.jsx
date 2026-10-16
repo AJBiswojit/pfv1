@@ -8,14 +8,10 @@
  *   01 hero             Phase 1 `home/HeroEditorial`
  *   02…12 sections      Phase 2B `home-sections/HomeSections`
  *
- * It is mounted in exactly one place — `layouts/CustomerLayout.jsx`, for the
- * customer root (`/`) and only while `config/storefrontHome.js` asks for the
- * editorial home. With the switch off (the default, and every deployed build
- * that does not set `VITE_STOREFRONT_HOME=editorial`) the layout renders the
- * routed page instead, which is the existing `AtelierDesign` homepage.
+ * This legacy composition is not mounted by the customer router; Aarna owns
+ * the customer storefront.
  *
- * DATA. Every seam here is the application's own, exactly as `AtelierDesign`
- * uses them: `heroSlides` (the live `GET /home` proxy), the HOME_HERO marketing
+ * DATA. Every seam here is the application's own: `heroSlides` (the live `GET /home` proxy), the HOME_HERO marketing
  * register through `useMarketingMedia`, the catalogue store through
  * `useCatalog` (so the sections re-render when the backend snapshot lands), and
  * the existing cart/wishlist contexts for the header counts and the bag button.
@@ -31,14 +27,12 @@
  *
  * COMMERCE. No provider, no context and no drawer is created here. The bag and
  * wishlist are the app's single implementations, mounted once at the top of
- * `App.jsx`; the bag button opens the existing `CartDrawer` that
- * `CustomerLayout` already mounts. The header's search, account dropdown, mega
+ * `App.jsx`; the bag button opens the existing cart surface. The header's search, account dropdown, mega
  * menu and mobile drawer are the 2A components driving those same existing
  * surfaces.
  *
  * The footer is NOT part of the approved design yet (Phase 2A did not migrate
- * one), so the customer layout keeps rendering the existing `SiteFooter` below
- * this composition — see `docs/PHASE-2C-CONTROLLED-HOMEPAGE-INTEGRATION.md`.
+ * one), so this composition intentionally does not render a footer.
  */
 
 import { useCart } from "../../context/CartContext";

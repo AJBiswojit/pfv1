@@ -115,15 +115,13 @@ const escaped = (text) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -132,12 +130,11 @@ after(async () => {
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, the four information routes are the application's own pages", () => {
+test("the four information routes always render Aarna's manifest-backed pages", () => {
   for (const path of INFO_PATHS) {
     const markup = off.render(path);
-    assert.equal(/aan-root/.test(markup), false, `${path} mounted the port with the switch off`);
-    assert.equal(/class="info container"/.test(markup), false, `${path} rendered the design's information page with the switch off`);
-    assert.ok(markup.length > 0, `${path} rendered nothing at all`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="info container"/, `${path} did not render the Aarna information page`);
   }
 });
 

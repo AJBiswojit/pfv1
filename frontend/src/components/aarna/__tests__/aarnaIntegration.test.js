@@ -1,21 +1,8 @@
 /**
- * PRATIKSHYA FASHION — PHASE 2D · integration and isolation.
- *
- * The port is only useful if it is wired to THIS application — real routes, the
- * real cart and wishlist, the real catalogue, the real (off-by-default) switch —
- * and only safe if its preview fixtures can never reach a customer. These tests
- * pin both, from the source tree and from the modules themselves:
- *
- *   1. every destination the design wrote resolves to a route the application
- *      registers, so no ported link can land on a 404;
- *   2. the switch is off by default, dev-only through the URL, and mounted by
- *      `CustomerLayout` alone — `App.jsx` does not know the port exists;
- *   3. the fixtures have exactly one importer (the DEV-gated reference
- *      surface), the production graph cannot reach the harness, and none of the
- *      design's sample copy ships in the port;
- *   4. the boundary modules are wired to the application: the cart, the
- *      wishlist, the catalogue facade, the media resolver, the offer register,
- *      and an honest "no capability yet" for the subscription.
+ * Aarna integration and isolation contracts. App.jsx mounts CustomerLayout for
+ * customer paths, CustomerLayout mounts Aarna, and Aarna owns the customer route
+ * table. The staff portals remain separate; preview fixtures and old customer
+ * compositions are not reachable from the production route graph.
  */
 
 import test from "node:test";
@@ -33,8 +20,6 @@ import {
   isAarnaCatchAllPath,
   isAarnaWishlistPath,
   isStaffPortalPath,
-  resolveStorefrontHome,
-  STOREFRONT_HOME,
 } from "../../../config/storefrontHome.js";
 
 function projectRoot() {
@@ -106,12 +91,13 @@ test("every destination the design wrote resolves to a route this application re
 
 test("the route table is this application's own — checked against App.jsx and the manifest", () => {
   const app = read("src/App.jsx");
-  /* Every literal customer path the resolver keeps as-is is declared by App.jsx. */
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App must delegate customer paths to Aarna");
   for (const path of APP_ROUTES) {
-    /* The customer root is declared as the router's index route. */
-    const declared = path === "/" ? /<Route index element=\{<AtelierDesign \/>\} \/>/.test(app) : app.includes(`path="${path}"`);
-    assert.ok(declared, `routes.js lists ${path}, which App.jsx does not declare`);
+    if (path === "/" || path === "/login") continue;
+    assert.ok(isRegisteredPath(path), `Aarna's route register omits ${path}`);
   }
+  assert.match(storefront, /<Route index element=\{<Home \/>\} \/>/, "Aarna no longer owns the customer root");
   /* …and every path the manifest carries is a route too. */
   assert.ok(routeManifest.length >= 40, `expected the navigation manifest, found ${routeManifest.length} routes`);
   for (const route of routeManifest) assert.ok(isRegisteredPath(route.path), `${route.path} is not resolvable`);
@@ -177,52 +163,29 @@ test("the translation table only names routes the application registers", () => 
   }
 });
 
-/* ── 2 · the switch ─────────────────────────────────────────────────── */
+/* ── 2 · the single customer storefront ─────────────────────────────── */
 
-test("the Phase 2D port is off by default, and only an explicit request turns it on", () => {
-  assert.equal(STOREFRONT_HOME.aarna, "aarna");
-  assert.equal(resolveStorefrontHome(), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=editorial" }), STOREFRONT_HOME.editorial);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=aarna2" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=aarna" }), STOREFRONT_HOME.atelier);
-  assert.equal(resolveStorefrontHome({ envValue: "aarna" }), STOREFRONT_HOME.aarna);
-  assert.equal(resolveStorefrontHome({ envValue: "nonsense" }), STOREFRONT_HOME.atelier);
-});
-
-test("the port renders on its own paths only, under the switch, and nothing else moves", () => {
+test("Aarna is the only customer surface mounted by the outer catch-all", () => {
   const layout = read(LAYOUT);
-  /* PHASE 7 — the layout asks ONE boundary question. It used to ask per surface
-     (`useAarnaHome`, then `useAarnaProduct`); the listing surface would have
-     made that a three-term list that can drift out of step, so the layout reads
-     the single predicate that answers for every path the port owns. The pin
-     moves with the boundary, not away from it. */
-  assert.match(layout, /const aarna = useAarnaStorefront\(\);/);
-  assert.equal(/useAarnaHome|useAarnaProduct/.test(layout), false, "the layout went back to one hook per surface");
   assert.match(layout, /<AarnaStorefront \/>/);
-  /* The 2C boundary is intact: with the switch off nothing changes. */
-  assert.match(layout, /\{!editorialHome &&/);
-  assert.match(layout, /editorialHome \? \(/);
-  assert.match(layout, /editorialHome \? "flex-1" : "flex-1 pt-16 md:pt-20"/);
+  assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|useEditorialHome|useAarnaStorefront/);
 
   const app = read("src/App.jsx");
-  assert.equal(/aarna|Aarna/.test(app), false, "App.jsx must not know about the port");
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
+  assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\*" element=\{<NotFound/);
 
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__") && !file.includes("/preview/"))
     .filter((file) => /from "[^"]*aarna\/AarnaStorefront/.test(read(file)));
-  assert.deepEqual(importers, [LAYOUT], "the port is mounted by the customer layout alone");
+  assert.deepEqual(importers, [LAYOUT], "Aarna is mounted by the customer layout alone");
 });
 
-test("the Phase 6 surface is the product route exactly, and stays off while the switch is off", () => {
+test("the Aarna product predicate matches only a single product route", () => {
   assert.equal(AARNA_PRODUCT_PATH.source, "^\\/product\\/[^/]+\\/?$");
 
-  /* Whether the switch is asked for is `isAarnaHomeEnabled()`; these are the
-     paths it may claim when it is. Anything else — a deeper path, the order
-     journey, the cart — is never the port's, whatever the switch says. */
+  /* The route matcher is independent of any storefront selector. These cases
+     pin the product URL shape, leaving deeper paths and other journeys alone. */
   for (const path of ["/product/a", "/product/silk-saree", "/product/a/"]) {
     assert.equal(AARNA_PRODUCT_PATH.test(path), true, `${path} is the product route`);
   }

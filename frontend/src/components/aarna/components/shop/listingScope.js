@@ -4,10 +4,10 @@
  * The design's shop page took one thing from the URL — a `:category` key — and
  * answered it from its own table (`getProductsFor`). This application's listing
  * space is larger, and every path in it is already defined somewhere else, so
- * nothing here invents a rule: the resolution below is `pages/CatalogueListing.jsx`
+ * the active Aarna listing uses this shared scope resolver
  * asked in the same order, against the same registers, with the same answer for
  * a path the application does not serve (`null` → the design's 404, which is
- * what the production page renders too).
+ * the same normalized scope the routed page renders).
  *
  *   /category/:slug      the registered category route, else the taxonomy
  *                        repository — ACTIVE only;
@@ -50,7 +50,7 @@ const isLiveCollection = (collection) =>
  *
  * `mode` comes from the port's own route table (`AarnaStorefront.jsx`); the slug
  * and pathname come from the URL, so a page kept open across a back-button
- * navigation resolves exactly what the production page would.
+ * navigation resolves with the same shared register used by the routed listing.
  */
 export function resolveListingScope({ mode = "shop", slug = "", pathname = "/" } = {}) {
   if (mode === "shop" || mode === "explore") {
@@ -78,7 +78,7 @@ export function resolveListingScope({ mode = "shop", slug = "", pathname = "/" }
   }
 
   if (mode === "category") {
-    /* The registered route first, exactly as the production page reads it: it
+    /* The registered route first, from the shared navigation register: it
        carries the managed title, eyebrow and description. */
     let scope = categoryRoutes[slug] ?? null;
     if (!scope) {
@@ -129,7 +129,7 @@ export function resolveListingScope({ mode = "shop", slug = "", pathname = "/" }
       : null;
   }
 
-  /* A navigation path: the scope register, read the way `CatalogueListing`
+  /* A navigation path: the scope register, read the way Aarna’s listing page
      reads it, plus the manifest's own metadata for the title. */
   const nav = resolveNavigationScope(pathname);
   const meta = getRouteMeta(pathname);

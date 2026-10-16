@@ -10,14 +10,9 @@
  * import, the messages, the single `setSubmitted` inside the accepted branch,
  * and the confirmation's two actions.
  *
- * THE ONE THING THIS FILE EXISTS TO KEEP HONEST. The reset screen itself
- * (`/reset-password`) cannot complete a reset: it never reads the
- * `userId`/`token` pair the backend's `ResetPasswordRequest` requires, so every
- * submit is refused. Phase 10 recorded that (§7 of
- * `docs/PHASE-10-AUTHENTICATION-UI.md`), kept the screen production-side, and
- * kept this page's copy exactly as production wrote it — it promises
- * "instructions", never a changed password. The pins below enforce both: the
- * exclusion, and the honesty.
+ * The reset screen is a separate Aarna route, while this page remains honest
+ * about the existing forgot-password endpoint's response. It never claims that
+ * an email was sent when the backend only confirms receipt of the request.
  *
  * Nothing here is an end-to-end verification: there is no backend in this
  * sandbox, so the request itself is not exercised — the pins are that the page
@@ -46,7 +41,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PORTED = "src/components/aarna/pages/ForgotPassword.jsx";
-const PRODUCTION = "src/pages/auth/ForgotPassword.jsx";
+const PRODUCTION = "src/components/aarna/pages/ForgotPassword.jsx";
 
 const storage = new Map();
 const localStorageStub = {
@@ -114,15 +109,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -138,16 +131,15 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, /forgot-password is the production page and nothing of the port", () => {
+test("/forgot-password always renders Aarna's auth screen regardless of the former override", () => {
   const markup = off.render("/forgot-password");
   assert.ok(markup.length > 0, "/forgot-password rendered nothing at all");
-  assert.equal(/aan-root/.test(markup), false, "/forgot-password mounted the port with the switch off");
-  assert.equal(/pf-auth/.test(markup), false, "/forgot-password rendered the design's auth page with the switch off");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production layout did not render");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /forgot-password is the port — inside the design's full shell", () => {
-  const markup = on.render("/forgot-password?home=aarna");
+  const markup = on.render("/forgot-password");
   assert.match(markup, /class="aan-root"/);
   assert.match(markup, /class="info container pf-auth"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the recovery page");
@@ -155,14 +147,15 @@ test("with the switch on, /forgot-password is the port — inside the design's f
   assert.equal(/pf-journey/.test(markup), false, "the recovery page rendered the quiet journey chrome instead");
 });
 
-test("the reset screen is NOT adopted: it stays production-side even with the switch on", () => {
+test("the reset screen is adopted by Aarna and remains in its customer auth surface", () => {
   const { boundary } = on;
   assert.equal(boundary.isAarnaAuthPath("/forgot-password"), true);
-  assert.equal(boundary.AARNA_AUTH_PATHS.has("/reset-password"), false, "the reset screen was claimed by the auth surface");
-  assert.equal(boundary.isAarnaAuthPath("/reset-password"), false);
-  const markup = on.render("/reset-password?home=aarna");
-  assert.equal(/aan-root/.test(markup), false, "the reset screen mounted the port");
-  assert.equal(/pf-auth/.test(markup), false, "the reset screen rendered the design's auth page");
+  assert.equal(boundary.AARNA_AUTH_PATHS.has("/reset-password"), true);
+  assert.equal(boundary.isAarnaAuthPath("/reset-password"), true);
+  const markup = on.render("/reset-password?userId=user-1&token=token-1");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /Create new/);
+  assert.match(markup, /aarna-reset-password/);
 });
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */
@@ -245,7 +238,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 /* ── 3 · rendered against the real providers ────────────────────────────── */
 
 test("the rendered page is the design's frame around the application's form", () => {
-  const markup = on.render("/forgot-password?home=aarna");
+  const markup = on.render("/forgot-password");
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /Account Recovery/);
   assert.match(markup, /id="forgot-identifier"/);

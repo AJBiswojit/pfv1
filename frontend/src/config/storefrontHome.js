@@ -1,145 +1,26 @@
-/**
- * PRATIKSHYA FASHION — controlled homepage integration switch (Phase 2C).
- *
- * THE RULE: the production homepage is the existing `AtelierDesign` unless
- * someone explicitly asks for the integrated editorial home. Nothing a customer
- * can do — a URL, a session, storage — changes that.
- *
- * Two homes:
- *
- *   "atelier"    the existing homepage (`src/pages/AtelierDesign.jsx`) — the
- *                DEFAULT, and the fallback this switch is reversible to.
- *   "editorial"  the integrated composition (`components/storefront/StorefrontHome.jsx`):
- *                the Phase 2A shell (announcement bar + header), the approved
- *                Phase 1 editorial hero, and the Phase 2B homepage sections.
- *   "aarna"      the Phase 2D EXACT PORT of the approved `home-page/` design
- *                (`components/aarna/AarnaStorefront.jsx`): its own announcement
- *                bar, header, mega menu, mobile menu, footer, drawers and all
- *                twelve homepage sections, carried over file-by-file, scoped
- *                under `.aan-root`, wired to this application's catalogue,
- *                routes, cart, wishlist and account. Also OFF by default and
- *                also requested through `?home=aarna` / `VITE_STOREFRONT_HOME`.
- *
- * How "editorial" is requested:
- *
- *   · A deployed build: `VITE_STOREFRONT_HOME=editorial` set when the build
- *     runs. That is an explicit, one-variable deploy decision — the switch is
- *     off in every build that does not set it, and rolling back means building
- *     again without it (or with `atelier`).
- *   · A local dev server: the same variable, and additionally `?home=editorial`
- *     on the URL, so the homepage can be flipped for review without a rebuild.
- *
- * `?home=` is honoured ONLY in a development build (`import.meta.env.DEV`), so a
- * customer can never switch the storefront by editing the URL. `?home=atelier`
- * is the escape hatch that always returns a local review to the existing
- * homepage, whatever the environment variable says.
- *
- * Anything unrecognised — a typo, an empty value, a missing variable — resolves
- * to "atelier". There is no path through this module that leaves the storefront
- * with no homepage to render.
- */
-
+/* Customer route ownership and Aarna boundary helpers. Aarna is the only customer storefront. */
 import { useLocation } from "react-router-dom";
 import { hasNavigationScope } from "../data/products/taxonomy";
 import { routeManifest } from "./navigationConfig";
-/* The port's own path table — the same one its link translator consults, so the
-   catch-all guard and the port's idea of "what this application serves" can
-   never drift apart. */
 import { isRegisteredPath } from "../components/aarna/router/routes.js";
 
-export const STOREFRONT_HOME = Object.freeze({
-  atelier: "atelier",
-  editorial: "editorial",
-  aarna: "aarna",
-});
-
-/** The homepage root the integrated composition is allowed to replace. */
-export const STOREFRONT_HOME_PATH = "/";
-
-const VALUES = [STOREFRONT_HOME.atelier, STOREFRONT_HOME.editorial, STOREFRONT_HOME.aarna];
-
-/** The local-review parameter (`?home=editorial`), development builds only. */
-export const STOREFRONT_HOME_PARAM = "home";
-
-/** The build-time variable (`VITE_STOREFRONT_HOME=editorial`). */
-export const STOREFRONT_HOME_VAR = "VITE_STOREFRONT_HOME";
-
-/** Vite's environment object, or an empty object outside a Vite build. */
-const env = (typeof import.meta !== "undefined" && import.meta.env) || {};
-
-/**
- * The pure resolution rule, so it can be exercised directly:
- *
- *   resolveStorefrontHome({ dev, envValue, search })
- *
- * `dev`      — is this a development build (`import.meta.env.DEV`)?
- * `envValue` — `import.meta.env.VITE_STOREFRONT_HOME`
- * `search`   — `window.location.search` (empty during server-side rendering)
- */
-export function resolveStorefrontHome({ dev = false, envValue = "", search = "" } = {}) {
-  if (dev) {
-    let requested = "";
-    try {
-      requested = new URLSearchParams(search || "").get(STOREFRONT_HOME_PARAM) || "";
-    } catch {
-      /* A malformed query string is not a reason to change the homepage. */
-      requested = "";
-    }
-    if (VALUES.includes(requested)) return requested;
-  }
-  return VALUES.includes(envValue) ? envValue : STOREFRONT_HOME.atelier;
-}
-
-/** The homepage this build/page is asking for right now. */
-export function storefrontHomeChoice() {
-  return resolveStorefrontHome({
-    dev: Boolean(env.DEV),
-    envValue: env[STOREFRONT_HOME_VAR] ?? "",
-    search: typeof window === "undefined" ? "" : window.location.search,
-  });
-}
-
-/**
- * `true` when the customer root should render the integrated composition
- * instead of `AtelierDesign`.
- *
- * Read at render time (not memoised) so a local-review URL change is honoured
- * on the next navigation. It is not a hook: it subscribes to nothing, and the
- * homepage it resolves to is fixed for the life of the page.
- */
-export const isEditorialHomeEnabled = () => storefrontHomeChoice() === STOREFRONT_HOME.editorial;
-
-/** `true` when the customer root should render the Phase 2D exact port. */
-export const isAarnaHomeEnabled = () => storefrontHomeChoice() === STOREFRONT_HOME.aarna;
-
-/**
- * The Phase 2D boundary question: does THIS path render the exact design port?
- * Same rule as the 2C switch — the customer root only, and only when asked for.
- */
 export function useAarnaHome() {
   const { pathname } = useLocation();
-  return pathname === STOREFRONT_HOME_PATH && isAarnaHomeEnabled();
+  return pathname === "/";
 }
 
 /**
  * PHASE 6 — the second surface the port owns: the product detail page.
  *
- * The design's product page is adopted the same way its homepage was — inside
- * this switch, mounted by `CustomerLayout`, never as a re-skin of the
- * production route. The pattern is deliberately narrower than "starts with
- * /product": this application's product route is exactly `/product/:productId`
- * (`App.jsx`), and anything else — a deeper path, a missing id — stays with the
- * production router, which owns 404s.
- *
- * Still only ever true when the switch asks for the port
- * (`?home=aarna` in development, `VITE_STOREFRONT_HOME=aarna` in a build), so
- * the default storefront is untouched.
+ * The design's product page is mounted by `CustomerLayout` for the exact
+ * `/product/:productId` route. The pattern is deliberately narrower than
+ * "starts with /product": deeper or incomplete paths are not product pages.
  */
 export const AARNA_PRODUCT_PATH = /^\/product\/[^/]+\/?$/;
 
 export function useAarnaProduct() {
   const { pathname } = useLocation();
-  return AARNA_PRODUCT_PATH.test(pathname) && isAarnaHomeEnabled();
+  return AARNA_PRODUCT_PATH.test(pathname);
 }
 
 /**
@@ -155,12 +36,9 @@ export function useAarnaProduct() {
  *   · every `routeManifest` path the router sends to `CatalogueListing` —
  *     `hasNavigationScope(pathname)`, the same predicate `App.jsx` uses.
  *
- * Everything else keeps its production page, and that includes the manifest
- * paths that are NOT navigation scopes (`/about`, `/contact`, `/privacy`,
- * `/terms`, `/account`, `/account/wishlist` — those render `CategoryPage` and
- * belong to later phases) and every staff portal route. The /cart → /checkout
- * money path was the one exception Phase 7 recorded here; Phase 9 adopts it as
- * the fifth surface, below.
+ * Other customer surfaces—information pages, account pages, wishlist and the
+ * order journey—are classified separately below. Staff portals are not part
+ * of Aarna's customer route table.
  *
  * `/category/:slug` and `/collections/:slug` are handed over whole: an unknown
  * slug resolves to no scope, and the ported page answers it with the port's own
@@ -189,7 +67,7 @@ export function isAarnaListingPath(pathname) {
 
 export function useAarnaListing() {
   const { pathname } = useLocation();
-  return isAarnaListingPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaListingPath(pathname);
 }
 
 /**
@@ -212,7 +90,7 @@ export function isAarnaWishlistPath(pathname) {
 
 export function useAarnaWishlist() {
   const { pathname } = useLocation();
-  return isAarnaWishlistPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaWishlistPath(pathname);
 }
 
 /**
@@ -245,7 +123,7 @@ export function isAarnaJourneyPath(pathname) {
 
 export function useAarnaJourney() {
   const { pathname } = useLocation();
-  return isAarnaJourneyPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaJourneyPath(pathname);
 }
 
 /**
@@ -261,22 +139,18 @@ export function useAarnaJourney() {
  * about them is simulated: the same `AuthContext`, the same Google button, the
  * same validators, the same `POST /auth/customer/*` calls.
  *
- * `/reset-password` is deliberately NOT in this set. Its production screen
- * never reads the `userId`/`token` pair the backend requires
- * (`ResetPasswordRequest`, `backend/app/schemas/auth/login.py`), so every
- * submit is refused before a password can change. Dressing that flow in the
- * design would stage a screen that cannot work; it stays on the production
- * implementation, together with the staff portals (`/login`, `/admin/**`,
- * `/super-admin/**`, `/employee/**`). (PHASE 11 later adopted the account by
- * name — the section below.) The defect is recorded, not hidden: §7 of the
- * phase document.
+ * `/reset-password` is included: its Aarna page reads `userId`/`token` from
+ * the reset URL and calls the same existing auth context/service. The backend
+ * still does not dispatch reset emails; no backend behavior is changed here.
+ * Staff portals (`/login`, `/admin/**`, `/super-admin/**`, `/employee/**`)
+ * remain outside the Aarna customer route boundary.
  *
  * The three paths are adopted by name — the same pattern as every surface
  * before them — so the catch-all's semantics are untouched: they are paths this
  * application REGISTERS, and a registered path was never the catch-all's to
  * answer.
  */
-export const AARNA_AUTH_PATHS = new Set(["/signin", "/signup", "/forgot-password"]);
+export const AARNA_AUTH_PATHS = new Set(["/signin", "/signup", "/forgot-password", "/reset-password"]);
 
 export function isAarnaAuthPath(pathname) {
   const bare = String(pathname ?? "").replace(/\/+$/, "") || "/";
@@ -285,7 +159,7 @@ export function isAarnaAuthPath(pathname) {
 
 export function useAarnaAuth() {
   const { pathname } = useLocation();
-  return isAarnaAuthPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaAuthPath(pathname);
 }
 
 /**
@@ -311,9 +185,8 @@ export function useAarnaAuth() {
  * (`AARNA_WISHLIST_PATHS`), where it stays — guest-accessible, exactly as
  * production serves it — and the two sets are disjoint by construction.
  *
- * Phase 11 is a UI migration: the pages themselves move one at a time, and
- * until a page is redrawn its route renders the production page unchanged. This
- * set can therefore name the whole family without any behaviour moving with it.
+ * These account paths are rendered by Aarna's account route family; protected
+ * screens and guest-order URLs retain their existing guard distinctions.
  */
 export const AARNA_ACCOUNT_PATHS = new Set([
   "/account",
@@ -346,7 +219,7 @@ export function isAarnaAccountPath(pathname) {
 
 export function useAarnaAccount() {
   const { pathname } = useLocation();
-  return isAarnaAccountPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaAccountPath(pathname);
 }
 
 /**
@@ -370,8 +243,7 @@ export function useAarnaAccount() {
  *     (Phase 9 adopted the money path by name, Phase 10 the three customer auth
  *     screens and Phase 11 the account, so `/cart`, `/checkout`,
  *     `/order-success`, `/signin`, `/signup`, `/forgot-password` and every
- *     `/account/**` path are answered by the port's own routes while the switch
- *     is on, and by the production pages while it is off.)
+ *     `/account/**` path is answered by the port's own route table.
  *     The test is the port's own `isRegisteredPath`,
  *     the same table its link translator uses, so the two can never disagree
  *     about what this application serves.
@@ -391,12 +263,11 @@ export function isAarnaCatchAllPath(pathname) {
 
 export function useAarnaCatchAll() {
   const { pathname } = useLocation();
-  return isAarnaCatchAllPath(pathname) && isAarnaHomeEnabled();
+  return isAarnaCatchAllPath(pathname);
 }
 
 /**
- * The port's whole boundary, in one question: is THIS path one of the design's
- * pages, and has the switch been asked for the port at all?
+ * True when this path belongs to the Aarna customer route table.
  */
 export function useAarnaStorefront() {
   const home = useAarnaHome();
@@ -409,15 +280,3 @@ export function useAarnaStorefront() {
   const catchAll = useAarnaCatchAll();
   return home || product || listing || wishlist || journey || auth || account || catchAll;
 }
-
-/**
- * The layout boundary's single question: does THIS path render the integrated
- * homepage? Only the customer root ever can — every other customer route, and
- * every portal route, keeps the shell it has today.
- */
-export function useEditorialHome() {
-  const { pathname } = useLocation();
-  return pathname === STOREFRONT_HOME_PATH && isEditorialHomeEnabled();
-}
-
-export default STOREFRONT_HOME;

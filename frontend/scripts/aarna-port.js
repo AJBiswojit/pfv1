@@ -176,11 +176,13 @@ export const ADDED = [
      account is created" on the page, so there is nothing to carry over. These
      are the application's own sign-in, create-account and password-recovery
      request screens, written in the design's vocabulary and bound to the real
-     contexts — `/reset-password` deliberately stays production-side (its
-     screen cannot complete a reset; see `docs/PHASE-10-AUTHENTICATION-UI.md`
-     §7). Declared, so the closure check knows them and never writes them. */
+     contexts. Reset-password is a separate Aarna route that reuses the
+     existing reset context/service; the existing forgot-password backend
+     still does not dispatch reset email. Declared, so closure checks know
+     these modules and the port tool never writes them. */
   "aarna.auth.css",
   "pages/ForgotPassword.jsx",
+  "pages/ResetPassword.jsx",
   "pages/SignIn.jsx",
   "pages/SignUp.jsx",
   /* PHASE 11 — the account frame. The design's `/account` is a fifty-line

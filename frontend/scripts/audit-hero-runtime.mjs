@@ -37,9 +37,9 @@ check(
 );
 check("managed hero placements contain no product ownership", managed.every((media) => !media.productId));
 
-const component = readFileSync("src/components/storefront/HeroCarousel.jsx", "utf8");
-check("HeroCarousel contains no hardcoded retired media address", !component.includes("/" + "library/"));
-check("HeroCarousel does not randomize media", !/Math\.random|shuffle\s*\(/.test(component));
+const component = readFileSync("src/components/storefront/home/AarnaHomeHero.jsx", "utf8");
+check("Aarna home hero contains no hardcoded retired media address", !component.includes("/" + "library/"));
+check("Aarna home hero does not randomize media", !/Math\.random|shuffle\s*\(/.test(component));
 
 setupCanonicalState();
 console.log(`\nRESULT: ${failures.length ? "FAIL" : "PASS"} — ${failures.length} violation(s).`);

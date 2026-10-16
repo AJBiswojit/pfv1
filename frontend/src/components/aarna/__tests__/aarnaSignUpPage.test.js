@@ -38,7 +38,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PORTED = "src/components/aarna/pages/SignUp.jsx";
-const PRODUCTION = "src/pages/auth/SignUp.jsx";
+const PRODUCTION = "src/components/aarna/pages/SignUp.jsx";
 
 const storage = new Map();
 const localStorageStub = {
@@ -106,15 +106,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -130,16 +128,15 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, /signup is the production page and nothing of the port", () => {
+test("/signup always renders Aarna's sign-up screen regardless of the former override", () => {
   const markup = off.render("/signup");
   assert.ok(markup.length > 0, "/signup rendered nothing at all");
-  assert.equal(/aan-root/.test(markup), false, "/signup mounted the port with the switch off");
-  assert.equal(/pf-auth/.test(markup), false, "/signup rendered the design's auth page with the switch off");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production layout did not render");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /signup is the port — inside the design's full shell", () => {
-  const markup = on.render("/signup?home=aarna");
+  const markup = on.render("/signup");
   assert.match(markup, /class="aan-root"/);
   assert.match(markup, /class="info container pf-auth"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the sign-up page");
@@ -158,9 +155,8 @@ test("the sign-up screen is an auth path, and no other surface claims it", () =>
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */
 
-test("every field keeps production's id, name, autofill hint and placeholder", () => {
+test("Aarna renders signup fields with stable identifiers and autofill hints", () => {
   const text = source();
-  const production = read(PRODUCTION);
   const fields = [
     ["signup-firstName", "firstName", "given-name"],
     ["signup-lastName", "lastName", "family-name"],
@@ -179,8 +175,9 @@ test("every field keeps production's id, name, autofill hint and placeholder", (
     assert.ok(nameCarried, `the ported form lost the name ${name}`);
     const hintCarried = [`autoComplete="${autoComplete}"`, `autoComplete: '${autoComplete}'`].some((form) => text.includes(form));
     assert.ok(hintCarried, `the ported form lost the autofill hint for ${name}`);
-    /* Autofill and password managers must see the same form production has. */
-    assert.ok(production.includes(`id="${id}"`), `production no longer carries ${id}`);
+    assert.ok(text.includes(`id: '${id}'`) || text.includes(`id="${id}"`), `Aarna source omitted ${id}`);
+    assert.ok(text.includes(`name: '${name}'`) || text.includes(`name="${name}"`), `Aarna source omitted name ${name}`);
+    assert.ok(text.includes(`autoComplete: '${autoComplete}'`) || text.includes(`autoComplete="${autoComplete}"`), `Aarna source omitted ${autoComplete}`);
   }
   assert.match(text, /id="signup-dateOfBirth"/);
   assert.match(text, /type="date"/);
@@ -282,7 +279,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 /* ── 3 · rendered against the real providers ────────────────────────────── */
 
 test("the rendered page is the design's frame around the application's form", () => {
-  const markup = on.render("/signup?home=aarna");
+  const markup = on.render("/signup");
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /class="form pf-auth__form pf-auth__form--wide"/);
   for (const id of ["signup-firstName", "signup-lastName", "signup-email", "signup-phone", "signup-password", "signup-confirmPassword", "signup-dateOfBirth"]) {

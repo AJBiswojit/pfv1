@@ -108,8 +108,8 @@ before(async () => {
   authApi = await vite.ssrLoadModule("/src/services/api/authApi.js");
   validation = await vite.ssrLoadModule("/src/utils/validation.js");
   ({ AuthContext } = await vite.ssrLoadModule("/src/context/AuthContext.jsx"));
-  ResetPassword = (await vite.ssrLoadModule("/src/pages/auth/ResetPassword.jsx")).default;
-  ForgotPassword = (await vite.ssrLoadModule("/src/pages/auth/ForgotPassword.jsx")).default;
+  ResetPassword = (await vite.ssrLoadModule("/src/components/aarna/pages/ResetPassword.jsx")).default;
+  ForgotPassword = (await vite.ssrLoadModule("/src/components/aarna/pages/ForgotPassword.jsx")).default;
   ({ MemoryRouter } = await import("react-router-dom"));
 });
 
@@ -233,14 +233,14 @@ test("a link without a token shows the incomplete state and no password form", a
   const tree = await render(ResetPassword, { path: "/reset-password?userId=user-1", resetPassword });
   const shown = textOf(tree.toJSON());
   assert.match(shown, /This link is incomplete/);
-  assert.equal(inputById(tree, "reset-newPassword"), null, "a password form was offered without a token");
+  assert.equal(inputById(tree, "aarna-reset-password"), null, "a password form was offered without a token");
   assert.equal(tree.root.findAll((n) => n.type === "form").length, 0);
 });
 
 test("a link without a userId shows the incomplete state", async () => {
   const tree = await render(ResetPassword, { path: "/reset-password?token=abc", resetPassword: async () => ({ ok: true }) });
   assert.match(textOf(tree.toJSON()), /This link is incomplete/);
-  assert.equal(inputById(tree, "reset-newPassword"), null);
+  assert.equal(inputById(tree, "aarna-reset-password"), null);
 });
 
 test("a bare /reset-password visit never calls the API", async () => {
@@ -261,8 +261,8 @@ test("a valid submission sends userId and token from the link and shows success 
     return new Promise((resolve) => { release = resolve; });
   };
   const tree = await render(ResetPassword, { path: "/reset-password?userId=user-1&token=tok-abc", resetPassword });
-  await setField(tree, "reset-newPassword", "Secret123");
-  await setField(tree, "reset-confirmPassword", "Secret123");
+  await setField(tree, "aarna-reset-password", "Secret123");
+  await setField(tree, "aarna-reset-confirm", "Secret123");
   await submitForm(tree);
 
   assert.deepEqual(calls, [{ pw: "Secret123", cpw: "Secret123", ids: { userId: "user-1", token: "tok-abc" } }]);
@@ -281,8 +281,8 @@ test("a password under 8 characters is refused on the client and the API is not 
     path: "/reset-password?userId=user-1&token=tok",
     resetPassword: async () => { called = true; return { ok: true }; },
   });
-  await setField(tree, "reset-newPassword", "1234567");
-  await setField(tree, "reset-confirmPassword", "1234567");
+  await setField(tree, "aarna-reset-password", "1234567");
+  await setField(tree, "aarna-reset-confirm", "1234567");
   await submitForm(tree);
   assert.equal(called, false);
   assert.match(textOf(tree.toJSON()), /at least 8 characters/);
@@ -294,8 +294,8 @@ test("a mismatched confirmation is refused on the client and the API is not call
     path: "/reset-password?userId=user-1&token=tok",
     resetPassword: async () => { called = true; return { ok: true }; },
   });
-  await setField(tree, "reset-newPassword", "Secret123");
-  await setField(tree, "reset-confirmPassword", "Secret124");
+  await setField(tree, "aarna-reset-password", "Secret123");
+  await setField(tree, "aarna-reset-confirm", "Secret124");
   await submitForm(tree);
   assert.equal(called, false);
   assert.match(textOf(tree.toJSON()), /Passwords do not match/);
@@ -306,15 +306,15 @@ test("a rejected or expired link is reported as such, with a route to a new link
     path: "/reset-password?userId=user-1&token=stale",
     resetPassword: async () => ({ ok: false, status: 401, error: "Password reset token is invalid or has expired." }),
   });
-  await setField(tree, "reset-newPassword", "Secret123");
-  await setField(tree, "reset-confirmPassword", "Secret123");
+  await setField(tree, "aarna-reset-password", "Secret123");
+  await setField(tree, "aarna-reset-confirm", "Secret123");
   await submitForm(tree);
   await flush();
   const shown = textOf(tree.toJSON());
   assert.match(shown, /invalid or has expired/);
   assert.match(shown, /Request a new link/);
   assert.equal(/updated\./.test(shown), false, "a rejected link was reported as a changed password");
-  assert.ok(inputById(tree, "reset-newPassword"), "the form was removed after a rejection");
+  assert.ok(inputById(tree, "aarna-reset-password"), "the form was removed after a rejection");
 });
 
 test("an API or server failure shows an error, keeps the form, and allows a retry", async () => {
@@ -326,8 +326,8 @@ test("an API or server failure shows an error, keeps the form, and allows a retr
       : { ok: true };
   };
   const tree = await render(ResetPassword, { path: "/reset-password?userId=user-1&token=tok", resetPassword });
-  await setField(tree, "reset-newPassword", "Secret123");
-  await setField(tree, "reset-confirmPassword", "Secret123");
+  await setField(tree, "aarna-reset-password", "Secret123");
+  await setField(tree, "aarna-reset-confirm", "Secret123");
   await submitForm(tree);
   await flush();
   assert.match(textOf(tree.toJSON()), /Something went wrong on our side\./);
@@ -344,8 +344,8 @@ test("a network failure is shown as a failure, not as a changed password", async
     path: "/reset-password?userId=user-1&token=tok",
     resetPassword: async () => ({ ok: false, status: 0, error: "Network error. Check your connection.", isNetworkError: true }),
   });
-  await setField(tree, "reset-newPassword", "Secret123");
-  await setField(tree, "reset-confirmPassword", "Secret123");
+  await setField(tree, "aarna-reset-password", "Secret123");
+  await setField(tree, "aarna-reset-confirm", "Secret123");
   await submitForm(tree);
   await flush();
   const shown = textOf(tree.toJSON());

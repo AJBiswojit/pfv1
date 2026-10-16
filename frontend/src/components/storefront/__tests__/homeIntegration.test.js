@@ -1,22 +1,8 @@
 /**
- * Phase 2C — the controlled homepage integration.
- *
- * The integrated composition is loaded through Vite's own SSR pipeline (the
- * convention these suites use) and server-rendered, so the assertions run
- * against the REAL components, the REAL services and the REAL switch — not a
- * description of them.
- *
- * Covered here:
- *   · the switch: off by default, dev-only URL review, build-time flag,
- *     rollback, and no way for a customer's URL to change the homepage;
- *   · the composition mounts at the customer root ONLY, and only when asked;
- *   · the existing `AtelierDesign` homepage is the fallback and the rollback;
- *   · exactly one header and one announcement rail on the integrated page;
- *   · no fixture data, badge or preview chrome in the production composition;
- *   · canonical navigation and product-detail destinations;
- *   · the existing cart/wishlist contexts, and no second commerce state;
- *   · an empty or unavailable backend renders honestly, never blank;
- *   · App.jsx, the portals, auth and the commerce routes are untouched.
+ * Customer storefront integration checks. Aarna is the only mounted customer
+ * UI; App.jsx delegates customer paths to CustomerLayout while staff portals
+ * keep their own routes. The legacy editorial composition may remain in the
+ * source tree during phased cleanup, but it is not an active customer route.
  */
 
 import test, { after, before } from "node:test";
@@ -97,15 +83,16 @@ const importsModule = (file, modulePath) =>
  * canonical route manifest the navigation is built from.
  */
 function registeredRoutes() {
-  const app = read("src/App.jsx");
+  const sources = [read("src/App.jsx"), read("src/components/aarna/AarnaStorefront.jsx")];
   const staticPaths = new Set(modules.routeManifest.map((route) => route.path));
   const patterns = [];
-  for (const match of app.matchAll(/<Route path="([^"]+)"/g)) {
+  for (const source of sources) for (const match of source.matchAll(/<Route path="([^"]+)"/g)) {
     const path = match[1];
     if (path.includes(":")) {
-      patterns.push(new RegExp(`^/${path.replace(/:[^/]+/g, "[^/]+").replace(/^\//, "")}/?$`));
-    } else if (path !== "*") {
-      staticPaths.add(path.replace(/\/+$/, "") || "/");
+      const absolute = path.startsWith("/") ? path : `/${path}`;
+      patterns.push(new RegExp(`^${absolute.replace(/:[^/]+/g, "[^/]+").replace(/\*$/, "")}/?$`));
+    } else if (path !== "*" && path !== "/*") {
+      staticPaths.add((path.startsWith("/") ? path : `/${path}`).replace(/\/+$/, "") || "/");
     }
   }
   staticPaths.add("/");
@@ -163,112 +150,38 @@ const countOf = (html, pattern) => (html.match(pattern) ?? []).length;
 
 /* ── the switch ──────────────────────────────────────────────────────── */
 
-test("the homepage switch is OFF by default, in every combination that is not an explicit request", () => {
-  const { resolveStorefrontHome, STOREFRONT_HOME } = modules.switch;
-  const atelier = STOREFRONT_HOME.atelier;
-
-  /* Nothing asked for it. */
-  assert.equal(resolveStorefrontHome(), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: "" }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: "yes" }), atelier);
-
-  /* Something asked for it, but not in a recognised way. */
-  for (const search of ["?home=", "?home=next", "?home=editorial ", "?home=EDITORIAL", "?other=editorial", "?home"]) {
-    assert.equal(resolveStorefrontHome({ dev: true, search }), atelier, `${search} must not enable the new homepage`);
-  }
-});
-
-test("the switch asks for the integrated homepage only in the two documented ways", () => {
-  const { resolveStorefrontHome, STOREFRONT_HOME } = modules.switch;
-  const { atelier, editorial } = STOREFRONT_HOME;
-
-  /* A local review URL (development builds only). */
-  assert.equal(resolveStorefrontHome({ dev: true, search: "?home=editorial" }), editorial);
-
-  /* The build-time variable (dev and deployed builds alike). */
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: editorial }), editorial);
-  assert.equal(resolveStorefrontHome({ dev: false, envValue: editorial }), editorial);
-
-  /* The escape hatch wins over the environment, so a review can always go back. */
-  assert.equal(resolveStorefrontHome({ dev: true, envValue: editorial, search: "?home=atelier" }), atelier);
-
-  /* A customer editing the URL of a deployed build cannot move the homepage. */
-  assert.equal(resolveStorefrontHome({ dev: false, search: "?home=editorial" }), atelier);
-  assert.equal(resolveStorefrontHome({ dev: false, envValue: "", search: "?home=editorial" }), atelier);
-});
-
-test("the live switch reads the browser URL through the development gate only", () => {
-  const { storefrontHomeChoice, STOREFRONT_HOME, STOREFRONT_HOME_PARAM } = modules.switch;
-
-  /* Vite's SSR pipeline runs this module as a development build, with no
-     window: the homepage is the default one. */
-  assert.equal(storefrontHomeChoice(), STOREFRONT_HOME.atelier);
-
-  /* The reviewer's URL param, in that development build. */
-  const withSearch = (search) => {
-    const previous = globalThis.window;
-    globalThis.window = { location: { search } };
-    try {
-      return storefrontHomeChoice();
-    } finally {
-      if (previous === undefined) delete globalThis.window;
-      else globalThis.window = previous;
-    }
-  };
-  assert.equal(withSearch(`?${STOREFRONT_HOME_PARAM}=editorial`), STOREFRONT_HOME.editorial);
-  assert.equal(withSearch(`?${STOREFRONT_HOME_PARAM}=atelier`), STOREFRONT_HOME.atelier);
-  assert.equal(withSearch("?view=home&data=fixture"), STOREFRONT_HOME.atelier);
-
-  /* The gate itself must be in the module, not only in the callers. */
+test("the customer selector is gone: there is no Atelier/editorial mode or URL/build override", () => {
   const source = read(SWITCH);
-  assert.match(source, /import\.meta\.env\.DEV/);
-  assert.match(source, /VITE_STOREFRONT_HOME|STOREFRONT_HOME_VAR/);
+  assert.doesNotMatch(source, /resolveStorefrontHome|VITE_STOREFRONT_HOME|STOREFRONT_HOME_PARAM|useEditorialHome/);
+  assert.doesNotMatch(read(LAYOUT), /StorefrontHome|AtelierDesign|useEditorialHome/);
+  assert.doesNotMatch(read("src/App.jsx"), /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
 });
 
 /* ── where it mounts, and what it replaces ───────────────────────────── */
 
-test("the composition is mounted at the customer root only, by the customer layout alone", () => {
+test("the Aarna app shell is the only customer layout and no Atelier/editorial source is mounted", () => {
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
     .filter((file) => importsModule(file, "src/components/storefront/StorefrontHome"));
-
-  assert.deepEqual(importers, [LAYOUT], "only CustomerLayout may mount the integrated homepage");
+  assert.deepEqual(importers, [], "the editorial composition is not reachable from customer routes");
 
   const layout = read(LAYOUT);
-  /* The gate is the switch AND the root path — every other customer route keeps
-     the shell it has today. */
-  assert.match(layout, /useEditorialHome/);
-  assert.match(read(SWITCH), /pathname === STOREFRONT_HOME_PATH/);
-  assert.match(layout, /editorialHome \? \(/);
-  assert.equal(countOf(layout, /<StorefrontHome \/>/g), 1, "the composition is mounted once");
-  assert.match(layout, /\{!editorialHome &&/);
-});
-
-test("the existing AtelierDesign homepage stays the fallback and the rollback", () => {
+  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|SiteHeader|SiteFooter|CheckoutHeader/);
   const app = read("src/App.jsx");
-  /* The root route is untouched: with the switch off (the default) the layout
-     renders the outlet, which is still the reviewed homepage. */
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
-  assert.equal(app.includes("StorefrontHome"), false);
-  assert.equal(app.includes("storefrontHome"), false);
-
-  const layout = read(LAYOUT);
-  assert.match(layout, /<Outlet \/>/, "the routed page still renders when the switch is off");
-  assert.match(layout, /<SiteHeader counts=\{counts\} onOpenCart=\{cart\.openDrawer\} \/>/);
+  assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
 });
 
-test("the root route is resolved through the switch, not by editing the route table", () => {
-  const probe = React.createElement(function Probe() {
-    return React.createElement("span", null, modules.switch.useEditorialHome() ? "editorial" : "atelier");
-  });
-
-  /* No window, no flag: the layout takes the routed page. */
-  return (async () => {
-    const html = await render(probe);
-    assert.equal(html.includes("atelier"), true);
-    assert.equal(html.includes("editorial"), false);
-  })();
+test("the root URL renders Aarna regardless of former home query values", async () => {
+  const plain = await renderLayout({ search: "" });
+  const formerOverride = await renderLayout({ search: "?home=atelier" });
+  const formerEditorial = await renderLayout({ search: "?home=editorial" });
+  for (const html of [plain, formerOverride, formerEditorial]) {
+    assert.match(html, /class="aan-root"/);
+    assert.equal(html.includes("data-storefront-header"), false);
+    assert.equal(html.includes("pf-sec-host"), false);
+  }
 });
 
 /* ── the integrated page renders ─────────────────────────────────────── */
@@ -437,28 +350,31 @@ test("an empty or unavailable backend renders an honest page, never a blank one"
   assert.equal(countOf(html, /data-home-surface="live"/g), 1);
 });
 
-test("App.jsx, the portals, auth and the commerce routes are untouched by the integration", () => {
+test("App preserves staff portal routes while delegating customer pages to Aarna", () => {
   const app = read("src/App.jsx");
   assert.equal(app.includes("storefront/StorefrontHome"), false);
   assert.equal(app.includes("storefrontHome"), false);
-  /* The portal layouts and guards are still exactly what the route table mounts. */
-  for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />", "<ProtectedRoute />"]) {
+  /* The staff portal layouts/guards remain in App; customer protection now lives
+     inside the Aarna route table. */
+  for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />"]) {
     assert.equal(app.includes(marker), true, `${marker} is still mounted`);
   }
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(storefront, /<Route element={<ProtectedRoute \/>}>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\/(shop|signin|account)/);
   /* The composition mounts nothing at the portal boundaries. */
   for (const file of ["src/layouts/AdminLayout.jsx", "src/layouts/EmployeeLayout.jsx"]) {
     assert.equal(read(file).includes("StorefrontHome"), false);
   }
-  /* The switch is referenced by the customer layout, and by the production
-     account shell, which reads it to drop its own chrome when a production
-     account page is mounted inside the Aarna storefront (`AccountShell.jsx`,
-     the Phase 11 boundary). No other file may read it. */
+  /* The route ownership helper is used only by the legacy account shell;
+     CustomerLayout mounts Aarna directly and does not consult a selector. */
   const ACCOUNT_SHELL = "src/components/account/AccountShell.jsx";
-  const switchImporters = sourceFiles()
+  const boundaryImporters = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
     .filter((file) => importsModule(file, "src/config/storefrontHome"))
     .sort();
-  assert.deepEqual(switchImporters, [ACCOUNT_SHELL, LAYOUT].sort());
+  assert.deepEqual(boundaryImporters, [ACCOUNT_SHELL]);
 
   /* And the portal layouts never mount the composition's shell. */
   const shellImporters = sourceFiles()
@@ -488,8 +404,6 @@ test("App.jsx, the portals, auth and the commerce routes are untouched by the in
 async function renderLayout({ search = "" } = {}) {
   const { MemoryRouter, Route, Routes } = await import("react-router-dom");
   const { createElement: h } = React;
-
-  const AtelierDesign = (await vite.ssrLoadModule("/src/pages/AtelierDesign.jsx")).default;
   const CustomerLayout = (await vite.ssrLoadModule("/src/layouts/CustomerLayout.jsx")).default;
 
   const previous = globalThis.window;
@@ -508,11 +422,7 @@ async function renderLayout({ search = "" } = {}) {
             h(
               Routes,
               null,
-              h(
-                Route,
-                { element: h(CustomerLayout) },
-                h(Route, { index: true, element: h(AtelierDesign) })
-              )
+              h(Route, { path: "/*", element: h(CustomerLayout) })
             )
           )
         )
@@ -524,51 +434,12 @@ async function renderLayout({ search = "" } = {}) {
   }
 }
 
-test("with the switch off the customer root renders the existing homepage and its existing shell", async () => {
-  const html = await renderLayout({ search: "" });
-
-  /* The application's own header and its offset are what the customer sees. */
-  assert.match(html, /fixed top-0 left-0 right-0 z-50/, "the existing header");
-  assert.match(html, /pt-16 md:pt-20/, "its existing offset");
-  assert.equal(html.includes("data-storefront-header"), false, "the 2A header must not be mounted");
-  assert.equal(html.includes("pf-sec-host"), false, "the 2B sections must not be mounted");
-  assert.equal(html.includes("data-home-surface"), false);
-
-  /* The existing footer is still there, once. */
-  assert.equal(countOf(html, /<footer/g), 1);
-});
-
-test("with a local-review URL the customer root renders the integrated homepage, once, over the same footer", async () => {
-  const html = await renderLayout({ search: "?home=editorial" });
-
-  /* Exactly one header, and it is the approved one. */
-  assert.equal(countOf(html, /data-storefront-header/g), 1, "one 2A header");
-  assert.equal(html.includes("fixed top-0 left-0 right-0 z-50"), false, "the previous header must not also render");
-  assert.equal(html.includes("pt-16 md:pt-20"), false, "no offset for a header that is not there");
-  assert.equal(html.includes("pf-shell__header"), true);
-
-  /* The composition, its campaign canvas, and the existing footer exactly once. */
-  assert.match(html, /data-home-surface="live"/);
-  assert.match(html, /pf-shell__surface/);
-  assert.match(html, /pf-sec-host/);
-  assert.equal(countOf(html, /<footer/g), 1, "one existing footer");
-  assert.equal(countOf(html, /id="preview-root"/g), 0, "the dev harness document is not involved");
-
-  /* The routed page is not ALSO rendered behind the composition. */
-  assert.equal(html.includes('aria-label="PRATIKSHYA FASHION featured collections"'), false);
-});
-
-test("the switch is the only difference between the two renders — same services, same footer, same providers", async () => {
-  const [off, on] = await Promise.all([renderLayout({ search: "" }), renderLayout({ search: "?home=editorial" })]);
-
-  /* Both are one customer page: one footer, one shopping context, no second app. */
-  for (const html of [off, on]) {
-    assert.equal(countOf(html, /<footer/g), 1, "one footer in both states");
-    assert.equal(html.includes("MemoryRouter"), false);
+test("Aarna renders the root with no selector, and former query overrides cannot switch the UI", async () => {
+  for (const search of ["", "?home=atelier", "?home=editorial", "?home=aarna"]) {
+    const html = await renderLayout({ search });
+    assert.match(html, /class="aan-root"/, `${search} did not render Aarna`);
+    assert.equal(html.includes("data-storefront-header"), false, "the editorial header must not mount");
+    assert.equal(html.includes("pf-sec-host"), false, "the editorial sections must not mount");
+    assert.equal(countOf(html, /<footer/g), 1, "Aarna owns exactly one footer");
   }
-
-  /* The rollback is a URL, and it needs no rebuild: the same module renders both. */
-  const layout = read(LAYOUT);
-  assert.match(layout, /useEditorialHome\(\)/);
-  assert.match(layout, /editorialHome \? "flex-1" : "flex-1 pt-16 md:pt-20"/);
 });

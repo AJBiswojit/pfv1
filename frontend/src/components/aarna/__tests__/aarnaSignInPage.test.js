@@ -6,9 +6,8 @@
  * written in the design's own vocabulary (`.container`, `.info`, `.crumbs`,
  * `.label`, `.display`, `.info__lead`, `.form`, `.form__err`, `.form__note`,
  * the `.btn` register) and bound to `AuthContext` — the same context the
- * production screen reads. It is reachable only through the existing
- * `?home=aarna` / `VITE_STOREFRONT_HOME=aarna` switch, and with the switch off
- * `/signin` is the production page, byte for byte, untouched.
+ * current Aarna customer route reads. The route no longer depends on an
+ * environment flag or query-string selector.
  *
  * What these tests render is the real composition: `CustomerLayout` inside this
  * application's provider stack, at the route a browser reaches, through Vite's
@@ -25,9 +24,9 @@
  *      redirect, the guest link's `/account → /shop` rule, and the SHARED
  *      Google button — all pinned at the source, because none of them can be
  *      exercised without a backend and a browser.
- *   3. WHAT THE PHASE DELIBERATELY LEFT ALONE. `/reset-password` and the staff
- *      portals keep their production pages; the auth surface is disjoint from
- *      the journey, listing and catch-all surfaces.
+ *   3. WHAT THE BOUNDARY LEAVES ALONE. Staff portals keep their production
+ *      pages; reset-password joins Aarna auth and remains disjoint from the
+ *      journey, listing and catch-all surfaces.
  *
  * WHAT THIS CANNOT PROVE: clicks, focus order and layout (no DOM here); a real
  * credential exchange, a real Google login and the reset flow (no backend, no
@@ -134,15 +133,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -161,28 +158,18 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, the three auth paths are the production pages", () => {
-  for (const path of ["/signin", "/signup", "/forgot-password"]) {
+test("all customer auth paths render Aarna irrespective of former selector values", () => {
+  for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password"]) {
     const markup = off.render(path);
     assert.ok(markup.length > 0, `${path} rendered nothing at all`);
-    assert.equal(/aan-root/.test(markup), false, `${path} mounted the port with the switch off`);
-    assert.equal(/pf-auth/.test(markup), false, `${path} rendered the design's auth page with the switch off`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render an Aarna auth UI`);
   }
-  /* What a switch-off render shows is the production layout's own shell: the
-     production pages are mounted through `lazy`, so their markup is still
-     suspended in a server render — the port's markers are what must be absent,
-     and the production root is what must be present. */
-  const markup = off.render("/signin");
-  assert.match(markup, /class="min-h-screen flex flex-col/, "the production customer layout did not render");
-  /* …and the pages a browser reaches are App.jsx's own lazily-loaded modules. */
-  const app = read("src/App.jsx");
-  assert.match(app, /const SignIn = lazy\(\(\) => import\("\.\/pages\/auth\/SignIn"\)\);/);
-  assert.match(app, /const SignUp = lazy\(\(\) => import\("\.\/pages\/auth\/SignUp"\)\);/);
-  assert.match(app, /const ForgotPassword = lazy\(\(\) => import\("\.\/pages\/auth\/ForgotPassword"\)\);/);
+  assert.match(read("src/components/aarna/AarnaStorefront.jsx"), /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
 
 test("with the switch on, /signin is the port — inside the design's full shell", () => {
-  const markup = on.render("/signin?home=aarna");
+  const markup = on.render("/signin");
   assert.match(markup, /class="aan-root"/, "the canonical route did not mount the port");
   assert.match(markup, /class="info container pf-auth"/, "/signin did not render the ported page");
   /* Production gives the auth screens the SHOPPING chrome (`isOrderJourney` is
@@ -197,13 +184,13 @@ test("the auth surface is the three customer screens, and nothing else joins it"
   const { boundary } = on;
   assert.deepEqual(
     [...boundary.AARNA_AUTH_PATHS].sort(),
-    ["/forgot-password", "/signin", "/signup"],
-    "the auth set is not the three routes Phase 10 adopted",
+    ["/forgot-password", "/reset-password", "/signin", "/signup"],
+    "the auth set does not include all supported customer auth routes",
   );
-  for (const path of ["/signin", "/signup", "/forgot-password", "/signin/"]) {
+  for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password", "/signin/"]) {
     assert.equal(boundary.isAarnaAuthPath(path), true, `${path} is not treated as an auth path`);
   }
-  for (const path of ["/reset-password", "/login", "/admin/login", "/employee/profile", "/account", "/signin/extra", "/cart"]) {
+  for (const path of ["/login", "/admin/login", "/employee/profile", "/account", "/signin/extra", "/cart"]) {
     assert.equal(boundary.isAarnaAuthPath(path), false, `${path} was claimed by the auth paths`);
   }
 });
@@ -217,19 +204,22 @@ test("the auth screens are disjoint from the journey, listing and catch-all surf
   }
 });
 
-test("the port's route table declares the three screens, and App.jsx is not touched", () => {
+test("Aarna declares all four authentication screens and App delegates customer routing", () => {
   const mount = read(MOUNT);
   assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
   assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
   assert.match(mount, /<Route path="forgot-password" element=\{<ForgotPassword \/>\} \/>/);
+  assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
   assert.match(mount, /import "\.\/aarna\.auth\.css";/, "the auth stylesheet is not carried by the mount");
   /* Phase 10 needed no routing change: the production route table is the one it
      was, and the auth routes still belong to the customer layout group. */
   const app = read("src/App.jsx");
-  assert.match(app, /<Route path="\/signin" element=\{<SignIn \/>\} \/>/);
-  assert.match(app, /<Route path="\/signup" element=\{<SignUp \/>\} \/>/);
-  assert.match(app, /<Route path="\/forgot-password" element=\{<ForgotPassword \/>\} \/>/);
-  assert.match(app, /<Route path="\/reset-password" element=\{<ResetPassword \/>\} \/>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\/(signin|signup|forgot-password|reset-password)"/);
+  assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
+  assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
+  assert.match(mount, /<Route path="forgot-password" element=\{<ForgotPassword \/>\} \/>/);
+  assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */
@@ -252,7 +242,7 @@ test("identifiers, autofill hints and the reveal toggle are production's", () =>
   assert.match(text, /aria-pressed=\{showPassword\}/);
   /* The id the port assigns is the id production assigns, so password managers
      and autofill see the same form they always did. */
-  const production = read("src/pages/auth/SignIn.jsx");
+  const production = read("src/components/aarna/pages/SignIn.jsx");
   for (const id of ["signin-identifier", "signin-password"]) {
     assert.match(production, rx(`id="${id}"`), `production no longer carries ${id}`);
   }
@@ -260,7 +250,7 @@ test("identifiers, autofill hints and the reveal toggle are production's", () =>
 
 test("every message is the production string, and validation stops before the API call", () => {
   const text = source();
-  const production = read("src/pages/auth/SignIn.jsx");
+  const production = read("src/components/aarna/pages/SignIn.jsx");
   const messages = [
     "Please enter your registered email address or phone number.",
     "Please enter your account password.",
@@ -327,7 +317,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 /* ── 3 · rendered against the real providers ────────────────────────────── */
 
 test("the rendered page is the design's frame around the application's form", () => {
-  const markup = on.render("/signin?home=aarna");
+  const markup = on.render("/signin");
   assert.match(markup, /class="crumbs"/);
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /class="form pf-auth__form"/);

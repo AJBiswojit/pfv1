@@ -118,14 +118,13 @@ test("Kids is a normal department query over dynamically published canonical rec
   });
 });
 
-test("category pages derive from the canonical catalogue without hardcoded product arrays", () => {
+test("Aarna listing pages derive from the canonical catalogue without hardcoded product arrays", () => {
   [
-    "src/pages/CatalogueListing.jsx",
+    "src/components/aarna/pages/Shop.jsx",
     "src/components/storefront/CatalogueBrowser.jsx",
     "src/components/storefront/ProductGrid.jsx",
-    "src/components/storefront/NewArrivals.jsx",
-    "src/components/storefront/SareeEditCarousel.jsx",
-    "src/pages/Explore.jsx",
+    "src/components/storefront/PlacementProductRail.jsx",
+    "src/components/aarna/pages/Shop.jsx",
     "src/components/explore/ExploreProductGrid.jsx",
   ].forEach((relative) => {
     const path = join(__dirname, "..", relative);

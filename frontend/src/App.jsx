@@ -1,8 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LoadingState } from "./design-system";
-import { routeManifest } from "./config/navigationConfig";
-import { hasNavigationScope } from "./data/products/taxonomy";
 import { hydrateCatalog, getCatalogState } from "./services/catalog/catalogStore";
 import { AuthProvider } from "./context/AuthContext";
 import { AccountProvider } from "./context/AccountContext";
@@ -14,7 +12,6 @@ import { EmployeeAuthProvider } from "./context/EmployeeAuthContext";
 import { EmployeeManagementProvider } from "./context/EmployeeManagementContext";
 import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { WorkforceProvider } from "./context/WorkforceContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
 import EmployeeProtectedRoute from "./components/employee/EmployeeProtectedRoute";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 import AdminEmployeeManagementRoute from "./components/admin/AdminEmployeeManagementRoute";
@@ -22,42 +19,11 @@ import SuperAdminProtectedRoute from "./components/admin/SuperAdminProtectedRout
 import CustomerLayout from "./layouts/CustomerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import AtelierDesign from "./pages/AtelierDesign";
-import CatalogueListing from "./pages/CatalogueListing";
-import CategoryPage from "./pages/CategoryPage";
-import Explore from "./pages/Explore";
-import NotFound from "./pages/NotFound";
-import SearchResults from "./pages/SearchResults";
-import Shop from "./pages/Shop";
 
-const ProductDetail = lazy(() => import("./pages/ProductDetail"));
-const Cart = lazy(() => import("./pages/Cart"));
-const Wishlist = lazy(() => import("./pages/Wishlist"));
-const Checkout = lazy(() => import("./pages/Checkout"));
-const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
-
-const SignIn = lazy(() => import("./pages/auth/SignIn"));
-const SignUp = lazy(() => import("./pages/auth/SignUp"));
-const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 // ONE canonical staff login for all three account levels (SUPER_ADMIN, ADMIN,
 // EMPLOYEE). The former Admin/Employee login routes now
 // redirect here — there is a single login experience, not two.
 const StaffLogin = lazy(() => import("./pages/auth/StaffLogin"));
-
-const AccountDashboard = lazy(() => import("./pages/account/AccountDashboard"));
-const AccountProfile = lazy(() => import("./pages/account/AccountProfile"));
-const AccountAddresses = lazy(() => import("./pages/account/AccountAddresses"));
-const AccountOrders = lazy(() => import("./pages/account/AccountOrders"));
-const OrderDetail = lazy(() => import("./pages/account/OrderDetail"));
-const OrderTracking = lazy(() => import("./pages/account/OrderTracking"));
-const OrderReturn = lazy(() => import("./pages/account/OrderReturn"));
-const AccountSettings = lazy(() => import("./pages/account/AccountSettings"));
-const AccountSecurity = lazy(() => import("./pages/account/AccountSecurity"));
-const AccountPreferences = lazy(() => import("./pages/account/AccountPreferences"));
-const AiMirror = lazy(() => import("./pages/account/AiMirror"));
-const AiShoppingAssistant = lazy(() => import("./pages/account/AiShoppingAssistant"));
-const InstagramRewards = lazy(() => import("./pages/account/InstagramRewards"));
 
 const EmployeeLogin = lazy(() => import("./pages/employee/EmployeeLogin"));
 const EmployeeForgotPassword = lazy(() => import("./pages/employee/EmployeeForgotPassword"));
@@ -137,35 +103,6 @@ const InventoryLowStockPage = lazy(() => import("./components/inventory/Inventor
 const AdminWarehouses = lazy(() => import("./pages/admin/warehouses/AdminWarehouses"));
 const AdminWarehouseForm = lazy(() => import("./pages/admin/warehouses/AdminWarehouseForm"));
 const AdminWarehouseDetail = lazy(() => import("./pages/admin/warehouses/AdminWarehouseDetail"));
-
-const dedicatedPaths = new Set([
-  "/explore",
-  "/search",
-  "/cart",
-  "/wishlist",
-  "/checkout",
-  "/order-success",
-  "/account",
-  "/account/profile",
-  "/account/addresses",
-  "/account/orders",
-  "/account/settings",
-  "/account/security",
-  "/account/preferences",
-  "/account/ai-mirror",
-  "/account/ai-shopping",
-  "/account/instagram-rewards",
-  "/account/wishlist",
-  "/signin",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
-]);
-
-function LegacyCollectionRedirect() {
-  const { slug } = useParams();
-  return <Navigate to={`/collections/${slug}`} replace />;
-}
 
 /**
  * Hydrates the backend-fed catalog store once at startup. The store holds
@@ -458,65 +395,7 @@ export default function App() {
                         </Route>
                       </Route>
 
-                      <Route element={<CustomerLayout />}>
-                        <Route index element={<AtelierDesign />} />
-
-                        <Route path="/shop" element={<Shop />} />
-                        <Route path="/explore" element={<Explore />} />
-                        <Route path="/category/:slug" element={<CatalogueListing variant="category" />} />
-                        <Route path="/collection/:slug" element={<LegacyCollectionRedirect />} />
-                        <Route path="/collections/:slug" element={<CatalogueListing variant="collection" />} />
-                        <Route path="/search" element={<SearchResults />} />
-                        <Route path="/product/:productId" element={<ProductDetail />} />
-
-                        <Route path="/cart" element={<Cart />} />
-                        <Route element={<ProtectedRoute />}>
-                          <Route path="/checkout" element={<Checkout />} />
-                          <Route path="/order-success" element={<OrderSuccess />} />
-                        </Route>
-                        <Route path="/account/wishlist" element={<Wishlist />} />
-                        <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
-
-                        <Route path="/signin" element={<SignIn />} />
-                        <Route path="/signup" element={<SignUp />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
-
-                        <Route path="/account/orders/:orderId" element={<OrderDetail />} />
-                        <Route path="/account/orders/:orderId/track" element={<OrderTracking />} />
-                        <Route path="/account/orders/:orderId/return" element={<OrderReturn />} />
-
-                        <Route element={<ProtectedRoute />}>
-                          <Route path="/account" element={<AccountDashboard />} />
-                          <Route path="/account/profile" element={<AccountProfile />} />
-                          <Route path="/account/addresses" element={<AccountAddresses />} />
-                          <Route path="/account/orders" element={<AccountOrders />} />
-                          <Route path="/account/settings" element={<AccountSettings />} />
-                          <Route path="/account/security" element={<AccountSecurity />} />
-                          <Route path="/account/preferences" element={<AccountPreferences />} />
-                          <Route path="/account/ai-mirror" element={<AiMirror />} />
-                          <Route path="/account/ai-shopping" element={<AiShoppingAssistant />} />
-                          <Route path="/account/instagram-rewards" element={<InstagramRewards />} />
-                        </Route>
-
-                        {routeManifest
-                          .filter((route) => !dedicatedPaths.has(route.path))
-                          .map((route) => (
-                            <Route
-                              key={route.path}
-                              path={route.path}
-                              element={
-                                hasNavigationScope(route.path) ? (
-                                  <CatalogueListing variant="navigation" />
-                                ) : (
-                                  <CategoryPage />
-                                )
-                              }
-                            />
-                          ))}
-
-                        <Route path="*" element={<NotFound />} />
-                      </Route>
+                      <Route path="/*" element={<CustomerLayout />} />
                     </Routes>
                     </Suspense>
                     </WorkforceProvider>

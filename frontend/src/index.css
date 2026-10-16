@@ -127,7 +127,7 @@ body {
 
 /*
  * The Saree Edit no longer uses keyframe entrances — its slides crossfade in
- * layered AnimatePresence rendering (see SareeEditCarousel.jsx), which keeps
+ * layered AnimatePresence rendering, which keeps
  * the outgoing slide mounted until the incoming one is visible.
  */
 

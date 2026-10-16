@@ -19,11 +19,8 @@
  *     toasts, scroll restoration) and the design's `Home` renders the twelve
  *     sections inside it.
  *
- * It is mounted by `layouts/CustomerLayout.jsx`, at the customer root, only
- * while the switch asks for it (`?home=aarna` in development,
- * `VITE_STOREFRONT_HOME=aarna` in a deployed build) — see
- * `config/storefrontHome.js`. With the switch off, nothing in this folder is
- * reachable from a customer's page.
+ * `CustomerLayout.jsx` mounts this as the only customer storefront. Staff
+ * portals remain separate routes in `App.jsx`.
  */
 
 import { useEffect } from "react";
@@ -42,16 +39,9 @@ import OrderSuccess from "./pages/OrderSuccess.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
-/* PHASE 11 — the migrated account screens. The port's own pages are imported
-   where the port mounts them (as the bag, the journey and the auth screens above
-   are): the boundary's chunk carries them, and the account's route-level code
-   splitting is unchanged — `App.jsx` keeps its own lazy pages for the Atelier
-   storefront, and this file keeps its own component for the port. Stage 2.2
-   redrew `/account`; Stage 2.3 redrew the profile and the addresses; Stage 2.4
-   redrew the four order screens. Their names are the port's own, deliberately
-   distinct from the `lazy` declarations below, so the two kinds of route can
-   never be confused: everything declared `lazy` below is still production's page,
-   and a name that is not in that list is this boundary's own. */
+import ResetPassword from "./pages/ResetPassword.jsx";
+/* The account screens are native Aarna pages. They keep the existing shared
+   account contexts, service calls, and guest-order route behavior. */
 import AccountOverview from "./pages/account/Overview.jsx";
 import AccountProfilePage from "./pages/account/Profile.jsx";
 import AccountAddressesPage from "./pages/account/Addresses.jsx";
@@ -70,8 +60,7 @@ import AccountOrderReturnPage from "./pages/account/OrderReturn.jsx";
    machines inside them are production's, unchanged. */
 import AccountAiMirrorPage from "./pages/account/AiMirror.jsx";
 import AccountAiShoppingPage from "./pages/account/AiShopping.jsx";
-/* Phase 12: the four remaining account screens are native to the design. The
-   production screens under pages/account/ stay untouched as the legacy surface. */
+/* Remaining account pages are also native Aarna screens. */
 import AccountSettings from "./pages/account/Settings.jsx";
 import AccountSecurity from "./pages/account/Security.jsx";
 import AccountPreferences from "./pages/account/Preferences.jsx";
@@ -92,24 +81,12 @@ import "./aarna.account.css";
 import "./aarna.orders.css";
 import "./aarna.ai.css";
 
-/*
-  PHASE 11 — the customer account's thirteen pages.
-
-  The boundary adopts the whole account family (see the route table below), but
-  the pages themselves migrate one at a time. A screen that has not been redrawn
-  yet renders the production component, imported here exactly as `App.jsx`
-  imports it and lazy for exactly the reason `App.jsx` loads it lazily — the
-  route-level code splitting around the account is unchanged, and a page that
-  suspends falls to the application's own `Suspense` boundary either way. A
-  screen that HAS been redrawn (the overview, at the top of this file) renders
-  the port's own page inside the shared frame, so the two kinds of route are
-  never confused: everything declared `lazy` below is still production's.
-*/
+/* All customer account routes below render Aarna-owned screens; shared state,
+   authorization, and account services continue to come from the application. */
 
 /**
- * The legacy collection entry (`/collection/:slug`), which this application
- * answers with a redirect to the managed path (`App.jsx::LegacyCollectionRedirect`).
- * The design's own vocabulary is kept for the render behind it.
+ * Compatibility redirect from the singular legacy collection URL to the
+ * canonical managed collection path.
  */
 function LegacyCollectionRedirect() {
   const { slug } = useParams();
@@ -127,57 +104,23 @@ export default function AarnaStorefront() {
       <MotionConfig reducedMotion="user">
         <UIProvider>
           <ShopProvider>
-            {/*
-              PHASE 6 — the design's own route table, restricted to the pages
-              the switch hands over.
-
-              `App.jsx` in `home-page/` mounted its shell as a layout route and
-              put every page inside it; the port mirrors that table exactly, so
-              the design's `Layout` (announcement rail, header, mega menu, mobile
-              menu, drawer, overlays, footer) is mounted once for whichever page
-              is showing — its `Outlet` slot, the same one the shell always had.
-              `CustomerLayout` decides whether this table is reached at all
-              (`config/storefrontHome.js`); the two paths below are the only ones
-              it hands over, so the design's route table cannot claim a route the
-              switch did not offer it. That last point is what makes the
-              catch-all below safe: it is reached only for a path the boundary
-              has already proved this application serves no customer route on —
-              and never for a staff portal path, which the boundary excludes by
-              name before anything is handed over.
-
-              The design's `product/:slug` becomes this application's
-              `product/:productId` — the route `App.jsx` registers — and the page
-              itself resolves either identifier against the live catalogue.
-            */}
+            {/* Aarna owns the customer route table and renders its shell once
+                around each page. App.jsx mounts this boundary only for customer
+                paths; staff portals are resolved before that catch-all. */}
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="product/:productId" element={<Product />} />
-                {/*
-                  PHASE 7 — the listings. One design page, seven URL shapes,
-                  each carrying the mode the page resolves its scope from. The
-                  paths are this application's own (`App.jsx`), never the
-                  design's: a design destination such as `/shop/sarees` is
-                  translated by the routing shim before it is ever rendered.
-                */}
+                {/* A single Aarna listing page resolves shop, explore, search,
+                    category, collection, and navigation scopes. */}
                 <Route path="shop" element={<Shop mode="shop" />} />
                 <Route path="explore" element={<Shop mode="explore" />} />
                 <Route path="search" element={<Shop mode="search" />} />
                 <Route path="category/:slug" element={<Shop mode="category" />} />
                 <Route path="collections/:slug" element={<Shop mode="collection" />} />
                 <Route path="collection/:slug" element={<LegacyCollectionRedirect />} />
-                {/*
-                  PHASE 8 — the wishlist and the information pages.
-
-                  `/account/wishlist` is this application's canonical wishlist
-                  route; `/wishlist` is the legacy entry `App.jsx` redirects to
-                  it, and the port answers it with the same redirect *inside* the
-                  design's shell, so a customer following the header's heart from
-                  a ported page never sees the production chrome paint first.
-
-                  The four information routes are the ones `routeManifest`
-                  carries; the page reads its own metadata from that manifest.
-                */}
+                {/* Wishlist and information pages stay inside the Aarna shell;
+                    the wishlist URL redirects to its account destination. */}
                 <Route path="account/wishlist" element={<Wishlist />} />
                 {/* PHASE 9 — the bag, inside the design's full shell, exactly as
                     the production bag keeps the shopping chrome. */}
@@ -188,64 +131,21 @@ export default function AarnaStorefront() {
                 <Route path="privacy" element={<Info />} />
                 <Route path="terms" element={<Info />} />
                 {/*
-                  PHASE 10 — the customer authentication screens.
-
-                  The design never drew one: its `/account` is a prototype that
-                  stores a name in `localStorage` and says "no server account is
-                  created" on the page. So these three pages are written in the
-                  design's vocabulary and have no design counterpart — the tool
-                  checks they exist and never writes them (see ADDED in
-                  `scripts/aarna-port.js`). They are the application's own
-                  screens, mounted here exactly as Phase 9 mounted the bag:
-                  only while the switch asks for the port, inside the design's
-                  full shell — the chrome production gives them too.
-
-                  `/reset-password` is deliberately NOT here. Its production
-                  screen cannot complete a reset (`ResetPasswordRequest`
-                  requires a `userId`/`token` pair the screen never reads), and
-                  dressing an unreachable flow would be staging. It keeps the
-                  production page; so do the staff portals. (`/account/**` was
-                  still production-side then — PHASE 11 adopts it below.)
-                  Recorded in `docs/PHASE-10-AUTHENTICATION-UI.md` §7.
+                  Aarna authentication pages use the existing AuthContext and
+                  reset service. The reset page reads the userId/token query pair;
+                  no backend auth behavior is changed.
+                  The existing forgot-password endpoint still does not dispatch
+                  reset emails, so an email reset journey remains unavailable
+                  until that backend capability exists. Staff portals keep their
+                  original routes.
                 */}
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
                 <Route path="forgot-password" element={<ForgotPassword />} />
-                {/*
-                  PHASE 11 — the customer account.
-
-                  Thirteen URLs, under the two guards production already draws:
-                  the ten account SCREENS stand behind the same `ProtectedRoute`
-                  the production tree wraps them in, while the three order PAGES
-                  stay UNGUARDED on purpose — they are the guest-order surface
-                  (`OrderPageShell` branches on `isAuthenticated`, handing a
-                  guest the `/signin?returnTo=%2Faccount%2Forders` and
-                  `/signup?returnTo=%2Faccount%2Forders` links, and
-                  `claimGuestOrders` attaches the order after sign-in). The
-                  `/account/wishlist` route above is not part of this family: it
-                  belongs to the wishlist surface Phase 8 adopted.
-
-                  Phase 11 is a UI migration, one page at a time. Until a page
-                  is redrawn, the element below is the PRODUCTION page — the
-                  same component, the same contexts, the same validators, the
-                  same lazy boundary — so the boundary can move without a
-                  single behaviour moving with it. Each later step swaps one
-                  element for its ported page, rendered inside the shared
-                  `pages/account/AccountFrame.jsx`.
-
-                  The swaps are the index route first (`/account` renders the
-                  port's `Overview`), then the profile and the addresses (Stage
-                  2.3), then the four order screens (Stage 2.4) — each one reading
-                  the same contexts its production page reads, stating the same
-                  facts from them and calling the same context methods for every
-                  action. The production pages themselves are untouched and still
-                  serve these paths in the Atelier storefront (`App.jsx`), and the
-                  guards these routes sit behind are unchanged: the order list
-                  stays inside `ProtectedRoute`, and the three single-order URLs
-                  stay open to a guest, because they are the guest-order surface
-                  (`OrderFrame` branches on the session exactly as production's
-                  `OrderPageShell` does).
-                */}
+                <Route path="reset-password" element={<ResetPassword />} />
+                {/* Protected customer screens share the AuthContext guard; the
+                    individual order routes remain guest-accessible so guests can
+                    inspect and claim their orders. */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="account" element={<AccountOverview />} />
                   <Route path="account/profile" element={<AccountProfilePage />} />
@@ -261,10 +161,8 @@ export default function AarnaStorefront() {
                 <Route path="account/orders/:orderId" element={<AccountOrderDetailPage />} />
                 <Route path="account/orders/:orderId/track" element={<AccountOrderTrackingPage />} />
                 <Route path="account/orders/:orderId/return" element={<AccountOrderReturnPage />} />
-                {/* The navigation-scope register (`/women/sarees/silk`, …) and
-                    `/collections` — the paths `App.jsx` sends to its navigation
-                    listing. Anything else the boundary hands over resolves to
-                    no scope, and the page answers with the design's 404. */}
+                {/* Unmatched customer paths are resolved by Aarna's listing
+                    scope resolver and its own not-found state. */}
                 <Route path="*" element={<Shop mode="navigation" />} />
               </Route>
 
@@ -279,7 +177,7 @@ export default function AarnaStorefront() {
                 application's own `ProtectedRoute`, so a guest is still sent to
                 `/signin?returnTo=…`, and the pages inside read the existing
                 `CartContext`, `CheckoutContext` and `OrderContext` — the same
-                contexts the production pages read.
+                shared contexts used across the application.
               */}
               <Route element={<JourneyFrame />}>
                 <Route

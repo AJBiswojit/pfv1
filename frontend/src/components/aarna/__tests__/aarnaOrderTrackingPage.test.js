@@ -51,7 +51,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 const PAGE = "src/components/aarna/pages/account/OrderTracking.jsx";
-const PRODUCTION_PAGE = "src/pages/account/OrderTracking.jsx";
+const PRODUCTION_PAGE = "src/components/aarna/pages/account/OrderTracking.jsx";
 const SERVICE = "src/services/orders/trackingService.js";
 
 const storage = new Map();
@@ -78,7 +78,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -247,7 +247,7 @@ test("the shipment, the destination and the ways on are the order's own", () => 
 
 /* ── 3 · nothing is invented ───────────────────────────────────────────────── */
 
-test("the page touches no storage, calls no API of its own, and keeps production's own screen", () => {
+test("the page uses shared tracking state and Aarna owns the route", () => {
   const page = code();
 
   for (const banned of ["localStorage", "sessionStorage", "fetch(", "axios", "apiGet", "apiPost", "setInterval"]) {
@@ -260,5 +260,7 @@ test("the page touches no storage, calls no API of its own, and keeps production
   assert.match(read(SERVICE), /export const buildTrackingView/, "the tracking service moved");
   assert.match(read(SERVICE), /timestamp: event\?\.at \?\? null,/, "the service no longer withholds a date for an unrecorded step");
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
-  assert.match(read("src/App.jsx"), /<Route path="\/account\/orders\/:orderId\/track" element=\{<OrderTracking \/>\} \/>/, "App.jsx no longer renders production's screen");
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(storefront, /<Route path="account\/orders\/:orderId\/track" element=\{<AccountOrderTrackingPage \/>\} \/>/, "Aarna no longer owns tracking");
+  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
 });

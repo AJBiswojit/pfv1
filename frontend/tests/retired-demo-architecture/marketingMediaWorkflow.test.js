@@ -506,95 +506,38 @@ test("isPlacementRecordLive reports the canonical truth behind admin labels", ()
 });
 
 /* ------------------------------------------------------------------ */
-/* Storefront consumer tripwires — every placement stays wired         */
+/* Active customer-surface tripwires                                   */
 /* ------------------------------------------------------------------ */
 
 const src = (...parts) =>
   readFileSync(join(process.cwd(), "src", ...parts), "utf8");
 
-test("every placement has a real storefront consumer seam", () => {
-  const consumers = [
-    src("pages", "AtelierDesign.jsx"),
-    src("components", "storefront", "HeroCarousel.jsx"),
-    src("components", "storefront", "SareeEditCarousel.jsx"),
-    src("components", "storefront", "BrideGroomEdit.jsx"),
-    src("components", "storefront", "NewArrivals.jsx"),
-    src("components", "storefront", "CelebrationEdit.jsx"),
-    src("components", "storefront", "SaleBanner.jsx"),
-    src("components", "storefront", "PlacementProductRail.jsx"),
-    src("pages", "CatalogueListing.jsx"),
-  ].join("\n");
-
-  const expectedSeams = {
-    [MARKETING_PLACEMENTS.HOME_HERO]: "AtelierDesign",
-    [MARKETING_PLACEMENTS.SAREE_SECTION]: "SareeEditCarousel",
-    [MARKETING_PLACEMENTS.LEHENGA_SECTION]: "PlacementProductRail",
-    [MARKETING_PLACEMENTS.FESTIVE_SECTION]: "CelebrationEdit + SaleBanner",
-    [MARKETING_PLACEMENTS.WOMEN_SECTION]: "PlacementProductRail",
-    [MARKETING_PLACEMENTS.BRIDAL_SECTION]: "BrideGroomEdit",
-    [MARKETING_PLACEMENTS.GROOM_SECTION]: "BrideGroomEdit",
-    [MARKETING_PLACEMENTS.KIDS_SECTION]: "PlacementProductRail",
-    [MARKETING_PLACEMENTS.NEW_ARRIVALS]: "NewArrivals",
-    [MARKETING_PLACEMENTS.EDITORIAL]: "CelebrationEdit",
-    [MARKETING_PLACEMENTS.PROMOTION]: "SaleBanner",
-  };
-
-  Object.entries(expectedSeams).forEach(([placementId, seam]) => {
-    assert.ok(
-      consumers.includes(`MARKETING_PLACEMENTS.${placementId}`),
-      `${placementId} must be consumed by its storefront seam (${seam})`
-    );
-  });
-
-  /* Listing-surface placements are consumed generically through the
-     vocabulary-driven matcher — never by a literal id in the page. */
-  const listing = src("pages", "CatalogueListing.jsx");
-  assert.ok(listing.includes("listingPlacementsForScope"));
-  assert.ok(!listing.includes("BANGLES_SECTION"), "no hardcoded placement ids in the listing page");
-  assert.ok(!listing.includes("JEWELLERY_SECTION"), "no hardcoded placement ids in the listing page");
-  listingProductPlacements()
-    .map((placement) => placement.id)
-    .forEach((placementId) => {
-      assert.ok(
-        Object.values(MARKETING_PLACEMENTS).includes(placementId),
-        `${placementId} must come from the placement vocabulary`
-      );
-    });
-  /* Every placement in the vocabulary is accounted for by a seam above or
-     by the listing matcher — none is advertised live without a consumer. */
-  assert.deepEqual(
-    new Set([
-      ...Object.keys(expectedSeams),
-      ...listingProductPlacements().map((placement) => placement.id),
-    ]),
-    new Set(MARKETING_PLACEMENT_OPTIONS.map((placement) => placement.id))
-  );
+test("Aarna owns the active homepage and catalogue listing routes", () => {
+  const app = src("App.jsx");
+  const storefront = src("components", "aarna", "AarnaStorefront.jsx");
+  const homepage = src("components", "aarna", "pages", "Home.jsx");
+  const listing = src("components", "aarna", "pages", "Shop.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.match(storefront, /import Home from "\.\/pages\/Home\.jsx"/);
+  assert.match(storefront, /import Shop from "\.\/pages\/Shop\.jsx"/);
+  assert.match(homepage, /<HomepageSection sectionKey=/);
+  assert.match(listing, /useCatalogueQuery/);
+  assert.doesNotMatch(app, /AtelierDesign|pages\/(CatalogueListing|Explore|Shop)/);
 });
 
-test("the hero keeps its dedicated workflow — no product-catalogue curation leaks into it", () => {
-  const hero = src("components", "storefront", "HeroCarousel.jsx");
-  const homepage = src("pages", "AtelierDesign.jsx");
-  assert.ok(!hero.includes("marketingPlacementRepository"));
-  assert.ok(!hero.includes("usePlacementProducts"));
-  assert.ok(!hero.includes("ProductCatalog"));
-  assert.ok(hero.includes("resolveHeroSlideImage"));
-  assert.ok(homepage.includes("useMarketingMedia(MARKETING_PLACEMENTS.HOME_HERO)"));
-
-  /* The authored AVIF slideshow remains the hero's backbone. */
-  const heroData = src("data", "catalog", "hero.js");
-  assert.ok((heroData.match(/\/images\/hero\/hero00\d\.avif/g) ?? []).length === 5);
+test("active Aarna pages do not import retired storefront section components", () => {
+  const homepage = src("components", "aarna", "pages", "Home.jsx");
+  const listing = src("components", "aarna", "pages", "Shop.jsx");
+  for (const legacyName of ["HeroCarousel", "SareeEditCarousel", "PlacementProductRail", "CatalogueListing"]) {
+    assert.doesNotMatch(homepage + listing, new RegExp(`\\b${legacyName}\\b`), `${legacyName} is not part of Aarna`);
+  }
+  assert.match(src("components", "storefront", "PlacementProductRail.jsx"), /export default function PlacementProductRail/);
 });
 
-test("no storefront or marketing-admin source hardcodes catalogue products", () => {
+test("no active customer or marketing-admin surface hardcodes catalogue products", () => {
   const sources = [
-    src("components", "storefront", "PlacementProductRail.jsx"),
-    src("components", "storefront", "NewArrivals.jsx"),
-    src("components", "storefront", "SareeEditCarousel.jsx"),
-    src("components", "storefront", "BrideGroomEdit.jsx"),
-    src("components", "storefront", "CelebrationEdit.jsx"),
-    src("components", "storefront", "SaleBanner.jsx"),
-    src("pages", "AtelierDesign.jsx"),
-    src("pages", "CatalogueListing.jsx"),
+    src("components", "aarna", "pages", "Home.jsx"),
+    src("components", "aarna", "pages", "Shop.jsx"),
     src("pages", "admin", "media", "AdminMarketingMedia.jsx"),
     src("components", "admin", "ProductCatalogSelector.jsx"),
     src("services", "marketing", "categoryPlacementSurfaces.js"),

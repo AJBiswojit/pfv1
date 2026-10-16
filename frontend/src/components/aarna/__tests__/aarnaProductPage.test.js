@@ -3,7 +3,7 @@
  *
  * Phase 6 adopts `home-page/src/pages/Product.jsx` the way Phase 2D adopted the
  * homepage: the design's file carried over by `scripts/aarna-port.js`, adapted
- * only by named rewrites, and reachable only through the existing `?home=aarna`
+ * only by named rewrites, and reachable only through the existing ``
  * switch — never as a re-skin of the production product route.
  *
  * These tests render the surface a browser reaches. `aarnaShellIntegrity` proves
@@ -186,19 +186,17 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let fresh = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
+  on = await mount({});
   /* A second copy of the same host, never given a catalogue snapshot: the state
      a customer meets for the moment before the catalogue lands. */
-  fresh = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  fresh = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -210,17 +208,15 @@ const seed = () => on.store.applyCatalogSnapshot({ products: RECORDS });
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("with the switch off, the product path is the application's own page and nothing of the port", () => {
+test("the product path always enters Aarna's product page despite a former Atelier override", () => {
   const markup = off.render(`/product/${RECORD_IN_STOCK.id}`);
-  assert.equal(/aan-root/.test(markup), false, "the port rendered with the switch off");
-  assert.equal(/class="pdp/.test(markup), false, "the design's product page rendered with the switch off");
-  assert.equal(/Opening this piece/.test(markup), false, "the port's loading frame rendered with the switch off");
-  assert.ok(markup.length > 0, "the production product path rendered nothing at all");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pdp container"|Opening this piece|This page has slipped/);
 });
 
 test("with the switch on, the design's product page owns the product path", () => {
   seed();
-  const markup = on.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+  const markup = on.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.match(markup, /class="aan-root"/, "the port did not mount");
   assert.match(markup, /class="pdp container"/, "the design's product page did not render");
   assert.match(markup, /pdp__add/, "the design's buy button is missing");
@@ -229,18 +225,18 @@ test("with the switch on, the design's product page owns the product path", () =
 
 test("the port's homepage and its product page are the same switch, and neither leaks into the other", () => {
   seed();
-  const home = on.render("/?home=aarna");
+  const home = on.render("/");
   assert.equal(/class="pdp container"/.test(home), false, "the homepage rendered the product page");
   assert.match(home, /class="aan-root"/, "the homepage did not render");
 
-  const product = on.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+  const product = on.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.equal(/class="hero\b|class="hero /.test(product), false, "the product page rendered the homepage");
 });
 
 /* ── 2 · the catalogue's state is the page's state ──────────────────────── */
 
 test("a catalogue that has not arrived renders the design's loading frame, and invents nothing", () => {
-  const markup = fresh.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+  const markup = fresh.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.match(markup, /Opening this piece/, "no loading state");
   assert.match(markup, /Fetching the catalogue\./);
   assert.equal(/Phase 6 Silk Saree/.test(markup), false, "a piece appeared before the catalogue did");
@@ -272,7 +268,7 @@ test("a half-loaded catalogue never claims a piece does not exist", () => {
 
 test("a catalogue with no such piece renders the design's 404", () => {
   seed();
-  const markup = on.render("/product/no-such-piece-at-all?home=aarna");
+  const markup = on.render("/product/no-such-piece-at-all");
   assert.match(markup, new RegExp(esc("This page has slipped")), "the design's 404 did not render");
   assert.equal(/class="pdp container"/.test(markup), false, "a product page rendered for an unknown piece");
 });
@@ -281,7 +277,7 @@ test("a catalogue with no such piece renders the design's 404", () => {
 
 test("the record reaches the page: its name, its copy, and the accordions it earns", () => {
   seed();
-  const markup = on.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+  const markup = on.render(`/product/${RECORD_IN_STOCK.id}`);
 
   assert.match(markup, new RegExp(esc(RECORD_IN_STOCK.name)), "the catalogue's name is missing");
   assert.match(markup, new RegExp(esc(RECORD_IN_STOCK.description)), "the catalogue's description is missing");
@@ -307,8 +303,8 @@ test("the record reaches the page: its name, its copy, and the accordions it ear
 
 test("a piece with no details renders no Details section — nothing is invented to fill it", () => {
   seed();
-  const withDetails = on.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
-  const withoutDetails = on.render(`/product/${RECORD_UNAVAILABLE.id}?home=aarna`);
+  const withDetails = on.render(`/product/${RECORD_IN_STOCK.id}`);
+  const withoutDetails = on.render(`/product/${RECORD_UNAVAILABLE.id}`);
   assert.match(withDetails, />Details</, "the record's details never reached an accordion");
   assert.equal(/>Details</.test(withoutDetails), false, "a Details section rendered for a record without any");
 });
@@ -340,7 +336,7 @@ test("a single-value option is preselected — the port asks no more than the pr
      "Free Size" needs no choice there; the port must not demand one. The SSR
      render shows the chip already chosen on an untouched page. */
   seed();
-  const markup = on.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+  const markup = on.render(`/product/${RECORD_IN_STOCK.id}`);
   /* The chip's whole tag: the attribute order is React's, so read back to it. */
   const chipStart = markup.indexOf("class=\"chip");
   const chip = markup.slice(markup.lastIndexOf("<button", chipStart), markup.indexOf("</button>", chipStart));
@@ -358,7 +354,7 @@ test("a single-value option is preselected — the port asks no more than the pr
 
 test("a piece the catalogue marks unavailable says so, and cannot be bagged", () => {
   seed();
-  const markup = on.render(`/product/${RECORD_UNAVAILABLE.id}?home=aarna`);
+  const markup = on.render(`/product/${RECORD_UNAVAILABLE.id}`);
   assert.match(markup, new RegExp(esc("Currently unavailable")), "the refusal copy is missing");
   assert.equal(/Add to Bag/.test(markup), false, "an unavailable piece still offers Add to Bag");
   const buy = markup.slice(Math.max(0, markup.indexOf("pdp__add") - 160), markup.indexOf("pdp__add") + 240);
@@ -367,7 +363,7 @@ test("a piece the catalogue marks unavailable says so, and cannot be bagged", ()
 
 test("a low-stock piece states the catalogue's own availability", () => {
   seed();
-  const markup = on.render(`/product/${RECORD_LOW_STOCK.id}?home=aarna`);
+  const markup = on.render(`/product/${RECORD_LOW_STOCK.id}`);
   assert.match(markup, new RegExp(esc("Only a few left")));
   assert.match(markup, /Add to Bag/);
 });
@@ -414,10 +410,10 @@ test("an unreachable catalogue renders the error state — retry and all — not
      the design's Button and had not imported it). So it is rendered here, on a
      host whose catalogue hydrate genuinely fails: in this process there is no
      backend to answer the API, which is exactly the state the branch is for. */
-  const host = await mount(SWITCH_ON);
+  const host = await mount({});
   try {
     await host.store.hydrateCatalog({ force: true });
-    const markup = host.render(`/product/${RECORD_IN_STOCK.id}?home=aarna`);
+    const markup = host.render(`/product/${RECORD_IN_STOCK.id}`);
     assert.match(markup, new RegExp(esc("We couldn")), "the error state did not render");
     assert.match(markup, new RegExp(esc("The catalogue is unreachable. Please try again.")));
     assert.match(markup, /Try again/, "no retry offered");

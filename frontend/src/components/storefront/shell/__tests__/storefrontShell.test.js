@@ -206,21 +206,20 @@ test("the header drives the existing overlays rather than rebuilding them", () =
   assert.doesNotMatch(source, /createContext|apiClient|fetch\(|useCart|localStorage/);
 });
 
-test("the production shell is untouched and still owns the customer routes", () => {
+test("the active customer shell is owned by Aarna and excludes the retired storefront shell", () => {
   const app = read("src/App.jsx");
-  assert.match(app, /<Route index element=\{<AtelierDesign \/>\} \/>/);
-  assert.match(app, /<Route element=\{<CustomerLayout \/>\}>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.equal(app.includes("StorefrontHeader"), false);
 
   const layout = read("src/layouts/CustomerLayout.jsx");
-  assert.match(layout, /import SiteHeader from "\.\.\/components\/shell\/SiteHeader";/);
-  assert.match(layout, /<SiteHeader counts=\{counts\} onOpenCart=\{cart\.openDrawer\} \/>/);
+  assert.match(layout, /import AarnaStorefront from "\.\.\/components\/aarna\/AarnaStorefront"/);
+  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.doesNotMatch(layout, /SiteHeader|SiteFooter|CheckoutHeader/);
 
-  /* The previous shell files are byte-identical to the reviewed baseline. */
-  for (const file of ["SiteHeader", "MegaMenu", "MobileNav", "SearchPanel", "AccountDropdown", "SiteFooter"]) {
-    assert.equal(existsSync(`${ROOT}/src/components/shell/${file}.jsx`), true, `${file} missing`);
+  /* Retained modules from preview and QA workflows are not part of Aarna. */
+  for (const entryPoint of ["src/App.jsx", "src/layouts/CustomerLayout.jsx"]) {
+    assert.doesNotMatch(read(entryPoint), /StorefrontHeader|MegaMenu|MobileNav|SearchPanel/);
   }
-  assert.doesNotMatch(read("src/components/shell/SiteHeader.jsx"), /pf-shell__/);
 });
 
 /* ------------------------------------------------------------------ */

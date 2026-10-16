@@ -4,7 +4,7 @@
  * Phase 7 adopts `home-page/src/pages/Shop.jsx` the way Phase 6 adopted the
  * product page: the design's file carried over by `scripts/aarna-port.js`,
  * adapted only by named rewrites, reachable only through the existing
- * `?home=aarna` switch, and wired to the application's own listing engine.
+ * `` switch, and wired to the application's own listing engine.
  *
  * These tests render the surfaces a browser reaches:
  *
@@ -181,15 +181,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   /* The catalogue the application would have fetched by the time a shopper
      opens a listing: products, the category they sit in, and the collection. */
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [COLLECTION] });
@@ -202,17 +200,16 @@ after(async () => {
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("with the switch off, the listing routes are the application's own pages and nothing of the port", () => {
+test("listing routes always render Aarna's listing UI regardless of the former override", () => {
   for (const path of ["/shop", "/explore", "/search?q=silk", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = off.render(path);
-    assert.equal(/aan-root/.test(markup), false, `${path} rendered the port with the switch off`);
-    assert.equal(/class="shop container"/.test(markup), false, `${path} rendered the design's listing with the switch off`);
-    assert.ok(markup.length > 0, `${path} rendered nothing at all`);
+    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="shop container"/, `${path} did not render Aarna's listing`);
   }
 });
 
 test("with the switch on, the design's listing owns every listing route the application serves", () => {
-  for (const path of ["/shop?home=aarna", "/explore?home=aarna", "/search?home=aarna&q=silk", "/women?home=aarna", "/women/sarees?home=aarna", "/category/sarees?home=aarna", "/collections/silk-classics?home=aarna"]) {
+  for (const path of ["/shop", "/explore", "/search?q=silk", "/women", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = on.render(path);
     assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="shop container"/, `${path} did not render the design's listing shell`);
@@ -223,17 +220,14 @@ test("the switch stops at the routes it does not own", () => {
   /* `listing-controls` is the listing's own bar — the sort select, the refine
      control and the count. Nothing else in the port draws it, so it is the one
      marker that says "this path was handed to the listing page". */
-  for (const path of ["/cart?home=aarna", "/checkout?home=aarna", "/account/orders?home=aarna", "/signin?home=aarna", "/about?home=aarna", "/contact?home=aarna", "/privacy?home=aarna", "/terms?home=aarna", "/account/wishlist?home=aarna"]) {
+  for (const path of ["/cart", "/checkout", "/account/orders", "/signin", "/about", "/contact", "/privacy", "/terms", "/account/wishlist"]) {
     const markup = on.render(path);
     assert.equal(/listing-controls/.test(markup), false, `${path} was handed to the port's listing`);
   }
-  /* …and this one is not the port's at all: `/reset-password` keeps the
-     production page it has always had. (PHASE 9 adopted the money path by name,
-     PHASE 10 the three customer auth screens and PHASE 11 the account — so the
-     line that used to run through the account now ends here; the account's own
-     suite pins its boundary, and that it is not the LISTING's is asserted with
-     the other nine routes above.) */
-  assert.equal(/aan-root/.test(on.render("/reset-password?home=aarna")), false, "/reset-password mounted the port at all");
+  /* Reset-password now belongs to the Aarna auth route, never the listing. */
+  const reset = on.render("/reset-password?userId=user-1&token=token-1");
+  assert.match(reset, /aan-root/, "reset-password did not render in the Aarna shell");
+  assert.equal(/listing-controls/.test(reset), false, "reset-password rendered listing controls");
 });
 
 test("Phase 8's own surfaces mount the port, and never the listing", () => {
@@ -241,12 +235,12 @@ test("Phase 8's own surfaces mount the port, and never the listing", () => {
      the page it belongs to. The design's wishlist borrows the listing page's
      `shop container` frame and the information page its own `info container`,
      so the marker that separates them is the listing's control bar. */
-  const wishlist = on.render("/account/wishlist?home=aarna");
+  const wishlist = on.render("/account/wishlist");
   assert.match(wishlist, /class="aan-root"/, "the wishlist did not mount the port");
   assert.match(wishlist, /class="label">Saved pieces</, "the wishlist did not render its own page");
   assert.equal(/listing-controls/.test(wishlist), false, "the wishlist was handed to the listing");
 
-  for (const path of ["/about?home=aarna", "/contact?home=aarna", "/privacy?home=aarna", "/terms?home=aarna"]) {
+  for (const path of ["/about", "/contact", "/privacy", "/terms"]) {
     const markup = on.render(path);
     assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="info container"/, `${path} did not render the information page`);
@@ -305,7 +299,7 @@ test("every listing path resolves to a scope from the live registers — or to n
 });
 
 test("an unknown slug is the design's 404 — not an empty edit, and not a fabricated scope", () => {
-  const markup = on.render("/category/not-a-category?home=aarna");
+  const markup = on.render("/category/not-a-category");
   assert.match(markup, /class="aan-root"/, "the port did not mount");
   assert.equal(/class="shop container"/.test(markup), false, "an unknown category rendered a listing");
   assert.equal(/All Pieces/.test(markup), false, "an unknown category was titled as the shop");
@@ -314,7 +308,7 @@ test("an unknown slug is the design's 404 — not an empty edit, and not a fabri
 /* ── 3 · the shell is the design's; the words and the counts are not ──────── */
 
 test("the navigation listing prints the register's own eyebrow, title and trail", () => {
-  const markup = on.render("/women/sarees/silk?home=aarna");
+  const markup = on.render("/women/sarees/silk");
   assert.match(markup, /class="label">Women · Sarees</, "the register's eyebrow is missing");
   assert.match(markup, /class="display shop__title">Silk Sarees</, "the manifest's label is missing");
   assert.match(markup, /href="\/women\/sarees"/, "the trail's parent link is missing");
@@ -323,7 +317,7 @@ test("the navigation listing prints the register's own eyebrow, title and trail"
 
 test("the sort control carries the application's own eight sorts, and no others", async () => {
   const { sortOptions } = await on.vite.ssrLoadModule("/src/data/products/taxonomy.js");
-  const markup = on.render("/shop?home=aarna");
+  const markup = on.render("/shop");
   const values = [...markup.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(values, sortOptions.map((option) => option.id), "the sort select is not the application's sort register");
   assert.equal(values.length, 8);
@@ -331,7 +325,7 @@ test("the sort control carries the application's own eight sorts, and no others"
 });
 
 test("the count is the backend's total, and the catalogue is never claimed before it arrives", () => {
-  const markup = on.render("/shop?home=aarna");
+  const markup = on.render("/shop");
   assert.match(markup, /class="shop__count">Loading…</, "the listing claimed a count before the catalogue arrived");
   assert.equal(/\d+ pieces?</.test(markup), false, "a count was printed before the backend answered");
   /* Nothing invented: no sample product, price or stock line from the design's
@@ -341,14 +335,14 @@ test("the count is the backend's total, and the catalogue is never claimed befor
 });
 
 test("the search surface is the design's, and the term lives in the URL", () => {
-  const withTerm = on.render("/search?home=aarna&q=silk");
+  const withTerm = on.render("/search?q=silk");
   assert.match(withTerm, /class="listing-search"/, "the search surface is missing");
   assert.match(withTerm, /class="search__form"/, "the design's search form class is missing");
   assert.match(withTerm, /value="silk"/, "the term from the URL is not in the field");
   assert.match(withTerm, /class="display shop__title">“silk”</, "the page is not titled by its term");
   assert.equal(/Bridal Bangles/.test(withTerm), false, "suggestions were offered while a term was set");
 
-  const empty = on.render("/search?home=aarna");
+  const empty = on.render("/search");
   assert.match(empty, /class="display shop__title">Find your piece</, "an empty search lost the design's own empty title");
   assert.match(empty, /Bridal Bangles/, "the application's own suggestions are missing from an empty search");
 });
@@ -426,7 +420,7 @@ test("the listing hands the design's card URL strings — the plates never reach
   assert.deepEqual(srcs(card(records.map((record) => normalizeMediaReference(record)).filter(Boolean))),
     ["/fixtures/phase7/saree-cover.jpg", "/fixtures/phase7/saree-alt.jpg"],
     "the resolver's strings did not reach the card");
-  assert.equal(/\[object Object\]/.test(on.render("/shop?home=aarna")), false, "a record was stringified into the listing");
+  assert.equal(/\[object Object\]/.test(on.render("/shop")), false, "a record was stringified into the listing");
 });
 
 test("a listing's facets, active chips and pagination are the production ones, re-expressed in the design's chip", () => {

@@ -14,7 +14,7 @@
  * TWO LEVELS ARE PINNED, and the difference matters:
  *
  *   · THE ROUTE, exactly as a browser reaches it — `CustomerLayout` under the
- *     switch, at `/checkout?home=aarna`. This is where the guard shows: the
+ *     switch, at `/checkout`. This is where the guard shows: the
  *     page does not render for a signed-out visitor, because the route is
  *     wrapped in the application's own `ProtectedRoute`, unchanged.
  *   · THE PAGE, rendered directly with this application's real provider stack
@@ -187,15 +187,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
   on.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   off.store.applyCatalogSnapshot({ products: RECORDS, categories: [CATEGORY], collections: [] });
   saveGuestCart(STORED);
@@ -213,25 +211,20 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the switch, the guard, and the quiet chrome ────────────────────── */
 
-test("with the switch off, /checkout is production's own guarded route", () => {
+test("/checkout always uses Aarna's guarded journey UI", () => {
   const markup = off.renderRoute("/checkout");
   assert.ok(markup.length > 0, "/checkout rendered nothing at all");
-  assert.equal(/aan-root|pf-progress|pf-journey__grid/.test(markup), false, "/checkout mounted the port with the switch off");
-  assert.match(markup, /pt-16 md:pt-20/, "the production shell is missing from /checkout");
+  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /pf-journey/);
 });
 
 test("with the switch on, the design's quiet journey chrome wraps the route — and the page stays guarded", () => {
-  const markup = on.renderRoute("/checkout?home=aarna");
+  const markup = on.renderRoute("/checkout");
   assert.match(markup, /class="aan-root"/, "the port did not mount at /checkout");
   assert.match(markup, /<main class="pf-journey">/, "the checkout did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
-  /* The chrome is the REDUCED one — no announcement rail, no mega menu, no
-     search overlay, no drawer: the design-language equivalent of the
-     production `CheckoutHeader`. The assertion is that the parts of the
-     shopping shell that would distract from a payment do not leak into the
-     order journey. The FOOTER stays, because production's own layout keeps
-     `SiteFooter` on the money path too (`layouts/CustomerLayout.jsx`:117 → 147)
-     — that parity is deliberate, not an oversight. */
+  /* Aarna keeps checkout focused: no announcement rail, mega menu, search
+     overlay, or shopping drawer appears in the order journey. */
   assert.equal(
     /class="announce"|class="drawer"|class="nav__link"|class="mobile-menu"|class="search-overlay"/.test(markup),
     false,
@@ -326,8 +319,7 @@ test("the ledger beside the steps is the bag's own, through the bag page's own c
     /import \{ BagTotals, OfferField, lineTotalFor \} from '\.\/Cart\.jsx';/,
     "the journey no longer shares the bag's ledger, offer field and line figure",
   );
-  /* One definition of a line's figure in the whole port — the same rule the
-     production cart line applies (`CartLineItem.jsx`). */
+  /* The Aarna bag exports one shared definition of a line's figure. */
   assert.match(read(BAG), /export const lineTotalFor = /, "the bag no longer exports the line figure");
   assert.equal(
     (read(BAG).match(/Number\.isFinite\(item\??\.lineTotal\)/g) ?? []).length,

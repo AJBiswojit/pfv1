@@ -132,15 +132,13 @@ async function mount(define) {
   };
 }
 
-const SWITCH_ON = { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' };
-const SWITCH_OFF = { "import.meta.env.VITE_STOREFRONT_HOME": '"atelier"' };
 
 let on = null;
 let off = null;
 
 before(async () => {
-  on = await mount(SWITCH_ON);
-  off = await mount(SWITCH_OFF);
+  on = await mount({});
+  off = await mount({});
 });
 
 after(async () => {
@@ -154,14 +152,15 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the guard, and no fabricated confirmation ──────────────────────── */
 
-test("with the switch off, /order-success is production's own guarded route", () => {
+test("/order-success always renders Aarna's confirmation route without inventing an order", () => {
   const markup = off.renderRoute("/order-success");
   assert.ok(markup.length > 0, "/order-success rendered nothing at all");
-  assert.equal(/aan-root|pf-confirm/.test(markup), false, "/order-success mounted the port with the switch off");
+  assert.match(markup, /class="aan-root"/);
+  assert.equal(/Order Confirmed|Thank you,/.test(markup), false, "a direct visit fabricated a confirmation");
 });
 
 test("with the switch on, a direct visit confirms nothing — no order, no number, no claim", () => {
-  const markup = on.renderRoute("/order-success?home=aarna");
+  const markup = on.renderRoute("/order-success");
   const page = on.renderPage();
 
   for (const [label, html] of [["the route", markup], ["the page", page]]) {
@@ -259,7 +258,7 @@ test("no prototype copy and no banned promise reaches the page", () => {
 });
 
 test("the confirmation's own chrome is the quiet journey, and it can be revisited without a second order", () => {
-  const markup = on.renderRoute("/order-success?home=aarna");
+  const markup = on.renderRoute("/order-success");
   assert.match(markup, /class="aan-root"/, "the port did not mount at /order-success");
   assert.match(markup, /<main class="pf-journey">/, "the confirmation did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");

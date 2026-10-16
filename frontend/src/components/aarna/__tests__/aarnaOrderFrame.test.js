@@ -144,7 +144,7 @@ async function mount() {
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define: { "import.meta.env.VITE_STOREFRONT_HOME": '"aarna"' },
+
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -312,37 +312,21 @@ test("the four order screens are the port's own pages, imported where the port m
   }
 });
 
-test("production still owns these paths in App.jsx, with the same guards", () => {
+test("Aarna owns the single-order routes outside its account guard", () => {
   const mount = source(MOUNT);
-  const production = source(PRODUCTION_APP);
-
-  /* The guard block, and where it closes. */
-  const guardOpen = mount.indexOf("<Route element={<ProtectedRoute />}>");
+  const storefront = source("src/components/aarna/AarnaStorefront.jsx");
+  const app = source(PRODUCTION_APP);
+  const guardOpen = mount.indexOf("<Route element={<ProtectedRoute />}");
   const guardClose = mount.indexOf("</Route>", mount.indexOf('<Route path="account/instagram-rewards"'));
-  const listAt = mount.indexOf('<Route path="account/orders" element={<AccountOrdersPage />} />');
-  assert.ok(guardOpen !== -1 && guardClose > guardOpen, "the family's guard block moved");
-  assert.ok(listAt > guardOpen && listAt < guardClose, "the history left the guard its customers share");
-
   for (const path of SINGLE_ORDER_URLS) {
-    const at = mount.indexOf(`<Route path="${path}" element=`);
-    assert.ok(at !== -1, `${path} is no longer declared by the port`);
-    assert.ok(at > guardClose, `${path} was put behind the guard — a guest can no longer reach it`);
-
-    const productionAt = production.indexOf(`<Route path="/${path}" element=`);
-    assert.ok(productionAt !== -1, `App.jsx no longer declares /${path}`);
+    const relative = path.replace(/^\//, "");
+    const at = mount.indexOf(`<Route path="${relative}" element=`);
+    assert.ok(at !== -1, `${relative} is not declared by Aarna`);
+    assert.ok(at > guardClose || at < guardOpen, `${relative} was put behind the account guard`);
   }
-
-  /* The three single-order pages live OUTSIDE App.jsx's guard too — the two trees
-     agree on who may open a guest's order. The band is the one that wraps the
-     history itself: the guard opener nearest before it. */
-  const appListAt = production.indexOf('<Route path="/account/orders" element={<AccountOrders />} />');
-  const appBandOpen = production.lastIndexOf("<Route element={<ProtectedRoute />}>", appListAt);
-  assert.ok(appListAt !== -1 && appBandOpen !== -1 && appBandOpen < appListAt, "App.jsx no longer guards its order history");
-  for (const path of SINGLE_ORDER_URLS) {
-    const at = production.indexOf(`<Route path="/${path}" element=`);
-    assert.ok(at !== -1, `App.jsx no longer declares /${path}`);
-    assert.ok(at < appBandOpen, `App.jsx moved /${path} behind the guard — the trees disagree`);
-  }
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\/account\/orders/);
+  assert.match(storefront, /<Route path="account\/orders\/:orderId"/);
 });
 
 test("the stage's files are declared in the port's registry, the sheet included", () => {

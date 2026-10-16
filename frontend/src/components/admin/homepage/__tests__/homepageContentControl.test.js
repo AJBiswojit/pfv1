@@ -290,8 +290,9 @@ test('unsupported section text and newsletter operations have no fake save or su
   assert.equal(tree.root.findAllByType('button').some((b) => text(b) === 'Save to backend'), false);
 });
 
-test('homepage default, design authority and backend auth constraints are preserved', () => {
-  assert.match(source('src/config/storefrontHome.js'), /return VALUES\.includes\(envValue\) \? envValue : STOREFRONT_HOME\.atelier/);
+test('Aarna is the sole customer homepage while design authority and backend auth constraints remain preserved', () => {
+  assert.match(source('src/layouts/CustomerLayout.jsx'), /<AarnaStorefront \/>/);
+  assert.doesNotMatch(source('src/config/storefrontHome.js'), /VITE_STOREFRONT_HOME|resolveStorefrontHome/);
   const router = readFileSync(`${root}../backend/app/api/v1/marketing_media.py`, 'utf8');
   assert.match(router, /Depends\(get_current_admin\)/);
   const dependencies = readFileSync(`${root}../backend/app/dependencies.py`, 'utf8');

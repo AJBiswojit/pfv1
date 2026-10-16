@@ -172,8 +172,8 @@ test("storefront rails, Explore, cards and PDP all use canonical records", () =>
 test("Product Card and homepage product rails contain no hardcoded Kids media path", () => {
   [
     "src/design-system/components/ProductCard.jsx",
-    "src/components/storefront/NewArrivals.jsx",
-    "src/components/storefront/SareeEditCarousel.jsx",
+    "src/components/storefront/PlacementProductRail.jsx",
+    "src/components/storefront/home/AarnaHomeHero.jsx",
   ].forEach((relative) => {
     const source = readFileSync(join(process.cwd(), relative), "utf8");
     assert.doesNotMatch(
