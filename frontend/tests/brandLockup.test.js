@@ -26,11 +26,11 @@ const brandSource = readFileSync(
   "utf8"
 );
 const headerSource = readFileSync(
-  join(ROOT, "src/components/shell/SiteHeader.jsx"),
+  join(ROOT, "src/components/aarna/components/layout/Header.jsx"),
   "utf8"
 );
 const footerSource = readFileSync(
-  join(ROOT, "src/components/shell/SiteFooter.jsx"),
+  join(ROOT, "src/components/aarna/components/layout/Footer.jsx"),
   "utf8"
 );
 
@@ -52,11 +52,9 @@ test("the lockup variant renders the wordmark beside the logo mark", () => {
   );
 });
 
-test("the storefront header and footer request the full lockup", () => {
-  assert.match(headerSource, /variant="lockup"/, "header uses the lockup");
-  assert.match(headerSource, /wordmark=\{brand\.name\}/, "header supplies the wordmark");
-  assert.match(footerSource, /variant="lockup"/, "footer uses the lockup");
-  assert.match(footerSource, /wordmark=\{brand\.name\}/, "footer supplies the wordmark");
+test("the active Aarna header and footer use the shared logo components", () => {
+  assert.match(headerSource, /<Logo\s*\/>/, "Aarna header uses the shared Logo");
+  assert.match(footerSource, /<BrandMark/, "Aarna footer uses the shared BrandMark");
 });
 
 test("the Brand component resolves the logo through import.meta.glob, never a hardcoded path", () => {
@@ -69,8 +67,7 @@ test("the Brand component resolves the logo through import.meta.glob, never a ha
   );
 });
 
-test("the header never invents its own logo or wordmark", () => {
-  /* The header delegates to <Brand /> and reads the name from config. */
+test("the Aarna header delegates its logo to the shared Logo component", () => {
   assert.doesNotMatch(headerSource, /pratikshya_logo/, "header must not name the logo file");
-  assert.match(headerSource, /<Brand\b/, "header renders the shared Brand component");
+  assert.match(headerSource, /<Logo\s*\/>/, "header renders the shared Aarna Logo component");
 });

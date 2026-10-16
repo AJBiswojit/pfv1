@@ -216,11 +216,10 @@ test("the active customer shell is owned by Aarna and excludes the retired store
   assert.match(layout, /<AarnaStorefront \/>/);
   assert.doesNotMatch(layout, /SiteHeader|SiteFooter|CheckoutHeader/);
 
-  /* The previous shell files are byte-identical to the reviewed baseline. */
-  for (const file of ["SiteHeader", "MegaMenu", "MobileNav", "SearchPanel", "AccountDropdown", "SiteFooter"]) {
-    assert.equal(existsSync(`${ROOT}/src/components/shell/${file}.jsx`), true, `${file} missing`);
+  /* Retained modules from preview and QA workflows are not part of Aarna. */
+  for (const entryPoint of ["src/App.jsx", "src/layouts/CustomerLayout.jsx"]) {
+    assert.doesNotMatch(read(entryPoint), /StorefrontHeader|MegaMenu|MobileNav|SearchPanel/);
   }
-  assert.doesNotMatch(read("src/components/shell/SiteHeader.jsx"), /pf-shell__/);
 });
 
 /* ------------------------------------------------------------------ */

@@ -225,13 +225,8 @@ test("with the switch on, the design's quiet journey chrome wraps the route — 
   assert.match(markup, /class="aan-root"/, "the port did not mount at /checkout");
   assert.match(markup, /<main class="pf-journey">/, "the checkout did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
-  /* The chrome is the REDUCED one — no announcement rail, no mega menu, no
-     search overlay, no drawer: the design-language equivalent of the
-     production `CheckoutHeader`. The assertion is that the parts of the
-     shopping shell that would distract from a payment do not leak into the
-     order journey. The FOOTER stays, because production's own layout keeps
-     `SiteFooter` on the money path too (`layouts/CustomerLayout.jsx`:117 → 147)
-     — that parity is deliberate, not an oversight. */
+  /* Aarna keeps checkout focused: no announcement rail, mega menu, search
+     overlay, or shopping drawer appears in the order journey. */
   assert.equal(
     /class="announce"|class="drawer"|class="nav__link"|class="mobile-menu"|class="search-overlay"/.test(markup),
     false,
@@ -326,8 +321,7 @@ test("the ledger beside the steps is the bag's own, through the bag page's own c
     /import \{ BagTotals, OfferField, lineTotalFor \} from '\.\/Cart\.jsx';/,
     "the journey no longer shares the bag's ledger, offer field and line figure",
   );
-  /* One definition of a line's figure in the whole port — the same rule the
-     production cart line applies (`CartLineItem.jsx`). */
+  /* The Aarna bag exports one shared definition of a line's figure. */
   assert.match(read(BAG), /export const lineTotalFor = /, "the bag no longer exports the line figure");
   assert.equal(
     (read(BAG).match(/Number\.isFinite\(item\??\.lineTotal\)/g) ?? []).length,
