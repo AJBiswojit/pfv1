@@ -29,7 +29,7 @@ import {
   EMPLOYEE_SELF_SERVICE_PERMISSIONS,
 } from "../src/config/rbacModel.js";
 
-import { BACKEND_ROOT } from "./helpers/backendRoot.js";
+import { BACKEND_ROOT } from "../test/helpers/backendRoot.js";
 
 const DUMP = `
 import json, sys

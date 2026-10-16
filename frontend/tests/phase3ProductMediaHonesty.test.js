@@ -238,7 +238,9 @@ test("STATIC: registered media is read through media-set and product DTO APIs", 
 
 test("STATIC: the editor does not copy registered DTO projections into authored media fields", () => {
   const text = src("components/products/editorSectionsContent.jsx");
-  assert.match(text, /<ProductMediaManager productId=\{draft\.id\} scope="admin" \/>/);
+  /* The manager is scope-aware (admin or employee portal), with the summary and the
+     full-manager link above it; the pin follows that, not one fixed scope. */
+  assert.match(text, /<ProductMediaManager productId=\{draft\.id\} scope=\{portal === "employee" \? "employee" : "admin"\} \/>/);
   assert.doesNotMatch(text, /serverProduct/);
   assert.doesNotMatch(text, /additionalImages:\\s*server/);
 });

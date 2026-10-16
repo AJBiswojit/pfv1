@@ -24,7 +24,12 @@ if (problems.length && typeof console !== "undefined") {
 }
 
 export const AI_PROVIDER_ID = activeProvider.id;
+/* The BUSINESS assistant's label (admin portal). It describes live business data and
+   must never be printed on a customer surface. */
 export const AI_PROVIDER_LABEL = "PRATIKSHYA AI (live business data)";
+/* The ACTIVE SHOPPING provider's own label, from its contract. A real shopping
+   provider states what it is through this, not through the business label above. */
+export const AI_SHOPPING_PROVIDER_LABEL = activeProvider.label;
 
 /** True for the demo provider — the SHOPPING UI surfaces an honest demo footnote. */
 export const isMockAiProvider = () => activeProvider.id === "mock";
@@ -61,6 +66,7 @@ export const askBusinessAssistant = async ({ question, preset, signal } = {}) =>
 export const aiService = {
   provider: AI_PROVIDER_ID,
   providerLabel: AI_PROVIDER_LABEL,
+  shoppingProviderLabel: AI_SHOPPING_PROVIDER_LABEL,
   isMockAiProvider,
   askShoppingAssistant,
   askBusinessAssistant,

@@ -28,8 +28,10 @@ class AttendanceSelfRoutesTests(unittest.TestCase):
         check_out = src["employee_check_out"]
         self.assertIn("get_current_employee", check_in)
         self.assertIn("get_current_employee", check_out)
-        self.assertIn('"attendance.checkin"', check_in)
-        self.assertIn('"attendance.checkout"', check_out)
+        # Canonical camelCase capability codes (rbac.EMPLOYEE_SELF_SERVICE_PERMISSIONS).
+        # The lowercase spelling never matched a granted code, so employees were refused.
+        self.assertIn('"attendance.checkIn"', check_in)
+        self.assertIn('"attendance.checkOut"', check_out)
         # Identity is never a request parameter on self routes.
         self.assertNotIn("employee_id", check_in)
         self.assertNotIn("employee_id", check_out)

@@ -93,6 +93,9 @@ export function AccountProvider({ children }) {
   const [loadError, setLoadError] = useState(null);
   const [loadErrorStatus, setLoadErrorStatus] = useState(null);
   const [sessionIdentity, setSessionIdentity] = useState(identity);
+  /* Bumped by `refreshAccount()` to re-run the same account read below (retry
+     after a failed load). It changes nothing else. */
+  const [reloadToken, setReloadToken] = useState(0);
 
   /* An account belongs to one identity: when the signed-in identity changes —
      another customer signs in, the session ends, the customer token goes — the
@@ -157,7 +160,10 @@ export function AccountProvider({ children }) {
       }
     });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, reloadToken]);
+
+  /** Re-reads the account from the backend (retry after a failed read). */
+  const refreshAccount = useCallback(() => setReloadToken((token) => token + 1), []);
 
   /** Re-reads the canonical address list from the backend. */
   const refreshAddresses = useCallback(async () => {
@@ -319,6 +325,7 @@ export function AccountProvider({ children }) {
     isLoading,
     loadError,
     loadErrorStatus,
+    refreshAccount,
     updateProfile,
     addAddress,
     updateAddress,
@@ -327,7 +334,7 @@ export function AccountProvider({ children }) {
     updatePreferences,
     signOutOtherSessions,
     changePassword,
-  }), [accountData, defaultAddress, isLoading, loadError, loadErrorStatus, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions, changePassword]);
+  }), [accountData, defaultAddress, isLoading, loadError, loadErrorStatus, refreshAccount, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, updatePreferences, signOutOtherSessions, changePassword]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -341,6 +348,7 @@ export function useAccount() {
       isLoading: false,
       loadError: null,
       loadErrorStatus: null,
+      refreshAccount:       () => {},
       updateProfile:        () => ({ ok: false, message: "" }),
       addAddress:           () => ({ ok: false, addressId: null, message: "" }),
       updateAddress:        () => ({ ok: false, message: "" }),

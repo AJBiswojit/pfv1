@@ -15,7 +15,11 @@ export default function RoleDashboard() {
 
   /* Account level wins over business role: Super Employee is not a sales
      desk, even when no STORE_MANAGER role was attached at create time. */
-  if (employee?.accountLevel === ACCOUNT_LEVELS.SUPER_EMPLOYEE || role === ROLES.STORE_MANAGER) {
+  /* `ACCOUNT_LEVELS` (the frontend mirror of the backend's three levels) has no
+     SUPER_EMPLOYEE entry, so the comparison used to read `undefined` and matched
+     any employee whose session carried no accountLevel. The backend's literal is
+     compared instead. */
+  if (employee?.accountLevel === "SUPER_EMPLOYEE" || role === ROLES.STORE_MANAGER) {
     return <ManagerDashboard />;
   }
   if (role === ROLES.SALES_EXECUTIVE) return <SalesDashboard />;

@@ -41,7 +41,7 @@ import { clearTokens, getAccessToken } from "../services/api/apiClient";
 export const AUTH_STORAGE_KEY    = "pratikshya_auth";
 export const CUSTOMERS_REGISTRY_KEY = "pratikshya_customers_registry"; // kept for cart/wishlist compat
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 // ---------------------------------------------------------------------------
 // Session restore

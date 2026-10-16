@@ -83,3 +83,6 @@ pendulum==3.0.0
 # `pratikshya_local` database, create their own throwaway database beside it,
 # and drop it again. With no local server they SKIP rather than fail.
 aiosqlite==0.22.1
+# pyproject.toml sets `asyncio_mode = "auto"`, which needs this plugin to run the
+# async test functions. (The repo has no backend lockfile; this is the manifest pin.)
+pytest-asyncio==1.4.0

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, KeyRound } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import {
   AtelierButton,
   AtelierSection,
@@ -13,13 +13,12 @@ import { isValidIdentifier } from "../../utils/validation";
 /**
  * Forgot Password — /forgot-password
  *
- * Safe frontend mock password recovery flow.
- * Displays appropriate confirmation state with direct option to proceed
- * to the mock reset password screen.
+ * Password recovery request. Submits `POST /auth/customer/forgot-password`.
+ * The backend stores a single-use token but does not yet dispatch it by email,
+ * so the confirmation states that no email was sent and never claims one was.
  */
 export default function ForgotPassword() {
   const { forgotPassword } = useAuth();
-  const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState("");
   const [error, setError] = useState("");
@@ -84,7 +83,7 @@ export default function ForgotPassword() {
                   </h1>
                   <Rule width="w-12" tone="accent" className="mx-auto my-6" />
                   <p className="font-ui text-xs leading-relaxed text-taupe">
-                    Enter the email address or mobile number associated with your PRATIKSHYA FASHION account, and we will send you instructions to reset your password.
+                    Enter the email address or mobile number associated with your PRATIKSHYA FASHION account to request a password reset.
                   </p>
                 </div>
 
@@ -127,10 +126,10 @@ export default function ForgotPassword() {
                       className="w-full justify-center py-4"
                     >
                       {isSubmitting ? (
-                        "Sending Instructions..."
+                        "Submitting..."
                       ) : (
                         <>
-                          Send Reset Link <ArrowRight size={14} aria-hidden="true" />
+                          Submit Request <ArrowRight size={14} aria-hidden="true" />
                         </>
                       )}
                     </AtelierButton>
@@ -143,26 +142,19 @@ export default function ForgotPassword() {
                   <CheckCircle2 size={28} strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">
-                  Instructions Dispatched
+                  Request Received
                 </p>
                 <h1 className="mt-3 font-display text-3xl font-light tracking-tight text-ink">
-                  Check your <span className="italic text-accent">inbox.</span>
+                  Thank <span className="italic text-accent">you.</span>
                 </h1>
                 <Rule width="w-12" tone="accent" className="mx-auto my-6" />
                 <p className="font-ui text-xs leading-relaxed text-taupe max-w-md mx-auto">
-                  We have prepared password reset instructions for{" "}
-                  <span className="font-medium text-ink">{identifier}</span>.
+                  We received your request for <span className="font-medium text-ink">{identifier}</span>.
+                  Password reset emails are not yet connected to this storefront, so no reset email has been sent.
+                  Please contact the PRATIKSHYA FASHION team for help regaining access to your account.
                 </p>
 
                 <div className="mt-8 space-y-3">
-                  <AtelierButton
-                    onClick={() => navigate("/reset-password")}
-                    variant="primary"
-                    size="md"
-                    className="w-full justify-center py-4"
-                  >
-                    Proceed to Reset Password <KeyRound size={14} aria-hidden="true" />
-                  </AtelierButton>
                   <AtelierButton
                     as={Link}
                     to="/signin"

@@ -26,7 +26,7 @@
  * reachable from a customer's page.
  */
 
-import { lazy, useEffect } from "react";
+import { useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
@@ -70,6 +70,12 @@ import AccountOrderReturnPage from "./pages/account/OrderReturn.jsx";
    machines inside them are production's, unchanged. */
 import AccountAiMirrorPage from "./pages/account/AiMirror.jsx";
 import AccountAiShoppingPage from "./pages/account/AiShopping.jsx";
+/* Phase 12: the four remaining account screens are native to the design. The
+   production screens under pages/account/ stay untouched as the legacy surface. */
+import AccountSettings from "./pages/account/Settings.jsx";
+import AccountSecurity from "./pages/account/Security.jsx";
+import AccountPreferences from "./pages/account/Preferences.jsx";
+import InstagramRewards from "./pages/account/InstagramRewards.jsx";
 import JourneyFrame from "./components/layout/JourneyFrame.jsx";
 import ProtectedRoute from "../auth/ProtectedRoute.jsx";
 import { ShopProvider } from "./state/ShopContext.jsx";
@@ -99,10 +105,6 @@ import "./aarna.ai.css";
   the port's own page inside the shared frame, so the two kinds of route are
   never confused: everything declared `lazy` below is still production's.
 */
-const AccountSettings = lazy(() => import("../../pages/account/AccountSettings.jsx"));
-const AccountSecurity = lazy(() => import("../../pages/account/AccountSecurity.jsx"));
-const AccountPreferences = lazy(() => import("../../pages/account/AccountPreferences.jsx"));
-const InstagramRewards = lazy(() => import("../../pages/account/InstagramRewards.jsx"));
 
 /**
  * The legacy collection entry (`/collection/:slug`), which this application

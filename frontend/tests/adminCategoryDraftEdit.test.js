@@ -307,8 +307,13 @@ test("the edit desk exposes the real status read-only plus the server's lifecycl
   const form = readFileSync(join(ROOT, "src/pages/admin/taxonomy/AdminCategoryForm.jsx"), "utf8");
   assert.doesNotMatch(form, /<select[^>]*value=\{draft\.status\}/, "status is not an editable form field");
   assert.match(form, /existing\.status/, "the desk renders the status the server returned");
-  assert.match(form, /taxonomyRepository\.activateCategory/, "DRAFT → ACTIVE goes through the activate endpoint");
-  assert.match(form, /taxonomyRepository\.archiveCategory/);
+  /* The transitions are dispatched through the shared lifecycle service, which
+     maps `activate` / `archive` / `restore` onto the repository's endpoints. */
+  assert.match(form, /runTaxonomyTransition/, "the desk dispatches transitions through the lifecycle service");
+  assert.match(form, /taxonomyLifecycleActions\(existing\.status\)/, "the offered actions come from the server status");
+  const lifecycle = readFileSync(join(ROOT, "src/services/taxonomyLifecycle.js"), "utf8");
+  assert.match(lifecycle, /activate: taxonomyRepository\.activateCategory/, "DRAFT → ACTIVE goes through the activate endpoint");
+  assert.match(lifecycle, /archive: taxonomyRepository\.archiveCategory/);
 });
 
 test("CASE 3b — the edit form draft is built from the server record, with nothing invented", async () => {

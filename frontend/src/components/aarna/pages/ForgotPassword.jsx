@@ -14,26 +14,18 @@
  *     submitted; a refused one shows the backend's own message and no
  *     confirmation — the screen never claims an email was sent when the request
  *     failed, and never invents a state the API did not reach;
- *   · the confirmation's two actions are the production page's: the way on to
- *     `/reset-password` and the way back to `/signin`.
+ *   · the confirmation offers only the way back to `/signin`. It does not offer
+ *     `/reset-password`: no reset email is dispatched yet, so there is no link
+ *     that screen could be given (Phase 12 fix).
  *
- * ONE THING THIS PHASE DOES NOT TOUCH. The production reset screen
- * (`pages/auth/ResetPassword.jsx`) does not read the `userId`/`token` pair the
- * backend requires (`ResetPasswordRequest`, `backend/app/schemas/auth/login.py`)
- * — so the "Proceed to Reset Password" action leads to a screen that cannot
- * complete a reset. That defect is recorded in
- * `docs/PHASE-10-AUTHENTICATION-UI.md` §7 and was left exactly as production
- * has it: this phase changes the room, not the behaviour, and fixing the reset
- * flow is not this phase's approval. The screen below therefore promises
- * nothing beyond "we have prepared instructions", which is what the production
- * page says.
- *
- * The design has no authentication screens; the page is drawn from the design's
- * blocks and only the panels the design never drew live in `aarna.auth.css`.
- */
+ *  * PHASE 12. The production reset screen (`pages/auth/ResetPassword.jsx`) now
+ * reads the `userId`/`token` pair the backend requires, but no reset email is
+ * dispatched yet (the backend stores the token and leaves a TODO), so this
+ * screen states that no email was sent and offers no route to a reset link.
+ * The confirmation promises nothing beyond what the backend did.
+*/
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '../router/index.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -42,7 +34,6 @@ import { isValidIdentifier } from '../../../utils/validation.js';
 
 export default function ForgotPassword() {
   const { forgotPassword } = useAuth();
-  const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState('');
   const [error, setError] = useState('');
@@ -94,7 +85,7 @@ export default function ForgotPassword() {
           <h1 className="display info__title">Reset your <em>password.</em></h1>
           <p className="info__lead">
             Enter the email address or mobile number associated with your PRATIKSHYA FASHION
-            account, and we will send you instructions to reset your password.
+            account to request a password reset.
           </p>
 
           {error && <p className="form__err pf-auth__alert" role="alert">{error}</p>}
@@ -114,7 +105,7 @@ export default function ForgotPassword() {
             </label>
 
             <Button type="submit" variant="solid" className="btn--block" disabled={isSubmitting}>
-              {isSubmitting ? 'Sending Instructions...' : 'Send Reset Link'}
+              {isSubmitting ? 'Submitting...' : 'Submit Request'}
             </Button>
           </form>
         </>
@@ -122,16 +113,14 @@ export default function ForgotPassword() {
         <div className="pf-auth__sent">
           {/* The confirmation names the identifier that was actually submitted —
               the same sentence the production page shows. */}
-          <p className="label">Instructions Dispatched</p>
-          <h1 className="display info__title">Check your <em>inbox.</em></h1>
+          <p className="label">Request Received</p>
+          <h1 className="display info__title">Thank <em>you.</em></h1>
           <p>
-            We have prepared password reset instructions for{' '}
-            <strong>{identifier}</strong>.
+            We received your request for <strong>{identifier}</strong>. Password reset
+            emails are not yet connected to this storefront, so no reset email has been sent.
+            Please contact the PRATIKSHYA FASHION team for help regaining access to your account.
           </p>
           <div className="pf-auth__sent-actions">
-            <Button variant="solid" className="btn--block" onClick={() => navigate('/reset-password')}>
-              Proceed to Reset Password
-            </Button>
             <Button variant="ghost" to="/signin" className="btn--block">
               Return to Sign In
             </Button>

@@ -89,7 +89,7 @@ const LEGACY = "/images/products/PF-W-SAR-SIL-0001/primary.avif";
 // ===========================================================================
 
 test("the media URL prefix matches the backend mount and media prefix", () => {
-  const backend = repoSrc("pratikshya-backend/app/config.py");
+  const backend = repoSrc("backend/app/config.py");
   // API_V1_PREFIX and MEDIA_URL_PREFIX are the two halves of the public URL.
   assert.match(backend, /API_V1_PREFIX:\s*str\s*=\s*"\/api\/v1"/);
   assert.match(backend, /MEDIA_URL_PREFIX:\s*str\s*=\s*"\/media\/objects"/);
@@ -451,7 +451,7 @@ test("the legacy public asset folder is untouched by the media layer", () => {
   // during the transition stays exactly where it is.
   assert.equal(LEGACY_PUBLIC_IMAGE_PREFIX, "/images/");
   assert.equal(CANONICAL_MEDIA_ROOT, "/images/products");
-  const migration = repoSrc("pratikshya-backend/app/services/media/local_media_migration.py");
+  const migration = repoSrc("backend/app/services/media/local_media_migration.py");
   assert.ok(migration.includes("read-only"));
   assert.ok(!/shutil\.(move|rmtree)/.test(migration));
   assert.ok(!/\.unlink\(|os\.remove/.test(migration));

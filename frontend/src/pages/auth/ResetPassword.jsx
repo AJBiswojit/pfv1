@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   AtelierButton,
@@ -8,22 +8,33 @@ import {
   Rule,
 } from "../../design-system";
 import { useAuth } from "../../context/AuthContext";
-import { validatePassword, validatePasswordMatch } from "../../utils/validation";
+import { validateResetPassword, RESET_PASSWORD_MIN } from "../../utils/validation";
+
+/** Statuses the backend returns when the reset token is unknown, used or expired. */
+const LINK_REJECTED_STATUSES = [401, 404];
 
 /**
- * Reset Password — /reset-password
+ * Reset Password — /reset-password?userId=<id>&token=<token>
  *
- * Safe frontend mock password update screen.
- * Validates requirements and provides clear visual feedback.
+ * The backend (`POST /auth/customer/reset-password`, `ResetPasswordRequest`)
+ * needs BOTH the user id and the single-use token that the reset link carries.
+ * Both are read from the URL here and sent through `AuthContext.resetPassword`
+ * → `apiResetPasswordCustomer`. The screen shows success only when the backend
+ * accepted the reset; a rejected or missing link is reported as such.
  */
 export default function ResetPassword() {
   const { resetPassword } = useAuth();
+  const [searchParams] = useSearchParams();
+  const userId = (searchParams.get("userId") || "").trim();
+  const token = (searchParams.get("token") || "").trim();
+  const linkComplete = Boolean(userId && token);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
+  const [linkRejected, setLinkRejected] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -38,28 +49,29 @@ export default function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLinkRejected(false);
+    if (!linkComplete) return;
 
-    const pwdCheck = validatePassword(password);
-    if (!pwdCheck.ok) {
-      setError(pwdCheck.message);
-      return;
-    }
-
-    const matchCheck = validatePasswordMatch(password, confirmPassword);
-    if (!matchCheck.ok) {
-      setError(matchCheck.message);
+    const check = validateResetPassword(password, confirmPassword);
+    if (!check.ok) {
+      setError(check.message);
       return;
     }
 
     setIsSubmitting(true);
-    const result = await resetPassword(password, confirmPassword);
+    const result = await resetPassword(password, confirmPassword, { userId, token });
     setIsSubmitting(false);
 
-    if (result.ok) {
+    if (result?.ok) {
       setSuccess(true);
-    } else {
-      setError(result.error || "Unable to update password. Please try again.");
+      return;
     }
+    if (LINK_REJECTED_STATUSES.includes(result?.status)) {
+      setLinkRejected(true);
+      setError("This reset link is invalid or has expired. Request a new link to continue.");
+      return;
+    }
+    setError(result?.error || "We could not update your password. Please try again.");
   };
 
   return (
@@ -76,7 +88,21 @@ export default function ResetPassword() {
 
         <div className="mx-auto max-w-xl">
           <div className="border border-mist/80 bg-surface/50 p-7 sm:p-12 md:p-14">
-            {!success ? (
+            {!linkComplete && !success ? (
+              <div className="text-center py-4" role="alert">
+                <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">Reset Link</p>
+                <h1 className="mt-3 font-display text-3xl font-light tracking-tight md:text-4xl text-ink">
+                  This link is <span className="italic text-accent">incomplete.</span>
+                </h1>
+                <Rule width="w-12" tone="accent" className="mx-auto my-6" />
+                <p className="font-ui text-xs leading-relaxed text-taupe max-w-md mx-auto mb-8">
+                  Open the password reset link from your email, or request a new one.
+                </p>
+                <AtelierButton as={Link} to="/forgot-password" variant="primary" size="md" className="w-full justify-center py-4">
+                  Request a new link
+                </AtelierButton>
+              </div>
+            ) : !success ? (
               <>
                 <div className="text-center">
                   <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">
@@ -87,7 +113,7 @@ export default function ResetPassword() {
                   </h1>
                   <Rule width="w-12" tone="accent" className="mx-auto my-6" />
                   <p className="font-ui text-xs leading-relaxed text-taupe">
-                    Choose a secure password of at least 6 characters to protect your atelier account.
+                    Choose a secure password of at least {RESET_PASSWORD_MIN} characters to protect your atelier account.
                   </p>
                 </div>
 
@@ -97,7 +123,15 @@ export default function ResetPassword() {
                     className="mt-6 flex items-start gap-3 border border-accent/40 bg-accent/5 p-4 text-accent"
                   >
                     <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                    <p className="font-ui text-xs leading-relaxed">{error}</p>
+                    <p className="font-ui text-xs leading-relaxed">
+                      {error}
+                      {linkRejected && (
+                        <>
+                          {" "}
+                          <Link to="/forgot-password" className="underline">Request a new link</Link>
+                        </>
+                      )}
+                    </p>
                   </div>
                 )}
 
@@ -118,7 +152,7 @@ export default function ResetPassword() {
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Minimum 6 characters"
+                        placeholder={`Minimum ${RESET_PASSWORD_MIN} characters`}
                         className="w-full border border-pearl bg-canvas px-4 py-3.5 pr-12 font-ui text-sm text-ink placeholder:text-taupe/60 transition-colors focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                       />
                       <button

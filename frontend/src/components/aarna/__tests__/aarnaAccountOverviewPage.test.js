@@ -1007,7 +1007,10 @@ test("a successful read publishes the server's own account, once per identity", 
      change and the two session-less paths — so a re-render, a profile update or
      an ordinary refresh of the same customer keeps what it holds. */
   assert.equal(context.split("apiGetMe()").length - 1, 1, "the account is fetched from more than one place");
-  assert.match(context, /\}, \[user\?\.id\]\);/, "the read no longer follows the identity alone");
+  /* Phase 12: the read has ONE other trigger — the explicit retry (`refreshAccount`)
+     bumps `reloadToken`. Nothing else may bump it. */
+  assert.match(context, /\}, \[user\?\.id, reloadToken\]\);/, "the read follows something other than the identity and the explicit retry");
+  assert.equal(context.split("setReloadToken(").length - 1, 1, "the retry counter is bumped from somewhere other than refreshAccount");
   assert.equal(context.split("setAccountData(EMPTY_ACCOUNT)").length - 1, 3,
     "the held account is dropped somewhere other than the identity change and the two session-less paths");
 });

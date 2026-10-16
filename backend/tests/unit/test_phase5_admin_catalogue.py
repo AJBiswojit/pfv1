@@ -59,7 +59,7 @@ def full_admin_stub(**overrides):
         name="Banarasi Silk Blend Saree",
         slug="banarasi-silk-blend-saree",
         sku="PF-K-BYS-TSH-0001",
-        brand="Pratikshya Fashon",
+        brand="Pratikshya Fashion",
         product_type="fashion",
         product_code="",
         barcode="",
@@ -600,7 +600,7 @@ class DraftCreationTests(unittest.IsolatedAsyncioTestCase):
         admin = await service.create_product(req, actor="admin-1")
         self.assertEqual(admin.status, "DRAFT")
         created = db.added[0]
-        self.assertEqual(created.brand, "Pratikshya Fashon")
+        self.assertEqual(created.brand, "Pratikshya Fashion")
         self.assertEqual(created.currency, "INR")
 
 
@@ -799,7 +799,9 @@ class DuplicateTests(unittest.IsolatedAsyncioTestCase):
                             original_price=2500, return_policy={"window_days": 7})
         service, db = service_with(p)
         # _get_or_404 resolves from the queue first, then slug + sku probes.
-        service.db = FakeDB(results=[FakeResult([p]), FakeResult([]), FakeResult([])], product=p)
+        # Then the Phase 7 registered-media rows of the original, which the duplicate copies.
+        original_media_row = SimpleNamespace(media_id="m1", role="GALLERY", sort_order=0, is_primary=True)
+        service.db = FakeDB(results=[FakeResult([p]), FakeResult([]), FakeResult([]), FakeResult([original_media_row])], product=p)
         service.db.add = lambda obj: db.added.append(obj)
         service.db.flush = db.flush
         admin = await service.duplicate_product(p.id, actor="admin-1")
@@ -810,6 +812,9 @@ class DuplicateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(dup.stock, 7)
         self.assertEqual(dup.seo, {"title": "t"})
         self.assertEqual(dup.media_ids, ["m1"])
+        # The Phase 7 association is copied onto the duplicate, not shared with the original.
+        copied = [o for o in db.added if hasattr(o, "media_id")]
+        self.assertEqual([(o.media_id, o.product_id) for o in copied], [("m1", dup.id)])
         self.assertEqual(dup.low_stock_threshold, 2)
         self.assertTrue(dup.is_trending)
         self.assertEqual(dup.return_policy, {"window_days": 7})

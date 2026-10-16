@@ -51,7 +51,7 @@ test("STATIC: the mock provider remains only for the shopping surface", () => {
 });
 
 test("STATIC: the backend endpoint is authenticated + read-only by construction", () => {
-  const endpoint = read("../pratikshya-backend/app/api/v1/ai_assistant.py");
+  const endpoint = read("../backend/app/api/v1/ai_assistant.py");
   assert.match(endpoint, /get_current_admin/, "admin surface guard");
   assert.match(endpoint, /analytics\.view/, "permission gate");
   assert.match(endpoint, /extra="ignore"/, "client payload keys are ignored");
