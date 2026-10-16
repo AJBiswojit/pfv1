@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { Link } from '../../router/index.jsx';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { images, sareeCollections, sareeLookbook } from '../../data/index.js';
-import { getByIds, getProductsFor } from '../../services/catalog.js';
+import { getProductsFor } from '../../services/catalog.js';
 import ProductCard from '../product/ProductCard.jsx';
 import SectionLabel from '../ui/SectionLabel.jsx';
 import ArrowLink, { Arrow } from '../ui/ArrowLink.jsx';

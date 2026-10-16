@@ -128,12 +128,13 @@ test("the adaptations are the documented ones — nothing else moved", () => {
   for (const file of Object.keys(CLOSURE)) {
     const source = readPort(file);
     const usesLink = /<Link\b|<NavLink\b|<SectionLink\b/.test(source);
+    const sectionLinkBoundary = /<SectionLink\b/.test(source) && /import \{[^}]*\bSectionLink\b[^}]*\} from '\.\.\/\.\.\/\.\.\/storefront\/home\/HomepageSection'/.test(source);
     const shim = /from '[^']*router\/index\.jsx'/.test(source);
     if (usesLink) rendersLink.push(file);
     assert.equal(
-      usesLink && !shim,
+      (/<Link\b|<NavLink\b/.test(source) && !shim) || (/<SectionLink\b/.test(source) && !sectionLinkBoundary),
       false,
-      `${file} renders a link but does not take it from the port's router shim`,
+      `${file} renders a link without its required routing boundary`,
     );
     assert.equal(
       /import \{[^}]*\b(Link|NavLink)\b[^}]*\} from 'react-router-dom'/.test(source),
@@ -397,4 +398,12 @@ test("the design's two type families are requested by the port, and only on its 
   const importers = walkPort().filter((file) => readPort(file).includes("designFonts"));
   assert.deepEqual(importers, ["AarnaStorefront.jsx"], "fonts are requested by the mount alone");
   assert.equal(readFileSync(join(ROOT, "index.html"), "utf8").includes("Manrope"), false, "the document head stays as it is");
+});
+
+// Section-only links delegate routing to the shared boundary, not an unused import.
+test("SectionLink owns authored and design routing after unused shim imports are removed", () => {
+  const source = readFileSync(join(ROOT, "src/components/storefront/home/HomepageSection.jsx"), "utf8");
+  assert.match(source, /import \{ Link \} from '\.\.\/\.\.\/aarna\/router\/index\.jsx'/);
+  assert.match(source, /import \{ Link as RouterLink \} from 'react-router-dom'/);
+  assert.match(source, /const Destination = authored \? RouterLink : Link/);
 });

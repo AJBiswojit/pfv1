@@ -1,3 +1,4 @@
+import HomepageSectionLoading from './HomepageSectionLoading';
 import { useMemo, useSyncExternalStore } from 'react';
 import Hero from '../../aarna/components/sections/Hero.jsx';
 import { usingPreviewCatalogue } from '../../aarna/mock/data/products.js';
@@ -14,7 +15,7 @@ export default function AarnaHomeHero() {
 
   if (usingPreviewCatalogue()) return <Hero />;
   if (snapshot.homeStatus === 'idle' || snapshot.homeStatus === 'loading') {
-    return <section className="container" style={{ paddingBlock: 48 }} role="status" aria-label="Featured campaigns">Loading featured campaigns…</section>;
+    return <HomepageSectionLoading sectionKey="hero" />;
   }
   if (snapshot.homeStatus === 'error') {
     return (

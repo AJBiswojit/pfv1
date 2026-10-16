@@ -1,4 +1,4 @@
-import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
+import { SectionCTA } from '../../../storefront/home/HomepageSection';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { getFeaturedBy } from '../../services/catalog.js';

@@ -66,11 +66,11 @@ export const CLOSURE = {
   "components/sections/Hero.jsx": 7, // data injection, optional CTAs, alt, React fetchPriority
   "components/sections/JewelleryTheatre.jsx": 13, // approved Phase 3 typed-section integration
   "components/sections/KidsPlayground.jsx": 12, // approved Phase 3 typed-section integration
-  "components/sections/KurtiLookbook.jsx": 12, // approved Phase 3 typed-section integration
+  "components/sections/KurtiLookbook.jsx": 13, // approved Phase 3 typed-section integration
   "components/sections/MensEditorial.jsx": 10, // approved Phase 3 typed-section integration
   "components/sections/Newsletter.jsx": 7, // approved Phase 3 typed-section integration
   "components/sections/PromoBanner.jsx": 12, // approved Phase 3 typed-section integration
-  "components/sections/SareeLookbook.jsx": 16, // approved Phase 3 typed-section integration
+  "components/sections/SareeLookbook.jsx": 17, // approved Phase 3 typed-section integration
   "components/sections/TrustStrip.jsx": 5, // approved Phase 3 typed-section integration
   "components/shopping/CartDrawer.jsx": 9,  // 1 routing + 5 offer-copy + 1 missing-plate line + 2 promo-feedback
   // PHASE 9 adds one line to the drawer's foot ("View bag" → /cart) and removes
@@ -87,7 +87,7 @@ export const CLOSURE = {
   "components/ui/ScrollToTop.jsx": 0,
   "components/ui/SectionLabel.jsx": 0,
   "components/ui/Toasts.jsx": 0,
-  "data/index.js": 2,
+  "data/index.js": 4,
   "hooks/useEscape.js": 0,
   "hooks/useFocusTrap.js": 0,
   "hooks/useLockBody.js": 0,
@@ -123,7 +123,7 @@ export const CLOSURE = {
   // own metadata for /about, /contact, /privacy and /terms. The design's prototype
   // policy copy is deliberately not carried. Pin measured by `--copy`.
   "pages/Info.jsx": 11,
-  "services/catalog.js": 0,
+  "services/catalog.js": 3,
   "services/storage.js": 0,
   "state/UIContext.jsx": 0,
   "utils/format.js": 0,

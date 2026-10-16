@@ -1,4 +1,4 @@
-import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
+import { SectionImage, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { motion } from 'framer-motion';
 import { Link } from '../../router/index.jsx';
 import { images } from '../../data/index.js';

@@ -2,7 +2,7 @@ import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/
 import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { images, kurtiCollections } from '../../data/index.js';
-import { getByIds, getProductsFor } from '../../services/catalog.js';
+import { getProductsFor } from '../../services/catalog.js';
 import { useCatalogueRevision } from '../../mock/data/products.js';
 import ProductCard from '../product/ProductCard.jsx';
 import SectionLabel from '../ui/SectionLabel.jsx';
