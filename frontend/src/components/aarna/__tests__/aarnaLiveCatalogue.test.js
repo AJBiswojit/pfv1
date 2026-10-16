@@ -59,8 +59,8 @@ const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 /** The four components that read the catalogue inside a `useMemo`, and the
  *  dependency array the design uses to decide when to read it again. */
 const MEMOISED_READS = [
-  ["components/sections/Bestsellers.jsx", "const list = useMemo(() => getFeaturedBy(", "useMemo(() => getFeaturedBy(filter, 8), [filter])"],
-  ["components/sections/JewelleryTheatre.jsx", "const all = useMemo(() => getByDepartment(", "useMemo(() => getByDepartment('jewellery'), [])"],
+  ["components/sections/Bestsellers.jsx", "const list = useMemo(() => content ?", "useMemo(() => getFeaturedBy(filter, 8), [filter])"],
+  ["components/sections/JewelleryTheatre.jsx", "const all = useMemo(() => content ?", "useMemo(() => getByDepartment('jewellery'), [])"],
   ["components/sections/KurtiLookbook.jsx", "const items = useMemo(() => {", "}, [active]);"],
   ["components/shopping/SearchOverlay.jsx", "const results = useMemo(", "useMemo(() => searchProducts(debounced, 6), [debounced]);"],
 ];
@@ -76,7 +76,7 @@ test("every memoised catalogue read subscribes to the live catalogue's revision"
     );
     assert.match(source, /const catalogueRevision = useCatalogueRevision\(\);/, `${file} never reads the revision`);
     assert.ok(
-      source.includes("catalogueRevision])"),
+      source.includes("catalogueRevision])") || source.includes("catalogueRevision, content])"),
       `${file}: the memo's dependency array does not include the catalogue revision`,
     );
     assert.equal(

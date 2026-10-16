@@ -401,6 +401,7 @@ export default function App() {
                           <Route path="/employee/performance/:employeeId" element={<EmployeePerformance />} />
                           <Route path="/employee/access-denied" element={<EmployeeAccessDenied />} />
                           <Route path="/employee/media" element={<EmployeeMediaDashboard />} />
+                          <Route path="/employee/media/marketing" element={<AdminMarketingMedia />} />
                           <Route path="/employee/media/upload" element={<EmployeeMediaUpload />} />
                           <Route path="/employee/media/:mediaId" element={<EmployeeMediaDetail />} />
                           <Route path="/employee/products" element={<EmployeeProducts />} />

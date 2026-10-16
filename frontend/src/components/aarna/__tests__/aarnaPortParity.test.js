@@ -127,7 +127,7 @@ test("the adaptations are the documented ones — nothing else moved", () => {
   const rendersLink = [];
   for (const file of Object.keys(CLOSURE)) {
     const source = readPort(file);
-    const usesLink = /<Link\b|<NavLink\b/.test(source);
+    const usesLink = /<Link\b|<NavLink\b|<SectionLink\b/.test(source);
     const shim = /from '[^']*router\/index\.jsx'/.test(source);
     if (usesLink) rendersLink.push(file);
     assert.equal(

@@ -394,7 +394,21 @@ class ExploreService:
             image="",
         )
 
+        # Additive reads are isolated: an unapplied migration must not abort
+        # the legacy assembly transaction or be mistaken for missing content.
+        from app.services.media.homepage_content_service import HomepageContentService
+        from app.schemas.media.homepage import REGISTRY, HomepageContentPublic
+        try:
+            async with self.db.begin_nested():
+                homepage_content = HomepageContentPublic.model_validate(await HomepageContentService(self.db).content(public=True))
+        except Exception:
+            homepage_content = {"version": 1, "status": "unavailable", "sections": [
+                {"key": "hero", "source": "heroSlides", "state": "delegated"},
+                *[{"key": key, "source": "sections", "state": "unavailable", "items": []} for key in REGISTRY],
+            ]}
+
         return HomeResponse(
+            homepageContent=homepage_content,
             ok=True,
             heroSlides=hero_slides,
             newArrivals=new_arrivals,

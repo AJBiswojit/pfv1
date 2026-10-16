@@ -1,3 +1,4 @@
+import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { useMemo, useState } from 'react';
 import { hideBrokenMedia } from '../../utils/mediaFallback.js';
 import { Link } from '../../router/index.jsx';
@@ -13,11 +14,11 @@ import { LineReveal, FadeUp, MaskReveal } from '../ui/Reveal.jsx';
 import { cx } from '../../utils/format.js';
 import { ease } from '../../utils/motion.js';
 
-export default function JewelleryTheatre() {
+export default function JewelleryTheatre({ content }) {
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
   const catalogueRevision = useCatalogueRevision();
-  const all = useMemo(() => getByDepartment('jewellery'), [catalogueRevision]);
+  const all = useMemo(() => content ? content.products('products') : getByDepartment('jewellery'), [catalogueRevision, content]);
   const [type, setType] = useState('all');
   const [spot, setSpot] = useState(null);
   const list = type === 'all' ? all : all.filter((p) => p.type === type);
@@ -38,9 +39,9 @@ export default function JewelleryTheatre() {
                 transition={{ duration: 0.55, ease: ease.out }}
               >
                 {spot ? (
-                  <img src={spot.images[0]} alt={spot.name} style={{ transform: 'none' }} onError={hideBrokenMedia} />
+                  <SectionImage src={spot.images[0]} alt={spot.name} style={{ transform: 'none' }} onError={hideBrokenMedia} />
                 ) : (
-                  <img src={images.jewelStage} alt="Profile portrait wearing temple jhumkas, a layered kundan necklace and maang tikka" />
+                  <SectionImage src={content ? content.media("campaign").url : images.jewelStage} alt={content ? content.media("campaign").altText : "Profile portrait wearing temple jhumkas, a layered kundan necklace and maang tikka"} />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -55,8 +56,8 @@ export default function JewelleryTheatre() {
                 </motion.div>
               ) : (
                 <motion.div key="ed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
-                  <span className="jewel__stage-kicker">Kundan · Polki · Temple</span>
-                  <span className="jewel__stage-name">Hover a piece to bring it to the light.</span>
+                  <span className="jewel__stage-kicker">{content ? content.media("campaign").eyebrow : "Kundan · Polki · Temple"}</span>
+                  <span className="jewel__stage-name">{content ? content.media("campaign").subtitle : "Hover a piece to bring it to the light."}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -65,9 +66,9 @@ export default function JewelleryTheatre() {
 
         <div className="jewel__side">
           <div className="jewel__head">
-            <SectionLabel index="05">Jewellery Essentials</SectionLabel>
-            <LineReveal as="h2" className="display jewel__title" lines={['Heirlooms,', 'worn daily.']} italic={[1]} />
-            <FadeUp delay={0.2}><p className="jewel__lead">Bangles, rings, jhumkas and necklaces, handset in kundan and polki-style stones.</p></FadeUp>
+            <SectionLabel index="05">{content ? content.intro.eyebrow : "Jewellery Essentials"}</SectionLabel>
+            <LineReveal as="h2" className="display jewel__title" lines={content ? content.intro.title.split('\n') : ['Heirlooms,', 'worn daily.']} italic={[1]} />
+            <FadeUp delay={0.2}><p className="jewel__lead">{content ? content.intro.subtitle : "Bangles, rings, jhumkas and necklaces, handset in kundan and polki-style stones."}</p></FadeUp>
           </div>
 
           <div className="jewel__tabs" role="tablist" aria-label="Filter jewellery by type">
@@ -92,11 +93,11 @@ export default function JewelleryTheatre() {
                 </motion.div>
               ))}
               <motion.div key="all-jewellery" layout className="jewel__more">
-                <Link to="/shop/jewellery">
+                <SectionLink authored={Boolean(content)} to={content ? content.intro.ctaHref : "/shop/jewellery"}>
                   <span className="jewel__more-n">{all.length}</span>
-                  <span className="jewel__more-t">Explore all jewellery</span>
+                  <span className="jewel__more-t">{content ? content.intro.ctaLabel : "Explore all jewellery"}</span>
                   <Arrow />
-                </Link>
+                </SectionLink>
               </motion.div>
             </AnimatePresence>
           </motion.div>

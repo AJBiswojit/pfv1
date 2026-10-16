@@ -1450,6 +1450,24 @@ class ProductService:
 
     # ── Get single product (storefront) ──────────────────────────────────────
 
+    async def homepage_products_by_ids(self, ids: List[str], *, for_update: bool = False) -> Dict[str, StorefrontProduct]:
+        """Fresh visibility + existing projection, never cached detail snapshots."""
+        if not ids:
+            return {}
+        stmt = select(ProductModel).where(
+            ProductModel.id.in_(set(ids)), ProductModel.status == "PUBLISHED",
+            ProductModel.published.is_(True),
+        )
+        if for_update:
+            stmt = stmt.with_for_update()
+        rows = list((await self.db.execute(stmt)).scalars().all())
+        categories, subcategories = await self._visibility_maps()
+        rows = [p for p in rows if self._taxonomy_visible(p, categories, subcategories)]
+        registered = await self._registered_media_map([p.id for p in rows])
+        collections = await self._collection_membership_names(rows)
+        names = await self._subcategory_name_map()
+        return {p.id: self._to_storefront(p, registered.get(p.id), collections.get(str(p.id), []), names) for p in rows}
+
     async def get_storefront_product(self, id_or_slug: str) -> StorefrontProduct:
         """
         GET /products/{id} — fetch single published product.

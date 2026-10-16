@@ -1,4 +1,5 @@
-import Hero from '../components/sections/Hero.jsx';
+import HomepageSection from '../../storefront/home/HomepageSection';
+import Hero from '../../storefront/home/AarnaHomeHero.jsx';
 import CategoryCollage from '../components/sections/CategoryCollage.jsx';
 import SareeLookbook from '../components/sections/SareeLookbook.jsx';
 import BridalCampaign from '../components/sections/BridalCampaign.jsx';
@@ -15,17 +16,17 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <CategoryCollage />
-      <SareeLookbook />
-      <BridalCampaign />
-      <JewelleryTheatre />
-      <PromoBanner />
-      <MensEditorial />
-      <KidsPlayground />
-      <Bestsellers />
-      <KurtiLookbook />
-      <Newsletter />
-      <TrustStrip />
+      <HomepageSection sectionKey="categories"><CategoryCollage /></HomepageSection>
+      <HomepageSection sectionKey="sarees"><SareeLookbook /></HomepageSection>
+      <HomepageSection sectionKey="bridal"><BridalCampaign /></HomepageSection>
+      <HomepageSection sectionKey="jewellery"><JewelleryTheatre /></HomepageSection>
+      <HomepageSection sectionKey="promotion"><PromoBanner /></HomepageSection>
+      <HomepageSection sectionKey="men"><MensEditorial /></HomepageSection>
+      <HomepageSection sectionKey="kids"><KidsPlayground /></HomepageSection>
+      <HomepageSection sectionKey="bestsellers"><Bestsellers /></HomepageSection>
+      <HomepageSection sectionKey="kurtis"><KurtiLookbook /></HomepageSection>
+      <HomepageSection sectionKey="newsletter"><Newsletter /></HomepageSection>
+      <HomepageSection sectionKey="trust"><TrustStrip /></HomepageSection>
     </>
   );
 }

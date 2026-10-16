@@ -116,18 +116,20 @@ test("unsupported formats are still rejected", () => {
   assert.equal(exe.ok, false);
 });
 
-test("PRODUCT placements stay catalogue-driven; GENERIC placements accept AVIF", () => {
+test("PRODUCT placements stay catalogue-driven; GENERIC placements accept AVIF", async () => {
   const admin = readFileSync(
     join(process.cwd(), "src", "pages", "admin", "media", "AdminMarketingMedia.jsx"),
     "utf8"
   );
-  MARKETING_PLACEMENT_OPTIONS.filter((placement) => placement.mode === PLACEMENT_MODES.PRODUCT).forEach(
-    (placement) => {
-      assert.ok(admin.includes("ProductCatalogSelector"));
-      assert.ok(admin.includes("PLACEMENT_MODES.PRODUCT"));
-    }
-  );
-  assert.ok(admin.includes("MediaUploadPanel"));
+  // Phase 2 replaces the browser-local placement composer with a public-only
+  // product picker and the same durable marketing editor. Pin the actual
+  // admission rules rather than the retired component names.
+  assert.ok(admin.includes("PublishedProductPicker"));
+  assert.ok(admin.includes("BackendHomeHeroPanel"));
+  const { eligibleHomepageProduct, isRegisteredImage } = await import("../src/services/homepage/homepageContentModel.js");
+  assert.equal(eligibleHomepageProduct({ id: "published", status: "PUBLISHED", published: true }), true);
+  assert.equal(eligibleHomepageProduct({ id: "draft", status: "DRAFT", published: false }), false);
+  assert.equal(isRegisteredImage({ id: "registered-avif", objectKey: "hero/campaign.avif", url: "/api/v1/media/objects/hero/campaign.avif", mimeType: "image/avif", status: "uploaded" }), true);
   assert.ok(!admin.includes("type=\"file\""));
 
   const genericIds = MARKETING_PLACEMENT_OPTIONS.filter(

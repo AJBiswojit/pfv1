@@ -48,6 +48,8 @@ const cleanProductIds = (value) => {
   const unique = [];
   value.forEach((entry) => {
     const id = cleanId(entry);
+    // IDs are references, not products or publication commands. Do not reject
+    // genuine server IDs by prefix; missing catalogue rows simply do not resolve.
     if (!id || seen.has(id)) return;
     seen.add(id);
     unique.push(id);

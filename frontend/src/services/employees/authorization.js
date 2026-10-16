@@ -82,7 +82,7 @@ export const canAccessPath = (employee, pathname) => {
   if (!canEmployeeLogin(employee.status)) return false;
   const required = requiredPermissionForPath(pathname);
   if (!required) return true;
-  return hasPermission(employee, required);
+  return Array.isArray(required) ? required.some((key) => hasPermission(employee, key)) : hasPermission(employee, required);
 };
 
 export const hasRecognizedRole = (employee) => Boolean(employee && isKnownRole(employee.role));

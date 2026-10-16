@@ -1,3 +1,4 @@
+import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { getFeaturedBy } from '../../services/catalog.js';
@@ -18,19 +19,19 @@ const FILTERS = [
   { key: 'jewellery', label: 'Jewellery' },
 ];
 
-export default function Bestsellers() {
+export default function Bestsellers({ content }) {
   const [filter, setFilter] = useState('all');
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
   const catalogueRevision = useCatalogueRevision();
-  const list = useMemo(() => getFeaturedBy(filter, 8), [filter, catalogueRevision]);
+  const list = useMemo(() => content ? content.products('products').filter((p) => filter === 'all' || p.department === filter || p.type === filter) : getFeaturedBy(filter, 8), [filter, catalogueRevision, content]);
   return (
     <section className="best" aria-labelledby="best-title">
       <div className="container">
         <div className="best__head">
           <div>
-            <SectionLabel index="09">Most Loved</SectionLabel>
-            <InView.h2 id="best-title" className="best__title" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={inView} transition={{ duration: 0.7, ease: ease.out }}>Bestsellers</InView.h2>
+            <SectionLabel index="09">{content ? content.intro.eyebrow : "Most Loved"}</SectionLabel>
+            <InView.h2 id="best-title" className="best__title" initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={inView} transition={{ duration: 0.7, ease: ease.out }}>{content ? content.intro.title : "Bestsellers"}</InView.h2>
           </div>
           <div className="best__filters" role="tablist" aria-label="Filter bestsellers">
             <LayoutGroup id="best">
@@ -42,9 +43,9 @@ export default function Bestsellers() {
               ))}
             </LayoutGroup>
           </div>
-          <ArrowLink to="/shop/all" className="best__all">View All</ArrowLink>
+          {content ? <SectionCTA copy={content.intro} className="best__all" /> : <ArrowLink to="/shop/all" className="best__all">View All</ArrowLink>}
         </div>
-        <p className="best__note">A selection from the house catalogue — the backend does not yet expose a verified sales ranking.</p>
+        <p className="best__note">{content ? content.intro.subtitle : "A selection from the house catalogue — the backend does not yet expose a verified sales ranking."}</p>
 
         {/* Quick, shopping-friendly entrance on the wrapper only, so filter/layout animations stay independent */}
         <InView.div initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={inView} transition={{ duration: 0.6, delay: 0.1, ease: ease.out }}>

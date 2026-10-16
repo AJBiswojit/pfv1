@@ -26,6 +26,7 @@
  *   · Product version counter for downstream memoization.
  */
 
+import { isBackendCatalogRecord } from "./catalog/catalogRecordSafety";
 import { getProductMediaSummary } from "./media/mediaRepository";
 import { getProductMediaSet } from "./media/productMediaSet";
 import {
@@ -92,28 +93,9 @@ const emitProductsChanged = () => {
  * localStorage register, and no local authority. Write paths also call the
  * backend API; the cache is refreshed from the server after mutations.
  */
-export const CUSTOM_PRODUCTS_STORAGE_KEY = "pratikshya_custom_products";
-
-export const loadCustomProducts = () => {
-  try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem(CUSTOM_PRODUCTS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-export const saveCustomProduct = (product) => {
-  try {
-    if (typeof localStorage === "undefined" || !product?.id) return;
-    const current = loadCustomProducts();
-    const updated = [product, ...current.filter((p) => String(p.id) !== String(product.id))];
-    localStorage.setItem(CUSTOM_PRODUCTS_STORAGE_KEY, JSON.stringify(updated));
-  } catch {
-    /* ignore storage errors */
-  }
-};
+// Legacy pratikshya_custom_products storage is deliberately left untouched for
+// manual recovery. It is neither read nor written by the catalogue; recreate
+// genuine products through the existing backend draft/review workflow.
 
 let serverProducts = [];
 
@@ -122,15 +104,8 @@ export const catalogueSeedFingerprint = () => `${serverProducts.length}`;
 
 /** Replace the session cache with server records (called after API fetches). */
 export const replaceServerProducts = (items) => {
-  const base = Array.isArray(items) ? items.map((record) => ({ ...record })) : [];
-  const custom = loadCustomProducts();
-  const baseIds = new Set(base.map((p) => String(p.id)));
-  custom.forEach((cp) => {
-    if (!baseIds.has(String(cp.id))) {
-      base.unshift(cp);
-    }
-  });
-  serverProducts = base;
+  serverProducts = (Array.isArray(items) ? items : [])
+    .filter(isBackendCatalogRecord).map((record) => ({ ...record }));
   productVersion += 1;
   emitProductsChanged();
   return serverProducts;
@@ -146,22 +121,9 @@ export const replaceServerProducts = (items) => {
  * already-loaded pages in the cache intact while pagination fetches more.
  */
 export const upsertServerProducts = (records) => {
-  const incoming = Array.isArray(records) ? records.filter(Boolean) : [];
+  const incoming = (Array.isArray(records) ? records : []).filter(isBackendCatalogRecord);
   if (!incoming.length) return serverProducts;
-
-  incoming.forEach((rec) => {
-    if (String(rec.id).startsWith("PF-CUST-") || rec.isCustom) {
-      saveCustomProduct(rec);
-    }
-  });
-
-  const custom = loadCustomProducts();
   const byId = new Map(incoming.map((record) => [String(record.id), record]));
-  custom.forEach((cp) => {
-    if (!byId.has(String(cp.id))) {
-      byId.set(String(cp.id), cp);
-    }
-  });
 
   let changed = false;
   const next = serverProducts.map((record) => {

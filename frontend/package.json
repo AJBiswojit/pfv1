@@ -43,6 +43,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",
     "@vitejs/plugin-react": "5.1.1",
+    "react-test-renderer": "19.2.6",
     "tailwindcss": "4.1.17",
     "vite": "7.3.2",
     "vite-plugin-singlefile": "2.3.0"

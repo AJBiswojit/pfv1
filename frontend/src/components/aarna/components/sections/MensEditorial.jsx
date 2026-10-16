@@ -1,3 +1,4 @@
+import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { Link } from '../../router/index.jsx';
 import { motion } from 'framer-motion';
 import { images } from '../../data/index.js';
@@ -9,9 +10,9 @@ import ArrowLink from '../ui/ArrowLink.jsx';
 import { ease, inView } from '../../utils/motion.js';
 import { InView } from '../ui/InView.jsx';
 
-export default function MensEditorial() {
-  const list = getByDepartment('men').slice(0, 4);
-  const hero = getProductBySlug('cocoa-bandhgala-ensemble');
+export default function MensEditorial({ content }) {
+  const list = content ? content.products('products') : getByDepartment('men').slice(0, 4);
+  const hero = content ? content.products('featured')[0] : getProductBySlug('cocoa-bandhgala-ensemble');
   return (
     <section className="men" aria-labelledby="men-title">
       <div className="container men__top">
@@ -22,12 +23,13 @@ export default function MensEditorial() {
           viewport={inView}
           transition={{ duration: 0.6, ease: ease.out }}
         >
-          <SectionLabel index="07">Menswear</SectionLabel>
-          <h2 id="men-title" className="display men__title">Tailored for ceremony, <em>and Tuesdays.</em></h2>
-          <p className="men__lead">Kurtas, bandhgalas and sherwanis cut with a modern shoulder.</p>
+          <SectionLabel index="07">{content ? content.intro.eyebrow : "Menswear"}</SectionLabel>
+          <h2 id="men-title" className="display men__title">{content ? content.intro.title : <>Tailored for ceremony, <em>and Tuesdays.</em></>}</h2>
+          <p className="men__lead">{content ? content.intro.subtitle : "Kurtas, bandhgalas and sherwanis cut with a modern shoulder."}</p>
+          {content && <SectionCTA copy={content.intro} />}
           <ul className="men__types">
-            {[['Kurtas', 'kurtas'], ['Bandhgalas', 'bandhgalas'], ['Sherwanis', 'sherwanis'], ['Accessories', 'accessories']].map(([l, k]) => (
-              <li key={k}><Link to={`/shop/${k}`}>{l}</Link></li>
+            {(content ? content.texts().map((t) => [t.title, t.key, t.ctaHref]) : [['Kurtas', 'kurtas'], ['Bandhgalas', 'bandhgalas'], ['Sherwanis', 'sherwanis'], ['Accessories', 'accessories']]).map(([l, k, to]) => (
+              <li key={k}><SectionLink authored={Boolean(content)} to={content ? to : `/shop/${k}`}>{l}</SectionLink></li>
             ))}
           </ul>
         </InView.div>
@@ -38,7 +40,7 @@ export default function MensEditorial() {
           viewport={inView}
           transition={{ duration: 0.85, ease: ease.inOut }}
         >
-          <img src={images.catMen} alt="Man in a cocoa bandhgala over an ivory kurta" loading="lazy" />
+          <SectionImage src={content ? content.media("campaign").url : images.catMen} alt={content ? content.media("campaign").altText : "Man in a cocoa bandhgala over an ivory kurta"} loading="lazy" />
           {hero && (
             <Link to={`/product/${hero.slug}`} className="men__tag">
               <span className="men__tag-dot" />

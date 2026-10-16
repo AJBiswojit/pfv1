@@ -87,3 +87,6 @@ api_router.include_router(support_router)
 api_router.include_router(notifications_router)
 api_router.include_router(recommendations_router)
 
+
+from app.api.v1.homepage import router as homepage_router
+api_router.include_router(homepage_router)

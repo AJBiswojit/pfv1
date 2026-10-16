@@ -1,3 +1,4 @@
+import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { motion } from 'framer-motion';
 import { Tag } from 'lucide-react';
 import { getActivePromotion } from '../../data/index.js';
@@ -15,27 +16,28 @@ import { InView } from '../ui/InView.jsx';
  * below it. Renders only when a promotion is configured and active — every
  * figure shown (percentage, code, end date, terms) comes from the promo config.
  */
-export default function PromoBanner() {
-  const promo = getActivePromotion();
+export default function PromoBanner({ content }) {
+  const promo = content ? { label: content.intro.eyebrow, headline: content.intro.title.split('\n'), copy: content.intro.subtitle, image: content.media('campaign').url, imageAlt: content.media('campaign').altText, cta: { to: content.intro.ctaHref, label: content.intro.ctaLabel }, terms: '' } : getActivePromotion();
   const { applyPromo, promoCode } = useShop();
   const { toast, openCart } = useUI();
   if (!promo) return null;
-  const applied = promoCode === promo.code;
+  const applied = !content && promoCode === promo.code;
 
   const onCode = () => {
+    if (content) return;
     if (applied) { openCart(); return; }
     const res = applyPromo(promo.code);
     toast(res.ok ? `${promo.code} applied to your bag` : res.message, res.ok ? { label: 'View bag', onClick: openCart } : null);
   };
 
-  const ledger = [
+  const ledger = content ? [] : [
     { k: 'Offer', v: `${promo.discountPercent}% off` },
     { k: 'Code', v: promo.code },
     { k: 'Valid until', v: formatDate(promo.endsAt) },
   ];
 
   return (
-    <section className="promo" aria-label={`${promo.label} offer`}>
+    <section className="promo" aria-label={`${promo.label} ${content ? "campaign" : "offer"}`}>
       {/* Espresso band: wipes in from the left edge of the viewport */}
       <InView.div
         className="promo__band"
@@ -86,11 +88,11 @@ export default function PromoBanner() {
             </dl>
 
             <div className="promo__ctas">
-              <Button to={promo.cta.to} variant="light">{promo.cta.label}</Button>
-              <button type="button" className="promo__code" onClick={onCode} aria-pressed={applied}>
+              {content ? <SectionCTA copy={content.intro} className="btn btn--light" /> : <Button to={promo.cta.to} variant="light">{promo.cta.label}</Button>}
+              {!content && <button type="button" className="promo__code" onClick={onCode} aria-pressed={applied}>
                 <Tag size={14} strokeWidth={1.4} />
                 {applied ? <>Code <strong>{promo.code}</strong> applied · View bag</> : <>Apply <strong>{promo.code}</strong></>}
-              </button>
+              </button>}
             </div>
             <p className="promo__terms">{promo.terms}</p>
           </InView.div>
@@ -105,7 +107,7 @@ export default function PromoBanner() {
             viewport={inView}
             transition={{ duration: 1.25, delay: 0.15, ease: ease.inOut }}
           >
-            <InView.img
+            <SectionImage as={InView.img}
               src={promo.image}
               alt={promo.imageAlt || ''}
               loading="lazy"
@@ -116,7 +118,7 @@ export default function PromoBanner() {
               transition={{ duration: 1.9, delay: 0.15, ease: ease.out }}
             />
           </InView.div>
-          <InView.span
+          {!content && <InView.span
             className="promo__num"
             aria-hidden="true"
             initial={{ opacity: 0, y: 24 }}
@@ -125,8 +127,8 @@ export default function PromoBanner() {
             transition={{ duration: 0.9, delay: 0.9, ease: ease.out }}
           >
             {promo.discountPercent}<small>%</small>
-          </InView.span>
-          <figcaption className="promo__cap">{promo.label} · The Festive Edit</figcaption>
+          </InView.span>}
+          <figcaption className="promo__cap">{content ? content.media("campaign").title : <>{promo.label} · The Festive Edit</>}</figcaption>
         </figure>
       </div>
     </section>

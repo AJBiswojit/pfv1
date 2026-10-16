@@ -140,6 +140,11 @@ class MarketingMediaService:
         placement = _validate_placement(payload.placement)
         object_key = _validate_object_key(payload.object_key)
 
+        if placement == "HOME_HERO":
+            from app.services.media.homepage_content_service import registered_asset
+            asset = await registered_asset(self.db, payload.media_asset_id, object_key)
+            payload.media_asset_id = asset.id
+
         row = MarketingMediaModel(
             placement=placement,
             object_key=object_key,
@@ -181,6 +186,17 @@ class MarketingMediaService:
         self, media_id: str, payload: MarketingMediaUpdate, *, actor_id: Optional[str] = None
     ) -> MarketingMediaModel:
         row = await self.get_by_id(media_id)
+
+        target_placement = _validate_placement(payload.placement) if payload.placement is not None else row.placement
+        changed_reference = (row.placement != "HOME_HERO" or
+            (payload.object_key is not None and payload.object_key != row.object_key) or
+            (payload.media_asset_id is not None and payload.media_asset_id != row.media_asset_id))
+        if target_placement == "HOME_HERO" and changed_reference:
+            from app.services.media.homepage_content_service import registered_asset
+            key = _validate_object_key(payload.object_key) if payload.object_key is not None else row.object_key
+            asset_id = payload.media_asset_id if payload.media_asset_id is not None else (row.media_asset_id if payload.object_key is None else None)
+            asset = await registered_asset(self.db, asset_id, key)
+            payload.media_asset_id = asset.id
 
         if payload.placement is not None:
             row.placement = _validate_placement(payload.placement)

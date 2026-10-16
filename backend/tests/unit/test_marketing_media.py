@@ -22,6 +22,9 @@ import tempfile
 import os
 import unittest
 import asyncio
+from unittest.mock import patch
+
+from app.models.media.media_asset import MediaAssetModel
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -86,6 +89,21 @@ class TestMarketingMediaServiceSQLite(unittest.IsolatedAsyncioTestCase):
             await conn.run_sync(Base.metadata.create_all)
 
         self.Session = async_sessionmaker(self.engine, expire_on_commit=False)
+
+        # New HOME_HERO references require genuine registered identities.
+        # This legacy SQLite harness still mocks storage; it is not PostgreSQL
+        # migration/durability acceptance and was not executed in Phase 3.
+        async with self.Session() as session:
+            session.add_all([MediaAssetModel(
+                object_key=f"hero/hero00{number}.avif", storage_provider="local",
+                media_type="image", mime_type="image/avif",
+                original_filename=f"hero00{number}.avif", file_size=1,
+                checksum_sha256="0" * 64, status="uploaded", scope="product",
+            ) for number in (1, 2, 3)])
+            await session.commit()
+        self.object_exists = patch("app.services.media.media_service.MediaService.object_exists", return_value=True)
+        self.object_exists.start()
+        self.addCleanup(self.object_exists.stop)
 
     async def asyncTearDown(self):
         await self.engine.dispose()
