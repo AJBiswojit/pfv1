@@ -1,5 +1,4 @@
 import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
-import { Link } from '../../router/index.jsx';
 import { motion } from 'framer-motion';
 import { categories } from '../../data/index.js';
 import { getProductsFor } from '../../services/catalog.js';

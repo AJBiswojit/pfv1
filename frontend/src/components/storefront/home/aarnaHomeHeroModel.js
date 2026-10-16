@@ -1,6 +1,7 @@
 /** Adapt the existing /home contract to the reference carousel's render shape.
  * No client fallback content: /home already owns canonical no-row fallback
- * versus the deliberately empty all-inactive case. Other sections are NOT CMS.
+ * versus the deliberately empty all-inactive case. Other sections resolve through
+ * the homepageContent contract in HomepageSection.
  */
 import { normalizeHeroSlides } from './heroModel';
 import { resolveMediaUrl } from '../../../services/media/mediaPaths';

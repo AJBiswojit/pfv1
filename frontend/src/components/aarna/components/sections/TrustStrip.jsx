@@ -1,5 +1,4 @@
-import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
-import { Link } from '../../router/index.jsx';
+import { SectionLink } from '../../../storefront/home/HomepageSection';
 import { BadgeCheck, Headset, Lock, RotateCcw, Truck } from 'lucide-react';
 import { trustItems } from '../../data/index.js';
 

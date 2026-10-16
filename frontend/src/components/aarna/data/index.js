@@ -1,5 +1,6 @@
-// Content access layer. Components import from here; swap the mock sources
-// for CMS/back-end data without touching visual components.
+// Design content access layer: shared site/navigation copy and fallback editorial
+// content. HomepageSection supplies authored /home homepageContent when configured;
+// products and promotions use their live backend boundary modules.
 export { site, announcements } from '../mock/data/site.js';
 export {
   heroConfig, heroSlides, categories, sareeCollections, sareeLookbook, kurtiCollections, jewelleryTypes, trustItems, popularSearches,

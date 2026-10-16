@@ -1,7 +1,7 @@
 import { products } from '../mock/data/products.js';
 
-/* Catalogue service — the only module that touches product data.
- * Synchronous for the prototype; signatures map 1:1 to future API calls. */
+/* Synchronous selectors over the design-shaped live backend catalogue.
+ * The products boundary publishes updated records as the shared store hydrates. */
 
 const TITLES = {
   all: 'All Pieces', women: 'Women', men: 'Men', kids: 'Kids', jewellery: 'Jewellery', essentials: 'Essentials',
@@ -32,7 +32,7 @@ export const getByType = (type) => products.filter((p) => p.type === type);
 export const getByDepartment = (dep) => products.filter((p) => p.department === dep);
 export const getByIds = (ids) => ids.map(getProductById).filter(Boolean);
 
-/** Sample "featured" selection — explicitly NOT a verified sales ranking. */
+/** Backend-flagged featured selection — not a verified sales ranking. */
 export const getFeatured = () => products.filter((p) => p.featured);
 
 const BESTSELLER_FILTERS = {
