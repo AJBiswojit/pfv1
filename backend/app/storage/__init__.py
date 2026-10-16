@@ -161,10 +161,20 @@ def storage_status() -> dict:
     URL prefix, and (for S3) the bucket name. Never credentials, never an
     absolute filesystem path.
     """
+    import logging as _logging
     provider_name = settings.storage_provider_name
     try:
         provider = get_storage_provider()
         detail = provider.describe()
+        # Warn on startup if the store has no objects — this almost always
+        # means a fresh environment where assets haven't been seeded yet.
+        has_objects = next(provider.list_objects(), None) is not None
+        if not has_objects:
+            _logging.getLogger(__name__).warning(
+                "Storage provider '%s' contains no objects. "
+                "Run `python -m app.services.media.migrate_local` to seed assets.",
+                provider_name,
+            )
         return {
             "ok": True,
             "provider": provider_name,
@@ -174,6 +184,7 @@ def storage_status() -> dict:
             "cdnConfigured": bool(settings.media_cdn_base_url),
             "namespaces": list(ALLOWED_NAMESPACES),
             "resolveProductImages": bool(settings.MEDIA_RESOLVE_PRODUCT_IMAGES),
+            "assetsPresent": has_objects,
         }
     except StorageProviderNotConfigured as exc:
         return {

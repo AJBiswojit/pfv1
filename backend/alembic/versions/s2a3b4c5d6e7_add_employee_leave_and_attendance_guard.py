@@ -79,9 +79,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("uq_employee_attendance_employee_date", table_name="employee_attendance")
-    op.drop_index("ix_employee_leave_status", table_name="employee_leave")
-    op.drop_index("ix_employee_leave_start_date", table_name="employee_leave")
-    op.drop_index("ix_employee_leave_employee_id", table_name="employee_leave")
-    op.drop_index("ix_employee_leave_id", table_name="employee_leave")
-    op.drop_table("employee_leave")
+    op.drop_index("uq_employee_attendance_employee_date", table_name="employee_attendance", schema="pratikshya")
+    op.drop_index("ix_employee_leave_status", table_name="employee_leave", schema="pratikshya")
+    op.drop_index("ix_employee_leave_start_date", table_name="employee_leave", schema="pratikshya")
+    op.drop_index("ix_employee_leave_employee_id", table_name="employee_leave", schema="pratikshya")
+    op.drop_index("ix_employee_leave_id", table_name="employee_leave", schema="pratikshya")
+    op.drop_table("employee_leave", schema="pratikshya")

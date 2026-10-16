@@ -28,6 +28,7 @@ from app.models.employee.employee import EmployeeProfileModel              # noq
 from app.models.employee.attendance import AttendanceModel                 # noqa: F401
 from app.models.employee.attendance_device import AttendanceDeviceModel     # noqa: F401
 from app.models.employee.attendance_punch import AttendancePunchModel       # noqa: F401
+from app.models.employee.leave import LeaveModel                            # noqa: F401
 from app.models.employee.performance import PerformanceModel               # noqa: F401
 from app.models.employee.target import TargetModel                         # noqa: F401
 

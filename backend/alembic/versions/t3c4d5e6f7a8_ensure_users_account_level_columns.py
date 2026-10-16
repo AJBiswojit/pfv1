@@ -54,7 +54,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Non-destructive safety net: downgrade does not drop the columns.
-    # Removing them would re-break staff login. Use r1's downgrade if a true
-    # reverse of the original add is required.
-    return
+    # Mirror what r1's own downgrade() does: load the module via the same
+    # helper already used in upgrade() and call its downgrade directly.
+    path = Path(__file__).with_name("r1a2b3c4d5e6_add_account_level_columns.py")
+    spec = importlib.util.spec_from_file_location("r1_account_level_columns", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    module.downgrade()
