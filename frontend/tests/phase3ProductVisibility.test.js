@@ -407,14 +407,9 @@ test("STATIC: the catalog store hydrates from the gated public list", () => {
 });
 
 test("STATIC: the PDP only reaches an admin route behind an explicit preview + admin token", () => {
-  const pdp = src("pages/ProductDetail.jsx");
-  assert.match(
-    pdp,
-    /if\s*\(isPreview\s*&&\s*getAccessToken\("admin"\)\)\s*\{\s*result\s*=\s*await\s+apiAdminGetProduct/,
-    "the admin fetch must be gated on both the preview flag and an admin token"
-  );
-  assert.match(pdp, /result\s*=\s*await\s+apiGetProduct\(productId\)/);
-  assert.match(pdp, /setStatus\(result\.status === 404 \? "notfound" : "error"\)/);
+  const pdp = src("components/aarna/pages/Product.jsx");
+  assert.match(pdp, /useCatalogueProduct\(slug\)/, "the customer PDP resolves through the live storefront catalogue");
+  assert.doesNotMatch(pdp, /apiAdminGetProduct|getAccessToken\("admin"\)/, "the customer PDP has no admin preview fetch");
 });
 
 test("STATIC: no storefront surface decides visibility from a local published flag", () => {
@@ -425,7 +420,7 @@ test("STATIC: no storefront surface decides visibility from a local published fl
   // authority again.
   const importers = [
     "hooks/useCatalogueQuery.js",
-    "pages/ProductDetail.jsx",
+    "components/aarna/pages/Product.jsx",
     "services/catalog/catalogStore.js",
   ];
   for (const file of importers) {

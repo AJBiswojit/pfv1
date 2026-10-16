@@ -247,11 +247,15 @@ test("unknown customer URLs always render Aarna's own 404 inside its shell", () 
   assert.match(markup, /class="footer"/);
 });
 
-test("the application's customer catch-all is still the production 404 — Phase 8 did not edit it", () => {
+test("the application delegates customer 404 handling to Aarna", () => {
   const app = read("src/App.jsx");
-  assert.match(app, /import NotFound from "\.\/pages\/NotFound";/);
-  assert.match(app, /<Route path="\*" element=\{<NotFound \/>\} \/>/, "the customer catch-all no longer renders the production 404");
-  assert.match(read("src/pages/NotFound.jsx"), /eyebrow="Error 404"/, "the production 404's own copy changed");
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  const listing = read("src/components/aarna/pages/Shop.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.match(storefront, /<Route path="\*" element=\{<Shop mode="navigation" \/>\} \/>/);
+  assert.match(listing, /NotFound/);
+  assert.doesNotMatch(app, /pages\/NotFound/);
+  assert.match(read("src/components/aarna/pages/NotFound.jsx"), /<p className="label">404<\/p>/);
 });
 
 test("the reset route moves into Aarna while accounts remain correctly routed", () => {

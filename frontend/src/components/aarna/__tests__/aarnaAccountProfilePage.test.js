@@ -2,12 +2,9 @@
  * PRATIKSHYA FASHION — PHASE 11 · STAGE 2.3 — the profile screen, on this
  * application's own account.
  *
- * The second screen of the account family that is the port's own page:
- * `/account/profile` renders `pages/account/Profile.jsx` inside the shared
- * `AccountFrame`, still behind the same `ProtectedRoute` the production tree
- * draws, still reached only while the switch asks for the port. The production
- * screen is untouched and still serves the path in the Atelier storefront —
- * `App.jsx` is not edited by this phase at all.
+ * The Aarna-native profile screen renders inside the shared account frame and
+ * remains behind the customer guard. App.jsx delegates all customer routes to
+ * Aarna; its staff routes remain independent.
  *
  * What these tests render is the real composition: the ported page inside this
  * application's provider stack (and the port's own UI/shop providers, exactly as
@@ -16,7 +13,7 @@
  * own: it is opened and closed through the api client (`setTokens`/`clearTokens`),
  * never by writing a token key by hand.
  *
- *   1. THE ROUTE. `/account/profile` is the port's page, inside the guard,
+ *   1. THE ROUTE. `/account\/profile` is the port's page, inside the guard,
  *      declared in the port's registry — and production's own page is still
  *      `App.jsx`'s, still lazy. With the switch off the URL is production's; a
  *      session the application has not restored yet is shown the guard.
@@ -195,7 +192,7 @@ async function mount(define) {
     api,
     Profile,
     /* The port's page at the URL a browser reaches, inside the real providers. */
-    render: (path = "/account/profile") => at(path, React.createElement(Providers, null, React.createElement(Profile))),
+    render: (path = "/account\/profile") => at(path, React.createElement(Providers, null, React.createElement(Profile))),
     /* And the application's own route host, for the switch and the guard. */
     renderLayout: (path) => at(path, Layout),
   };
@@ -233,7 +230,7 @@ const inputFor = (markup, id) => inputs(markup).find((attributes) => attributes.
 
 /* ── 1 · the route, the switch and the guard ───────────────────────────────── */
 
-test("`/account/profile` is the port's own page, inside the same guard, and production's page still serves it in App.jsx", () => {
+test("`/account\/profile` is the port's own page, inside the same guard, and Aarna owns the only customer route", () => {
   const mount = read(MOUNT);
   assert.match(mount, /import AccountProfilePage from "\.\/pages\/account\/Profile\.jsx";/,
     "the mount does not import the port's profile page under its own name");
@@ -248,12 +245,13 @@ test("`/account/profile` is the port's own page, inside the same guard, and prod
     "the profile route is outside the guard the family stands behind");
 
   const app = read(PRODUCTION_APP);
-  /* Production's own import carries no extension and its route keeps the leading
-     slash — the port's route table is the relative one, `App.jsx`'s is absolute. */
-  assert.match(app, /const AccountProfile = lazy\(\(\) => import\("\.\/pages\/account\/AccountProfile"\)\);/,
-    "App.jsx no longer lazy-loads its own profile page");
-  assert.match(app, /<Route path="\/account\/profile" element=\{<AccountProfile \/>\} \/>/,
-    "App.jsx no longer renders its own profile page on this path");
+  const aarna = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/,
+    "App.jsx no longer delegates customer paths to Aarna");
+  assert.doesNotMatch(app, /pages\/account\/AccountProfile/,
+    "the outer route tree still imports an obsolete customer page");
+  assert.match(aarna, /<Route path="account\/profile"/,
+    "Aarna no longer owns the account route");
 });
 
 test("the port's registry declares the profile page once, and the page exists", () => {
@@ -264,7 +262,7 @@ test("the port's registry declares the profile page once, and the page exists", 
 });
 
 test("with the switch off, the URL is production's — nothing of this page mounts", () => {
-  const markup = off.renderLayout("/account/profile");
+  const markup = off.renderLayout("/account\/profile");
   assert.equal(/pf-account/.test(markup), false, "the Atelier storefront mounted the port's account chrome");
   assert.equal(/Personal details/.test(markup), false, "the Atelier storefront rendered the port's profile screen");
   assert.equal(/Your personal/.test(markup), false, "the Atelier storefront rendered the port's profile heading");
@@ -275,7 +273,7 @@ test("a session the application has not restored yet is shown the guard, not the
   globalThis.localStorage = localStorageStub;
   try {
     setTokens({ accessToken: "pf-phase23-profile", refreshToken: "pf-phase23-refresh" }, "customer");
-    const markup = on.renderLayout("/account/profile");
+    const markup = on.renderLayout("/account\/profile");
 
     assert.match(markup, /Verifying atelier access/, "a guarded URL painted past the guard");
     assert.equal(/pf-account/.test(markup), false, "the guard painted account chrome for an unrestored session");

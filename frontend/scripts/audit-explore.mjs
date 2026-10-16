@@ -57,7 +57,7 @@ for (const { product, set } of mediaReports) {
 const duplicatePrimary = [...primaryOwners.values()].filter((owners) => new Set(owners).size > 1);
 
 const sourceFiles = [
-  "src/pages/Explore.jsx",
+  "src/components/aarna/pages/Shop.jsx",
   "src/components/explore/ExploreBrowser.jsx",
   "src/components/explore/ExploreProductGrid.jsx",
   "src/data/products/explore.js",

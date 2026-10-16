@@ -1,25 +1,10 @@
 /**
- * PRATIKSHYA FASHION — PHASE 4 · storefront migration inventory (regression pins).
- *
- * Phase 4 asks which old-frontend customer routes the new storefront (the Aarna
- * port, `VITE_STOREFRONT_HOME=aarna`) answers, which it does not, and whether the
- * homepage's twelve sections agree with the backend's closed content contract.
- * These tests derive the answer from the source tree rather than from a
- * hand-written list, so the inventory cannot silently drift:
- *
- *   1. every customer path `App.jsx` declares (and every manifest path) is either
- *      served by the port's boundary; there are no remaining production-side customer routes;
- *   2. the staff portals are never claimed by the port;
- *   3. the four account screens that have not been redrawn yet (Phase 11 steps
- *      5–6) are still the production components, not silently ported or dropped;
- *   4. the homepage's eleven keyed sections match the backend's closed registry
- *      (`backend/app/schemas/media/homepage.py`), so no section can be rendered
- *      that the backend cannot store, and no stored section is never rendered;
- *   5. the section gate is a total, honest state machine: loading, unavailable
- *      (with retry), hidden for inactive/empty, legacy only for an unconfigured
- *      older backend, and ready only for a configured ready section.
- *
- * It does not prove pixels or a browser journey; see the Phase 4 report.
+ * Customer-route inventory and homepage contract checks. The source-derived
+ * inventory now reads Aarna's route table and the shared navigation manifest;
+ * App.jsx contributes only its Aarna customer boundary and separate staff routes.
+ * This suite also pins that Aarna never claims staff paths and that homepage
+ * sections obey the backend's closed content contract. It does not prove pixels
+ * or a browser journey.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -39,6 +24,7 @@ import {
   isStaffPortalPath,
 } from "../../../config/storefrontHome.js";
 import { homepageSectionMode } from "../../storefront/home/homepageSectionModel.js";
+import { APP_ROUTES } from "../router/routes.js";
 
 function projectRoot() {
   let directory = new URL(".", import.meta.url);
@@ -55,9 +41,9 @@ const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 /* All registered customer routes are answered by Aarna; staff routes are excluded. */
 const PRODUCTION_REMAINING = [];
 
-/* The four account screens now mount Aarna-native pages while App.jsx keeps its
-   original route entries for explicitly selected Atelier mode. */
-const PRODUCTION_ACCOUNT_SCREENS = {
+/* These customer account screens are native Aarna pages; App.jsx only mounts
+   the customer boundary, while staff routes remain separate. */
+const AARNA_ACCOUNT_SCREENS = {
   "account/settings": "AccountSettings",
   "account/security": "AccountSecurity",
   "account/preferences": "AccountPreferences",
@@ -84,16 +70,16 @@ function concrete(path) {
   return path.replace(/:([A-Za-z]+)/g, (_, name) => (name === "slug" ? "sample-slug" : "sample-id"));
 }
 
-/** Every customer path App.jsx declares, plus the manifest, as concrete URLs. */
+/** Every customer path in Aarna's route table plus the navigation manifest. */
 function customerPaths() {
-  const app = read("src/App.jsx");
-  const declared = [...app.matchAll(/path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p.startsWith("/") && p !== "*");
-  const manifest = routeManifest.map((route) => route.path);
-  const all = new Set(["/", ...declared, ...manifest].map((p) => p.replace(/\/+$/, "") || "/"));
+  const aarna = read("src/components/aarna/AarnaStorefront.jsx");
+  const declared = [...aarna.matchAll(/path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== "*");
+  const all = new Set(["/", ...APP_ROUTES, ...declared.map((p) => p.startsWith("/") ? p : `/${p}`), ...routeManifest.map((route) => route.path)]
+    .map((p) => p.replace(/\/+$/, "") || "/"));
   return [...all].filter((p) => !isStaffPortalPath(p)).map(concrete).sort();
 }
 
-test("every customer route is answered by the port, or is on the explicit production-remaining list", () => {
+test("every customer route is answered by Aarna, with no legacy customer routes", () => {
   const paths = customerPaths();
   assert.ok(paths.length > 60, `expected the full customer surface, got ${paths.length}`);
   const unserved = paths.filter((p) => !servedByPort(p));
@@ -126,23 +112,24 @@ test("the port's information pages are exactly the manifest's four", () => {
   assert.deepEqual([...AARNA_INFO_PATHS].sort(), ["/about", "/contact", "/privacy", "/terms"]);
 });
 
-test("the four Phase 12 account screens are the port's own pages, and production still serves the same paths", () => {
+test("the four remaining account screens are native to Aarna, and App delegates customer routes", () => {
   const source = read("src/components/aarna/AarnaStorefront.jsx");
   const app = read("src/App.jsx");
-  for (const [route, component] of Object.entries(PRODUCTION_ACCOUNT_SCREENS)) {
-    /* The port mounts its own native page, statically imported — not production's lazy page. */
+  for (const [route, component] of Object.entries(AARNA_ACCOUNT_SCREENS)) {
+    /* Aarna mounts its own native page, statically imported. */
     assert.doesNotMatch(
       source,
       new RegExp(`const ${component} = lazy\\(`),
       `${component} must not be a production lazy import in the port`,
     );
     assert.match(source, new RegExp(`<Route path="${route}" element=\\{<${component} />\\} />`), `${route} must mount ${component}`);
-    /* The application's own route is untouched: App.jsx still lazy-loads production's page. */
-    assert.match(app, new RegExp(`const ${component} = lazy\\(\\(\\) => import\\("\\./pages/account/${component}"\\)\\)`), `App.jsx must still lazy-load ${component}`);
+    /* App.jsx delegates every customer URL to Aarna; no duplicate route remains. */
+    assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+    assert.doesNotMatch(app, new RegExp(`pages\\/account\\/${component}`), `App still imports ${component} for a customer route`);
   }
 });
 
-test("the redrawn account screens render the port's own pages, not production", () => {
+test("the redrawn account screens render the Aarna-owned pages, not obsolete customer routes", () => {
   const source = read("src/components/aarna/AarnaStorefront.jsx");
   assert.match(source, /import AccountOverview from "\.\/pages\/account\/Overview\.jsx"/);
   assert.match(source, /import AccountProfilePage from "\.\/pages\/account\/Profile\.jsx"/);

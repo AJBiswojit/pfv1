@@ -2,12 +2,9 @@
  * PRATIKSHYA FASHION — PHASE 11 · the account overview, on this application's own
  * account.
  *
- * The first screen of the account family that is the port's own page: `/account`
- * renders `pages/account/Overview.jsx` inside the shared `AccountFrame`, still
- * behind the same `ProtectedRoute` the production tree draws, still reached only
- * while the switch asks for the port. The production dashboard is untouched and
- * still serves `/account` in the Atelier storefront — `App.jsx` is not edited by
- * this phase at all.
+ * The Aarna-native account overview renders inside the shared account frame and
+ * remains behind the customer guard. App.jsx delegates all customer routes to
+ * Aarna; its staff routes remain independent.
  *
  * What these tests render is the real composition: the ported page inside this
  * application's provider stack (and the port's own UI/shop providers, exactly as
@@ -418,7 +415,7 @@ test("the index route is the port's own page, still inside the guard the family 
     "the production account screens left the port's route table");
 });
 
-test("production keeps its own dashboard, its own route and its own data", () => {
+test("the Aarna account route is mounted without an outer legacy page", () => {
   const production = read(PRODUCTION_DASHBOARD);
   assert.match(production, /useAccount\(|useProfile\(/,
     "the production dashboard no longer reads the account");
@@ -426,11 +423,14 @@ test("production keeps its own dashboard, its own route and its own data", () =>
     assert.ok(production.includes(sourceName), `the production dashboard no longer reads ${sourceName}`);
   }
 
-  const productionApp = read(PRODUCTION_APP);
-  assert.match(productionApp, /const AccountDashboard = lazy\(\(\) => import\("\.\/pages\/account\/AccountDashboard"\)\);/,
-    "App.jsx no longer lazy-loads its own dashboard");
-  assert.match(productionApp, /<Route path="\/account" element=\{<AccountDashboard \/>\} \/>/,
-    "App.jsx no longer serves /account with its own dashboard");
+  const app = read(PRODUCTION_APP);
+  const aarna = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/,
+    "App.jsx no longer delegates customer paths to Aarna");
+  assert.doesNotMatch(app, /pages\/account\/AccountDashboard/,
+    "the outer route tree still imports an obsolete customer page");
+  assert.match(aarna, /<Route path="account"/,
+    "Aarna no longer owns the account route");
 
   /* And the port's registry declares the ported page, so the closure check
      knows it and the port tool never writes over it. */

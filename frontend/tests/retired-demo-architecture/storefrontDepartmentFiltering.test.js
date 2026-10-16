@@ -50,7 +50,7 @@ const publishWholeCatalogue = () => {
   return getLiveStorefrontProducts();
 };
 
-/** Runs a listing route exactly the way `CatalogueListing` does. */
+/** Runs a listing route exactly through Aarna’s shared listing scope resolver. */
 const listing = (pathname, options = {}) => {
   const scope = resolveNavigationScope(pathname);
   assert.ok(scope, `${pathname} resolves a storefront context`);

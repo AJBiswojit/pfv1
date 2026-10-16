@@ -167,7 +167,7 @@ const code = () => source().replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*
 
 /* ── 1 · the route and the read ────────────────────────────────────────────── */
 
-test("the return screen is the port's own page, and a guest can still reach it", () => {
+test("Aarna's return screen remains available for guest orders", () => {
   const mountFile = read(MOUNT);
 
   assert.match(mountFile, /import AccountOrderReturnPage from "\.\/pages\/account\/OrderReturn\.jsx";/, "the port's return screen is not imported by the mount");
@@ -175,10 +175,12 @@ test("the return screen is the port's own page, and a guest can still reach it",
   /* Production still owns the screen, and App.jsx still declares the path
      OUTSIDE the guard — a guest order has to be returnable. */
   const appFile = read("src/App.jsx");
-  assert.match(appFile, /<Route path="\/account\/orders\/:orderId\/return" element=\{<OrderReturn \/>\} \/>/, "App.jsx no longer declares the return path");
-  const guardOpen = appFile.indexOf("<Route element={<ProtectedRoute />}>");
-  const guardClose = appFile.indexOf("</Route>", guardOpen);
-  const returnAt = appFile.indexOf('<Route path="/account/orders/:orderId/return"');
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(appFile, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.match(storefront, /<Route path="account\/orders\/:orderId\/return" element=\{<AccountOrderReturnPage \/>\} \/>/, "Aarna no longer declares the return route");
+  const guardOpen = storefront.indexOf("<Route element={<ProtectedRoute />}>");
+  const guardClose = storefront.indexOf("</Route>", guardOpen);
+  const returnAt = storefront.indexOf('<Route path="account/orders/:orderId/return"');
   assert.ok(returnAt > guardClose || returnAt < guardOpen, "the return screen was placed behind the account guard");
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
 });

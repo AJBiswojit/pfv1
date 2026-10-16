@@ -1,21 +1,8 @@
 /**
- * PRATIKSHYA FASHION — PHASE 2D · integration and isolation.
- *
- * The port is only useful if it is wired to THIS application — real routes, the
- * real cart and wishlist, the real catalogue, the real Aarna-default switch —
- * and only safe if its preview fixtures can never reach a customer. These tests
- * pin both, from the source tree and from the modules themselves:
- *
- *   1. every destination the design wrote resolves to a route the application
- *      registers, so no ported link can land on a 404;
- *   2. Aarna is the default, with dev-only URL review and the boundary mounted by
- *      `CustomerLayout` alone — `App.jsx` does not know the port exists;
- *   3. the fixtures have exactly one importer (the DEV-gated reference
- *      surface), the production graph cannot reach the harness, and none of the
- *      design's sample copy ships in the port;
- *   4. the boundary modules are wired to the application: the cart, the
- *      wishlist, the catalogue facade, the media resolver, the offer register,
- *      and an honest "no capability yet" for the subscription.
+ * Aarna integration and isolation contracts. App.jsx mounts CustomerLayout for
+ * customer paths, CustomerLayout mounts Aarna, and Aarna owns the customer route
+ * table. The staff portals remain separate; preview fixtures and old customer
+ * compositions are not reachable from the production route graph.
  */
 
 import test from "node:test";
@@ -104,12 +91,13 @@ test("every destination the design wrote resolves to a route this application re
 
 test("the route table is this application's own — checked against App.jsx and the manifest", () => {
   const app = read("src/App.jsx");
-  /* Every literal customer path the resolver keeps as-is is declared by App.jsx. */
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App must delegate customer paths to Aarna");
   for (const path of APP_ROUTES) {
-    /* Root is handled by the customer catch-all route; nested Aarna routing owns it. */
-    const declared = path === "/" ? /<Route path="\*"/.test(app) : app.includes(`path="${path}"`);
-    assert.ok(declared, `routes.js lists ${path}, which App.jsx does not declare`);
+    if (path === "/" || path === "/login") continue;
+    assert.ok(isRegisteredPath(path), `Aarna's route register omits ${path}`);
   }
+  assert.match(storefront, /<Route index element=\{<Home \/>\} \/>/, "Aarna no longer owns the customer root");
   /* …and every path the manifest carries is a route too. */
   assert.ok(routeManifest.length >= 40, `expected the navigation manifest, found ${routeManifest.length} routes`);
   for (const route of routeManifest) assert.ok(isRegisteredPath(route.path), `${route.path} is not resolvable`);
@@ -177,14 +165,15 @@ test("the translation table only names routes the application registers", () => 
 
 /* ── 2 · the single customer storefront ─────────────────────────────── */
 
-test("the customer layout always mounts Aarna and App.jsx no longer selects Atelier/editorial", () => {
+test("Aarna is the only customer surface mounted by the outer catch-all", () => {
   const layout = read(LAYOUT);
   assert.match(layout, /<AarnaStorefront \/>/);
   assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|useEditorialHome|useAarnaStorefront/);
 
   const app = read("src/App.jsx");
   assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
-  assert.match(app, /<Route path="\*" element=\{<NotFound \/>\} \/>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\*" element=\{<NotFound/);
 
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__") && !file.includes("/preview/"))

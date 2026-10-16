@@ -1,11 +1,11 @@
 /**
- * PRATIKSHYA FASHON — Catalogue listing redesign contracts.
+ * PRATIKSHYA FASHON — Aarna catalogue listing contracts.
  *
  * These tests lock down the product-first catalogue UX introduced in the
  * category/subcategory redesign:
  *
  *   - Category and subcategory pages resolve through the ONE generic
- *     CatalogueListing page (no per-department components).
+ *     Aarna Shop page (no per-department components).
  *   - Scope filters always include department (and category / subcategory
  *     on deeper routes), so /kids/boys never shows Women/Men/Bridal/Girls.
  *   - Product counts come from the canonical query, not hardcoded strings.
@@ -66,10 +66,12 @@ const listing = (pathname, options = {}) => {
 /* Generic catalogue page architecture                                 */
 /* ------------------------------------------------------------------ */
 
-test("every catalogue route is served by the generic CatalogueListing page", () => {
-  // There is no per-department page component. The route manifest's
-  // catalogue paths all resolve a navigation scope and are therefore
-  // routed to <CatalogueListing variant=\"navigation\" />.
+test("every catalogue route is served by Aarna’s generic listing page", () => {
+  // There is no per-department page component. Each catalogue path resolves
+  // a navigation scope, and the Aarna route table delegates unmatched customer
+  // catalogue paths to its one Shop page.
+  const storefront = readFileSync(join(ROOT, "src/components/aarna/AarnaStorefront.jsx"), "utf8");
+  assert.match(storefront, /<Route path="\*" element=\{<Shop mode="navigation" \/>\} \/>/);
   for (const route of catalogueRoutes) {
     const scope = resolveNavigationScope(route.path);
     assert.ok(scope, `${route.path} resolves a navigation scope`);
@@ -307,9 +309,9 @@ test("category tabs derive from the canonical departments tree (same shape as Ca
 /* Hero removal (no panorama MediaFrame on catalogue pages)            */
 /* ------------------------------------------------------------------ */
 
-test("the redesigned CatalogueListing no longer renders a panorama hero frame", () => {
+test("the Aarna Shop listing does not render the former panorama hero frame", () => {
   const src = readFileSync(
-    join(ROOT, "src/pages/CatalogueListing.jsx"),
+    join(ROOT, "src/components/aarna/pages/Shop.jsx"),
     "utf8"
   );
   // The old page rendered `aspect=\"panorama\"` inside a MediaFrame.
@@ -317,16 +319,16 @@ test("the redesigned CatalogueListing no longer renders a panorama hero frame", 
   assert.doesNotMatch(
     src,
     /aspect="panorama"/,
-    "CatalogueListing must not render a panorama hero MediaFrame"
+    "Aarna Shop must not render a panorama hero MediaFrame"
   );
   assert.doesNotMatch(
     src,
     /overlay="inkLeft"/,
-    "CatalogueListing must not render the old hero overlay"
+    "Aarna Shop must not render the old hero overlay"
   );
-  // It must still render the CatalogueBrowser.
-  assert.match(src, /CatalogueBrowser/);
-  assert.match(src, /CatalogueHeader/);
+  // The Aarna page keeps product discovery compact and uses the shared listing query.
+  assert.match(src, /useCatalogueQuery/);
+  assert.match(src, /ProductCard/);
 });
 
 test("CatalogueHeader uses compact vertical rhythm (products appear above the fold)", () => {
@@ -360,22 +362,12 @@ test("listingPlacementsForScope still resolves curated rails by taxonomy", () =>
   assert.deepEqual(unknown, []);
 });
 
-test("CatalogueListing still imports PlacementProductRail and renders it after the grid", () => {
-  const src = readFileSync(
-    join(ROOT, "src/pages/CatalogueListing.jsx"),
-    "utf8"
-  );
-  assert.match(src, /PlacementProductRail/);
-  // Marketing rails must appear AFTER the CatalogueBrowser in the file
-  // (so products render above curated marketing content).
-  const browserIndex = src.indexOf("<CatalogueBrowser");
-  const railIndex = src.indexOf("<PlacementProductRail");
-  assert.ok(browserIndex >= 0, "CatalogueBrowser is rendered");
-  assert.ok(railIndex >= 0, "PlacementProductRail is rendered");
-  assert.ok(
-    railIndex > browserIndex,
-    "Marketing rails render after the product grid, not before"
-  );
+test("the shared placement rail remains available without coupling Aarna listings to the retired page", () => {
+  const rail = readFileSync(join(ROOT, "src/components/storefront/PlacementProductRail.jsx"), "utf8");
+  const shop = readFileSync(join(ROOT, "src/components/aarna/pages/Shop.jsx"), "utf8");
+  assert.match(rail, /export default function PlacementProductRail/);
+  assert.match(shop, /useCatalogueQuery/);
+  assert.doesNotMatch(shop, /CatalogueListing|PlacementProductRail/);
 });
 
 /* ------------------------------------------------------------------ */
@@ -404,7 +396,7 @@ test("/collections and collection slugs still resolve canonical collection scope
 
 test("no AVIF-to-WebP/JPG conversion is introduced in catalogue surfaces", () => {
   const surfaces = [
-    join(ROOT, "src/pages/CatalogueListing.jsx"),
+    join(ROOT, "src/components/aarna/pages/Shop.jsx"),
     join(ROOT, "src/components/storefront/CatalogueBrowser.jsx"),
     join(ROOT, "src/components/storefront/CatalogueHeader.jsx"),
     join(ROOT, "src/components/storefront/CatalogueToolbar.jsx"),
@@ -467,23 +459,23 @@ test("kids route resolves through the same generic scope mechanism", () => {
   // branching (no if/switch on department id that would create a Kids-only
   // code path). Comments may legitimately mention "/kids" in example paths,
   // so we check for conditional code, not string literals.
-  const catalogueListingSrc = readFileSync(
-    join(ROOT, "src/pages/CatalogueListing.jsx"),
+  const aarnaShopSrc = readFileSync(
+    join(ROOT, "src/components/aarna/pages/Shop.jsx"),
     "utf8"
   );
   assert.doesNotMatch(
-    catalogueListingSrc,
+    aarnaShopSrc,
     /if\s*\([^)]*['"]kids['"]/,
-    "CatalogueListing must not contain a kids-specific conditional branch"
+    "Aarna Shop must not contain a kids-specific conditional branch"
   );
   assert.doesNotMatch(
-    catalogueListingSrc,
+    aarnaShopSrc,
     /===\s*['"]kids['"]/,
-    "CatalogueListing must not compare against the kids department id"
+    "Aarna Shop must not compare against the kids department id"
   );
   assert.doesNotMatch(
-    catalogueListingSrc,
+    aarnaShopSrc,
     /kidsProducts\s*=|kidsCatalogue|kidsSpecific/i,
-    "CatalogueListing must not import or declare a Kids-only product list"
+    "Aarna Shop must not import or declare a Kids-only product list"
   );
 });

@@ -1,56 +1,8 @@
 /**
- * PRATIKSHYA FASHION — PHASE 11 · the customer account's boundary and its shell.
- *
- * Phase 11 adopts the account the way Phases 8, 9 and 10 adopted the wishlist,
- * the money path and the auth screens: the boundary names the surface, the
- * port's own routes answer it, and every element on those routes is — for now —
- * the PRODUCTION page, imported exactly as `App.jsx` imports it. The pages
- * themselves are redrawn one at a time, later. What this suite pins is the
- * boundary and the shell, and it pins them against production rather than
- * against its own expectations:
- *
- *   1. THE FAMILY IS THIRTEEN URLs UNDER TWO GUARDS, AND THE SPLIT IS
- *      PRODUCTION'S. Ten account screens stand behind the same `ProtectedRoute`
- *      `App.jsx` wraps them in, so a guest still lands on `/signin?returnTo=…`.
- *      The three order pages — `/account/orders/:orderId` and its `/track` and
- *      `/return` steps — stay UNGUARDED, because they are the guest-order
- *      surface: the frame those pages render inside branches on the session,
- *      hands a guest the sign-in links, and `claimGuestOrders` attaches the order
- *      afterwards. Stage 2.4 redrew all four of those screens in the port, and
- *      the URLs and their guards did not move.
- *      Both halves are read out of `AarnaStorefront.jsx` AND out of `App.jsx`
- *      and compared, so "parity" here means the two trees cannot disagree —
- *      not that this file believes something about them.
- *
- *   2. `/account/wishlist` IS NOT IN THE FAMILY. Phase 8 adopted it with the
- *      wishlist; it stays there, guest-accessible, and the two sets are
- *      disjoint by construction. `/reset-password` belongs to the auth surface.
- *
- *   3. THE SWITCH STILL DECIDES. Off, the account is the production surface,
- *      untouched — the harness renders it, so this is measured, not assumed.
- *      On, the port's chrome answers, and a guest asking for a guarded screen
- *      is redirected to the PORT'S sign-in page — a real page, never a blank or
- *      a dummy account.
- *
- *   4. THE SHELL FABRICATES NOTHING. The frame draws the design's own page
- *      frame, the customer's real first name (`useAccount()`), the two actions
- *      the production hero offers (a real link to the shop, a real `signOut()`)
- *      and a navigation landmark whose eleven destinations are read from the
- *      production module — never re-declared here — carrying the real wishlist
- *      count, seeded through the application's own client-side wishlist state.
- *
- * WHAT THIS CANNOT PROVE: clicks, focus order, keyboard traversal and layout
- * (no DOM in this sandbox), a signed-in account's profile/orders (no backend),
- * and the ported pages that do not exist yet — those are the later steps of
- * Phase 11 and stay unverified here. Effects do not run under
- * `renderToStaticMarkup`, and a lazily imported page suspends into this
- * harness's own fallback, so what a route RENDERS is pinned at the source level
- * and what the boundary DOES is pinned by rendering.
- *
- * The four pins this phase genuinely supersedes — the ones that asserted
- * `/account/**` never reaches the port — were updated in place, with the reason
- * written next to each: see `aarnaNotFoundHandover`, `aarnaListingPage` and
- * `aarnaWishlistPage`.
+ * Customer account route and shell contracts. Aarna owns the account pages;
+ * App.jsx delegates the customer catch-all to CustomerLayout while retaining
+ * separate staff portal routes. These tests pin the customer guard and the
+ * intentionally guest-accessible order detail, tracking, and return paths.
  */
 
 import test, { before, after } from "node:test";
@@ -452,105 +404,31 @@ test("the hook and the union read the account surface, gated by the same switch"
 
 /* ── 2 · the port's routes, against production's own ────────────────────── */
 
-test("the port declares the family once, and every element is a production page — except the screens this phase has redrawn", () => {
+test("Aarna owns all customer account routes, and App delegates customer paths to its layout", () => {
   const port = accountRoutes(read(MOUNT)).filter((route) => route.path !== "account/wishlist");
-  const app = accountRoutes(read(PRODUCTION_APP));
   const expected = [...GUARDED_SCREENS, ...GUEST_ORDER_URLS.map((path) => path.replace("pf-9f2c", ":orderId"))]
     .map((path) => path.replace(/^\//, ""))
     .sort();
-
-  assert.equal(port.length, 13, `the port declares ${port.length} account routes, expected thirteen`);
-  assert.deepEqual(port.map((route) => route.path).sort(), expected, "the port's account routes are not the family");
-
-  /* Each element is a lazy import of the production page — the same component
-     `App.jsx` puts on that path, and the same file — with one exception per
-     screen this phase has redrawn, which renders the port's own page instead.
-     Which routes those are is DERIVED, never listed by hand: a route whose
-     element is not one of `App.jsx`'s lazy pages has been migrated, and the set
-     of those must be exactly the screens `MIGRATED_SCREENS` declares. A later
-     stage that swaps another element without moving the phase's own record fails
-     HERE. */
-  const portLazy = lazyDeclarations(read(MOUNT));
-  const appLazy = lazyDeclarations(read(PRODUCTION_APP));
-  const appByPath = new Map(app.map((route) => [route.path, route]));
-  /* A route is migrated when its element is not production's lazy page — or,
-     for the Phase 12 screens, when the port imports the same name STATICALLY
-     (production still lazy-loads it). Either way the port owns the element. */
-  const migrated = port.filter((route) => !appLazy.has(route.component) || !portLazy.has(route.component));
-
-  assert.deepEqual(
-    migrated.map((route) => route.path).sort(),
-    MIGRATED_SCREENS.map((screen) => screen.path).sort(),
-    "the ported set moved without a declared migration",
-  );
-
-  /* The port's own page is imported by the mount and declared in the port's
-     registry, so a migrated screen can never be a page the tool does not know
-     about — nor one the closure check would try to write. */
-  const registry = read(REGISTRY);
-  const declared = registry.slice(registry.indexOf("const ADDED = ["), registry.indexOf("];", registry.indexOf("const ADDED = [")));
-  const portPages = [...read(MOUNT).matchAll(/^import\s+([A-Za-z0-9_]+)\s+from\s+"(\.\/pages\/account\/[^"]+)";/gm)]
-    .map(([, name, target]) => `${name} ${target}`);
-
-  for (const route of port) {
-    const production = appByPath.get(route.path);
-    assert.ok(production, `${route.path} is not a route App.jsx declares`);
-    const redrawn = MIGRATED_SCREENS.find((screen) => screen.path === route.path);
-    if (redrawn) {
-      /* The port's own page — imported by the mount under the port's own name,
-         never production's `lazy` component — and declared in the registry. */
-      assert.equal(route.component, redrawn.component, `${route.path} is not the port's own ${redrawn.component}`);
-      assert.equal(portLazy.has(route.component), false, `${route.path} is served by a production lazy page`);
-      assert.ok(
-        portPages.includes(`${redrawn.component} ./pages/account/${redrawn.page}`),
-        `${route.path} does not import the port's own page`,
-      );
-      assert.ok(
-        declared.includes(`"pages/account/${redrawn.page}"`),
-        `${route.path}: the migrated page is not declared in the port's registry`,
-      );
-      /* The migration moved the PORT's route, never the application's: production
-         still owns this path in `App.jsx`, still lazily. */
-      assert.equal(production.component, redrawn.production, `App.jsx no longer renders ${redrawn.production} on ${route.path}`);
-      assert.ok(appLazy.has(production.component), `App.jsx no longer lazy-loads ${redrawn.production}`);
-      continue;
-    }
-    assert.equal(route.component, production.component, `${route.path} renders a different component than production`);
-    assert.ok(portLazy.has(route.component), `${route.path} is not a lazy import`);
-    assert.equal(normalizeTarget(portLazy.get(route.component)), normalizeTarget(appLazy.get(production.component)),
-      `${route.path} does not import the page production imports`);
-  }
-
-  /* The wishlist route the port has carried since Phase 8 is not in the family
-     and does not come from this block. */
-  assert.equal(port.some((route) => route.path === "account/wishlist"), false, "the account block claimed the wishlist");
-  assert.match(read(MOUNT), /<Route path="account\/wishlist" element=\{<Wishlist \/>\} \/>/, "the wishlist route moved");
+  const app = read(PRODUCTION_APP);
+  assert.equal(port.length, 13, `Aarna declares ${port.length} account routes, expected thirteen`);
+  assert.deepEqual(port.map((route) => route.path).sort(), expected, "Aarna's account route family is incomplete");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.doesNotMatch(app, /<Route path="\/account/, "App still declares legacy customer account routes");
+  assert.match(read(MOUNT), /<Route path="account\/wishlist" element=\{<Wishlist \/>\} \/>/, "Aarna lost its wishlist route");
 });
 
-test("guard parity: the ten screens stand behind ProtectedRoute in BOTH trees, the three order pages behind nothing", () => {
-  const port = accountRoutes(read(MOUNT));
-  const app = accountRoutes(read(PRODUCTION_APP));
-  const guarded = (routes, key) => routes.find((route) => route.path === key)?.guarded;
-
-  /* App.jsx writes absolute paths (`/account/profile`); the port writes them
-     relative to the layout route (`account/profile`). The key is what they have
-     in common — a miss fails the comparison, so neither table can go quiet. */
+test("Aarna applies the shared guard to customer screens and leaves single-order routes open to guests", () => {
+  const routes = accountRoutes(read(MOUNT));
+  const guarded = (key) => routes.find((route) => route.path === key)?.guarded;
   for (const path of GUARDED_SCREENS) {
     const key = path.replace(/^\//, "");
-    assert.equal(guarded(port, key), true, `${path} is not behind the guard in the port`);
-    assert.equal(guarded(app, key), true, `${path} is not behind the guard in App.jsx — the trees disagree`);
+    assert.equal(guarded(key), true, `${path} is not behind Aarna's customer guard`);
   }
-
   for (const key of ["account/orders/:orderId", "account/orders/:orderId/track", "account/orders/:orderId/return"]) {
-    assert.equal(guarded(port, key), false, `${key} was put behind the guard in the port — a guest cannot reach it`);
-    assert.equal(guarded(app, key), false, `${key} is guarded in App.jsx — the trees disagree`);
+    assert.equal(guarded(key), false, `${key} must remain accessible for guest orders`);
   }
-
-  /* One block, and the port's other guard (the journey frame) is not it. */
-  assert.equal(guardedSpans(read(MOUNT)).length, 1, "the port declares more than one ProtectedRoute block");
+  assert.equal(guardedSpans(read(MOUNT)).length, 1, "Aarna declares more than one account guard block");
 });
-
-/* ── 3 · what a browser gets, on both switches ──────────────────────────── */
 
 test("the account and wishlist paths always enter the Aarna shell", () => {
   for (const path of [...GUARDED_SCREENS, ...GUEST_ORDER_URLS, "/account/wishlist"]) {

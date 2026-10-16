@@ -275,7 +275,7 @@ const seedOrders = (records) => app.orderService.saveOrders(records);
 
 /* ── 1 · the route ─────────────────────────────────────────────────────────── */
 
-test("the history is the port's own page, inside the guard the family shares", () => {
+test("Aarna owns the customer order history inside its shared guard", () => {
   const mountFile = read(MOUNT);
 
   assert.match(mountFile, /import AccountOrdersPage from "\.\/pages\/account\/Orders\.jsx";/, "the port's history is not imported by the mount");
@@ -285,10 +285,10 @@ test("the history is the port's own page, inside the guard the family shares", (
   const routeAt = mountFile.indexOf('<Route path="account/orders" element={<AccountOrdersPage />} />');
   assert.ok(routeAt > guardOpen && routeAt < guardClose, "the history left the guard its signed-in customers share");
 
-  /* Production still owns the screen, and still says what a failed read means. */
-  const production = read(PRODUCTION_SCREEN);
-  assert.match(production, /useOrder\(\)/, "the production history no longer reads the order context");
-  assert.match(read("src/App.jsx"), /<Route path="\/account\/orders" element=\{<AccountOrders \/>\} \/>/, "App.jsx no longer renders production's history");
+  /* The outer router delegates customer routes; Aarna is the sole history owner. */
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(storefront, /<Route path="account\/orders" element=\{<AccountOrdersPage \/>\} \/>/, "Aarna no longer owns the order history");
+  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
 });
 
 /* ── 2 · what the page states ──────────────────────────────────────────────── */

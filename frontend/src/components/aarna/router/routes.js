@@ -36,10 +36,10 @@ import { findProductBySlug } from '../mock/data/products.js';
 
 /** Every customer path this application registers, plus its dynamic shapes. */
 /**
- * Customer routes `App.jsx` declares that the navigation manifest does not
- * carry: the customer root, the collection index, the cart and checkout steps,
- * the auth screens and the legacy wishlist entry. The regression suite checks
- * this list against `App.jsx` itself, so it cannot drift from the application.
+ * Customer destinations that the navigation manifest does not carry: the root,
+ * listing modes, commerce steps, auth pages, and the legacy wishlist entry.
+ * `App.jsx` mounts the Aarna boundary once; this register and the Aarna route
+ * table own the individual customer destinations.
  */
 export const APP_ROUTES = [
   "/",

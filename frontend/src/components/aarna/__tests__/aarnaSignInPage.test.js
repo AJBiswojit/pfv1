@@ -207,7 +207,7 @@ test("the auth screens are disjoint from the journey, listing and catch-all surf
   }
 });
 
-test("the port's route table declares the three screens, and App.jsx is not touched", () => {
+test("Aarna declares all four authentication screens and App delegates customer routing", () => {
   const mount = read(MOUNT);
   assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
   assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
@@ -217,10 +217,12 @@ test("the port's route table declares the three screens, and App.jsx is not touc
   /* Phase 10 needed no routing change: the production route table is the one it
      was, and the auth routes still belong to the customer layout group. */
   const app = read("src/App.jsx");
-  assert.match(app, /<Route path="\/signin" element=\{<SignIn \/>\} \/>/);
-  assert.match(app, /<Route path="\/signup" element=\{<SignUp \/>\} \/>/);
-  assert.match(app, /<Route path="\/forgot-password" element=\{<ForgotPassword \/>\} \/>/);
-  assert.match(app, /<Route path="\/reset-password" element=\{<ResetPassword \/>\} \/>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\/(signin|signup|forgot-password|reset-password)"/);
+  assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
+  assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
+  assert.match(mount, /<Route path="forgot-password" element=\{<ForgotPassword \/>\} \/>/);
+  assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */

@@ -225,7 +225,7 @@ const hrefs = (markup) => anchors(markup).map((anchor) => anchor.href);
 
 /* ── 1 · the boundary ──────────────────────────────────────────────────────── */
 
-test('both AI routes are the port’s own pages, inside the guard the family shares', () => {
+test('Aarna owns both AI routes inside its shared customer guard', () => {
   const mountSource = read(MOUNT);
   const appSource = read(PRODUCTION_APP);
 
@@ -251,11 +251,12 @@ test('both AI routes are the port’s own pages, inside the guard the family sha
   assert.match(guarded, /account\/ai-mirror/, 'the AI Mirror left the guard block');
   assert.match(guarded, /account\/ai-shopping/, 'AI Shopping left the guard block');
 
-  /* Production keeps both paths — lazily, and in App.jsx's own words. */
-  assert.match(appSource, /const AiMirror = lazy\(\(\) => import\("\.\/pages\/account\/AiMirror"\)\);/);
-  assert.match(appSource, /const AiShoppingAssistant = lazy\(\(\) => import\("\.\/pages\/account\/AiShoppingAssistant"\)\);/);
-  assert.match(appSource, /<Route path="\/account\/ai-mirror" element=\{<AiMirror \/>\} \/>/);
-  assert.match(appSource, /<Route path="\/account\/ai-shopping" element=\{<AiShoppingAssistant \/>\} \/>/);
+  /* App no longer carries parallel customer routes; the Aarna boundary is the
+     sole owner and its two screens stay under the shared account guard. */
+  assert.match(appSource, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(appSource, /AiMirror|AiShoppingAssistant|\/account\/ai-/);
+  assert.match(mountSource, /<Route path="account\/ai-mirror" element=\{<AccountAiMirrorPage \/>\} \/>/);
+  assert.match(mountSource, /<Route path="account\/ai-shopping" element=\{<AccountAiShoppingPage \/>\} \/>/);
 });
 
 test('the port’s registry declares both pages and their sheet, once each', () => {

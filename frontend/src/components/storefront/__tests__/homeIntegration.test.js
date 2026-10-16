@@ -1,22 +1,8 @@
 /**
- * Phase 2C — the controlled homepage integration.
- *
- * The integrated composition is loaded through Vite's own SSR pipeline (the
- * convention these suites use) and server-rendered, so the assertions run
- * against the REAL components, the REAL services and the REAL switch — not a
- * description of them.
- *
- * Covered here:
- *   · the switch: Aarna by default, dev-only URL review, build-time flag,
- *     rollback, and no way for a customer's URL to change the homepage;
- *   · the composition mounts at the customer root ONLY, and only when asked;
- *   · the existing `AtelierDesign` homepage is the fallback and the rollback;
- *   · exactly one header and one announcement rail on the integrated page;
- *   · no fixture data, badge or preview chrome in the production composition;
- *   · canonical navigation and product-detail destinations;
- *   · the existing cart/wishlist contexts, and no second commerce state;
- *   · an empty or unavailable backend renders honestly, never blank;
- *   · App.jsx, the portals, auth and the commerce routes are untouched.
+ * Customer storefront integration checks. Aarna is the only mounted customer
+ * UI; App.jsx delegates customer paths to CustomerLayout while staff portals
+ * keep their own routes. The legacy editorial composition may remain in the
+ * source tree during phased cleanup, but it is not an active customer route.
  */
 
 import test, { after, before } from "node:test";
@@ -97,15 +83,16 @@ const importsModule = (file, modulePath) =>
  * canonical route manifest the navigation is built from.
  */
 function registeredRoutes() {
-  const app = read("src/App.jsx");
+  const sources = [read("src/App.jsx"), read("src/components/aarna/AarnaStorefront.jsx")];
   const staticPaths = new Set(modules.routeManifest.map((route) => route.path));
   const patterns = [];
-  for (const match of app.matchAll(/<Route path="([^"]+)"/g)) {
+  for (const source of sources) for (const match of source.matchAll(/<Route path="([^"]+)"/g)) {
     const path = match[1];
     if (path.includes(":")) {
-      patterns.push(new RegExp(`^/${path.replace(/:[^/]+/g, "[^/]+").replace(/^\//, "")}/?$`));
-    } else if (path !== "*") {
-      staticPaths.add(path.replace(/\/+$/, "") || "/");
+      const absolute = path.startsWith("/") ? path : `/${path}`;
+      patterns.push(new RegExp(`^${absolute.replace(/:[^/]+/g, "[^/]+").replace(/\*$/, "")}/?$`));
+    } else if (path !== "*" && path !== "/*") {
+      staticPaths.add((path.startsWith("/") ? path : `/${path}`).replace(/\/+$/, "") || "/");
     }
   }
   staticPaths.add("/");
@@ -183,7 +170,7 @@ test("the Aarna app shell is the only customer layout and no Atelier/editorial s
   assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|SiteHeader|SiteFooter|CheckoutHeader/);
   const app = read("src/App.jsx");
   assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
-  assert.match(app, /<Route path="\*"/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
 });
 
 test("the root URL renders Aarna regardless of former home query values", async () => {
@@ -363,14 +350,19 @@ test("an empty or unavailable backend renders an honest page, never a blank one"
   assert.equal(countOf(html, /data-home-surface="live"/g), 1);
 });
 
-test("App.jsx, the portals, auth and the commerce routes are untouched by the integration", () => {
+test("App preserves staff portal routes while delegating customer pages to Aarna", () => {
   const app = read("src/App.jsx");
   assert.equal(app.includes("storefront/StorefrontHome"), false);
   assert.equal(app.includes("storefrontHome"), false);
-  /* The portal layouts and guards are still exactly what the route table mounts. */
-  for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />", "<ProtectedRoute />"]) {
+  /* The staff portal layouts/guards remain in App; customer protection now lives
+     inside the Aarna route table. */
+  for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />"]) {
     assert.equal(app.includes(marker), true, `${marker} is still mounted`);
   }
+  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  assert.match(storefront, /<Route element={<ProtectedRoute \/>}>/);
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
+  assert.doesNotMatch(app, /<Route path="\/(shop|signin|account)/);
   /* The composition mounts nothing at the portal boundaries. */
   for (const file of ["src/layouts/AdminLayout.jsx", "src/layouts/EmployeeLayout.jsx"]) {
     assert.equal(read(file).includes("StorefrontHome"), false);

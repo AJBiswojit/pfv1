@@ -324,7 +324,7 @@ test("a refund figure appears only where a return record carries one", () => {
 
 /* ── 5 · nothing is invented ───────────────────────────────────────────────── */
 
-test("the page touches no storage, calls no API of its own, and keeps production's own file", () => {
+test("the page keeps shared state boundaries and the customer route is owned by Aarna", () => {
   const page = code();
 
   for (const banned of ["localStorage", "sessionStorage", "fetch(", "axios", "apiGet", "apiPost", "setInterval"]) {
@@ -333,7 +333,8 @@ test("the page touches no storage, calls no API of its own, and keeps production
   assert.match(page, /document\.title = order\n\s+\? `Order \$\{order\.orderNumber \?\? order\.id\} — PRATIKSHYA FASHION`\n\s+: 'Order — PRATIKSHYA FASHION';/, "the page's own tab title moved");
   /* Production's screen is untouched and still serves the Atelier storefront. */
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
-  assert.match(read("src/App.jsx"), /<Route path="\/account\/orders\/:orderId" element=\{<OrderDetail \/>\} \/>/, "App.jsx no longer renders production's screen");
+  assert.match(read("src/components/aarna/AarnaStorefront.jsx"), /<Route path="account\/orders\/:orderId" element=\{<AccountOrderDetailPage \/>\} \/>/, "Aarna no longer owns the guest order detail route");
+  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
   /* The dialog and the invoice document this page leans on are production's. */
   assert.match(read(CONFIRM_DIALOG), /export default function ConfirmDialog/, "the shared dialog moved");
   assert.match(read(INVOICE), /export default function InvoicePreview/, "the invoice document moved");
