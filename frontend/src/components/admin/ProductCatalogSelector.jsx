@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Package, Search, UploadCloud, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
 import { AtelierButton } from "../../design-system";
 import StatusBadge from "../employee/StatusBadge";
 import PratikshyaImage from "../PratikshyaImage";
 import { useProducts } from "../../hooks/useProducts";
-import { upsertServerProducts } from "../../services/catalogRepository";
-import { addCustomProductToStore } from "../../services/catalog/catalogStore";
 import { getPlacement } from "../../config/mediaTypes";
 import { getProductStatusLabel } from "../../config/productCatalogConfig";
 import { categoryLabels } from "../../data/products/taxonomy";
@@ -212,40 +210,6 @@ export default function ProductCatalogSelector({
   const hasActiveFilter =
     department !== "ALL" || category !== "ALL" || subcategory !== "ALL" || Boolean(query.trim());
 
-  const handleDeviceUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imageUrl = reader.result;
-      const stem = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Custom Product";
-      const name = stem.charAt(0).toUpperCase() + stem.slice(1);
-      const newProductId = `PF-CUST-${Date.now()}`;
-
-      const newProduct = {
-        id: newProductId,
-        name,
-        title: name,
-        department: placement?.recommendedDepartment || "Women",
-        category: placement?.recommendedCategory || "Sarees",
-        subcategory: placement?.recommendedSubcategory || null,
-        price: 1999,
-        originalPrice: 2499,
-        status: "PUBLISHED",
-        published: true,
-        image: imageUrl,
-        media: { primary: imageUrl },
-      };
-
-      upsertServerProducts([newProduct]);
-      addCustomProductToStore(newProduct);
-      setSelected((prev) => new Set([newProductId, ...prev]));
-    };
-    reader.readAsDataURL(file);
-    event.target.value = "";
-  };
-
   return (
     <div className="border border-mist/80 bg-surface/40">
       <header className="border-b border-mist/70 px-5 py-4 sm:px-6">
@@ -257,15 +221,11 @@ export default function ProductCatalogSelector({
             </h3>
             <p className="mt-1 font-ui text-[11px] text-taupe">
               Choose existing catalogue products — the section stores product IDs only, and the
-              catalogue keeps supplying the name, taxonomy and imagery.
+              catalogue keeps supplying the name, taxonomy and imagery. A photo cannot create a product
+              here; use the product workspace to save a backend draft and register its media first.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 border border-ink/40 bg-surface px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink hover:bg-canvas">
-              <UploadCloud size={13} className="text-accent" />
-              Choose photo from device
-              <input type="file" accept="image/*" className="sr-only" onChange={handleDeviceUpload} />
-            </label>
             <span className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
               {filtered.length} {filtered.length === 1 ? "product" : "products"}
             </span>
@@ -299,11 +259,6 @@ export default function ProductCatalogSelector({
               </button>
             ) : null}
           </div>
-          <label className="inline-flex cursor-pointer items-center gap-1.5 border border-ink/40 bg-surface px-3.5 py-2.5 font-ui text-[11px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink hover:bg-canvas">
-            <UploadCloud size={14} className="text-accent" />
-            Choose photo from device
-            <input type="file" accept="image/*" className="sr-only" onChange={handleDeviceUpload} />
-          </label>
         </div>
 
         {/* Filters */}

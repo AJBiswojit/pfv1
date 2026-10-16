@@ -78,7 +78,7 @@ export const ADMIN_NAV_GROUPS = [
         icon: "image",
         permission: "media.view",
         children: [
-          { id: "marketing-media", label: "Marketing / HOME_HERO", to: "/admin/media/marketing", icon: "imagePlay", permission: "media.view" },
+          { id: "marketing-media", label: "Homepage Content", to: "/admin/media/marketing", icon: "imagePlay", permission: "media.view" },
         ],
       },
     ],
@@ -175,14 +175,16 @@ export const ADMIN_NAV_GROUPS = [
  * groups are OMITTED — never rendered and then hidden.
  */
 export const filterAdminNav = (groups, can) => {
-  const allowed = (item) => !item.permission || can?.(item.permission);
+  const allowed = (item) => !item.permission || can?.(item.permission) || (item.id === "marketing-media" && can?.("marketing.view"));
   const out = [];
   for (const group of groups) {
-    const items = group.items
-      .filter(allowed)
-      .map((item) => (item.children
-        ? { ...item, children: item.children.filter(allowed) }
-        : item));
+    const items = group.items.flatMap((item) => {
+      if (!allowed(item)) {
+        // Marketing-only staff may open the homepage, not the media library.
+        return item.id === "media" ? (item.children ?? []).filter((child) => child.id === "marketing-media" && allowed(child)) : [];
+      }
+      return [item.children ? { ...item, children: item.children.filter(allowed) } : item];
+    });
     if (items.length) out.push({ ...group, items });
   }
   return out;

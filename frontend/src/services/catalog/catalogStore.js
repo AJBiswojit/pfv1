@@ -18,6 +18,7 @@
  * they read the in-memory snapshot, which is replaced after each hydrate.
  */
 
+import { isBackendCatalogRecord } from "./catalogRecordSafety";
 import { apiListProducts, apiGetProduct } from "../api/productsApi";
 import { apiListCategories, apiListSubcategories } from "../api/categoriesApi";
 import { apiListCollections } from "../api/collectionsApi";
@@ -47,11 +48,14 @@ const state = {
   collections: [],         // active collections
   offers: [],
   offersError: null,
+  homeStatus: "idle",
+  homeError: null,
   home: null,              // GET /home payload (hero, sections, sale banner)
 };
 
 const listeners = new Set();
 let hydratePromise = null;
+let queuedHydratePromise = null;
 let started = false;
 let version = 0;
 let snapshot = { ...state, version };
@@ -257,40 +261,15 @@ export function applyCatalogSnapshot({
   return state;
 }
 
-export function addCustomProductToStore(product) {
-  if (!product?.id) return;
-  const storefrontProduct = toStorefrontProduct(product);
-  const current = state.products.filter((p) => String(p.id) !== String(product.id));
-  state.products = [storefrontProduct, ...current];
-  state.byId.set(String(product.id), storefrontProduct);
-  if (storefrontProduct.slug) state.bySlug.set(storefrontProduct.slug, storefrontProduct);
-  emit();
-}
-
 function applySnapshot(products, categories, collections, subcategories = {}) {
   state.categories = categories ?? [];
   state.collections = collections ?? [];
   state.subcategories = {};
 
-  const baseProducts = products ?? [];
-  let customProducts = [];
-  try {
-    if (typeof localStorage !== "undefined") {
-      const raw = localStorage.getItem("pratikshya_custom_products");
-      if (raw) customProducts = JSON.parse(raw);
-    }
-  } catch {
-    /* ignore */
-  }
-
-  const mergedMap = new Map(baseProducts.map((p) => [String(p.id), p]));
-  customProducts.forEach((cp) => {
-    if (!mergedMap.has(String(cp.id))) {
-      mergedMap.set(String(cp.id), cp);
-    }
-  });
-
-  state.products = Array.from(mergedMap.values()).map(toStorefrontProduct);
+  // Only the server response participates. Legacy browser-local products are
+  // quarantined in their original storage, never merged or silently deleted.
+  state.products = (Array.isArray(products) ? products : [])
+    .filter(isBackendCatalogRecord).map(toStorefrontProduct);
   state.byId = new Map(state.products.map((p) => [String(p.id), p]));
   state.bySlug = new Map(state.products.filter((p) => p.slug).map((p) => [p.slug, p]));
   (state.categories ?? []).forEach((category) => {
@@ -309,12 +288,25 @@ function applySnapshot(products, categories, collections, subcategories = {}) {
 // ---------------------------------------------------------------------------
 
 export async function hydrateCatalog({ force = false } = {}) {
-  if (hydratePromise) return hydratePromise;
+  if (hydratePromise) {
+    if (!force) return hydratePromise;
+    // An admin mutation may land after /home resolved but before products did.
+    // Coalesce forced callers into one follow-up fetch, not the stale flight.
+    if (!queuedHydratePromise) {
+      queuedHydratePromise = hydratePromise.then(() => {
+        queuedHydratePromise = null;
+        return hydrateCatalog({ force: true });
+      });
+    }
+    return queuedHydratePromise;
+  }
   if (started && !force) return hydratePromise ?? Promise.resolve(state);
 
   started = true;
   state.status = "loading";
   state.error = null;
+  state.homeStatus = "loading";
+  state.homeError = null;
   emit();
 
   hydratePromise = (async () => {
@@ -322,7 +314,15 @@ export async function hydrateCatalog({ force = false } = {}) {
       fetchAllPublishedProducts(),
       apiListCategories({ status: "ACTIVE" }),
       apiListCollections({ status: "ACTIVE" }),
-      apiGetHome(),
+      apiGetHome().then((result) => {
+        // Publish home independently: slow/unavailable product feeds must not
+        // freeze hero loading. An empty successful hero stays empty.
+        state.homeStatus = result.ok ? "ready" : "error";
+        state.homeError = result.ok ? null : result.error;
+        if (result.ok) state.home = result;
+        emit();
+        return result;
+      }),
       // Phase 5: the shared offer cache is hydrated from the REAL coupon
       // table (GET /offers — active, non-expired), not from the explore
       // stream's static offer strip. A failed fetch leaves an explicit
@@ -403,6 +403,10 @@ export async function hydrateCatalog({ force = false } = {}) {
     return state;
   })().catch((error) => {
     state.status = "error";
+    if (state.homeStatus === "loading") {
+      state.homeStatus = "error";
+      state.homeError = "Homepage content could not be loaded.";
+    }
     state.error = error instanceof Error ? error.message : String(error);
     emit();
     return state;
@@ -483,6 +487,9 @@ export async function ensureProduct(idOrSlug) {
   const cached = getProductById(idOrSlug);
   if (cached) return { ok: true, product: cached };
   const result = await apiGetProduct(idOrSlug);
+  if (result.ok && !isBackendCatalogRecord(result.product)) {
+    return { ok: false, error: "The server returned an invalid catalogue record." };
+  }
   if (result.ok) {
     const product = toStorefrontProduct(result.product);
     if (!state.byId.has(String(product.id))) {

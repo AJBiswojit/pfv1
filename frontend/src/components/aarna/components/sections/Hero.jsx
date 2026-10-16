@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
-import { heroConfig, heroSlides } from '../../data/index.js';
+import { heroConfig, heroSlides as referenceHeroSlides } from '../../data/index.js';
 import Button from '../ui/Button.jsx';
 import ArrowLink from '../ui/ArrowLink.jsx';
 import { cx } from '../../utils/format.js';
@@ -31,7 +31,7 @@ const frameVariants = {
   exit: { zIndex: 1, opacity: 0.999, transition: { zIndex: { duration: 0 }, opacity: { duration: 0.01, delay: SWAP } } },
 };
 
-export default function Hero() {
+export default function Hero({ slides: heroSlides = referenceHeroSlides } = {}) {
   const reduce = useReducedMotion();
   const ref = useRef(null);
   const onScreen = useInView(ref, { amount: 0.25 });
@@ -136,7 +136,7 @@ export default function Hero() {
             <motion.img
               className={slide.imageTall ? 'hero__pic--wide' : undefined}
               src={slide.image}
-              alt=""
+              alt={slide.alt || ""}
               style={{ objectPosition: slide.focal }}
               initial={{ scale: first ? 1.14 : 1.05 }}
               animate={{ scale: 1 }}
@@ -178,7 +178,7 @@ export default function Hero() {
             <div className="hero__title">{s.lines.map((l) => <span key={l} className="line-mask"><span className="line-inner">{l}</span></span>)}</div>
             <div className="hero__body">
               <p className="hero__copy">{s.copy}</p>
-              <div className="hero__ctas"><span className="btn btn--solid">{s.primary.label}</span><span className="arrow-link">{s.secondary.label}<svg width="22" height="10" aria-hidden="true" /></span></div>
+              <div className="hero__ctas">{s.primary && <span className="btn btn--solid">{s.primary.label}</span>}{s.secondary && <span className="arrow-link">{s.secondary.label}<svg width="22" height="10" aria-hidden="true" /></span>}</div>
             </div>
           </div>
         ))}
@@ -214,8 +214,8 @@ export default function Hero() {
                 {slide.copy}
               </motion.p>
               <motion.div className="hero__ctas" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: d.cta, duration: 0.6, ease: ease.out }}>
-                <Button to={slide.primary.to} variant={light ? 'light' : 'solid'}>{slide.primary.label}</Button>
-                <ArrowLink to={slide.secondary.to} light={light}>{slide.secondary.label}</ArrowLink>
+                {slide.primary && <Button to={slide.primary.to} variant={light ? 'light' : 'solid'}>{slide.primary.label}</Button>}
+                {slide.secondary && <ArrowLink to={slide.secondary.to} light={light}>{slide.secondary.label}</ArrowLink>}
               </motion.div>
             </div>
           </motion.div>

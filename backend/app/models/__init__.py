@@ -104,3 +104,6 @@ from app.models.chatbot.conversation import ConversationModel              # noq
 from app.models.chatbot.message import MessageModel                        # noqa: F401
 from app.models.chatbot.chat_retrieval import ChatRetrievalModel           # noqa: F401
 from app.models.customer.product_interaction import UserProductInteractionModel  # noqa: F401
+
+# Homepage-specific persistence (hero retains its existing marketing owner).
+from app.models.media.homepage_section import HomepageSectionModel, HomepageSectionItemModel  # noqa: F401

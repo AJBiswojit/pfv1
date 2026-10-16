@@ -29,7 +29,7 @@ export default function EmployeeLayout() {
   const denied =
     Boolean(required) &&
     Boolean(employee) &&
-    !hasPermission(required) &&
+    !(Array.isArray(required) ? required.some(hasPermission) : hasPermission(required)) &&
     pathname !== "/employee/access-denied";
 
   return (

@@ -17,6 +17,8 @@ Constants (from frontend explore.js / config):
 
 from __future__ import annotations
 
+from app.schemas.media.homepage import HomepageContentPublic
+
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -226,6 +228,7 @@ class HomeResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    homepage_content: Optional[HomepageContentPublic] = Field(None, alias="homepageContent")
     ok: bool = True
     hero_slides: List[HeroSlide] = Field([], alias="heroSlides")
     new_arrivals: List[StorefrontProduct] = Field([], alias="newArrivals")

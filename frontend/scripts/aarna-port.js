@@ -1,3 +1,4 @@
+import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-section-rewrites.js";
 /**
  * PRATIKSHYA FASHION — PHASE 2D · the exact-design-port tool.
  *
@@ -59,18 +60,18 @@ export const CLOSURE = {
   "components/product/ProductCard.jsx": 3,  // 1 routing + 2 missing-plate fallbacks
   "components/product/WishlistButton.jsx": 0,
   "components/product/useAddToBag.js": 2,  // 2 add-to-bag-feedback (the confirmation is tied to the outcome)
-  "components/sections/Bestsellers.jsx": 2,  // 1 live catalogue + 1 honest note
-  "components/sections/BridalCampaign.jsx": 1,
-  "components/sections/CategoryCollage.jsx": 1,
-  "components/sections/Hero.jsx": 1,
-  "components/sections/JewelleryTheatre.jsx": 3,  // 1 routing + 1 live catalogue + 1 missing plate
-  "components/sections/KidsPlayground.jsx": 1,
-  "components/sections/KurtiLookbook.jsx": 3,  // 2 live curation + 1 live catalogue
-  "components/sections/MensEditorial.jsx": 1,
-  "components/sections/Newsletter.jsx": 1,
-  "components/sections/PromoBanner.jsx": 0,
-  "components/sections/SareeLookbook.jsx": 2,  // 1 routing + 1 live curation
-  "components/sections/TrustStrip.jsx": 1,
+  "components/sections/Bestsellers.jsx": 6, // approved Phase 3 typed-section integration
+  "components/sections/BridalCampaign.jsx": 21, // approved Phase 3 typed-section integration
+  "components/sections/CategoryCollage.jsx": 11, // approved Phase 3 typed-section integration
+  "components/sections/Hero.jsx": 7, // data injection, optional CTAs, alt, React fetchPriority
+  "components/sections/JewelleryTheatre.jsx": 13, // approved Phase 3 typed-section integration
+  "components/sections/KidsPlayground.jsx": 12, // approved Phase 3 typed-section integration
+  "components/sections/KurtiLookbook.jsx": 12, // approved Phase 3 typed-section integration
+  "components/sections/MensEditorial.jsx": 10, // approved Phase 3 typed-section integration
+  "components/sections/Newsletter.jsx": 7, // approved Phase 3 typed-section integration
+  "components/sections/PromoBanner.jsx": 12, // approved Phase 3 typed-section integration
+  "components/sections/SareeLookbook.jsx": 16, // approved Phase 3 typed-section integration
+  "components/sections/TrustStrip.jsx": 5, // approved Phase 3 typed-section integration
   "components/shopping/CartDrawer.jsx": 9,  // 1 routing + 5 offer-copy + 1 missing-plate line + 2 promo-feedback
   // PHASE 9 adds one line to the drawer's foot ("View bag" → /cart) and removes
   // none of the design's; this pin counts design lines the port does not carry,
@@ -95,7 +96,7 @@ export const CLOSURE = {
   "mock/data/content.js": 23,  // prototype site block + sample announcements + the care-hours line
   "mock/data/navigation.js": 0,
   "mock/data/pages.js": 0,
-  "pages/Home.jsx": 0,
+  "pages/Home.jsx": 12, // approved Phase 3 typed-section integration
   // 1 routing + 1 catalogue import + 1 Button import + 2 lookup
   // + 1 stepper ceiling + 1 buy button + 2 fabric/craft + 1 care
   // + 1 delivery/returns + 1 availability note + 1 validation line
@@ -1050,8 +1051,27 @@ const infoPageRewrite = (file, source) => {
   return out;
 };
 
+/** Backend home integration: only data injection and optional server CTAs.
+ * The reference's carousel choreography, responsive CSS and art remain intact.
+ */
+const backendHeroRewrite = (file, source) => {
+  if (file === "pages/Home.jsx") {
+    return source.replace("import Hero from '../components/sections/Hero.jsx';",
+      "import Hero from '../../storefront/home/AarnaHomeHero.jsx';");
+  }
+  return source
+    .replace("import { heroConfig, heroSlides }", "import { heroConfig, heroSlides as referenceHeroSlides }")
+    .replace("export default function Hero() {", "export default function Hero({ slides: heroSlides = referenceHeroSlides } = {}) {")
+    .replace('              alt=""', '              alt={slide.alt || ""}')
+    .replace('<span className="btn btn--solid">{s.primary.label}</span>', '{s.primary && <span className="btn btn--solid">{s.primary.label}</span>}')
+    .replace('<span className="arrow-link">{s.secondary.label}<svg width="22" height="10" aria-hidden="true" /></span>', '{s.secondary && <span className="arrow-link">{s.secondary.label}<svg width="22" height="10" aria-hidden="true" /></span>}')
+    .replace("                <Button to={slide.primary.to} variant={light ? 'light' : 'solid'}>{slide.primary.label}</Button>", "                {slide.primary && <Button to={slide.primary.to} variant={light ? 'light' : 'solid'}>{slide.primary.label}</Button>}")
+    .replace("                <ArrowLink to={slide.secondary.to} light={light}>{slide.secondary.label}</ArrowLink>", "                {slide.secondary && <ArrowLink to={slide.secondary.to} light={light}>{slide.secondary.label}</ArrowLink>}");
+};
+
 export const REWRITES = [
   { id: "routing", files: Object.keys(CLOSURE).filter((file) => /\.jsx?$/.test(file)), apply: routingRewrite },
+  { id: "backend-home-hero", files: ["pages/Home.jsx", "components/sections/Hero.jsx"], apply: backendHeroRewrite },
   { id: "fetch-priority", files: ["components/sections/Hero.jsx"], apply: fetchPriorityRewrite },
   { id: "logo-plate", files: ["components/ui/Logo.jsx"], apply: logoPlateRewrite },
   { id: "offer-copy", files: ["components/shopping/CartDrawer.jsx"], apply: offerCopyRewrite },
@@ -1073,6 +1093,7 @@ export const REWRITES = [
   { id: "media-fallback", files: MEDIA_FALLBACK_FILES, apply: mediaFallbackRewrite },
   { id: "bestsellers-note", files: ["components/sections/Bestsellers.jsx"], apply: bestsellersNoteRewrite },
   { id: "add-to-bag-feedback", files: ["components/product/useAddToBag.js"], apply: addToBagFeedbackRewrite },
+  { id: "homepage-sections", files: Object.keys(HOMEPAGE_SECTION_EDITS), apply: homepageSectionRewrite },
 ];
 
 /** Read a design file and apply every rewrite that owns it, in order. */

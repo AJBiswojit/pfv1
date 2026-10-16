@@ -60,6 +60,7 @@ export const EMPLOYEE_ROUTE_RULES = [
 ];
 
 export const requiredPermissionForPath = (pathname) => {
+  if (pathname?.split("?")[0] === "/employee/media/marketing") return ["media.view", "marketing.view"];
   if (!pathname || typeof pathname !== "string") return P.DASHBOARD_VIEW;
   const cleaned = pathname.split("?")[0];
   if (/^\/employee\/offers\/[^/]+\/edit$/.test(cleaned)) return P.OFFERS_EDIT;
@@ -146,6 +147,7 @@ export const EMPLOYEE_NAV_GROUPS = [
     icon: "image",
     items: [
       { id: "media", label: "Media Management", to: "/employee/media", icon: "image", permission: P.MEDIA_VIEW },
+      { id: "homepage-content", label: "Homepage Content", to: "/employee/media/marketing", icon: "image", permission: P.MEDIA_VIEW },
       {
         id: "styling",
         label: "Styling",
@@ -220,7 +222,7 @@ export const resolveActiveNavId = (pathname, groups = EMPLOYEE_NAV_GROUPS) => {
  * items (and children) the employee can access.
  */
 export const navigationForRole = (roleId, hasPermission) => {
-  const allowed = (item) => !item.permission || hasPermission(item.permission);
+  const allowed = (item) => !item.permission || hasPermission(item.permission) || (item.id === "homepage-content" && hasPermission("marketing.view"));
   return EMPLOYEE_NAV_GROUPS.map((group) => {
     const items = group.items
       .map((item) => {

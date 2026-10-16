@@ -1,3 +1,4 @@
+import { SectionImage, SectionLink, SectionCTA } from '../../../storefront/home/HomepageSection';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { images, kurtiCollections } from '../../data/index.js';
@@ -18,17 +19,17 @@ const MOODS = {
 };
 const PAIRING_KEYS = ['kurtis'];
 
-export default function KurtiLookbook() {
+export default function KurtiLookbook({ content }) {
   const [active, setActive] = useState('anarkalis');
-  const mood = MOODS[active];
+  const mood = content ? { image: content.media(active).url, line: [content.media(active).title, content.media(active).subtitle].filter(Boolean).join(" · "), focal: MOODS[active].focal } : MOODS[active];
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
   const catalogueRevision = useCatalogueRevision();
   const items = useMemo(() => {
-    const own = getProductsFor(active).filter((p) => p.type === 'kurtis');
-    const fill = PAIRING_KEYS.flatMap(getProductsFor).filter((p) => !own.includes(p)).slice(0, Math.max(0, 4 - own.length));
+    const own = content ? content.products(active) : getProductsFor(active).filter((p) => p.type === 'kurtis');
+    const fill = (content ? content.products('pairings') : PAIRING_KEYS.flatMap(getProductsFor)).filter((p) => !own.includes(p)).slice(0, Math.max(0, 4 - own.length));
     return [...own.map((p) => ({ p, pairing: false })), ...fill.map((p) => ({ p, pairing: true }))];
-  }, [active, catalogueRevision]);
+  }, [active, catalogueRevision, content]);
   const ownCount = items.filter((x) => !x.pairing).length;
 
   return (
@@ -45,10 +46,10 @@ export default function KurtiLookbook() {
             transition={{ duration: 1.1, ease: ease.inOut }}
           >
             <AnimatePresence initial={false}>
-              <motion.img
+              <SectionImage as={motion.img}
                 key={active}
                 src={mood.image}
-                alt=""
+                alt={content ? content.media(active).altText : ""}
                 style={{ objectPosition: mood.focal }}
                 initial={{ opacity: 0, scale: 1.05 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -67,10 +68,11 @@ export default function KurtiLookbook() {
 
         <div className="kurti__body">
           <div className="kurti__head">
-            <SectionLabel index="10">The Kurti Collection</SectionLabel>
-            <h2 id="kurti-title" className="display kurti__title">The kurti, <em>in four moods.</em></h2>
+            <SectionLabel index="10">{content ? content.intro.eyebrow : "The Kurti Collection"}</SectionLabel>
+            <h2 id="kurti-title" className="display kurti__title">{content ? content.intro.title : <>The kurti, <em>in four moods.</em></>}</h2>
           </div>
 
+          {content && <p className="kurti__lead">{content.intro.subtitle}</p>}
           <div className="kurti__selector" role="tablist" aria-label="Kurti collections">
             <LayoutGroup id="kurti">
               {kurtiCollections.map((c, i) => (
@@ -84,7 +86,7 @@ export default function KurtiLookbook() {
           </div>
 
           <p className="kurti__status" aria-live="polite">
-            {ownCount > 0 ? `${ownCount} ${ownCount === 1 ? 'piece' : 'pieces'} in this edit` : 'This edit is being photographed — pieces arrive soon.'}
+            {ownCount > 0 ? `${ownCount} ${ownCount === 1 ? 'piece' : 'pieces'} in this edit` : content ? 'No eligible pieces in this edit.' : 'This edit is being photographed — pieces arrive soon.'}
             {items.some((x) => x.pairing) && ' · styled with pairings'}
           </p>
 
@@ -97,7 +99,7 @@ export default function KurtiLookbook() {
               ))}
             </AnimatePresence>
           </div>
-          <ArrowLink to={`/shop/${active}`}>Shop {kurtiCollections.find((c) => c.key === active).label}</ArrowLink>
+          {content ? <><SectionCTA copy={content.media(active)} /><SectionCTA copy={content.intro} /></> : <ArrowLink to={`/shop/${active}`}>Shop {kurtiCollections.find((c) => c.key === active).label}</ArrowLink>}
         </div>
       </div>
     </section>
