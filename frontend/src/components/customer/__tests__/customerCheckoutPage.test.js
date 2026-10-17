@@ -58,7 +58,7 @@ const PORTED = "src/components/customer/pages/Checkout.jsx";
 const BAG = "src/components/customer/pages/Cart.jsx";
 const FRAME = "src/components/customer/components/layout/JourneyFrame.jsx";
 const STOREFRONT = "src/components/customer/CustomerStorefront.jsx";
-const DIALOGUE = "src/components/customer/aarna.checkout.css";
+const DIALOGUE = "src/components/customer/customer.checkout.css";
 
 /* ── the catalogue and the bag, in the application's own shapes ───────────── */
 

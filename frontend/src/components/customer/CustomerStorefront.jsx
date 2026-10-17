@@ -71,15 +71,15 @@ import { ShopProvider } from "./state/ShopContext.jsx";
 import { UIProvider } from "./state/UIContext.jsx";
 import { ensureDesignFonts } from "./designFonts.js";
 
-import "./aarna.css";
-import "./aarna.host.css";
-import "./aarna.listing.css";
-import "./aarna.wishlist.css";
-import "./aarna.checkout.css";
-import "./aarna.auth.css";
-import "./aarna.account.css";
-import "./aarna.orders.css";
-import "./aarna.ai.css";
+import "./customer.css";
+import "./customer.host.css";
+import "./customer.listing.css";
+import "./customer.wishlist.css";
+import "./customer.checkout.css";
+import "./customer.auth.css";
+import "./customer.account.css";
+import "./customer.orders.css";
+import "./customer.ai.css";
 
 /* All customer account routes below render storefront-owned screens; shared state,
    authorization, and account services continue to come from the application. */

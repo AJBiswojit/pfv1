@@ -24,7 +24,7 @@
  * page is drawn out of the design's blocks (`.container`, `.info`, `.crumbs`,
  * `.label`, `.display`, `.form`, `.form__err`, `.form__note`, the `.btn`
  * register) and only the blocks the design never drew live in
- * `aarna.auth.css`. No account is ever created client-side: if the backend
+ * `customer.auth.css`. No account is ever created client-side: if the backend
  * refuses, the customer sees the backend's own message and no banner.
  */
 

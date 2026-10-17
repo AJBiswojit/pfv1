@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════════
    PHASE 2D — host neutralisation (hand-written, deliberately tiny).
 
-   `aarna.css` beside this file is the design's own seven stylesheets, scoped
+   `customer.css` beside this file is the design's own seven stylesheets, scoped
    under `.aan-root` by `scripts/customer-port.js`: every declaration in it is the
    design's, byte for byte, and the regression suite compares it against the
    source sheets on every run. This file is the one place a rule may differ, and

@@ -436,7 +436,7 @@ test("a listing's facets, active chips and pagination are the production ones, r
 });
 
 test("the port's own listing stylesheet is scoped to the port and adds no design override", () => {
-  const css = read("src/components/customer/aarna.listing.css");
+  const css = read("src/components/customer/customer.listing.css");
   /* Comments carry prose; the selectors are what has to be scoped. */
   const rules = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const selectors = [...rules.matchAll(/^\s*([^@\s}][^{};]*)\{/gm)].map((match) => match[1].trim());
@@ -448,5 +448,5 @@ test("the port's own listing stylesheet is scoped to the port and adds no design
   }
   /* Every value is a design token or a plain measure — never a new colour. */
   assert.equal(/#[0-9a-fA-F]{3,8}\b/.test(css), false, "the port introduced a colour of its own");
-  assert.match(read("src/components/customer/CustomerStorefront.jsx"), /import "\.\/aarna\.listing\.css"/, "the listing stylesheet is not loaded by the port");
+  assert.match(read("src/components/customer/CustomerStorefront.jsx"), /import "\.\/customer\.listing\.css"/, "the listing stylesheet is not loaded by the port");
 });

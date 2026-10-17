@@ -11,7 +11,7 @@
  *
  *   · it is drawn out of the design's own register — the shared frame, `.label`,
  *     `.display`, the `.empty` block, the port's `pf-chip` register for the
- *     address type, and the card declared for this screen in `aarna.account.css`
+ *     address type, and the card declared for this screen in `customer.account.css`
  *     (the design drew tiles for `/account`, not address cards, and this file adds
  *     no token, colour or radius of its own);
  *   · every mutation goes through `useAccount()`: `addAddress`, `updateAddress`,

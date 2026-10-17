@@ -80,8 +80,8 @@ const MIRROR = 'src/components/customer/pages/account/AiMirror.jsx';
 const SHOPPING = 'src/components/customer/pages/account/AiShopping.jsx';
 const MOUNT = 'src/components/customer/CustomerStorefront.jsx';
 const PRODUCTION_APP = 'src/App.jsx';
-const SHEET = 'src/components/customer/aarna.ai.css';
-const DESIGN_SHEET = 'src/components/customer/aarna.css';
+const SHEET = 'src/components/customer/customer.ai.css';
+const DESIGN_SHEET = 'src/components/customer/customer.css';
 const REGISTRY = 'scripts/customer-port.js';
 
 const PRODUCTION_MIRROR = 'src/components/customer/pages/account/AiMirror.jsx';
@@ -263,13 +263,13 @@ test('the port’s registry declares both pages and their sheet, once each', () 
   const registry = read(REGISTRY);
   const added = registry.slice(registry.indexOf('const ADDED = ['), registry.indexOf('];', registry.indexOf('const ADDED = [')));
 
-  for (const entry of ['aarna.ai.css', 'pages/account/AiMirror.jsx', 'pages/account/AiShopping.jsx']) {
+  for (const entry of ['customer.ai.css', 'pages/account/AiMirror.jsx', 'pages/account/AiShopping.jsx']) {
     assert.equal(count(added, `"${entry}"`), 1, `${entry} is not declared exactly once in the registry`);
     assert.ok(existsSync(join(ROOT, 'src/components/customer', entry)), `${entry} is declared but does not exist`);
   }
 
   /* The sheet is the port's own, imported by the mount beside the account's. */
-  assert.match(read(MOUNT), /import "\.\/aarna\.ai\.css";/, 'the AI sheets are not imported by the port');
+  assert.match(read(MOUNT), /import "\.\/customer\.ai\.css";/, 'the AI sheets are not imported by the port');
 });
 
 /* ── 2 · the sheet ─────────────────────────────────────────────────────────── */

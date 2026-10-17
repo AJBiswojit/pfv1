@@ -73,11 +73,11 @@ const FRAME = "src/components/customer/pages/account/AccountFrame.jsx";
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
 const PRODUCTION_PAGE = "src/components/customer/pages/account/Profile.jsx";
-const SHEET = "src/components/customer/aarna.account.css";
+const SHEET = "src/components/customer/customer.account.css";
 /* The sheets a ported account page may lean on: the design's own, the port's
    shared form register (`pf-form`, `pf-lab`, `pf-req`, `pf-hint`, `pf-alert` —
    declared for the checkout family and reused here), and the account's own. */
-const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.checkout.css", SHEET];
+const SHEETS = ["src/components/customer/customer.css", "src/components/customer/customer.checkout.css", SHEET];
 const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */
@@ -584,14 +584,14 @@ test("the visually hidden portrait input outweighs `.pf-form input` and stays an
   /* `.pf-account__portrait-meta` must be a positioned containing block so the
      absolutely positioned `#profile-avatar` does not anchor to the viewport. */
   const metaBody = ruleBody(".aan-root .pf-account__portrait-meta");
-  assert.ok(metaBody, "the portrait meta rule is missing from `aarna.account.css`");
+  assert.ok(metaBody, "the portrait meta rule is missing from `customer.account.css`");
   assert.match(metaBody, /\bposition\s*:\s*relative\s*;/, "`.pf-account__portrait-meta` no longer establishes a positioned containing block");
 
   /* `.aan-root .pf-form .sr-only` (0,3,0) must outweigh `.aan-root .form input`
      and `.aan-root .pf-form input` (0,2,1) so `#profile-avatar` stays a 1×1px
      zero-padding, zero-border box instead of expanding to `width: 100%`. */
   const srOnlyBody = ruleBody(".aan-root .pf-form .sr-only");
-  assert.ok(srOnlyBody, "`.aan-root .pf-form .sr-only` is missing from `aarna.account.css`");
+  assert.ok(srOnlyBody, "`.aan-root .pf-form .sr-only` is missing from `customer.account.css`");
   assert.match(srOnlyBody, /\bwidth\s*:\s*1px\s*;/, "`.pf-form .sr-only` no longer constrains width to 1px");
   assert.match(srOnlyBody, /\bheight\s*:\s*1px\s*;/, "`.pf-form .sr-only` no longer constrains height to 1px");
   assert.match(srOnlyBody, /\bpadding\s*:\s*0\s*;/, "`.pf-form .sr-only` no longer resets `.form input` padding");

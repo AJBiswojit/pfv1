@@ -4,8 +4,8 @@
    `/account/ai-mirror` and `/account/ai-shopping` are drawn out of what the
    design already has: the page frame, the label/display/lead register, the
    button and chip, the empty state and the product-card plate all live in
-   `aarna.css`, and the account frame they render inside lives in
-   `aarna.account.css`. This file carries only what none of them drew, because
+   `customer.css`, and the account frame they render inside lives in
+   `customer.account.css`. This file carries only what none of them drew, because
    the design never drew an assistant: the notes band, the route notice, the
    mirror's two-column body, the conversation's own column, the product the
    customer arrived with, the recent-look rail and the closing facts band.

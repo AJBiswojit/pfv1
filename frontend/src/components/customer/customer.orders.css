@@ -3,9 +3,9 @@
 
    The four order screens the port redrew (the history, one order, its tracking
    and its return request) are built out of what the design already draws: the
-   page frame and the form/button register in `aarna.css`, the frame, the tiles
-   and the delivery book in `aarna.account.css`, and the checkout sheet's own
-   panel, meta, option, chip, alert and line blocks in `aarna.checkout.css`. This
+   page frame and the form/button register in `customer.css`, the frame, the tiles
+   and the delivery book in `customer.account.css`, and the checkout sheet's own
+   panel, meta, option, chip, alert and line blocks in `customer.checkout.css`. This
    file carries only what none of them drew, because the design never drew an
    order: the filter row, one order's card, the recorded journey, the return
    request's controls, and the two bands the single-order pages place their facts

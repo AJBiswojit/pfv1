@@ -2,7 +2,7 @@
    PHASE 10 — the authentication screens' own chrome.
 
    Everything the design DOES draw for these pages is drawn by the design's own
-   stylesheets (`aarna.css`, scoped under `.aan-root` and compared against the
+   stylesheets (`customer.css`, scoped under `.aan-root` and compared against the
    design on every port run): the page frame (`.container`, `.info`, `.crumbs`,
    `.label`, `.display`, `.info__title`, `.info__lead`), the form register
    (`.form`, `.form label`, `.form input`, `.form__err`, `.form__note`) and the

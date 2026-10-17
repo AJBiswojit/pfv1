@@ -66,7 +66,7 @@
  *     surface answered by the demo provider. The port prints the demo note while
  *     the provider is the demo one, and the provider's own label otherwise.
  *   · production's fixed 520px / 560px conversation height is kept (see
- *     `aarna.ai.css`), because the log has to scroll rather than grow.
+ *     `customer.ai.css`), because the log has to scroll rather than grow.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

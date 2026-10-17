@@ -30,7 +30,7 @@
  * WHAT THIS CANNOT PROVE: there is no DOM in this tree, so clicks, focus,
  * keyboard behaviour and layout are out of scope here — the browser probe
  * covers them on a real Chromium, and the layout claims live in
- * `aarna.checkout.css` (measured in the probe, not here). Effects do not run
+ * `customer.checkout.css` (measured in the probe, not here). Effects do not run
  * under `renderToStaticMarkup`, so the states that only exist after an effect —
  * the first authenticated load (`isLoading`), a failed load and the 401/403
  * copy — are pinned at the source level here and exercised live in the probe.
@@ -59,7 +59,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PORTED = "src/components/customer/pages/Cart.jsx";
-const DIALOGUE = "src/components/customer/aarna.checkout.css";
+const DIALOGUE = "src/components/customer/customer.checkout.css";
 
 /* ── the catalogue, in the shape `catalogStore` normalises ─────────────────── */
 
@@ -366,7 +366,7 @@ test("no new dependency arrived with the bag or its stylesheet", () => {
     }
   }
   /* The stylesheet declares no @import and no font URL of its own: the design's
-     tokens and faces are already loaded by `aarna.css`. */
+     tokens and faces are already loaded by `customer.css`. */
   const css = read(DIALOGUE);
   assert.equal(/@import|@font-face|url\(/.test(css), false, "the stylesheet pulls a resource of its own");
   assert.match(css, /^\/\*/, "the stylesheet lost its provenance header");

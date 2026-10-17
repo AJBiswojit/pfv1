@@ -14,7 +14,7 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *      session-specific, and a capability gate). `--check` re-verifies the pins.
  *
  *   2. THE STYLESHEET IS A TRANSFORM. `node scripts/customer-port.js --css` reads
- *      the design's seven stylesheets and writes `src/components/customer/aarna.css`
+ *      the design's seven stylesheets and writes `src/components/customer/customer.css`
  *      with every selector scoped under `.aan-root`. Declarations are copied
  *      byte-for-byte; only selectors change, plus the two global keyframe names
  *      (`spin`, `pulse` → `aan-spin`, `aan-pulse`). `--check` re-runs the
@@ -36,7 +36,7 @@ export const DESIGN_SRC = join(REPO_ROOT, "home-page", "src");
 export const DESIGN_STYLES = join(DESIGN_SRC, "styles");
 export const PORT_RELATIVE = "src/components/customer";
 export const PORT_DIR = join(FRONTEND_ROOT, PORT_RELATIVE);
-export const PORT_CSS = join(PORT_DIR, "aarna.css");
+export const PORT_CSS = join(PORT_DIR, "customer.css");
 export const SCOPE = ".aan-root";
 
 /* ────────────────────────────── the closure ─────────────────────────────── */
@@ -148,11 +148,11 @@ export const REPLACED = {
 /** Modules the port adds: the design has no counterpart. */
 export const ADDED = [
   "CustomerStorefront.jsx",
-  "aarna.css",
-  "aarna.host.css",
-  "aarna.listing.css",
+  "customer.css",
+  "customer.host.css",
+  "customer.listing.css",
   /* PHASE 8 — the wishlist's own chrome (the design has no such file). */
-  "aarna.wishlist.css",
+  "customer.wishlist.css",
   "components/shop/ListingControls.jsx",
   "components/shop/listingScope.js",
   "designFonts.js",
@@ -165,7 +165,7 @@ export const ADDED = [
      order; it has no bag page, no journey chrome and no confirmation page.
      These five are written in the design's own vocabulary and have no design
      counterpart, so the tool checks they exist and never writes them. */
-  "aarna.checkout.css",
+  "customer.checkout.css",
   "components/layout/JourneyFrame.jsx",
   "pages/Cart.jsx",
   "pages/Checkout.jsx",
@@ -179,7 +179,7 @@ export const ADDED = [
      existing reset context/service; the existing forgot-password backend
      still does not dispatch reset email. Declared, so closure checks know
      these modules and the port tool never writes them. */
-  "aarna.auth.css",
+  "customer.auth.css",
   "pages/ForgotPassword.jsx",
   "pages/ResetPassword.jsx",
   "pages/SignIn.jsx",
@@ -191,17 +191,17 @@ export const ADDED = [
      vocabulary. The account PAGES carry over one at a time; each one declared
      here as it is written. Declared, so the closure check knows them and never
      writes them. */
-  "aarna.account.css",
+  "customer.account.css",
   /* ...and, one stage later, the order screens' own sheet: the design never drew
      an order, so the four redrawn order screens' chrome is written in the
      design's vocabulary too, scoped to the port the same way. */
-  "aarna.orders.css",
+  "customer.orders.css",
   /* ...and, one stage later again, the two AI screens' own sheet: the design
     never drew an assistant either, so the chrome the mirror and the shopping
     conversation are drawn in — the notes band, the two-column bodies, the
     arriving product, the recent-look rail and the conversation's column — is
     written in the design's vocabulary, scoped to the port the same way. */
-  "aarna.ai.css",
+  "customer.ai.css",
   "pages/account/AccountFrame.jsx",
   "pages/account/AccountNav.jsx",
   /* PHASE 11 · the migrated screens, declared as each one is written: the
@@ -1289,7 +1289,7 @@ export function readSourceCss(stylesDir = DESIGN_STYLES) {
   return SOURCE_SHEETS.map((name) => `${sheetBanner(name)}\n${readFileSync(join(stylesDir, name), "utf8")}`).join("\n");
 }
 
-/** The transform of those seven sheets — what `aarna.css` must be. */
+/** The transform of those seven sheets — what `customer.css` must be. */
 export function buildPortCss(stylesDir = DESIGN_STYLES) {
   return SOURCE_SHEETS.map((name) => `${sheetBanner(name)}\n${scopeCss(readFileSync(join(stylesDir, name), "utf8"))}`).join("\n");
 }
@@ -1338,7 +1338,7 @@ const runCheck = () => {
     if (!existsSync(join(PORT_DIR, file))) problems.push(`${file}: missing from the port`);
   }
   const css = buildPortCss();
-  if (readFileSync(PORT_CSS, "utf8") !== css) problems.push("aarna.css: does not match the transform of the design's stylesheets");
+  if (readFileSync(PORT_CSS, "utf8") !== css) problems.push("customer.css: does not match the transform of the design's stylesheets");
   return problems;
 };
 
@@ -1351,7 +1351,7 @@ if (isDirectRun) {
   }
   if (args.includes("--css")) {
     write(PORT_CSS, buildPortCss());
-    console.log(`wrote ${PORT_RELATIVE}/aarna.css (${readFileSync(PORT_CSS, "utf8").length} bytes, ${SOURCE_SHEETS.length} sheets)`);
+    console.log(`wrote ${PORT_RELATIVE}/customer.css (${readFileSync(PORT_CSS, "utf8").length} bytes, ${SOURCE_SHEETS.length} sheets)`);
   }
   if (args.includes("--check")) {
     const problems = runCheck();

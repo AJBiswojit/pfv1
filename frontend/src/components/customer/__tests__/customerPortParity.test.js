@@ -240,7 +240,7 @@ test("the port's own modules render the design's pages, not a second application
   assert.match(mount, /<div className="aan-root">/);
   assert.match(mount, /<Home \/>/);
   assert.match(mount, /<Product \/>/);
-  assert.match(mount, /import "\.\/aarna\.css"/);
+  assert.match(mount, /import "\.\/customer\.css"/);
   /* No AnimatePresence and no exit animation at the mount: the ported shell is
      sticky, and a transform above it would capture it. */
   assert.equal(/AnimatePresence|exit=/.test(mount), false);
@@ -260,9 +260,9 @@ test("the port's own modules render the design's pages, not a second application
 
 /* ── 3 · the stylesheet ─────────────────────────────────────────────── */
 
-const portedCss = () => readPort("aarna.css");
+const portedCss = () => readPort("customer.css");
 
-test("aarna.css is byte-for-byte the transform of the design's seven sheets", () => {
+test("customer.css is byte-for-byte the transform of the design's seven sheets", () => {
   assert.equal(portedCss(), buildPortCss(), "the committed stylesheet drifted from the transform");
   assert.equal(portedCss().includes("@import"), false, "no external import may enter the ported stylesheet");
 });
@@ -321,7 +321,7 @@ test("the design's media and container queries, breakpoints and load order are c
 });
 
 test("the host neutralisation stays tiny, scoped and documented", () => {
-  const host = readPort("aarna.host.css");
+  const host = readPort("customer.host.css");
   const rules = parseCssRules(host).filter((rule) => rule.type === "rule");
   assert.ok(rules.length <= 3, `the host sheet grew to ${rules.length} rules — it must stay a neutralisation`);
   for (const rule of rules) {

@@ -60,8 +60,8 @@ const REDRAWN_PAGES = MIGRATED_SCREENS.map((screen) => `src/components/customer/
    status/problem states every order screen reuses), so it belongs to the set of
    files whose classes this sheet may style. */
 const ORDER_FRAME = "src/components/customer/pages/account/OrderFrame.jsx";
-const SHEET = "src/components/customer/aarna.account.css";
-const DESIGN_SHEET = "src/components/customer/aarna.css";
+const SHEET = "src/components/customer/customer.account.css";
+const DESIGN_SHEET = "src/components/customer/customer.css";
 const REGISTRY = "scripts/customer-port.js";
 
 /* ── the thirteen URLs, and the two halves production splits them into ───── */
@@ -602,7 +602,7 @@ test("the shell fabricates nothing: no sample data, no inert action, no prototyp
 
 test("the stylesheet is scoped to the port, token-only, and every rule it writes is a class the shell draws", () => {
   const sheet = read(SHEET);
-  assert.match(read(MOUNT), /import "\.\/aarna\.account\.css";/, "the frame's stylesheet is not imported by the port");
+  assert.match(read(MOUNT), /import "\.\/customer\.account\.css";/, "the frame's stylesheet is not imported by the port");
 
   const stripped = sheet.replace(/\/\*[\s\S]*?\*\//g, "");
   assert.equal(/!important/.test(stripped), false, "the stylesheet forces declarations");
@@ -646,7 +646,7 @@ test("the port's registry declares its own account files, once each", () => {
   /* The shell's three, plus every screen this phase has redrawn — declared as
      it is written, so the closure check knows it and never writes it. */
   for (const entry of [
-    "aarna.account.css",
+    "customer.account.css",
     "pages/account/AccountFrame.jsx",
     "pages/account/OrderFrame.jsx",
     "pages/account/AccountNav.jsx",

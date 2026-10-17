@@ -20,7 +20,7 @@
  *   3. THE REGISTER. Every block the four screens share draws only what the
  *      record it was handed holds: no estimated date, no invented carrier, no
  *      refund before one exists.
- *   4. THE SHEET. `aarna.orders.css` is scoped to the port, token-only, free of
+ *   4. THE SHEET. `customer.orders.css` is scoped to the port, token-only, free of
  *      dead selectors, and every class it styles is drawn by one of the five
  *      files this stage wrote.
  *
@@ -66,7 +66,7 @@ const RETURN = `${DIR}/OrderReturn.jsx`;
 const ORDER_FILES = [FRAME, LIST, DETAIL, TRACKING, RETURN];
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
-const SHEET = "src/components/customer/aarna.orders.css";
+const SHEET = "src/components/customer/customer.orders.css";
 const REGISTRY = "scripts/customer-port.js";
 
 /* The three single-order URLs, and the history they hang off. */
@@ -334,12 +334,12 @@ test("the stage's files are declared in the port's registry, the sheet included"
   const added = registry.slice(registry.indexOf("const ADDED = ["), registry.indexOf("];", registry.indexOf("const ADDED = [")));
 
   for (const entry of [
-    "aarna.orders.css",
+    "customer.orders.css",
     ...ORDER_FILES.map((file) => `pages/account/${file.split("/").pop()}`),
   ]) {
     assert.ok(added.includes(`"${entry}"`), `${entry} is not declared in the port's registry`);
   }
-  assert.match(source(MOUNT), /import "\.\/aarna\.orders\.css";/, "the order sheet is not carried by the mount");
+  assert.match(source(MOUNT), /import "\.\/customer\.orders\.css";/, "the order sheet is not carried by the mount");
 });
 
 /* ── 2 · the frame ─────────────────────────────────────────────────────────── */

@@ -305,7 +305,7 @@ test("the fallback hides the failed plate, and substitutes nothing for it", asyn
   /* What the customer sees instead is the design's own reserved frame: an
      image-less product already renders exactly this, and it is untouched. */
   assert.match(
-    read(`${PORT}/aarna.css`),
+    read(`${PORT}/customer.css`),
     /\.aan-root \.pcard__media\{ position: relative; overflow: hidden; aspect-ratio: 4 \/ 5; background: var\(--c-bg-2\); \}/,
     "the design's reserved media frame is gone",
   );

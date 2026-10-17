@@ -58,7 +58,7 @@ const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const PORTED = "src/components/customer/pages/SignIn.jsx";
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
-const DIALOGUE = "src/components/customer/aarna.auth.css";
+const DIALOGUE = "src/components/customer/customer.auth.css";
 
 /* ── the browser a server-rendered page still has to believe in ─────────── */
 
@@ -210,7 +210,7 @@ test("Aarna declares all four authentication screens and App delegates customer 
   assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);
   assert.match(mount, /<Route path="forgot-password" element=\{<ForgotPassword \/>\} \/>/);
   assert.match(mount, /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
-  assert.match(mount, /import "\.\/aarna\.auth\.css";/, "the auth stylesheet is not carried by the mount");
+  assert.match(mount, /import "\.\/customer\.auth\.css";/, "the auth stylesheet is not carried by the mount");
   /* Phase 10 needed no routing change: the production route table is the one it
      was, and the auth routes still belong to the customer layout group. */
   const app = read("src/App.jsx");

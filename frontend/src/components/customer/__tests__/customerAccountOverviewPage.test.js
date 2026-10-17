@@ -82,11 +82,11 @@ const NAV = "src/components/customer/pages/account/AccountNav.jsx";
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
 const PRODUCTION_DASHBOARD = "src/components/customer/pages/account/Overview.jsx";
-const SHEET = "src/components/customer/aarna.account.css";
+const SHEET = "src/components/customer/customer.account.css";
 /* The sheets a ported page may lean on: the design's own, and the two the port
    declares for what the design never drew. `pcard-cell` — the wishlist's card
    wrapper, which this page reuses for its rails — lives in the second. */
-const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.wishlist.css", SHEET];
+const SHEETS = ["src/components/customer/customer.css", "src/components/customer/customer.wishlist.css", SHEET];
 const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */
@@ -920,7 +920,7 @@ test("the page's own stylesheet stays scoped to the port, token-only and free of
     assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
   }
 
-  const tokens = new Set([...read("src/components/customer/aarna.css").matchAll(/(--[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
+  const tokens = new Set([...read("src/components/customer/customer.css").matchAll(/(--[a-z0-9-]+)\s*:/g)].map((match) => match[1]));
   for (const [, token] of sheet.matchAll(/var\((--[a-z0-9-]+)\)/g)) {
     assert.ok(tokens.has(token), `${token} is not a token the design defines`);
   }

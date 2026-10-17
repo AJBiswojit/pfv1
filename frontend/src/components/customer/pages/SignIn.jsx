@@ -22,7 +22,7 @@
  *     (`components/auth/GoogleSignInButton.jsx`) — the GIS client, the client-id
  *     resolution and the `POST /auth/oauth/google` exchange are untouched.
  *
- * Only what the design never drew is declared in `aarna.auth.css` (the password
+ * Only what the design never drew is declared in `customer.auth.css` (the password
  * field's toggle, the divider, the check row, the alternate-action block), and
  * every declaration there is scoped to `.aan-root` and built from design tokens.
  *

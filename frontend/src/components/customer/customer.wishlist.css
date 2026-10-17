@@ -2,7 +2,7 @@
    PHASE 8 — the wishlist's own chrome.
 
    Everything the design's wishlist draws is drawn by the design's own
-   stylesheets (`aarna.css`, scoped under `.aan-root` and compared against the
+   stylesheets (`customer.css`, scoped under `.aan-root` and compared against the
    design on every port run): the page header, the `.grid-4` of product cards,
    the `.empty` block and the `.btn` variants. This file carries only what the
    design never drew and this application's wishlist has always had — the cell

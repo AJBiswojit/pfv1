@@ -75,8 +75,8 @@ const PRODUCTION_APP = "src/App.jsx";
 const PRODUCTION_PAGE = "src/components/customer/pages/account/Addresses.jsx";
 const MODAL = "src/components/account/AddressModal.jsx";
 const DIALOG = "src/components/orders/ConfirmDialog.jsx";
-const SHEET = "src/components/customer/aarna.account.css";
-const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.checkout.css", SHEET];
+const SHEET = "src/components/customer/customer.account.css";
+const SHEETS = ["src/components/customer/customer.css", "src/components/customer/customer.checkout.css", SHEET];
 const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */

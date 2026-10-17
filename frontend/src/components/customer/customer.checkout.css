@@ -2,7 +2,7 @@
    PHASE 9 — the money path's own chrome.
 
    Everything the design DOES draw for these surfaces is drawn by the design's
-   own stylesheets (`aarna.css`, scoped under `.aan-root` and compared against
+   own stylesheets (`customer.css`, scoped under `.aan-root` and compared against
    the design on every port run): the page frame (`.container`, `.crumbs`,
    `.label`, `.display`), the bag line's quantity control (`.qty`), the ledger
    (`.totals`, `.totals__disc`, `.totals__grand`, `.totals__note`), the offer

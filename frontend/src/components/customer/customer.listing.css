@@ -2,7 +2,7 @@
    PHASE 7 — the listing page's own chrome.
 
    Everything the design's shop draws is drawn by the design's own stylesheets
-   (`aarna.css`, scoped under `.aan-root` and compared against the design on
+   (`customer.css`, scoped under `.aan-root` and compared against the design on
    every port run). This file carries only what the design never drew and this
    application's listing has always had: the refine control's chip row, the
    facet groups inside the design's drawer, the row of active selections,
