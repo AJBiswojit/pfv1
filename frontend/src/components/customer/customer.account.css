@@ -149,7 +149,7 @@
 }
 
 .pf-root .pf-account__body .pf-account__section {
-  margin-top: clamp(30px, 3.6vw, 48px);
+  margin-top: 20px;
 }
 
 .pf-root .pf-account__body .pf-account__section .label {
@@ -166,6 +166,27 @@
   color: var(--c-ink);
 }
 
+.pf-root .pf-account__body .account__tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.pf-root .pf-account__body .shop__head {
+  padding: 0 0 12px;
+  gap: 6px 16px;
+}
+
+.pf-root .pf-account__body .grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 16px;
+}
+
+.pf-root .pf-account__body .pf-form {
+  width: 100%;
+  max-width: 760px;
+}
+
 /* ── the two intelligence entry points: production's own bands (its dark mirror
       panel and its assistant panel) drawn in the design's register — the design's
       eyebrow, its serif display and its button — each carrying the disclosure its
@@ -174,8 +195,8 @@
 
 .pf-root .pf-account__ai {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
 }
 
 .pf-root .pf-account__ai-entry {
@@ -346,7 +367,7 @@
 
 .pf-root .pf-account__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -458,7 +479,7 @@
 
 .pf-root .pf-account__addresses {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
   margin: 24px 0 0;
   padding: 0;
@@ -553,7 +574,7 @@
 
 .pf-root .pf-account__offers {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -602,7 +623,7 @@
 
 .pf-root .pf-account__returns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
 }
 
@@ -646,7 +667,7 @@
 
 .pf-root .pf-account__collections {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 16px;
 }
 
@@ -751,36 +772,23 @@
 }
 
 @media (max-width: 899px) {
-  .pf-root .pf-account__cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__addresses {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__ai {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__offers {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__collections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .pf-root .pf-account__style {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .pf-root .pf-account__returns {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 599px) {
+  .pf-root .pf-account__body .account__tiles {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+    gap: 8px;
+  }
+
+  .pf-root .pf-account__body .grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+    gap: 12px;
+  }
+
   .pf-root .pf-account__intro {
     align-items: flex-start;
   }
@@ -793,9 +801,6 @@
     flex: 1;
   }
 
-  .pf-root .pf-account__collections {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* ── account application shell ─────────────────────────────────────────────
@@ -813,17 +818,17 @@
 }
 
 .pf-root .pf-account {
-  width: min(100% - 40px, 1240px);
-  max-width: 1240px;
-  margin-inline: auto;
-  padding-block: 16px;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 16px clamp(24px, 2vw, 32px);
 }
 
 .pf-root .pf-account__layout {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
+  grid-template-columns: 256px minmax(0, 1fr);
   align-items: stretch;
-  gap: 24px;
+  gap: clamp(20px, 1.6vw, 32px);
   margin-top: 0;
 }
 
@@ -1136,8 +1141,8 @@
 
 @media (max-width: 1023px) {
   .pf-root .pf-account {
-    width: calc(100% - 32px);
-    padding-block: 0 24px;
+    width: 100%;
+    padding: 0 clamp(16px, 2vw, 20px) 24px;
   }
 
   .pf-root .pf-account__layout {

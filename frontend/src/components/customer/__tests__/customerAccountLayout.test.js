@@ -206,3 +206,23 @@ test('route and tab changes reset the content scroller without stealing focus, a
     delete globalThis.IS_REACT_ACT_ENVIRONMENT;
   }
 });
+
+test('the workspace removes the centered width cap and uses bounded gutters plus a 256px fluid grid', () => {
+  const shell = rule('.pf-account').filter((entry) => entry.selector === '.pf-root .pf-account' && entry.conditions.length === 0);
+  assert.ok(hasDeclaration(shell, 'width: 100%'));
+  assert.ok(hasDeclaration(shell, 'max-width: none'));
+  assert.ok(hasDeclaration(shell, 'padding: 16px clamp(24px, 2vw, 32px)'));
+  assert.ok(hasDeclaration(rule('.pf-account__layout'), 'grid-template-columns: 256px minmax(0, 1fr)'));
+  assert.ok(hasDeclaration(rule('.pf-account', 'max-width: 1023px'), 'padding: 0 clamp(16px, 2vw, 20px) 24px'));
+  assert.ok(hasDeclaration(rule('.pf-account__body .pf-form'), 'max-width: 760px'), 'only readable forms need a bounded measure');
+});
+
+test('stats, AI, detail and commerce cards fill the fluid width using safe auto-fit grids', () => {
+  for (const selector of ['.account__tiles', '.pf-account__ai', '.pf-account__cards', '.pf-account__offers', '.pf-account__addresses', '.pf-account__returns', '.pf-account__collections', '.pf-account__body .grid-4']) {
+    const grids = rule(selector).filter((entry) => entry.declarations.includes('grid-template-columns'));
+    assert.ok(grids.length > 0, selector);
+    for (const entry of grids) assert.match(entry.declarations, /repeat\(auto-fit, minmax\(min\(100%, \d+px\), 1fr\)\)/, selector);
+  }
+  const orders = parseCssRules(readFileSync(new URL('../customer.orders.css', import.meta.url), 'utf8'));
+  assert.ok(hasDeclaration(orders.filter((entry) => entry.selector === '.pf-root .pf-account__order-list'), 'grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr))'));
+});
