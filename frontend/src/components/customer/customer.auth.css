@@ -261,3 +261,39 @@
 .pf-root .info .pf-auth .pf-auth__back {
   max-width: none;
 }
+
+/* Premium auth workspace: a roomy, restrained card that keeps the existing
+   maroon/blush palette and typography while giving forms a usable measure. */
+.pf-root .pf-auth {
+  box-sizing: border-box;
+  width: min(100% - 40px, 1080px);
+  max-width: 1080px;
+  min-height: min(680px, calc(100vh - 220px));
+  margin: 36px auto;
+  padding: clamp(28px, 5vw, 64px);
+  border: 1px solid var(--c-line);
+  border-radius: 18px;
+  background: var(--c-paper);
+  box-shadow: 0 18px 60px color-mix(in srgb, var(--c-espresso) 8%, transparent);
+}
+.pf-root .pf-auth .info__title { font-size: clamp(28px, 3vw, 40px); line-height: 1.12; margin-bottom: 10px; }
+.pf-root .pf-auth .info__lead { margin-top: 0; font-size: 14px; }
+.pf-root .pf-auth__form { width: 100%; max-width: 620px; margin-top: 20px; }
+.pf-root .pf-auth .form input:not([type="checkbox"]) { box-sizing: border-box; min-height: 48px; }
+.pf-root .pf-auth .form input:focus-visible { outline: 2px solid var(--c-accent-deep); outline-offset: 2px; }
+.pf-root .pf-auth__toggle { min-width: 44px; min-height: 44px; }
+.pf-root .pf-auth .btn--block { min-height: 48px; width: 100%; }
+.pf-root .pf-auth input:-webkit-autofill,
+.pf-root .pf-auth input:-webkit-autofill:hover,
+.pf-root .pf-auth input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--c-ink);
+  box-shadow: 0 0 0 1000px var(--c-paper) inset;
+  transition: background-color 9999s ease-out;
+}
+@media (max-width: 1023px) {
+  .pf-root .pf-auth { width: calc(100% - 32px); min-height: 0; margin: 24px auto; padding: clamp(24px, 6vw, 40px); }
+}
+@media (max-width: 480px) {
+  .pf-root .pf-auth { width: calc(100% - 32px); padding: 24px 20px; border-radius: 14px; }
+  .pf-root .pf-auth__row { align-items: center; }
+}

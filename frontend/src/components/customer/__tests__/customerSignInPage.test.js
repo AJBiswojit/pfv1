@@ -318,7 +318,7 @@ test("the tab title is set and restored, and the page adds no dependency", () =>
 
 test("the rendered page is the design's frame around the application's form", () => {
   const markup = on.render("/signin");
-  assert.match(markup, /class="crumbs"/);
+  assert.doesNotMatch(markup, /aria-label="Breadcrumb"|class="crumbs"/, "customer breadcrumb should be absent");
   assert.match(markup, /class="display info__title"/);
   assert.match(markup, /class="form pf-auth__form"/);
   assert.match(markup, /id="signin-identifier"/);
