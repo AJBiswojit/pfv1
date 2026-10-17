@@ -293,7 +293,7 @@ test('the sheet is scoped to the port, token-only, and every rule it writes is a
   }
   assert.ok(selectors.length >= 20, `expected the AI screens' rules, found ${selectors.length}`);
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
   }
 
   /* Every token it reads is the design's own. */

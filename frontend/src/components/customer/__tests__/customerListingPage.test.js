@@ -203,7 +203,7 @@ after(async () => {
 test("listing routes always render Aarna's listing UI regardless of the former override", () => {
   for (const path of ["/shop", "/explore", "/search?q=silk", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = off.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
     assert.match(markup, /class="shop container"/, `${path} did not render Aarna's listing`);
   }
 });
@@ -211,7 +211,7 @@ test("listing routes always render Aarna's listing UI regardless of the former o
 test("with the switch on, the design's listing owns every listing route the application serves", () => {
   for (const path of ["/shop", "/explore", "/search?q=silk", "/women", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = on.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
+    assert.match(markup, /class="pf-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="shop container"/, `${path} did not render the design's listing shell`);
   }
 });
@@ -226,7 +226,7 @@ test("the switch stops at the routes it does not own", () => {
   }
   /* Reset-password now belongs to the Aarna auth route, never the listing. */
   const reset = on.render("/reset-password?userId=user-1&token=token-1");
-  assert.match(reset, /aan-root/, "reset-password did not render in the Aarna shell");
+  assert.match(reset, /pf-root/, "reset-password did not render in the Aarna shell");
   assert.equal(/listing-controls/.test(reset), false, "reset-password rendered listing controls");
 });
 
@@ -236,13 +236,13 @@ test("Phase 8's own surfaces mount the port, and never the listing", () => {
      `shop container` frame and the information page its own `info container`,
      so the marker that separates them is the listing's control bar. */
   const wishlist = on.render("/account/wishlist");
-  assert.match(wishlist, /class="aan-root"/, "the wishlist did not mount the port");
+  assert.match(wishlist, /class="pf-root"/, "the wishlist did not mount the port");
   assert.match(wishlist, /class="label">Saved pieces</, "the wishlist did not render its own page");
   assert.equal(/listing-controls/.test(wishlist), false, "the wishlist was handed to the listing");
 
   for (const path of ["/about", "/contact", "/privacy", "/terms"]) {
     const markup = on.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
+    assert.match(markup, /class="pf-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="info container"/, `${path} did not render the information page`);
     assert.equal(/listing-controls/.test(markup), false, `${path} was handed to the listing`);
   }
@@ -300,7 +300,7 @@ test("every listing path resolves to a scope from the live registers — or to n
 
 test("an unknown slug is the design's 404 — not an empty edit, and not a fabricated scope", () => {
   const markup = on.render("/category/not-a-category");
-  assert.match(markup, /class="aan-root"/, "the port did not mount");
+  assert.match(markup, /class="pf-root"/, "the port did not mount");
   assert.equal(/class="shop container"/.test(markup), false, "an unknown category rendered a listing");
   assert.equal(/All Pieces/.test(markup), false, "an unknown category was titled as the shop");
 });
@@ -443,7 +443,7 @@ test("the port's own listing stylesheet is scoped to the port and adds no design
   assert.ok(selectors.length > 0, "the stylesheet is empty");
   for (const selector of selectors) {
     for (const part of selector.split(",")) {
-      assert.match(part.trim(), /^\.aan-root\b/, `an unscoped rule would leak into the host application: ${part.trim()}`);
+      assert.match(part.trim(), /^\.pf-root\b/, `an unscoped rule would leak into the host application: ${part.trim()}`);
     }
   }
   /* Every value is a design token or a plain measure — never a new colour. */

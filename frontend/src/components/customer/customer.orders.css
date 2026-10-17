@@ -12,7 +12,7 @@
    in.
 
    Nothing here restates a rule another sheet already owns, and no other sheet
-   may carry an order's chrome. Every declaration is scoped to `.aan-root`, every
+   may carry an order's chrome. Every declaration is scoped to `.pf-root`, every
    value is a design token (`--c-*`, `--f-*`, `--fs-*`, `--ease-out`), and every
    selector is written one class deeper than the element rules it has to outweigh
    — the lesson Phase 10, the frame and the delivery book all recorded.
@@ -30,12 +30,12 @@
    port's chip for a status and the second surface for a card. The design never
    drew an order, so what it did not draw is declared here, once, for all four.
 
-   Everything below is a token the design already defines, scoped to `.aan-root`,
+   Everything below is a token the design already defines, scoped to `.pf-root`,
    and written one class deeper than the rule it has to outweigh. */
 
 /* The filter row and the search field, on the design's own chip register. */
 
-.aan-root .pf-account__filters {
+.pf-root .pf-account__filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -46,17 +46,17 @@
 
 /* The listing sheet's count colour assumes it sits in the listing panel; an
    active filter chip here is the espresso surface, so the count follows it. */
-.aan-root .pf-account__filters .chip.is-active .listing-group__count {
+.pf-root .pf-account__filters .chip.is-active .listing-group__count {
   color: var(--c-bg-2);
 }
 
-.aan-root .pf-account__search {
+.pf-root .pf-account__search {
   position: relative;
   flex: 1 1 240px;
   max-width: 320px;
 }
 
-.aan-root .pf-account__search input {
+.pf-root .pf-account__search input {
   width: 100%;
   border: 1px solid var(--c-line-strong);
   background: var(--c-paper);
@@ -66,7 +66,7 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__search-icon {
+.pf-root .pf-account__search-icon {
   position: absolute;
   left: 11px;
   top: 50%;
@@ -76,7 +76,7 @@
   pointer-events: none;
 }
 
-.aan-root .pf-account__search-clear {
+.pf-root .pf-account__search-clear {
   position: absolute;
   right: 5px;
   top: 50%;
@@ -89,15 +89,15 @@
   cursor: pointer;
 }
 
-.aan-root .pf-account__search-clear:hover,
-.aan-root .pf-account__search-clear:focus-visible {
+.pf-root .pf-account__search-clear:hover,
+.pf-root .pf-account__search-clear:focus-visible {
   color: var(--c-espresso);
 }
 
 /* One order, as the design's own card: the pieces and the order's identity, then
    the facts the order actually recorded. */
 
-.aan-root .pf-account__order-list {
+.pf-root .pf-account__order-list {
   display: grid;
   gap: 12px;
   margin: 24px 0 0;
@@ -105,7 +105,7 @@
   list-style: none;
 }
 
-.aan-root .pf-account__order-card {
+.pf-root .pf-account__order-card {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -113,7 +113,7 @@
   background: var(--c-bg-2);
 }
 
-.aan-root .pf-account__order-head {
+.pf-root .pf-account__order-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -121,20 +121,20 @@
   gap: 8px 16px;
 }
 
-.aan-root .pf-account__order-pieces {
+.pf-root .pf-account__order-pieces {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-top: 16px;
 }
 
-.aan-root .pf-account__order-thumbs {
+.pf-root .pf-account__order-thumbs {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.aan-root .pf-account__order-thumb {
+.pf-root .pf-account__order-thumb {
   display: block;
   width: 54px;
   aspect-ratio: 4 / 5;
@@ -142,7 +142,7 @@
   background: var(--c-bg-3);
 }
 
-.aan-root .pf-account__order-more {
+.pf-root .pf-account__order-more {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,11 +155,11 @@
   letter-spacing: 0.06em;
 }
 
-.aan-root .pf-account__order-summary {
+.pf-root .pf-account__order-summary {
   min-width: 0;
 }
 
-.aan-root .pf-account__order-card .pf-account__order-name {
+.pf-root .pf-account__order-card .pf-account__order-name {
   margin: 0;
   font-family: var(--f-serif);
   font-size: 17px;
@@ -167,14 +167,14 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__order-card .pf-account__order-main {
+.pf-root .pf-account__order-card .pf-account__order-main {
   min-width: 0;
 }
 
 /* The card's own title: the design's card register (a serif name whose link
    underlines on hover), never the overview's small printed row. */
 
-.aan-root .pf-account__order-card .pf-account__order-id {
+.pf-root .pf-account__order-card .pf-account__order-id {
   margin: 0;
   font-family: var(--f-serif);
   font-size: 19px;
@@ -183,7 +183,7 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__order-card .pf-account__order-id a:hover {
+.pf-root .pf-account__order-card .pf-account__order-id a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
@@ -195,18 +195,18 @@
    own order rows keep their smaller printed register from the frame's sheet,
    whose selector is one class deeper.) */
 
-.aan-root .pf-account__order-meta {
+.pf-root .pf-account__order-meta {
   margin: 0;
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-account__order-card .pf-account__order-meta {
+.pf-root .pf-account__order-card .pf-account__order-meta {
   margin-top: 4px;
 }
 
-.aan-root .pf-account__order-card .pf-account__order-total {
+.pf-root .pf-account__order-card .pf-account__order-total {
   margin: 6px 0 0;
   font-size: 13.5px;
   font-weight: 600;
@@ -214,7 +214,7 @@
   font-feature-settings: 'tnum';
 }
 
-.aan-root .pf-account__order-facts {
+.pf-root .pf-account__order-facts {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -222,13 +222,13 @@
   border-top: 1px solid var(--c-line);
 }
 
-.aan-root .pf-account__order-card .pf-account__order-fact-value {
+.pf-root .pf-account__order-card .pf-account__order-fact-value {
   margin: 0;
   font-size: 13.5px;
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__order-actions {
+.pf-root .pf-account__order-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -238,7 +238,7 @@
 
 /* The status line under a page title, and the guest-claim notice. */
 
-.aan-root .pf-account__statusline {
+.pf-root .pf-account__statusline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -246,11 +246,11 @@
   margin-bottom: 4px;
 }
 
-.aan-root .pf-account__notice {
+.pf-root .pf-account__notice {
   margin: 0 0 22px;
 }
 
-.aan-root .pf-account__notice-line {
+.pf-root .pf-account__notice-line {
   margin-bottom: 12px;
   font-size: 13.5px;
   color: var(--c-ink-2);
@@ -258,14 +258,14 @@
 
 /* The two-column body of a single order, and the rail beside it. */
 
-.aan-root .pf-account__grid {
+.pf-root .pf-account__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: clamp(24px, 3vw, 44px);
   margin-top: clamp(28px, 3.4vw, 44px);
 }
 
-.aan-root .pf-account__rail {
+.pf-root .pf-account__rail {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -274,23 +274,23 @@
 /* The journey: only the transitions the atelier recorded, each with its own
    state — never an estimated one. */
 
-.aan-root .pf-account__steps {
+.pf-root .pf-account__steps {
   margin: 20px 0 0;
   padding: 0 0 0 20px;
   list-style: none;
   border-left: 1px solid var(--c-line);
 }
 
-.aan-root .pf-account__step {
+.pf-root .pf-account__step {
   position: relative;
   padding-bottom: 20px;
 }
 
-.aan-root .pf-account__step:last-child {
+.pf-root .pf-account__step:last-child {
   padding-bottom: 0;
 }
 
-.aan-root .pf-account__step-marker {
+.pf-root .pf-account__step-marker {
   position: absolute;
   left: -25px;
   top: 5px;
@@ -300,13 +300,13 @@
   background: var(--c-bg);
 }
 
-.aan-root .pf-account__step.is-done .pf-account__step-marker,
-.aan-root .pf-account__step.is-current .pf-account__step-marker {
+.pf-root .pf-account__step.is-done .pf-account__step-marker,
+.pf-root .pf-account__step.is-current .pf-account__step-marker {
   border-color: var(--c-espresso);
   background: var(--c-espresso);
 }
 
-.aan-root .pf-account__step-title {
+.pf-root .pf-account__step-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -320,15 +320,15 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-account__step.is-done .pf-account__step-title {
+.pf-root .pf-account__step.is-done .pf-account__step-title {
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__step.is-current .pf-account__step-title {
+.pf-root .pf-account__step.is-current .pf-account__step-title {
   color: var(--c-espresso);
 }
 
-.aan-root .pf-account__step-time {
+.pf-root .pf-account__step-time {
   font-size: 11.5px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -336,7 +336,7 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-account__step-note {
+.pf-root .pf-account__step-note {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.5;
@@ -345,7 +345,7 @@
 
 /* The return request's own controls, on the checkout sheet's option register. */
 
-.aan-root .pf-account__legend {
+.pf-root .pf-account__legend {
   display: block;
   margin-bottom: 10px;
   font-family: var(--f-serif);
@@ -354,17 +354,17 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-account__option-row {
+.pf-root .pf-account__option-row {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.aan-root .pf-account__option-row .pf-option__price {
+.pf-root .pf-account__option-row .pf-option__price {
   margin-left: auto;
 }
 
-.aan-root .pf-account__option-img {
+.pf-root .pf-account__option-img {
   display: block;
   flex: none;
   width: 54px;
@@ -373,7 +373,7 @@
   background: var(--c-bg-3);
 }
 
-.aan-root .pf-account__option-state {
+.pf-root .pf-account__option-state {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: var(--track-label);
@@ -381,20 +381,20 @@
   color: var(--c-espresso);
 }
 
-.aan-root .pf-account__option-qty {
+.pf-root .pf-account__option-qty {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
 }
 
-.aan-root .pf-account__option-qty-label {
+.pf-root .pf-account__option-qty-label {
   font-size: 11px;
   letter-spacing: 0.04em;
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-account__option-qty select {
+.pf-root .pf-account__option-qty select {
   border: 1px solid var(--c-line-strong);
   background: var(--c-paper);
   padding: 4px 8px;
@@ -403,14 +403,14 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-option.is-disabled {
+.pf-root .pf-option.is-disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
 /* The one field the order screens own: a note, in the journey form's register. */
 
-.aan-root .pf-account__body .pf-form textarea {
+.pf-root .pf-account__body .pf-form textarea {
   width: 100%;
   border: 1px solid var(--c-line-strong);
   background: var(--c-paper);
@@ -421,20 +421,20 @@
   resize: vertical;
 }
 
-.aan-root .pf-account__body .pf-form .pf-hint {
+.pf-root .pf-account__body .pf-form .pf-hint {
   color: var(--c-ink-3);
 }
 
 /* A text action that is waiting on a request says so. */
 
-.aan-root .pf-account__act:disabled {
+.pf-root .pf-account__act:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* In a panel, the checkout sheet's meta grid is a set of facts, not a band. */
 
-.aan-root .pf-panel .pf-meta {
+.pf-root .pf-panel .pf-meta {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 18px;
   margin: 18px 0 0;
@@ -445,18 +445,18 @@
 
 @media (max-width: 899px) {
   /* One order, stacked: the pieces above the facts. */
-  .aan-root .pf-account__grid,
-  .aan-root .pf-panel .pf-meta {
+  .pf-root .pf-account__grid,
+  .pf-root .pf-panel .pf-meta {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 599px) {
-  .aan-root .pf-account__filters {
+  .pf-root .pf-account__filters {
     align-items: stretch;
   }
 
-  .aan-root .pf-account__search {
+  .pf-root .pf-account__search {
     max-width: none;
   }
 }
@@ -465,18 +465,18 @@
    the pieces rather than under them. */
 
 @media (min-width: 900px) {
-  .aan-root .pf-account__order-card {
+  .pf-root .pf-account__order-card {
     flex-direction: row;
     justify-content: space-between;
     gap: 28px;
   }
 
-  .aan-root .pf-account__order-card .pf-account__order-main {
+  .pf-root .pf-account__order-card .pf-account__order-main {
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  .aan-root .pf-account__order-facts {
+  .pf-root .pf-account__order-facts {
     flex: 0 0 232px;
     padding: 0 0 0 24px;
     border-top: 0;

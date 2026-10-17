@@ -131,13 +131,13 @@ const importSpecifiers = (text) =>
 test("/signup always renders Aarna's sign-up screen regardless of the former override", () => {
   const markup = off.render("/signup");
   assert.ok(markup.length > 0, "/signup rendered nothing at all");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /signup is the port — inside the design's full shell", () => {
   const markup = on.render("/signup");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="info container pf-auth"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the sign-up page");
   assert.match(markup, /class="skip-link"/, "the design's skip link is missing from the sign-up page");

@@ -917,7 +917,7 @@ test("the page's own stylesheet stays scoped to the port, token-only and free of
   const selectors = [...stripped.matchAll(/^[ \t]*([^@\s][^{}\n]*)\{/gm)].map((match) => match[1].trim()).filter(Boolean);
   assert.ok(selectors.length > 20, `expected the sheet's selectors, found ${selectors.length}`);
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
   }
 
   const tokens = new Set([...read("src/components/customer/customer.css").matchAll(/(--[a-z0-9-]+)\s*:/g)].map((match) => match[1]));

@@ -2,7 +2,7 @@
    PHASE 2D — host neutralisation (hand-written, deliberately tiny).
 
    `customer.css` beside this file is the design's own seven stylesheets, scoped
-   under `.aan-root` by `scripts/customer-port.js`: every declaration in it is the
+   under `.pf-root` by `scripts/customer-port.js`: every declaration in it is the
    design's, byte for byte, and the regression suite compares it against the
    source sheets on every run. This file is the one place a rule may differ, and
    each rule below exists for the same reason: the host application loads
@@ -27,21 +27,21 @@
        weight, and a scoped rule (specificity 0-2-0) still beats this one
        (0-1-1).
 
-   Both rules are scoped to `.aan-root`, carry no design value, and are pinned by
+   Both rules are scoped to `.pf-root`, carry no design value, and are pinned by
    the regression suite: it fails if this file grows past three rules, if a rule
    escapes the port root, or if one appears without one of these declarations.
    ══════════════════════════════════════════════════════════════════════════ */
 
-.aan-root svg {
+.pf-root svg {
   display: inline;
   vertical-align: baseline;
 }
 
-.aan-root h1,
-.aan-root h2,
-.aan-root h3,
-.aan-root h4,
-.aan-root h5,
-.aan-root h6 {
+.pf-root h1,
+.pf-root h2,
+.pf-root h3,
+.pf-root h4,
+.pf-root h5,
+.pf-root h6 {
   font-weight: bold;
 }

@@ -15,9 +15,9 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *
  *   2. THE STYLESHEET IS A TRANSFORM. `node scripts/customer-port.js --css` reads
  *      the design's seven stylesheets and writes `src/components/customer/customer.css`
- *      with every selector scoped under `.aan-root`. Declarations are copied
+ *      with every selector scoped under `.pf-root`. Declarations are copied
  *      byte-for-byte; only selectors change, plus the two global keyframe names
- *      (`spin`, `pulse` → `aan-spin`, `aan-pulse`). `--check` re-runs the
+ *      (`spin`, `pulse` → `pf-spin`, `pf-pulse`). `--check` re-runs the
  *      transform and compares, so the committed stylesheet can never drift from
  *      the design it was taken from (`customerSourceParity.test.js` also does this
  *      from inside the test suite).
@@ -37,7 +37,7 @@ export const DESIGN_STYLES = join(DESIGN_SRC, "styles");
 export const PORT_RELATIVE = "src/components/customer";
 export const PORT_DIR = join(FRONTEND_ROOT, PORT_RELATIVE);
 export const PORT_CSS = join(PORT_DIR, "customer.css");
-export const SCOPE = ".aan-root";
+export const SCOPE = ".pf-root";
 
 /* ────────────────────────────── the closure ─────────────────────────────── */
 
@@ -282,6 +282,13 @@ const logoPlateRewrite = (file, source) =>
  *  the customer app (the prototype keeps `aarna:announce`; sessions that
  *  dismissed the bar under the old key see it once again). */
 const announcementKeyRewrite = (file, source) => source.replace(/'aarna:announce'/g, "'storefront:announce'");
+
+/** Rewrite — the port's class prefix. The design-side `aan-` namespace is
+ *  carried into the port as `pf-` (the customer stylesheet's scope), so a
+ *  regenerated file can never reintroduce the old prefix; today no CLOSURE
+ *  file contains `aan-` at all (the prefix lives in port-authored files and
+ *  the CSS transform), which keeps every pin unchanged. */
+const classPrefixRewrite = (file, source) => source.replace(/\baan-/g, "pf-");
 
 /**
  * Rewrite 4 — OFFER COPY. The design's basket names its own sample campaign
@@ -1090,6 +1097,7 @@ export const REWRITES = [
   { id: "fetch-priority", files: ["components/sections/Hero.jsx"], apply: fetchPriorityRewrite },
   { id: "logo-plate", files: ["components/ui/Logo.jsx"], apply: logoPlateRewrite },
   { id: "announce-key", files: ["components/layout/AnnouncementBar.jsx"], apply: announcementKeyRewrite },
+  { id: "class-prefix", files: Object.keys(CLOSURE).filter((file) => /\.jsx?$/.test(file)), apply: classPrefixRewrite },
   { id: "offer-copy", files: ["components/shopping/CartDrawer.jsx"], apply: offerCopyRewrite },
   { id: "promo-feedback", files: ["components/shopping/CartDrawer.jsx"], apply: promoFeedbackRewrite },
   { id: "view-bag", files: ["components/shopping/CartDrawer.jsx"], apply: viewBagRewrite },
@@ -1143,7 +1151,7 @@ export const sheetBanner = (name) => `/* ══ ${name} — home-page/src/styles
  * renamed, and their references rewritten, so the port cannot collide with the
  * host application's own `spin`/`pulse`.
  */
-export const KEYFRAME_RENAMES = { spin: "aan-spin", pulse: "aan-pulse" };
+export const KEYFRAME_RENAMES = { spin: "pf-spin", pulse: "pf-pulse" };
 
 const matchBrace = (css, open) => {
   let depth = 0;

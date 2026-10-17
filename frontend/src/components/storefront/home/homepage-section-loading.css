@@ -1,6 +1,6 @@
 /* Approximate editorial footprints, not content-dependent layout guarantees.
    Keep these separate from the protected reference-derived storefront styles. */
-.aan-root .aan-home-loading {
+.pf-root .pf-home-loading {
   --loading-height: 800px;
   position: relative;
   height: var(--loading-height);
@@ -8,42 +8,42 @@
   background: var(--c-bg-2, #eee7dc);
   border-block-end: 1px solid var(--c-line, #ded4c5);
 }
-.aan-root .aan-home-loading--hero { --loading-height: clamp(580px, calc(100svh - var(--header-h, 88px) - 34px), 880px); }
-.aan-root .aan-home-loading--categories { --loading-height: 1100px; }
-.aan-root .aan-home-loading--sarees { --loading-height: 1400px; }
-.aan-root .aan-home-loading--bridal { --loading-height: 1100px; }
-.aan-root .aan-home-loading--jewellery { --loading-height: 1000px; }
-.aan-root .aan-home-loading--promotion { --loading-height: 620px; }
-.aan-root .aan-home-loading--men { --loading-height: 1100px; }
-.aan-root .aan-home-loading--kids { --loading-height: 1050px; }
-.aan-root .aan-home-loading--bestsellers { --loading-height: 1250px; }
-.aan-root .aan-home-loading--kurtis { --loading-height: 1050px; }
-.aan-root .aan-home-loading--newsletter { --loading-height: 540px; }
-.aan-root .aan-home-loading--trust { --loading-height: 160px; }
-.aan-root .aan-home-loading__shimmer {
+.pf-root .pf-home-loading--hero { --loading-height: clamp(580px, calc(100svh - var(--header-h, 88px) - 34px), 880px); }
+.pf-root .pf-home-loading--categories { --loading-height: 1100px; }
+.pf-root .pf-home-loading--sarees { --loading-height: 1400px; }
+.pf-root .pf-home-loading--bridal { --loading-height: 1100px; }
+.pf-root .pf-home-loading--jewellery { --loading-height: 1000px; }
+.pf-root .pf-home-loading--promotion { --loading-height: 620px; }
+.pf-root .pf-home-loading--men { --loading-height: 1100px; }
+.pf-root .pf-home-loading--kids { --loading-height: 1050px; }
+.pf-root .pf-home-loading--bestsellers { --loading-height: 1250px; }
+.pf-root .pf-home-loading--kurtis { --loading-height: 1050px; }
+.pf-root .pf-home-loading--newsletter { --loading-height: 540px; }
+.pf-root .pf-home-loading--trust { --loading-height: 160px; }
+.pf-root .pf-home-loading__shimmer {
   position: absolute;
   inset: 0;
   background: linear-gradient(100deg, transparent 20%, var(--c-bg, #faf6ef) 50%, transparent 80%);
   transform: translateX(-100%);
-  animation: aan-home-shimmer 1.8s ease-in-out infinite;
+  animation: pf-home-shimmer 1.8s ease-in-out infinite;
 }
-@keyframes aan-home-shimmer {
+@keyframes pf-home-shimmer {
   to { transform: translateX(100%); }
 }
 @media (max-width: 767px) {
-  .aan-root .aan-home-loading--hero { --loading-height: 820px; }
-  .aan-root .aan-home-loading--categories { --loading-height: 1600px; }
-  .aan-root .aan-home-loading--sarees { --loading-height: 1800px; }
-  .aan-root .aan-home-loading--bridal { --loading-height: 1900px; }
-  .aan-root .aan-home-loading--jewellery { --loading-height: 1500px; }
-  .aan-root .aan-home-loading--promotion { --loading-height: 1000px; }
-  .aan-root .aan-home-loading--men { --loading-height: 1500px; }
-  .aan-root .aan-home-loading--kids { --loading-height: 1700px; }
-  .aan-root .aan-home-loading--bestsellers { --loading-height: 1500px; }
-  .aan-root .aan-home-loading--kurtis { --loading-height: 1600px; }
-  .aan-root .aan-home-loading--newsletter { --loading-height: 1000px; }
-  .aan-root .aan-home-loading--trust { --loading-height: 420px; }
+  .pf-root .pf-home-loading--hero { --loading-height: 820px; }
+  .pf-root .pf-home-loading--categories { --loading-height: 1600px; }
+  .pf-root .pf-home-loading--sarees { --loading-height: 1800px; }
+  .pf-root .pf-home-loading--bridal { --loading-height: 1900px; }
+  .pf-root .pf-home-loading--jewellery { --loading-height: 1500px; }
+  .pf-root .pf-home-loading--promotion { --loading-height: 1000px; }
+  .pf-root .pf-home-loading--men { --loading-height: 1500px; }
+  .pf-root .pf-home-loading--kids { --loading-height: 1700px; }
+  .pf-root .pf-home-loading--bestsellers { --loading-height: 1500px; }
+  .pf-root .pf-home-loading--kurtis { --loading-height: 1600px; }
+  .pf-root .pf-home-loading--newsletter { --loading-height: 1000px; }
+  .pf-root .pf-home-loading--trust { --loading-height: 420px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .aan-root .aan-home-loading__shimmer { animation: none; transform: none; opacity: 0.35; }
+  .pf-root .pf-home-loading__shimmer { animation: none; transform: none; opacity: 0.35; }
 }

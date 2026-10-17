@@ -24,7 +24,7 @@
  *
  * Only what the design never drew is declared in `customer.auth.css` (the password
  * field's toggle, the divider, the check row, the alternate-action block), and
- * every declaration there is scoped to `.aan-root` and built from design tokens.
+ * every declaration there is scoped to `.pf-root` and built from design tokens.
  *
  * Nothing here is a mock: there is no local "signed in" state, no fabricated
  * profile and no success that the backend did not confirm. If the API is

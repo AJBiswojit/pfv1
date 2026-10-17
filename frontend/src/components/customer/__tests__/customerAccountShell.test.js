@@ -290,7 +290,7 @@ async function mount(define) {
       atPath(
         React.createElement(
           "div",
-          { className: "aan-root" },
+          { className: "pf-root" },
           React.createElement(
             UIProvider,
             null,
@@ -431,7 +431,7 @@ test("Aarna applies the shared guard to customer screens and leaves single-order
 test("the account and wishlist paths always enter the Aarna shell", () => {
   for (const path of [...GUARDED_SCREENS, ...GUEST_ORDER_URLS, "/account/wishlist"]) {
     const markup = off.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
     assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the retired host header`);
   }
 });
@@ -444,7 +444,7 @@ test("with the switch on, the guest order pages mount the port once — and neve
        not underneath it. The marker is the production customer header's own
        root (`components/shell/SiteHeader.jsx:137`) — a real class, absent from
        every rendered component of the port. */
-    assert.match(markup, /class="aan-root"/, `${path} is served by production although the port claims it`);
+    assert.match(markup, /class="pf-root"/, `${path} is served by production although the port claims it`);
     assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the production customer header under the port's`);
     /* The page is the port's own since Stage 2.4, and its frame branches on the
        session: a guest gets the order surface and the two ways to keep it, never
@@ -472,7 +472,7 @@ test("with the switch on, a guest asking for a guarded screen paints no account 
   for (const path of GUARDED_SCREENS) {
     const markup = on.render(path);
 
-    assert.match(markup, /class="aan-root"/, `${path} was not handed to the port`);
+    assert.match(markup, /class="pf-root"/, `${path} was not handed to the port`);
     assert.equal(/pf-account/.test(markup), false, `${path} painted account chrome on the server render — a guest must be shown none`);
     assert.equal(/pf-account__nav/.test(markup), false, `${path} showed account chrome to a guest`);
     assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the production customer header as well`);
@@ -487,7 +487,7 @@ test("with the switch on, a guest asking for a guarded screen paints no account 
 test("reset-password belongs to the auth surface, not the account surface", () => {
   assert.equal(on.boundary.isCustomerAuthPath("/reset-password"), true);
   assert.equal(on.boundary.isCustomerAccountPath("/reset-password"), false);
-  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /aan-root/);
+  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /pf-root/);
 });
 
 /* ── 4 · the frame and its navigation ───────────────────────────────────── */
@@ -620,7 +620,7 @@ test("the stylesheet is scoped to the port, token-only, and every rule it writes
   }
   assert.ok(selectors.length >= 10, `expected the frame's rules, found ${selectors.length}`);
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
   }
 
   /* Every token it reads is the design's own. */

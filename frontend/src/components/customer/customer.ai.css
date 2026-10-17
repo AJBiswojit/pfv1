@@ -11,7 +11,7 @@
    customer arrived with, the recent-look rail and the closing facts band.
 
    Nothing here restates a rule another sheet already owns, and no other sheet
-   may carry an AI screen's chrome. Every declaration is scoped to `.aan-root`,
+   may carry an AI screen's chrome. Every declaration is scoped to `.pf-root`,
    every value is a design token (`--c-*`, `--f-*`, `--fs-*`, `--track-label`,
    `--r-*`, `--ease-out`, `--t-fast`), and no colour, size or curve is written
    by hand.
@@ -31,7 +31,7 @@
 
 /* ── what both screens share: the notes band, the notice, the panels ───────── */
 
-.aan-root .pf-ai__notes {
+.pf-root .pf-ai__notes {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 24px;
@@ -40,7 +40,7 @@
   list-style: none;
 }
 
-.aan-root .pf-ai__note {
+.pf-root .pf-ai__note {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -51,7 +51,7 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-ai__note svg {
+.pf-root .pf-ai__note svg {
   flex: none;
   color: var(--c-cocoa);
 }
@@ -60,7 +60,7 @@
    that answered with nothing. The sentence is production's; only the band is
    the design's. */
 
-.aan-root .pf-ai__notice {
+.pf-root .pf-ai__notice {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -73,29 +73,29 @@
   color: var(--c-ink-2);
 }
 
-.aan-root .pf-ai__notice svg {
+.pf-root .pf-ai__notice svg {
   flex: none;
   margin-top: 2px;
   color: var(--c-espresso);
 }
 
-.aan-root .pf-ai__notice p {
+.pf-root .pf-ai__notice p {
   margin: 0;
 }
 
 /* The aside's panels: the design's paper insert, one step up from the canvas. */
 
-.aan-root .pf-ai__panel {
+.pf-root .pf-ai__panel {
   padding: 20px;
   border: 1px solid var(--c-line);
   background: var(--c-paper);
 }
 
-.aan-root .pf-ai__panel .label {
+.pf-root .pf-ai__panel .label {
   margin: 0;
 }
 
-.aan-root .pf-ai__panel-title {
+.pf-root .pf-ai__panel-title {
   margin: 6px 0 16px;
   font-family: var(--f-serif);
   font-size: var(--fs-display-s);
@@ -106,7 +106,7 @@
 
 /* ── the mirror's body: the stage beside its two panels ───────────────────── */
 
-.aan-root .pf-ai__grid {
+.pf-root .pf-ai__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
   gap: clamp(22px, 2.6vw, 40px);
@@ -116,11 +116,11 @@
 
 /* The stage keeps its own frame; the port only owns the column it sits in. */
 
-.aan-root .pf-ai__stage {
+.pf-root .pf-ai__stage {
   min-width: 0;
 }
 
-.aan-root .pf-ai__aside {
+.pf-root .pf-ai__aside {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -129,13 +129,13 @@
 
 /* ── the recent-look rail ─────────────────────────────────────────────────── */
 
-.aan-root .pf-ai__recent {
+.pf-root .pf-ai__recent {
   margin-top: var(--sec-y-sm);
   padding-top: 28px;
   border-top: 1px solid var(--c-line-strong);
 }
 
-.aan-root .pf-ai__recent-head {
+.pf-root .pf-ai__recent-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -143,12 +143,12 @@
   gap: 8px 20px;
 }
 
-.aan-root .pf-ai__recent-title {
+.pf-root .pf-ai__recent-title {
   margin: 4px 0 0;
   font-size: var(--fs-display-l);
 }
 
-.aan-root .pf-ai__recent-note {
+.pf-root .pf-ai__recent-note {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
@@ -157,7 +157,7 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-ai__recent-list {
+.pf-root .pf-ai__recent-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: clamp(12px, 1.6vw, 22px);
@@ -166,7 +166,7 @@
   list-style: none;
 }
 
-.aan-root .pf-ai__recent-card {
+.pf-root .pf-ai__recent-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -179,7 +179,7 @@
   color: inherit;
 }
 
-.aan-root .pf-ai__recent-media {
+.pf-root .pf-ai__recent-media {
   position: relative;
   display: block;
   aspect-ratio: var(--r-portrait);
@@ -187,7 +187,7 @@
   background: var(--c-bg-2);
 }
 
-.aan-root .pf-ai__recent-img {
+.pf-root .pf-ai__recent-img {
   display: block;
   width: 100%;
   height: 100%;
@@ -196,12 +196,12 @@
 }
 
 @media (hover: hover) {
-  .aan-root .pf-ai__recent-card:hover .pf-ai__recent-img {
+  .pf-root .pf-ai__recent-card:hover .pf-ai__recent-img {
     transform: scale(1.04);
   }
 }
 
-.aan-root .pf-ai__recent-badge {
+.pf-root .pf-ai__recent-badge {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -214,14 +214,14 @@
   color: var(--c-espresso);
 }
 
-.aan-root .pf-ai__recent-name {
+.pf-root .pf-ai__recent-name {
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--c-ink);
 }
 
-.aan-root .pf-ai__recent-when {
+.pf-root .pf-ai__recent-when {
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -230,7 +230,7 @@
 
 /* ── the mirror's closing band: what the demo does, and what it never does ── */
 
-.aan-root .pf-ai__facts {
+.pf-root .pf-ai__facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(18px, 2.4vw, 34px);
@@ -239,17 +239,17 @@
   border-top: 1px solid var(--c-line);
 }
 
-.aan-root .pf-ai__fact {
+.pf-root .pf-ai__fact {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.aan-root .pf-ai__fact svg {
+.pf-root .pf-ai__fact svg {
   color: var(--c-cocoa);
 }
 
-.aan-root .pf-ai__fact-title {
+.pf-root .pf-ai__fact-title {
   margin: 0;
   font-family: var(--f-serif);
   font-size: var(--fs-md);
@@ -258,7 +258,7 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-ai__fact p {
+.pf-root .pf-ai__fact p {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.6;
@@ -267,7 +267,7 @@
 
 /* ── AI Shopping: the header's own row, the piece in hand ─────────────────── */
 
-.aan-root .pf-ai__head-actions {
+.pf-root .pf-ai__head-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -278,7 +278,7 @@
 
 /* The chip that says what is answering — the design's chip register, quieter. */
 
-.aan-root .pf-ai__demo {
+.pf-root .pf-ai__demo {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
@@ -292,7 +292,7 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-ai__context {
+.pf-root .pf-ai__context {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -303,7 +303,7 @@
   background: var(--c-paper);
 }
 
-.aan-root .pf-ai__context-media {
+.pf-root .pf-ai__context-media {
   display: block;
   width: 44px;
   aspect-ratio: var(--r-portrait);
@@ -311,22 +311,22 @@
   background: var(--c-bg-2);
 }
 
-.aan-root .pf-ai__context-img {
+.pf-root .pf-ai__context-img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.aan-root .pf-ai__context-body {
+.pf-root .pf-ai__context-body {
   min-width: 0;
 }
 
-.aan-root .pf-ai__context-body .label {
+.pf-root .pf-ai__context-body .label {
   margin: 0;
 }
 
-.aan-root .pf-ai__context-name {
+.pf-root .pf-ai__context-name {
   margin: 6px 0 2px;
   font-family: var(--f-serif);
   font-size: var(--fs-md);
@@ -335,24 +335,24 @@
   color: var(--c-ink);
 }
 
-.aan-root .pf-ai__context-note {
+.pf-root .pf-ai__context-note {
   margin: 0;
   font-size: 13px;
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-ai__context-actions {
+.pf-root .pf-ai__context-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.aan-root .pf-ai__context-actions .btn {
+.pf-root .pf-ai__context-actions .btn {
   min-height: 34px;
   padding: 0 16px;
 }
 
-.aan-root .pf-ai__context-clear {
+.pf-root .pf-ai__context-clear {
   display: inline-grid;
   place-items: center;
   width: 34px;
@@ -362,14 +362,14 @@
   transition: color var(--t-fast), border-color var(--t-fast);
 }
 
-.aan-root .pf-ai__context-clear:hover {
+.pf-root .pf-ai__context-clear:hover {
   color: var(--c-espresso);
   border-color: var(--c-espresso);
 }
 
 /* ── AI Shopping: the conversation and the rail beside it ─────────────────── */
 
-.aan-root .pf-ai__chat {
+.pf-root .pf-ai__chat {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   gap: clamp(22px, 2.6vw, 40px);
@@ -377,7 +377,7 @@
   align-items: start;
 }
 
-.aan-root .pf-ai__chat-main {
+.pf-root .pf-ai__chat-main {
   min-width: 0;
 }
 
@@ -386,15 +386,15 @@
    (`h-[520px] sm:h-[560px]`) so the log scrolls instead of growing without
    bound; the port states the same two heights and nothing else there. */
 
-.aan-root .pf-ai__log {
+.pf-root .pf-ai__log {
   height: 520px;
 }
 
-.aan-root .pf-ai__composer {
+.pf-root .pf-ai__composer {
   margin-top: 16px;
 }
 
-.aan-root .pf-ai__footnote {
+.pf-root .pf-ai__footnote {
   margin-top: 10px;
   max-width: 62ch;
   font-size: 11.5px;
@@ -403,11 +403,11 @@
   color: var(--c-ink-3);
 }
 
-.aan-root .pf-ai__aside .pf-ai__footnote {
+.pf-root .pf-ai__aside .pf-ai__footnote {
   margin-top: 0;
 }
 
-.aan-root .pf-ai__error {
+.pf-root .pf-ai__error {
   margin-top: 12px;
   padding: 12px 14px;
   border: 1px solid var(--c-espresso);
@@ -417,7 +417,7 @@
   color: var(--c-espresso);
 }
 
-.aan-root .pf-ai__links {
+.pf-root .pf-ai__links {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -426,7 +426,7 @@
   list-style: none;
 }
 
-.aan-root .pf-ai__links a {
+.pf-root .pf-ai__links a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -438,7 +438,7 @@
   transition: color var(--t-fast);
 }
 
-.aan-root .pf-ai__links a:hover {
+.pf-root .pf-ai__links a:hover {
   color: var(--c-espresso);
 }
 
@@ -447,37 +447,37 @@
 @media (max-width: 899px) {
   /* One column: the stage above its panels, the conversation above its rail. */
 
-  .aan-root .pf-ai__grid,
-  .aan-root .pf-ai__chat {
+  .pf-root .pf-ai__grid,
+  .pf-root .pf-ai__chat {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .aan-root .pf-ai__facts {
+  .pf-root .pf-ai__facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 599px) {
-  .aan-root .pf-ai__notes {
+  .pf-root .pf-ai__notes {
     gap: 8px 18px;
   }
 
-  .aan-root .pf-ai__facts {
+  .pf-root .pf-ai__facts {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .aan-root .pf-ai__recent-list {
+  .pf-root .pf-ai__recent-list {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 
   /* The piece in hand: its image and name keep the row, its two actions move
      under them. */
 
-  .aan-root .pf-ai__context {
+  .pf-root .pf-ai__context {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .aan-root .pf-ai__context-actions {
+  .pf-root .pf-ai__context-actions {
     grid-column: 1 / -1;
   }
 }
@@ -486,7 +486,7 @@
    taller log once the layout has room for it. */
 
 @media (min-width: 640px) {
-  .aan-root .pf-ai__log {
+  .pf-root .pf-ai__log {
     height: 560px;
   }
 }

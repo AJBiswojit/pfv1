@@ -273,16 +273,16 @@ after(async () => {
 
 test("the canonical wishlist renders in Aarna and its legacy route remains an in-shell redirect", () => {
   const canonical = off.render("/account/wishlist");
-  assert.match(canonical, /class="aan-root"/);
+  assert.match(canonical, /class="pf-root"/);
   assert.match(canonical, /Saved pieces/);
   const legacy = off.render("/wishlist");
-  assert.match(legacy, /class="aan-root"/);
+  assert.match(legacy, /class="pf-root"/);
   assert.equal(/Saved pieces/.test(legacy), false, "the legacy URL rendered the page instead of redirecting");
 });
 
 test("with the switch on, the design's wishlist owns /account/wishlist — and the cart does not move", () => {
   const canonical = on.render("/account/wishlist");
-  assert.match(canonical, /class="aan-root"/, "the canonical route did not mount the port");
+  assert.match(canonical, /class="pf-root"/, "the canonical route did not mount the port");
   assert.match(canonical, /class="shop container"/, "the canonical route did not render the design's wishlist shell");
   assert.match(canonical, /class="label">Saved pieces</, "the design's eyebrow is gone");
   assert.match(canonical, /class="display shop__title">Wishlist</, "the design's title is gone");
@@ -294,7 +294,7 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
      the production wishlist did not; the redirect itself is exercised in the
      browser probe. */
   const legacy = on.render("/wishlist");
-  assert.match(legacy, /class="aan-root"/, "/wishlist did not mount the port");
+  assert.match(legacy, /class="pf-root"/, "/wishlist did not mount the port");
   assert.equal(/Saved pieces/.test(legacy), false, "/wishlist rendered the design's wishlist instead of redirecting");
   assert.equal(/pratikshya-wishlist|Wishlist<\/h1>/.test(legacy), false, "/wishlist rendered a production wishlist page");
 
@@ -306,7 +306,7 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
      redirect — see `customerAccountShell.test.js`). (PHASE 9 handed the money path
      over by name, PHASE 10 the auth screens, PHASE 11 the account.) */
   const account = on.render("/account/orders");
-  assert.match(account, /class="aan-root"/, "/account/orders is not the port's, though Phase 11 adopted the account");
+  assert.match(account, /class="pf-root"/, "/account/orders is not the port's, though Phase 11 adopted the account");
   assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
   assert.equal(/Saved pieces/.test(account), false, "/account/orders was served as the wishlist");
 });
@@ -504,7 +504,7 @@ test("guest `/account/wishlist` and `/wishlist` keep the standalone wishlist she
   assert.equal((guestCanonical.match(/aria-label="Breadcrumb"/g) ?? []).length, 1, "guest `/account/wishlist` rendered duplicate breadcrumbs");
 
   const guestLegacy = on.render("/wishlist");
-  assert.match(guestLegacy, /class="aan-root"/, "guest `/wishlist` did not mount the port");
+  assert.match(guestLegacy, /class="pf-root"/, "guest `/wishlist` did not mount the port");
   assert.equal(/aria-label="Account navigation"/.test(guestLegacy), false, "guest `/wishlist` rendered authenticated account navigation");
 });
 

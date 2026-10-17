@@ -162,7 +162,7 @@ test("all customer auth paths render Aarna irrespective of former selector value
   for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password"]) {
     const markup = off.render(path);
     assert.ok(markup.length > 0, `${path} rendered nothing at all`);
-    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
     assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render an Aarna auth UI`);
   }
   assert.match(read("src/components/customer/CustomerStorefront.jsx"), /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
@@ -170,7 +170,7 @@ test("all customer auth paths render Aarna irrespective of former selector value
 
 test("with the switch on, /signin is the port — inside the design's full shell", () => {
   const markup = on.render("/signin");
-  assert.match(markup, /class="aan-root"/, "the canonical route did not mount the port");
+  assert.match(markup, /class="pf-root"/, "the canonical route did not mount the port");
   assert.match(markup, /class="info container pf-auth"/, "/signin did not render the ported page");
   /* Production gives the auth screens the SHOPPING chrome (`isOrderJourney` is
      only `/checkout` and `/order-success`), so the design's full shell travels
@@ -339,7 +339,7 @@ test("the stylesheet carries only what the design never drew, scoped to the port
   const raw = read(DIALOGUE);
   assert.match(raw, /PHASE 10/);
   /* The rules are read with the header comment removed — a selector is a
-     selector, and prose about `.aan-root` is not one. */
+     selector, and prose about `.pf-root` is not one. */
   const css = raw.replace(/\/\*[\s\S]*?\*\//g, "");
   /* One line at a time: a rule is a selector and a block on the same line, so
      the capture can never run across a line break into `@media`. */
@@ -347,7 +347,7 @@ test("the stylesheet carries only what the design never drew, scoped to the port
   assert.ok(selectors.length > 0, "the auth stylesheet is empty");
   for (const selector of selectors) {
     assert.ok(
-      selector.split(",").every((part) => part.trim().startsWith(".aan-root")),
+      selector.split(",").every((part) => part.trim().startsWith(".pf-root")),
       `a selector escapes the port's scope: ${selector}`,
     );
   }

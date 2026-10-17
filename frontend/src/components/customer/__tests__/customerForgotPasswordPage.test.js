@@ -134,13 +134,13 @@ const importSpecifiers = (text) =>
 test("/forgot-password always renders Aarna's auth screen regardless of the former override", () => {
   const markup = off.render("/forgot-password");
   assert.ok(markup.length > 0, "/forgot-password rendered nothing at all");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="info container pf-auth"/);
 });
 
 test("with the switch on, /forgot-password is the port — inside the design's full shell", () => {
   const markup = on.render("/forgot-password");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="info container pf-auth"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the recovery page");
   assert.match(markup, /class="skip-link"/, "the design's skip link is missing from the recovery page");
@@ -153,7 +153,7 @@ test("the reset screen is adopted by Aarna and remains in its customer auth surf
   assert.equal(boundary.CUSTOMER_AUTH_PATHS.has("/reset-password"), true);
   assert.equal(boundary.isCustomerAuthPath("/reset-password"), true);
   const markup = on.render("/reset-password?userId=user-1&token=token-1");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /Create new/);
   assert.match(markup, /customer-reset-password/);
 });

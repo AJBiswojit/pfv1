@@ -585,7 +585,7 @@ test("the orders sheet is scoped to the port, token-only, and free of dead selec
   }
   assert.ok(selectors.length >= 20, `expected the order screens' own rules, found ${selectors.length}`);
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
   }
 
   /* No dead selector: everything the sheet styles is drawn by one of the five
@@ -594,7 +594,7 @@ test("the orders sheet is scoped to the port, token-only, and free of dead selec
   const drawn = new Set(ORDER_FILES.flatMap((file) => [...drawnIn(file)]));
   const foreign = new Set(["chip", "info", "container", "crumbs", "label", "display", "empty", "sr-only", "btn", "totals", "checkout__lines", "pf-note", "pf-panel", "pf-panel__eyebrow", "pf-panel__name", "pf-panel__line", "pf-panel__quiet", "pf-panel__actions", "pf-meta", "pf-meta__strong", "pf-meta__row", "pf-meta__quiet", "pf-option", "pf-options", "pf-option__body", "pf-option__title", "pf-option__line", "pf-option__quiet", "pf-option__price", "pf-form", "pf-hint", "pf-chip", "listing-group__count", "form__err", "pf-alert"]);
   for (const [, name] of stripped.matchAll(/\.([a-z][a-z0-9_-]*)\b/g)) {
-    if (name === "aan-root" || name.startsWith("is-") || foreign.has(name)) continue;
+    if (name === "pf-root" || name.startsWith("is-") || foreign.has(name)) continue;
     assert.ok(drawn.has(name), `${name} is styled by the order sheet but drawn by no order component`);
   }
 
@@ -634,10 +634,10 @@ test("the orders sheet is scoped to the port, token-only, and free of dead selec
 test("the screen's own layout reaches both ends of the design's breakpoints", () => {
   const sheet = source(SHEET);
 
-  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.aan-root \.pf-account__grid,/, "the single-order screens never collapse to one column");
-  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.aan-root \.pf-panel \.pf-meta/, "an order's fact band never collapses");
-  assert.match(sheet, /@media \(max-width: 599px\) \{[\s\S]*\.aan-root \.pf-account__search \{\n\s+max-width: none;/, "the search field never fills a narrow screen");
-  assert.match(sheet, /@media \(min-width: 900px\) \{[\s\S]*\.aan-root \.pf-account__order-card \{\n\s+flex-direction: row;/, "an order's card never lays out as a row");
+  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.pf-root \.pf-account__grid,/, "the single-order screens never collapse to one column");
+  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.pf-root \.pf-panel \.pf-meta/, "an order's fact band never collapses");
+  assert.match(sheet, /@media \(max-width: 599px\) \{[\s\S]*\.pf-root \.pf-account__search \{\n\s+max-width: none;/, "the search field never fills a narrow screen");
+  assert.match(sheet, /@media \(min-width: 900px\) \{[\s\S]*\.pf-root \.pf-account__order-card \{\n\s+flex-direction: row;/, "an order's card never lays out as a row");
 
   /* The rules the four screens share with the account family are the frame's own
      sheet — this one does not restate them. */

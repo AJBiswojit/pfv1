@@ -178,7 +178,7 @@ test("the root URL renders Aarna regardless of former home query values", async 
   const formerOverride = await renderLayout({ search: "?home=atelier" });
   const formerEditorial = await renderLayout({ search: "?home=editorial" });
   for (const html of [plain, formerOverride, formerEditorial]) {
-    assert.match(html, /class="aan-root"/);
+    assert.match(html, /class="pf-root"/);
     assert.equal(html.includes("data-storefront-header"), false);
     assert.equal(html.includes("pf-sec-host"), false);
   }
@@ -437,7 +437,7 @@ async function renderLayout({ search = "" } = {}) {
 test("Aarna renders the root with no selector, and former query overrides cannot switch the UI", async () => {
   for (const search of ["", "?home=atelier", "?home=editorial", "?home=aarna"]) {
     const html = await renderLayout({ search });
-    assert.match(html, /class="aan-root"/, `${search} did not render Aarna`);
+    assert.match(html, /class="pf-root"/, `${search} did not render Aarna`);
     assert.equal(html.includes("data-storefront-header"), false, "the editorial header must not mount");
     assert.equal(html.includes("pf-sec-host"), false, "the editorial sections must not mount");
     assert.equal(countOf(html, /<footer/g), 1, "Aarna owns exactly one footer");

@@ -14,7 +14,7 @@
  *      boundaries;
  *   4. the stylesheet is the transform of the design's seven sheets: the same
  *      declarations, the same media and container queries, the same load order,
- *      every selector scoped under `.aan-root` — plus the documented host
+ *      every selector scoped under `.pf-root` — plus the documented host
  *      neutralisation, which is tiny and asserted to stay tiny;
  *   5. the design's 63 art plates are staged byte-for-byte, the application's
  *      own media library is untouched, and no ported module addresses either
@@ -237,7 +237,7 @@ test("the catalogue boundary maps the live catalogue and never invents a product
 
 test("the port's own modules render the design's pages, not a second application", () => {
   const mount = readPort("CustomerStorefront.jsx");
-  assert.match(mount, /<div className="aan-root">/);
+  assert.match(mount, /<div className="pf-root">/);
   assert.match(mount, /<Home \/>/);
   assert.match(mount, /<Product \/>/);
   assert.match(mount, /import "\.\/customer\.css"/);
@@ -294,14 +294,14 @@ test("every ported selector is scoped, and nothing global survives", () => {
     for (const part of rule.selector.split(",")) {
       const candidate = part.trim();
       if (!candidate.startsWith(SCOPE)) offenders.push(candidate);
-      if (!/^\.aan-root(\s|$|\.|:|\[)/.test(candidate) && candidate !== SCOPE) offenders.push(candidate);
+      if (!/^\.pf-root(\s|$|\.|:|\[)/.test(candidate) && candidate !== SCOPE) offenders.push(candidate);
     }
   }
   assert.deepEqual(offenders, [], "a rule would apply outside the port root");
   assert.equal(/^\s*(:root|html|body)\s*\{/m.test(css), false, "a global selector survived");
   assert.equal(/@keyframes\s+(spin|pulse)\b/.test(css), false, "the design's generic keyframe names are still global");
-  assert.match(css, /@keyframes aan-spin/);
-  assert.match(css, /@keyframes aan-pulse/);
+  assert.match(css, /@keyframes pf-spin/);
+  assert.match(css, /@keyframes pf-pulse/);
 });
 
 test("the design's media and container queries, breakpoints and load order are carried over", () => {
@@ -325,7 +325,7 @@ test("the host neutralisation stays tiny, scoped and documented", () => {
   const rules = parseCssRules(host).filter((rule) => rule.type === "rule");
   assert.ok(rules.length <= 3, `the host sheet grew to ${rules.length} rules — it must stay a neutralisation`);
   for (const rule of rules) {
-    assert.match(rule.selector, /^\.aan-root(\s|$)/, "a host rule escapes the port root");
+    assert.match(rule.selector, /^\.pf-root(\s|$)/, "a host rule escapes the port root");
   }
   /* Two normalisations, both restoring a browser default Tailwind's preflight
      removes: inline/baseline SVG, and the heading weight the design leaves to

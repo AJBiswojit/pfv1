@@ -214,13 +214,13 @@ const importSpecifiers = (source) =>
 test("/checkout always uses Aarna's guarded journey UI", () => {
   const markup = off.renderRoute("/checkout");
   assert.ok(markup.length > 0, "/checkout rendered nothing at all");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /pf-journey/);
 });
 
 test("with the switch on, the design's quiet journey chrome wraps the route — and the page stays guarded", () => {
   const markup = on.renderRoute("/checkout");
-  assert.match(markup, /class="aan-root"/, "the port did not mount at /checkout");
+  assert.match(markup, /class="pf-root"/, "the port did not mount at /checkout");
   assert.match(markup, /<main class="pf-journey">/, "the checkout did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
   /* Aarna keeps checkout focused: no announcement rail, mega menu, search
@@ -419,8 +419,8 @@ test("no new dependency, and a stylesheet that only draws what the design never 
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split("}")
     .map((block) => block.split("{")[0].trim())
-    .filter((selector) => selector && !selector.startsWith("@") && !selector.startsWith(".aan-root"));
-  assert.deepEqual(unscoped, [], `the stylesheet has rules outside .aan-root: ${unscoped.join(" | ")}`);
+    .filter((selector) => selector && !selector.startsWith("@") && !selector.startsWith(".pf-root"));
+  assert.deepEqual(unscoped, [], `the stylesheet has rules outside .pf-root: ${unscoped.join(" | ")}`);
 });
 
 test("the small screens get the same journey: a summary that folds, and a bar that carries the total", () => {

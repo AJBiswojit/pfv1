@@ -61,7 +61,7 @@ for (const token of collisions.sort()) {
 }
 console.log(
   reachable
-    ? `   ${reachable} rule(s) can reach a collided class inside .aan-root — the port must be scoped further.`
-    : "   none — every rule that names one of them is inside a .pf- scope, so none can reach .aan-root.",
+    ? `   ${reachable} rule(s) can reach a collided class inside .pf-root — the port must be scoped further.`
+    : "   none — every rule that names one of them is inside a .pf- scope, so none can reach .pf-root.",
 );
 process.exitCode = reachable ? 1 : 0;

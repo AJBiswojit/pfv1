@@ -8,7 +8,7 @@
  * screenshots-in-code — carried over file by file. What this file adds is the
  * three things a design cannot know about the house it is moving into:
  *
- *   · THE ROOT. The design's stylesheet is scoped under `.aan-root`
+ *   · THE ROOT. The design's stylesheet is scoped under `.pf-root`
  *     (`scripts/customer-port.js`), so the ported page mounts inside that element —
  *     a boundary the host's global styles cannot leak across.
  *   · THE PROVIDERS, in the design's own order: motion preferences, then its UI
@@ -100,7 +100,7 @@ export default function CustomerStorefront() {
   }, []);
 
   return (
-    <div className="aan-root">
+    <div className="pf-root">
       <MotionConfig reducedMotion="user">
         <UIProvider>
           <ShopProvider>

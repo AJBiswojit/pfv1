@@ -590,7 +590,7 @@ test("the sheet's own addresses rules are scoped to the port, token-only and dra
       .map((match) => match[0]),
   );
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
     for (const [, name] of selector.matchAll(/\.(pf-account(?:__[a-z-]+)?)\b/g)) {
       assert.ok(drawn.has(name), `${name} is styled by the book's register but no account component draws it`);
     }
@@ -600,7 +600,7 @@ test("the sheet's own addresses rules are scoped to the port, token-only and dra
     assert.ok(page.includes(name), `${name} is styled by this stage but this page never draws it`);
   }
   /* The small-screen block keeps the book readable: one card per row. */
-  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.aan-root \.pf-account__addresses \{\n\s+grid-template-columns: minmax\(0, 1fr\);/,
+  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.pf-root \.pf-account__addresses \{\n\s+grid-template-columns: minmax\(0, 1fr\);/,
     "the delivery book no longer collapses to one card per row on a narrow screen");
 });
 

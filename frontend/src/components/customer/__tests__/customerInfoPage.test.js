@@ -133,7 +133,7 @@ after(async () => {
 test("the four information routes always render Aarna's manifest-backed pages", () => {
   for (const path of INFO_PATHS) {
     const markup = off.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
     assert.match(markup, /class="info container"/, `${path} did not render the Aarna information page`);
   }
 });
@@ -147,7 +147,7 @@ test("with the switch on, each of the four routes is the design's article with i
     assert.ok(meta, `${path} has no manifest metadata`);
     const markup = on.render(path);
 
-    assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
+    assert.match(markup, /class="pf-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="info container"/, `${path} did not render the design's article`);
     assert.match(markup, /class="crumbs"/, `${path} lost the design's crumb trail`);
     assert.ok(markup.includes(`class="label">${meta.eyebrow}<`), `${path} is missing the manifest's eyebrow`);
@@ -181,7 +181,7 @@ test("each page points at the other three, by their own manifest labels, and nev
 
 test("a path with no manifest entry is the design's 404, not an invented page", () => {
   const markup = on.render("/not-an-information-path");
-  assert.match(markup, /class="aan-root"/, "the port did not answer an unknown customer path");
+  assert.match(markup, /class="pf-root"/, "the port did not answer an unknown customer path");
   assert.equal(/class="info container"/.test(markup), false, "an information page was invented for an unknown path");
   assert.match(markup, /404|not found/i, "an unknown customer path did not answer with the design's 404");
 });

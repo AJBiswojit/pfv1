@@ -550,7 +550,7 @@ test("the sheet's own new rules are scoped to the port and token-only", () => {
   }
   assert.ok(selectors.length >= 6, `expected the profile's own rules, found ${selectors.length}`);
   for (const selector of selectors) {
-    assert.match(selector, /^\.aan-root /, `${selector} is not scoped to the port`);
+    assert.match(selector, /^\.pf-root /, `${selector} is not scoped to the port`);
   }
 });
 
@@ -583,15 +583,15 @@ test("the visually hidden portrait input outweighs `.pf-form input` and stays an
 
   /* `.pf-account__portrait-meta` must be a positioned containing block so the
      absolutely positioned `#profile-avatar` does not anchor to the viewport. */
-  const metaBody = ruleBody(".aan-root .pf-account__portrait-meta");
+  const metaBody = ruleBody(".pf-root .pf-account__portrait-meta");
   assert.ok(metaBody, "the portrait meta rule is missing from `customer.account.css`");
   assert.match(metaBody, /\bposition\s*:\s*relative\s*;/, "`.pf-account__portrait-meta` no longer establishes a positioned containing block");
 
-  /* `.aan-root .pf-form .sr-only` (0,3,0) must outweigh `.aan-root .form input`
-     and `.aan-root .pf-form input` (0,2,1) so `#profile-avatar` stays a 1×1px
+  /* `.pf-root .pf-form .sr-only` (0,3,0) must outweigh `.pf-root .form input`
+     and `.pf-root .pf-form input` (0,2,1) so `#profile-avatar` stays a 1×1px
      zero-padding, zero-border box instead of expanding to `width: 100%`. */
-  const srOnlyBody = ruleBody(".aan-root .pf-form .sr-only");
-  assert.ok(srOnlyBody, "`.aan-root .pf-form .sr-only` is missing from `customer.account.css`");
+  const srOnlyBody = ruleBody(".pf-root .pf-form .sr-only");
+  assert.ok(srOnlyBody, "`.pf-root .pf-form .sr-only` is missing from `customer.account.css`");
   assert.match(srOnlyBody, /\bwidth\s*:\s*1px\s*;/, "`.pf-form .sr-only` no longer constrains width to 1px");
   assert.match(srOnlyBody, /\bheight\s*:\s*1px\s*;/, "`.pf-form .sr-only` no longer constrains height to 1px");
   assert.match(srOnlyBody, /\bpadding\s*:\s*0\s*;/, "`.pf-form .sr-only` no longer resets `.form input` padding");

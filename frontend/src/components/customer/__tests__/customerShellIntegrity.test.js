@@ -336,7 +336,7 @@ const anchors = (html) => [...html.matchAll(/<a[^>]*href="([^"]*)"/g)].map((matc
 test("the customer root renders the design's shell once, in the design's order", () => {
   assert.ok(markup.length > 20000, `the surface rendered almost nothing (${markup.length} chars)`);
   const inventory = {
-    'class="aan-root"': 1,
+    'class="pf-root"': 1,
     'class="skip-link"': 1,
     'class="announce"': 1,
     '<header class="header"': 1,
@@ -348,7 +348,7 @@ test("the customer root renders the design's shell once, in the design's order",
     assert.equal(count(needle), expected, `${needle} appears ${count(needle)} times, expected ${expected}`);
   }
   assert.deepEqual(
-    ['class="aan-root"', 'class="skip-link"', 'class="announce"', '<header class="header"', "<main", "</main>", "<footer"].map(at)
+    ['class="pf-root"', 'class="skip-link"', 'class="announce"', '<header class="header"', "<main", "</main>", "<footer"].map(at)
       .every((index, i, all) => index > 0 && (i === 0 || index > all[i - 1])),
     true,
     "the shell's parts are not in the design's order",
@@ -360,10 +360,10 @@ test("the application's own header, footer and drawer are not on this surface", 
     assert.equal(count(host), 0, `${host} is still mounted under the ported shell`);
   }
   /* The only host class left is the canvas wrapper the layout puts around the
-     port — one element, outside `.aan-root`. */
+     port — one element, outside `.pf-root`. */
   assert.equal(count("pf-shell"), 1, "the host shell leaks into the Aarna surface");
   assert.equal(count('class="min-h-screen flex flex-col pf-shell__surface'), 1);
-  assert.ok(at("pf-shell__surface") < at('class="aan-root"'), "the canvas wrapper is not the port's parent");
+  assert.ok(at("pf-shell__surface") < at('class="pf-root"'), "the canvas wrapper is not the port's parent");
 });
 
 /* ── 4. The navbar ────────────────────────────────────────────────────────── */

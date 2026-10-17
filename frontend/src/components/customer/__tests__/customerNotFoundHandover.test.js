@@ -232,7 +232,7 @@ test("the guard answers true for a path no route serves, and only such a path", 
 test("with the switch on, an unknown customer URL is the design's 404 inside the design's shell", () => {
   for (const path of UNKNOWN) {
     const markup = on.render(path);
-    assert.match(markup, /class="aan-root"/, `${path} did not mount the port`);
+    assert.match(markup, /class="pf-root"/, `${path} did not mount the port`);
     assert.match(markup, /class="notfound|404/i, `${path} did not render the design's 404`);
     assert.equal(/class="shop container"/.test(markup), false, `${path} was given a listing it does not have`);
   }
@@ -240,7 +240,7 @@ test("with the switch on, an unknown customer URL is the design's 404 inside the
 
 test("unknown customer URLs always render Aarna's own 404 inside its shell", () => {
   const markup = off.render("/no-such-page");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="notfound|404/i);
   assert.match(markup, /class="footer"/);
 });
@@ -257,12 +257,12 @@ test("the application delegates customer 404 handling to Aarna", () => {
 });
 
 test("the reset route moves into Aarna while accounts remain correctly routed", () => {
-  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /class="aan-root"/);
-  assert.match(off.render("/reset-password"), /class="aan-root"/, "reset-password must always render Aarna");
+  assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /class="pf-root"/);
+  assert.match(off.render("/reset-password"), /class="pf-root"/, "reset-password must always render Aarna");
   for (const path of ["/account/orders", "/account/addresses"]) {
-    assert.match(off.render(path), /class="aan-root"/, `${path} must always render Aarna`);
+    assert.match(off.render(path), /class="pf-root"/, `${path} must always render Aarna`);
     const handed = on.render(path);
-    assert.match(handed, /class="aan-root"/, `${path} was not handed to the port while the switch is on`);
+    assert.match(handed, /class="pf-root"/, `${path} was not handed to the port while the switch is on`);
     /* A static render proves one thing here: no account chrome is painted
        synchronously for a guest. The redirect is effect-driven and a lazy page
        suspends, so this cannot by itself prove the guard ran — the guard is
@@ -281,15 +281,15 @@ test("a customer URL that IS served keeps its own page while the switch is on", 
      `ProtectedRoute` production wraps it in. A guest's static render shows the
      port's empty page slot (the redirect is effect-driven — see above), so what
      this pins is the boundary's paint: the port owns the URL and paints no
-     account chrome on the server, never an `aan-root` wrapping an unguarded
+     account chrome on the server, never an `pf-root` wrapping an unguarded
      account. */
-  assert.match(on.render("/shop"), /class="aan-root"/, "/shop is served by the port yet was not handed over");
-  assert.match(on.render("/cart"), /class="aan-root"/, "/cart is served by the port yet was not handed over");
+  assert.match(on.render("/shop"), /class="pf-root"/, "/shop is served by the port yet was not handed over");
+  assert.match(on.render("/cart"), /class="pf-root"/, "/cart is served by the port yet was not handed over");
   const account = on.render("/account/orders");
-  assert.match(account, /class="aan-root"/, "/account/orders was not handed over while the switch is on");
+  assert.match(account, /class="pf-root"/, "/account/orders was not handed over while the switch is on");
   assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
   const wishlist = on.render("/account/wishlist");
-  assert.match(wishlist, /class="aan-root"/, "/account/wishlist is served by the port yet was not handed over");
+  assert.match(wishlist, /class="pf-root"/, "/account/wishlist is served by the port yet was not handed over");
 });
 
 /* ── 3 · the guard's own source, so its reasoning cannot be lost ────────── */

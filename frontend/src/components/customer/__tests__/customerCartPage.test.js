@@ -270,13 +270,13 @@ const importSpecifiers = (source) =>
 test("/cart always renders Aarna's bag regardless of the former override", () => {
   const markup = off.render("/cart");
   assert.ok(markup.length > 0, "/cart rendered nothing at all");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="container pf-bag"/);
 });
 
 test("with the switch on, /cart is the port — inside the design's full shell", () => {
   const markup = on.render("/cart");
-  assert.match(markup, /class="aan-root"/, "the canonical route did not mount the port");
+  assert.match(markup, /class="pf-root"/, "the canonical route did not mount the port");
   assert.match(markup, /class="container pf-bag"/, "/cart did not render the ported bag page");
   /* The bag keeps the SHOPPING chrome, unlike the two quiet order-journey
      routes: the design's footer, its skip link and its drawer travel with it. */

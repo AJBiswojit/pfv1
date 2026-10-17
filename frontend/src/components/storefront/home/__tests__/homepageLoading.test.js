@@ -18,7 +18,7 @@ after(async () => { globalThis.fetch = originalFetch; await vite?.close(); });
 const Body = ({ content }) => React.createElement('p', null, content ? 'CONFIGURED BODY' : 'SECTION BODY');
 const section = (key) => React.createElement(Section, { sectionKey: key }, React.createElement(Body));
 function assertLoading(html, key) {
-  assert.match(html, new RegExp(`aan-home-loading--${key}`));
+  assert.match(html, new RegExp(`pf-home-loading--${key}`));
   assert.match(html, /role="status"/);
   assert.match(html, /aria-busy="true"/);
   assert.match(html, /aria-label="Loading /);
@@ -53,7 +53,7 @@ test('idle/in-flight shimmer transitions preserve hidden, ready and error states
 test('all twelve sections reserve responsive space and honor reduced motion', () => {
   const css = readFileSync(`${root}src/components/storefront/home/homepage-section-loading.css`, 'utf8');
   assert.match(css, /height: var\(--loading-height\)/);
-  for (const key of ['hero', ...keys]) assert.equal((css.match(new RegExp(`\\.aan-root \\.aan-home-loading--${key} \\{ --loading-height:`, 'g')) ?? []).length, 2, key);
+  for (const key of ['hero', ...keys]) assert.equal((css.match(new RegExp(`\\.pf-root \\.pf-home-loading--${key} \\{ --loading-height:`, 'g')) ?? []).length, 2, key);
   assert.match(css, /linear-gradient/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation: none/);
 });

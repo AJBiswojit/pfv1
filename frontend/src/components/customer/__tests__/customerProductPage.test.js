@@ -210,14 +210,14 @@ const seed = () => on.store.applyCatalogSnapshot({ products: RECORDS });
 
 test("the product path always enters Aarna's product page despite a former Atelier override", () => {
   const markup = off.render(`/product/${RECORD_IN_STOCK.id}`);
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="pdp container"|Opening this piece|This page has slipped/);
 });
 
 test("with the switch on, the design's product page owns the product path", () => {
   seed();
   const markup = on.render(`/product/${RECORD_IN_STOCK.id}`);
-  assert.match(markup, /class="aan-root"/, "the port did not mount");
+  assert.match(markup, /class="pf-root"/, "the port did not mount");
   assert.match(markup, /class="pdp container"/, "the design's product page did not render");
   assert.match(markup, /pdp__add/, "the design's buy button is missing");
   assert.equal(/Opening this piece|This page has slipped/.test(markup), false, "the page rendered a state instead of the piece");
@@ -227,7 +227,7 @@ test("the port's homepage and its product page are the same switch, and neither 
   seed();
   const home = on.render("/");
   assert.equal(/class="pdp container"/.test(home), false, "the homepage rendered the product page");
-  assert.match(home, /class="aan-root"/, "the homepage did not render");
+  assert.match(home, /class="pf-root"/, "the homepage did not render");
 
   const product = on.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.equal(/class="hero\b|class="hero /.test(product), false, "the product page rendered the homepage");

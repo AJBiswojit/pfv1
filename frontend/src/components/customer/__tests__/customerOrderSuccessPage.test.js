@@ -155,7 +155,7 @@ const importSpecifiers = (source) =>
 test("/order-success always renders Aarna's confirmation route without inventing an order", () => {
   const markup = off.renderRoute("/order-success");
   assert.ok(markup.length > 0, "/order-success rendered nothing at all");
-  assert.match(markup, /class="aan-root"/);
+  assert.match(markup, /class="pf-root"/);
   assert.equal(/Order Confirmed|Thank you,/.test(markup), false, "a direct visit fabricated a confirmation");
 });
 
@@ -259,7 +259,7 @@ test("no prototype copy and no banned promise reaches the page", () => {
 
 test("the confirmation's own chrome is the quiet journey, and it can be revisited without a second order", () => {
   const markup = on.renderRoute("/order-success");
-  assert.match(markup, /class="aan-root"/, "the port did not mount at /order-success");
+  assert.match(markup, /class="pf-root"/, "the port did not mount at /order-success");
   assert.match(markup, /<main class="pf-journey">/, "the confirmation did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
   assert.equal(/class="drawer"|class="announce"/.test(markup), false, "the full shopping chrome leaked into the confirmation");
