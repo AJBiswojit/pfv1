@@ -5,7 +5,7 @@
  *     imported by the ported storefront, by `CustomerStorefront`, or by any live
  *     route: the ONLY importer is `CustomerPreview.jsx`, which is itself gated on
  *     `import.meta.env.DEV` and reached exclusively through the development
- *     harness document (`preview.html`, `?view=aarna`).
+ *     harness document (`preview.html`, `?view=customer`).
  *
  * What is here, and why:
  *

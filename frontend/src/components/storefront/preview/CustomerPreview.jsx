@@ -5,7 +5,7 @@
  * design, carried over file-by-file into `src/components/customer/` and mounted
  * directly by the customer application. There is no query-param switch: the
  * former `?home=*` overrides are inert, and this harness is reached only
- * through `preview.html` (`?view=aarna`).
+ * through `preview.html` (`?view=customer`).
  *
  * Why a preview surface at all: the review sandbox has no backend and no
  * database, so the live catalogue is empty and the ported rails would render
@@ -18,7 +18,7 @@
  * reach production, and it renders no chrome inside the frames (`?embed=1`), so
  * what a reviewer compares is the design itself.
  *
- * `?view=aarna`, optional `?embed=1`, `?width=<px>`.
+ * `?view=customer`, optional `?embed=1`, `?width=<px>`.
  *
  * Removal: delete with the rest of `src/components/storefront/preview/`.
  */
@@ -180,7 +180,7 @@ function CustomerPreviewSurface() {
     <div style={S.page}>
       <header style={S.bar}>
         <h1 style={S.title}>Phase 2D — exact design port</h1>
-        <PreviewViewSwitcher current="aarna" />
+        <PreviewViewSwitcher current="customer" />
         <div style={S.group} role="group" aria-label="Comparison width">
           <span style={S.groupLabel}>Width</span>
           {REVIEW_VIEWS.map((entry) => (

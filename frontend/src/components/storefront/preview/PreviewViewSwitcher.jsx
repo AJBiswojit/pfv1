@@ -21,7 +21,7 @@ export const PREVIEW_SURFACES = [
   { id: "hero", label: "Hero (Phase 1)", href: "/?view=hero" },
   { id: "shell", label: "Storefront shell (2A)", href: "/?view=shell" },
   { id: "home", label: "Full homepage (2B)", href: "/?view=home" },
-  { id: "aarna", label: "Exact design port (2D)", href: "/?view=aarna" },
+  { id: "customer", label: "Exact design port (2D)", href: "/?view=customer" },
 ];
 
 const S = {
@@ -47,7 +47,7 @@ const S = {
 };
 
 /**
- * @param {("hero"|"shell"|"home"|"aarna")} [current] The surface being previewed.
+ * @param {("hero"|"shell"|"home"|"customer")} [current] The surface being previewed.
  * @param {string} [defaultId] The surface a bare `/` opens (the harness default).
  */
 export default function PreviewViewSwitcher({ current = null, defaultId = "home" }) {

@@ -31,7 +31,7 @@ import ShellPreview from "./ShellPreview";
  *   /?view=hero       the Phase 1 hero preview
  *   /?view=shell      the Phase 2A storefront shell preview
  *   /?view=home       the same composition, spelled out
- *   /?view=aarna      the Phase 2D exact port of the approved `home-page/`
+ *   /?view=customer      the Phase 2D exact port of the approved `home-page/`
  *                     design, with its own labelled fixtures
  *
  * The surface is chosen HERE, from the browser's own URL: the preview panel
@@ -51,7 +51,7 @@ const view = () => {
   if (typeof window === "undefined") return DEFAULT_VIEW;
   const requested = new URLSearchParams(window.location.search).get("view");
   if (!requested) return DEFAULT_VIEW;
-  return requested === "shell" || requested === "home" || requested === "aarna"
+  return requested === "shell" || requested === "home" || requested === "customer"
     ? requested
     : "hero";
 };
@@ -63,7 +63,7 @@ if (container) {
     <StrictMode>
       <MemoryRouter>
         {/* One line on purpose: the view dispatch is the whole contract here. */}
-        {view() === "aarna" ? (
+        {view() === "customer" ? (
           <CustomerPreview />
         ) : view() === "home" ? <HomePreview /> : view() === "shell" ? <ShellPreview /> : <HeroPreview />}
       </MemoryRouter>
