@@ -2,15 +2,15 @@ import HomepageSectionLoading from './HomepageSectionLoading';
 import { cloneElement, useMemo, useSyncExternalStore } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { getCatalogState, subscribeCatalog, refreshCatalog } from '../../../services/catalog/catalogStore';
-import { usingPreviewCatalogue } from '../../aarna/mock/data/products.js';
-import { Link } from '../../aarna/router/index.jsx';
+import { usingPreviewCatalogue } from '../../customer/mock/data/products.js';
+import { Link } from '../../customer/router/index.jsx';
 import { homepageSectionMode, adaptHomepageSection } from './homepageSectionModel';
 
 export default function HomepageSection({ sectionKey, children }) {
   const snapshot = useSyncExternalStore(subscribeCatalog, getCatalogState, getCatalogState);
   const result = homepageSectionMode(snapshot, sectionKey);
   const content = useMemo(() => result.section ? adaptHomepageSection(result.section) : null, [result.section]);
-  if (usingPreviewCatalogue() || result.mode === 'legacy') return children;
+  if (usingPreviewCatalogue()) return children;
   if (result.mode === 'hidden') return null;
   if (result.mode === 'loading') return <HomepageSectionLoading sectionKey={sectionKey} />;
   if (result.mode === 'unavailable') return <section className="container" aria-label={sectionKey}><p role="alert">Homepage content is unavailable.</p><button type="button" onClick={() => refreshCatalog()}>Retry homepage content</button></section>;

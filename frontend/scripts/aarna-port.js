@@ -6,7 +6,7 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *
  *   1. THE PORT IS COPIES. `node scripts/aarna-port.js --copy` copies the
  *      approved design's homepage dependency closure (`home-page/src/…`) into
- *      `src/components/aarna/…`, preserving the design's own directory layout so
+ *      `src/components/customer/…`, preserving the design's own directory layout so
  *      that every relative import inside the copied files keeps resolving. The
  *      only differences the tool introduces are the pinned rewrites below —
  *      each one a named, counted, single-purpose edit (a routing shim, a React
@@ -14,12 +14,12 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *      session-specific, and a capability gate). `--check` re-verifies the pins.
  *
  *   2. THE STYLESHEET IS A TRANSFORM. `node scripts/aarna-port.js --css` reads
- *      the design's seven stylesheets and writes `src/components/aarna/aarna.css`
+ *      the design's seven stylesheets and writes `src/components/customer/aarna.css`
  *      with every selector scoped under `.aan-root`. Declarations are copied
  *      byte-for-byte; only selectors change, plus the two global keyframe names
  *      (`spin`, `pulse` → `aan-spin`, `aan-pulse`). `--check` re-runs the
  *      transform and compares, so the committed stylesheet can never drift from
- *      the design it was taken from (`aarnaSourceParity.test.js` also does this
+ *      the design it was taken from (`customerSourceParity.test.js` also does this
  *      from inside the test suite).
  *
  * Nothing here writes to `home-page/`: the design is read-only reference.
@@ -34,7 +34,7 @@ export const FRONTEND_ROOT = join(HERE, "..");
 export const REPO_ROOT = join(FRONTEND_ROOT, "..");
 export const DESIGN_SRC = join(REPO_ROOT, "home-page", "src");
 export const DESIGN_STYLES = join(DESIGN_SRC, "styles");
-export const PORT_RELATIVE = "src/components/aarna";
+export const PORT_RELATIVE = "src/components/customer";
 export const PORT_DIR = join(FRONTEND_ROOT, PORT_RELATIVE);
 export const PORT_CSS = join(PORT_DIR, "aarna.css");
 export const SCOPE = ".aan-root";
@@ -49,7 +49,7 @@ export const SCOPE = ".aan-root";
  * size of the adaptation, so an edit that grows is an edit the suite refuses.
  */
 export const CLOSURE = {
-  "components/layout/AnnouncementBar.jsx": 0,
+  "components/layout/AnnouncementBar.jsx": 2,
   "components/layout/Footer.jsx": 5,  // 1 routing + 4 truthfulness lines
   "components/layout/Header.jsx": 1,
   "components/layout/Layout.jsx": 2,
@@ -60,18 +60,18 @@ export const CLOSURE = {
   "components/product/ProductCard.jsx": 3,  // 1 routing + 2 missing-plate fallbacks
   "components/product/WishlistButton.jsx": 0,
   "components/product/useAddToBag.js": 2,  // 2 add-to-bag-feedback (the confirmation is tied to the outcome)
-  "components/sections/Bestsellers.jsx": 6, // approved Phase 3 typed-section integration
-  "components/sections/BridalCampaign.jsx": 21, // approved Phase 3 typed-section integration
-  "components/sections/CategoryCollage.jsx": 11, // approved Phase 3 typed-section integration
+  "components/sections/Bestsellers.jsx": 6, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/BridalCampaign.jsx": 29, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/CategoryCollage.jsx": 14, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
   "components/sections/Hero.jsx": 7, // data injection, optional CTAs, alt, React fetchPriority
-  "components/sections/JewelleryTheatre.jsx": 13, // approved Phase 3 typed-section integration
-  "components/sections/KidsPlayground.jsx": 12, // approved Phase 3 typed-section integration
-  "components/sections/KurtiLookbook.jsx": 13, // approved Phase 3 typed-section integration
-  "components/sections/MensEditorial.jsx": 10, // approved Phase 3 typed-section integration
-  "components/sections/Newsletter.jsx": 7, // approved Phase 3 typed-section integration
-  "components/sections/PromoBanner.jsx": 12, // approved Phase 3 typed-section integration
-  "components/sections/SareeLookbook.jsx": 17, // approved Phase 3 typed-section integration
-  "components/sections/TrustStrip.jsx": 5, // approved Phase 3 typed-section integration
+  "components/sections/JewelleryTheatre.jsx": 15, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/KidsPlayground.jsx": 14, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/KurtiLookbook.jsx": 24, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/MensEditorial.jsx": 12, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/Newsletter.jsx": 8, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/PromoBanner.jsx": 57, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/SareeLookbook.jsx": 36, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
+  "components/sections/TrustStrip.jsx": 6, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
   "components/shopping/CartDrawer.jsx": 9,  // 1 routing + 5 offer-copy + 1 missing-plate line + 2 promo-feedback
   // PHASE 9 adds one line to the drawer's foot ("View bag" → /cart) and removes
   // none of the design's; this pin counts design lines the port does not carry,
@@ -87,16 +87,15 @@ export const CLOSURE = {
   "components/ui/ScrollToTop.jsx": 0,
   "components/ui/SectionLabel.jsx": 0,
   "components/ui/Toasts.jsx": 0,
-  "data/index.js": 4,
+  "data/index.js": 5,
   "hooks/useEscape.js": 0,
   "hooks/useFocusTrap.js": 0,
   "hooks/useLockBody.js": 0,
   "hooks/useScrolled.js": 0,
-  "mock/assets/images.js": 1,
-  "mock/data/content.js": 23,  // prototype site block + sample announcements + the care-hours line
+  "mock/assets/images.js": 15,
+  "mock/data/content.js": 58,  // prototype site block + sample announcements + the care-hours line
   "mock/data/navigation.js": 0,
-  "mock/data/pages.js": 0,
-  "pages/Home.jsx": 12, // approved Phase 3 typed-section integration
+  "pages/Home.jsx": 12, // Phase 3 typed-section integration; STEP-1 database-driven (no mock fallbacks)
   // 1 routing + 1 catalogue import + 1 Button import + 2 lookup
   // + 1 stepper ceiling + 1 buy button + 2 fabric/craft + 1 care
   // + 1 delivery/returns + 1 availability note + 1 validation line
@@ -148,7 +147,7 @@ export const REPLACED = {
 
 /** Modules the port adds: the design has no counterpart. */
 export const ADDED = [
-  "AarnaStorefront.jsx",
+  "CustomerStorefront.jsx",
   "aarna.css",
   "aarna.host.css",
   "aarna.listing.css",
@@ -176,7 +175,7 @@ export const ADDED = [
      account is created" on the page, so there is nothing to carry over. These
      are the application's own sign-in, create-account and password-recovery
      request screens, written in the design's vocabulary and bound to the real
-     contexts. Reset-password is a separate Aarna route that reuses the
+     contexts. Reset-password is a separate customer route that reuses the
      existing reset context/service; the existing forgot-password backend
      still does not dispatch reset email. Declared, so closure checks know
      these modules and the port tool never writes them. */
@@ -277,7 +276,12 @@ const fetchPriorityRewrite = (file, source) => source.replace(/\bfetchpriority=/
 
 /** Rewrite 3 — the brand mark, staged with the rest of the design's art. */
 const logoPlateRewrite = (file, source) =>
-  source.replace("const MARK_SRC = '/images/pratikshya-logo.webp';", "const MARK_SRC = '/aarna-design/pratikshya-logo.webp';");
+  source.replace("const MARK_SRC = '/images/pratikshya-logo.webp';", "const MARK_SRC = '/design/pratikshya-logo.webp';");
+
+/** Rewrite — the announcement bar's session key, renamed to a neutral one in
+ *  the customer app (the prototype keeps `aarna:announce`; sessions that
+ *  dismissed the bar under the old key see it once again). */
+const announcementKeyRewrite = (file, source) => source.replace(/'aarna:announce'/g, "'storefront:announce'");
 
 /**
  * Rewrite 4 — OFFER COPY. The design's basket names its own sample campaign
@@ -424,7 +428,7 @@ const contentFactsRewrite = (file, source) =>
 /** Rewrite 7 — THE ART. The design's registry is carried over key-for-key; only
  *  its base path moves, to the plate directory staged for this port (the
  *  application's own media library is never written to). */
-const artBaseRewrite = (file, source) => source.replace("const base = '/images/';", "const base = '/aarna-design/';");
+const artBaseRewrite = (file, source) => source.replace("const base = '/images/';", "const base = '/design/';");
 
 /**
  * Rewrite 8 — THE FOOTER'S FACTS. The design's footer prints a prototype
@@ -490,8 +494,8 @@ const barrelRewrite = (file, source) => {
  * synchronous array it ships with, so a section can read it inside a `useMemo`
  * and be right for the life of the page. This application's catalogue arrives
  * from the backend AFTER mount, so a memo keyed on UI state alone freezes the
- * first, empty snapshot. Measured in the browser (`?home=aarna`, catalogue
- * served six seconds late): the Bestsellers rail still read "No pieces in this
+ * first, empty snapshot. Measured in the browser (catalogue served six
+ * seconds late): the Bestsellers rail still read "No pieces in this
  * filter yet." ten seconds in, and the jewellery theatre still counted zero,
  * while the un-memoised rails beside them had rendered every live piece. The
  * four components below take the revision the port's own catalogue boundary
@@ -1068,7 +1072,7 @@ const infoPageRewrite = (file, source) => {
 const backendHeroRewrite = (file, source) => {
   if (file === "pages/Home.jsx") {
     return source.replace("import Hero from '../components/sections/Hero.jsx';",
-      "import Hero from '../../storefront/home/AarnaHomeHero.jsx';");
+      "import Hero from '../../storefront/home/CustomerHomeHero.jsx';");
   }
   return source
     .replace("import { heroConfig, heroSlides }", "import { heroConfig, heroSlides as referenceHeroSlides }")
@@ -1085,6 +1089,7 @@ export const REWRITES = [
   { id: "backend-home-hero", files: ["pages/Home.jsx", "components/sections/Hero.jsx"], apply: backendHeroRewrite },
   { id: "fetch-priority", files: ["components/sections/Hero.jsx"], apply: fetchPriorityRewrite },
   { id: "logo-plate", files: ["components/ui/Logo.jsx"], apply: logoPlateRewrite },
+  { id: "announce-key", files: ["components/layout/AnnouncementBar.jsx"], apply: announcementKeyRewrite },
   { id: "offer-copy", files: ["components/shopping/CartDrawer.jsx"], apply: offerCopyRewrite },
   { id: "promo-feedback", files: ["components/shopping/CartDrawer.jsx"], apply: promoFeedbackRewrite },
   { id: "view-bag", files: ["components/shopping/CartDrawer.jsx"], apply: viewBagRewrite },

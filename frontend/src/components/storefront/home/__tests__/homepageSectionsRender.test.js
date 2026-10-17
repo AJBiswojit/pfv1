@@ -26,14 +26,14 @@ before(async () => {
   const load = (path) => vite.ssrLoadModule(`/src/${path}`);
   adapt = (await load('components/storefront/home/homepageSectionModel.js')).adaptHomepageSection;
   providers = [
-    (await load('components/aarna/state/ShopContext.jsx')).ShopProvider,
-    (await load('components/aarna/state/UIContext.jsx')).UIProvider,
+    (await load('components/customer/state/ShopContext.jsx')).ShopProvider,
+    (await load('components/customer/state/UIContext.jsx')).UIProvider,
     (await load('context/ShoppingContext.jsx')).ShoppingProvider,
     (await load('context/InventoryContext.jsx')).InventoryProvider,
     (await load('context/AccountContext.jsx')).AccountProvider,
     (await load('context/AuthContext.jsx')).AuthProvider,
   ];
-  components = Object.fromEntries(await Promise.all(sections.map(async ([key, name]) => [key, (await load(`components/aarna/components/sections/${name}.jsx`)).default])));
+  components = Object.fromEntries(await Promise.all(sections.map(async ([key, name]) => [key, (await load(`components/customer/components/sections/${name}.jsx`)).default])));
 });
 after(async () => { await vite?.close(); });
 
@@ -51,7 +51,7 @@ for (const [key, , mediaSlot, productSlot] of sections) {
     const html = render(key, items);
     assert.match(html, /SERVER TITLE/); assert.match(html, /SERVER BODY/);
     if (key !== "bridal") assert.match(html, /href="\/explore"/, "Authored application paths must not be rewritten through design routes");
-    assert.doesNotMatch(html, /\/aarna-design\//);
+    assert.doesNotMatch(html, /\/design\//);
     if (mediaSlot) assert.match(html, /\/api\/v1\/media\/objects\/hero\/approved.avif/);
     if (productSlot && !['categories', 'bridal'].includes(key)) assert.match(html, /SERVER PRODUCT/);
     if (key === 'categories') assert.match(html, /1 pieces in this edit/);
@@ -62,7 +62,7 @@ for (const [key, , mediaSlot, productSlot] of sections) {
   test(`${key}: absent media/products never refill from reference art or sample catalog`, () => {
     const html = render(key, [{ id: 'copy', contentType: 'TEXT', slotKey: key === 'trust' ? 'delivery' : 'intro', text: { title: null, subtitle: 'Only backend body' } }]);
     assert.match(html, /Only backend body/);
-    assert.doesNotMatch(html, /\/aarna-design\//);
+    assert.doesNotMatch(html, /\/design\//);
     assert.doesNotMatch(html, /pcard__name/);
   });
 }

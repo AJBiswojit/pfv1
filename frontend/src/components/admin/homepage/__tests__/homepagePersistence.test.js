@@ -166,9 +166,9 @@ test('read-only marketing viewer gets no save/configuration controls', async () 
 for (const state of ['inactive', 'empty']) test(`configured ${state} is authoritative, not a fallback`, () => {
   assert.equal(model.homepageSectionMode(snapshot(state), 'trust').mode, 'hidden');
 });
-test('missing, unavailable, failed request and old backend are distinct', () => {
-  assert.equal(model.homepageSectionMode(snapshot(), 'trust').mode, 'legacy');
-  assert.equal(model.homepageSectionMode({ homeStatus: 'ready', home: { heroSlides: [] } }, 'trust').mode, 'legacy');
+test('missing is hidden, unavailable is distinct, failed request and old backend are distinct', () => {
+  assert.equal(model.homepageSectionMode(snapshot(), 'trust').mode, 'hidden');
+  assert.equal(model.homepageSectionMode({ homeStatus: 'ready', home: { heroSlides: [] } }, 'trust').mode, 'unavailable');
   assert.equal(model.homepageSectionMode({ ...snapshot(), homeStatus: 'error' }, 'trust').mode, 'unavailable');
   const failedSnapshot = snapshot(); failedSnapshot.home.homepageContent.status = 'unavailable';
   assert.equal(model.homepageSectionMode(failedSnapshot, 'trust').mode, 'unavailable');
@@ -183,14 +183,17 @@ test('typed adapter never fills absent slots or converts media into products', (
   assert.deepEqual(content.products('products'), []); assert.equal(content.text('missing').title, '');
 });
 test('all eleven consumers use the shared boundary, no reference/default/storage changes', () => {
-  const home = readFileSync(`${root}src/components/aarna/pages/Home.jsx`, 'utf8');
+  const home = readFileSync(`${root}src/components/customer/pages/Home.jsx`, 'utf8');
   assert.equal((home.match(/<HomepageSection sectionKey=/g) || []).length, 11);
   assert.match(home, /<Hero \/>/);
-  const promo = readFileSync(`${root}src/components/aarna/components/sections/PromoBanner.jsx`, 'utf8');
-  assert.match(promo, /if \(content\) return;/); assert.match(promo, /!content && <button/);
+  const promo = readFileSync(`${root}src/components/customer/components/sections/PromoBanner.jsx`, 'utf8');
+  /* STEP-1-DB-DRIVEN: the promotion renders only authored content, and the
+     sample-offer label / mock promo-code chip went with the mock register. */
+  assert.match(promo, /if \(!content\) return null;/);
+  assert.doesNotMatch(promo, /isSample|getActivePromotion|promo__code|promo__num/);
   const editor = readFileSync(`${root}src/components/admin/homepage/SectionContentEditor.jsx`, 'utf8');
   assert.doesNotMatch(editor, /localStorage|apiAdminCreateDraft|subscription.*post/i);
-  assert.match(readFileSync(`${root}src/components/aarna/services/newsletter.js`, 'utf8'), /unavailable|not connected|no.*endpoint/i);
+  assert.match(readFileSync(`${root}src/components/customer/services/newsletter.js`, 'utf8'), /unavailable|not connected|no.*endpoint/i);
 });
 
 test('nullable editorial fields normalize to empty strings, and draft DTOs are not admitted', () => {

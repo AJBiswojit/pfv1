@@ -212,8 +212,8 @@ test("the active customer shell is owned by Aarna and excludes the retired store
   assert.equal(app.includes("StorefrontHeader"), false);
 
   const layout = read("src/layouts/CustomerLayout.jsx");
-  assert.match(layout, /import AarnaStorefront from "\.\.\/components\/aarna\/AarnaStorefront"/);
-  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.match(layout, /import CustomerStorefront from "\.\.\/components\/customer\/CustomerStorefront"/);
+  assert.match(layout, /<CustomerStorefront \/>/);
   assert.doesNotMatch(layout, /SiteHeader|SiteFooter|CheckoutHeader/);
 
   /* Retained modules from preview and QA workflows are not part of Aarna. */

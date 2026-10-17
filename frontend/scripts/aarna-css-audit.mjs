@@ -26,7 +26,7 @@ const visit = (file, seen = new Set(), css = new Set()) => {
     if (target.endsWith(".css")) {
       const relative = target.slice(process.cwd().length + 1);
       /* The ported page is what we are comparing AGAINST: never part of the host set. */
-      if (!relative.startsWith("src/components/aarna/")) css.add(relative);
+      if (!relative.startsWith("src/components/customer/")) css.add(relative);
       continue;
     }
     visit(target, seen, css);

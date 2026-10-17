@@ -5,7 +5,9 @@ const browser = await puppeteer.launch({
   executablePath: await chromium.executablePath(), headless: true,
   env: { ...process.env, LD_LIBRARY_PATH: "/tmp/al2023/lib", FONTCONFIG_PATH: "/tmp/fonts", HOME: "/tmp" },
 });
-for (const [url, tag] of [["http://localhost:5174/?home=editorial", "editorial"], ["http://localhost:5174/?home=aarna", "aarna"]]) {
+// The former `?home=editorial` / `?home=aarna` overrides are inert — one load
+// of the storefront is the one (and only) surface to measure.
+for (const [url, tag] of [["http://localhost:5174/", "storefront"]]) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "load", timeout: 90000 });
   await new Promise((r) => setTimeout(r, 1800));

@@ -27,7 +27,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const COMPOSITION = "src/components/storefront/StorefrontHome.jsx";
-const SWITCH = "src/config/storefrontHome.js";
+const SWITCH = "src/config/customerRoutes.js";
 const LAYOUT = "src/layouts/CustomerLayout.jsx";
 
 /** Every source file under `src/` (the scan the isolation tests use). */
@@ -83,7 +83,7 @@ const importsModule = (file, modulePath) =>
  * canonical route manifest the navigation is built from.
  */
 function registeredRoutes() {
-  const sources = [read("src/App.jsx"), read("src/components/aarna/AarnaStorefront.jsx")];
+  const sources = [read("src/App.jsx"), read("src/components/customer/CustomerStorefront.jsx")];
   const staticPaths = new Set(modules.routeManifest.map((route) => route.path));
   const patterns = [];
   for (const source of sources) for (const match of source.matchAll(/<Route path="([^"]+)"/g)) {
@@ -166,7 +166,7 @@ test("the Aarna app shell is the only customer layout and no Atelier/editorial s
   assert.deepEqual(importers, [], "the editorial composition is not reachable from customer routes");
 
   const layout = read(LAYOUT);
-  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.match(layout, /<CustomerStorefront \/>/);
   assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|SiteHeader|SiteFooter|CheckoutHeader/);
   const app = read("src/App.jsx");
   assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
@@ -353,13 +353,13 @@ test("an empty or unavailable backend renders an honest page, never a blank one"
 test("App preserves staff portal routes while delegating customer pages to Aarna", () => {
   const app = read("src/App.jsx");
   assert.equal(app.includes("storefront/StorefrontHome"), false);
-  assert.equal(app.includes("storefrontHome"), false);
+  assert.equal(app.includes("customerRoutes"), false);
   /* The staff portal layouts/guards remain in App; customer protection now lives
      inside the Aarna route table. */
   for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />"]) {
     assert.equal(app.includes(marker), true, `${marker} is still mounted`);
   }
-  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  const storefront = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(storefront, /<Route element={<ProtectedRoute \/>}>/);
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.doesNotMatch(app, /<Route path="\/(shop|signin|account)/);
@@ -372,7 +372,7 @@ test("App preserves staff portal routes while delegating customer pages to Aarna
   const ACCOUNT_SHELL = "src/components/account/AccountShell.jsx";
   const boundaryImporters = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
-    .filter((file) => importsModule(file, "src/config/storefrontHome"))
+    .filter((file) => importsModule(file, "src/config/customerRoutes"))
     .sort();
   assert.deepEqual(boundaryImporters, [ACCOUNT_SHELL]);
 

@@ -4,7 +4,7 @@ import { isBackendCatalogRecord } from '../catalog/catalogRecordSafety';
 import { MEDIA_URL_PREFIX, resolveMediaUrl } from '../media/mediaPaths';
 
 // The twelve reference sections, in visual order. Placement names are existing
-// backend vocabulary, not a claim that Aarna consumes these non-hero rows.
+// backend vocabulary, not a claim that the storefront consumes these non-hero rows.
 export const HOMEPAGE_SECTIONS = Object.freeze([
   { id: 'hero', title: 'Home hero', placement: 'HOME_HERO', live: true },
   { id: 'categories', title: 'Category collage', product: true },

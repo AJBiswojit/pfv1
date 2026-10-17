@@ -28,11 +28,11 @@
  *   defect 3 → `context/CartContext.jsx` — the guest path refuses a piece whose
  *              catalogue ceiling is below one, with the product page's own
  *              sentence, before anything is written to the bag.
- *   defect 4 → `components/aarna/components/product/useAddToBag.js` — the
+ *   defect 4 → `components/customer/components/product/useAddToBag.js` — the
  *              confirmation is tied to the outcome (the `add-to-bag-feedback`
  *              port rewrite).
- *   defect 5 → `components/aarna/components/shopping/CartDrawer.jsx` +
- *              `components/aarna/state/ShopContext.jsx` +
+ *   defect 5 → `components/customer/components/shopping/CartDrawer.jsx` +
+ *              `components/customer/state/ShopContext.jsx` +
  *              `context/CartContext.jsx` — the drawer awaits the register's
  *              answer and keys its honest note on `totals.priced`.
  *
@@ -351,7 +351,7 @@ test("the card's add confirmation only fires when the add happened", () => {
      toasted unconditionally. Pre-fix this file had no `ok === false` guard at
      all. The measured behaviour after the fix is in the Phase 4 browser probe
      (quick-add on an unavailable piece: no toast, badge stays 0). */
-  const hook = flat(read("src/components/aarna/components/product/useAddToBag.js"));
+  const hook = flat(read("src/components/customer/components/product/useAddToBag.js"));
 
   assert.match(
     hook,
@@ -364,14 +364,14 @@ test("the card's add confirmation only fires when the add happened", () => {
     "an unconditional confirmation is back",
   );
   /* And the refusal travels to the customer as the cart's own message. */
-  assert.match(flat(read("src/components/aarna/state/ShopContext.jsx")), /if \(outcome && outcome\.ok === false && outcome\.message\) toast\(outcome\.message\);/);
+  assert.match(flat(read("src/components/customer/state/ShopContext.jsx")), /if \(outcome && outcome\.ok === false && outcome\.message\) toast\(outcome\.message\);/);
 });
 
 /* ── 9 · defect 5 ───────────────────────────────────────────────────────── */
 
 test("the bag drawer awaits the register's answer and states the amount honestly", () => {
-  const drawer = flat(read("src/components/aarna/components/shopping/CartDrawer.jsx"));
-  const shop = flat(read("src/components/aarna/state/ShopContext.jsx"));
+  const drawer = flat(read("src/components/customer/components/shopping/CartDrawer.jsx"));
+  const shop = flat(read("src/components/customer/state/ShopContext.jsx"));
   const cart = flat(read("src/context/CartContext.jsx"));
 
   /* (a) The register's answer is awaited — pre-fix `res.ok` was `undefined` for

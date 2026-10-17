@@ -408,7 +408,7 @@ export const cancelOrder = (orders, orderId, { at = new Date(), reason = "custom
           method: refundMethodLabel(order),
           status: ORDER_PAYMENT_STATUS.REFUND_PENDING,
           initiatedAt: stamped,
-          note: "Demo refund status — no real payment movement has taken place.",
+          note: "Refund initiated for this order — settlement follows the original payment method.",
         }
       : null,
     cancellation: { at: stamped, reason, note, actor: actorName },
@@ -436,8 +436,8 @@ export const cancelOrder = (orders, orderId, { at = new Date(), reason = "custom
     orders: replaceOrder(moved.orders, next),
     order: next,
     message: wasCaptured
-      ? "Order cancelled. A refund has been initiated for this demo order."
-      : "Order cancelled. Nothing was captured for this demo order.",
+      ? "Order cancelled. A refund has been initiated for this order."
+      : "Order cancelled. Nothing was captured for this order.",
   };
 };
 

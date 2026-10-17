@@ -8,7 +8,7 @@
  *   01 hero             Phase 1 `home/HeroEditorial`
  *   02…12 sections      Phase 2B `home-sections/HomeSections`
  *
- * This legacy composition is not mounted by the customer router; Aarna owns
+ * This legacy composition is not mounted by the customer router; the storefront owns
  * the customer storefront.
  *
  * DATA. Every seam here is the application's own: `heroSlides` (the live `GET /home` proxy), the HOME_HERO marketing

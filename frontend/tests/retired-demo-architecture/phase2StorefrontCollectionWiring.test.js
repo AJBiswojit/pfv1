@@ -254,13 +254,13 @@ test("resolveCollectionRoute resolves active collection destination", () => {
 
 test("source files do not contain hardcoded collection product arrays or obsolete routes", () => {
   const filesToCheck = [
-    "src/components/aarna/pages/Shop.jsx",
-    "src/components/aarna/pages/Cart.jsx",
+    "src/components/customer/pages/Shop.jsx",
+    "src/components/customer/pages/Cart.jsx",
     "src/components/account/AccountHero.jsx",
-    "src/components/aarna/pages/account/Orders.jsx",
-    "src/components/aarna/pages/account/Overview.jsx",
+    "src/components/customer/pages/account/Orders.jsx",
+    "src/components/customer/pages/account/Overview.jsx",
     "src/components/storefront/CatalogueBrowser.jsx",
-    "src/components/aarna/pages/Shop.jsx",
+    "src/components/customer/pages/Shop.jsx",
     "src/services/taxonomyRouting.js",
   ];
 

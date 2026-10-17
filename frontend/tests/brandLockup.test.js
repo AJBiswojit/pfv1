@@ -26,11 +26,11 @@ const brandSource = readFileSync(
   "utf8"
 );
 const headerSource = readFileSync(
-  join(ROOT, "src/components/aarna/components/layout/Header.jsx"),
+  join(ROOT, "src/components/customer/components/layout/Header.jsx"),
   "utf8"
 );
 const footerSource = readFileSync(
-  join(ROOT, "src/components/aarna/components/layout/Footer.jsx"),
+  join(ROOT, "src/components/customer/components/layout/Footer.jsx"),
   "utf8"
 );
 

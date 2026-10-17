@@ -14,7 +14,7 @@ before(async () => {
   const module = await vite.ssrLoadModule("/src/components/product/RecommendationSections.jsx");
   Content = module.RecommendationSectionContent;
   Sections = module.default;
-  MirrorSource = readFileSync(new URL("../src/components/aarna/pages/account/AiMirror.jsx", import.meta.url), "utf8");
+  MirrorSource = readFileSync(new URL("../src/components/customer/pages/account/AiMirror.jsx", import.meta.url), "utf8");
 });
 after(async () => { await vite?.close(); });
 const render = (Component, props = {}) => renderToStaticMarkup(

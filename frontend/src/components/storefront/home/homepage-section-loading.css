@@ -1,5 +1,5 @@
 /* Approximate editorial footprints, not content-dependent layout guarantees.
-   Keep these separate from the protected reference-derived Aarna styles. */
+   Keep these separate from the protected reference-derived storefront styles. */
 .aan-root .aan-home-loading {
   --loading-height: 800px;
   position: relative;

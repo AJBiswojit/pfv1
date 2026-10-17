@@ -255,7 +255,7 @@ test("the live customer homepage belongs to Aarna, not the retired editorial com
   const app = readFileSync(join(ROOT, "src/App.jsx"), "utf8");
   const layout = readFileSync(join(ROOT, "src/layouts/CustomerLayout.jsx"), "utf8");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
-  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.match(layout, /<CustomerStorefront \/>/);
   assert.equal(app.includes("HeroEditorial"), false);
 
   /* Import references only: preview harnesses and the unmounted legacy

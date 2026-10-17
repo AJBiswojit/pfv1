@@ -17,7 +17,7 @@ let trees = [];
 
 before(async () => {
   h = await startHarness();
-  Settings = (await h.load("/src/components/aarna/pages/account/Settings.jsx")).default;
+  Settings = (await h.load("/src/components/customer/pages/account/Settings.jsx")).default;
 });
 
 after(async () => {

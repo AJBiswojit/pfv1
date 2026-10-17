@@ -19,7 +19,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import "../../../index.css";
 import HeroPreview from "./HeroPreview";
-import AarnaPreview from "./AarnaPreview";
+import CustomerPreview from "./CustomerPreview";
 import HomePreview from "./HomePreview";
 import ShellPreview from "./ShellPreview";
 
@@ -64,7 +64,7 @@ if (container) {
       <MemoryRouter>
         {/* One line on purpose: the view dispatch is the whole contract here. */}
         {view() === "aarna" ? (
-          <AarnaPreview />
+          <CustomerPreview />
         ) : view() === "home" ? <HomePreview /> : view() === "shell" ? <ShellPreview /> : <HeroPreview />}
       </MemoryRouter>
     </StrictMode>

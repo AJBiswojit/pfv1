@@ -81,7 +81,7 @@ test("the shopping surface names the demo provider by its own label, never the b
 });
 
 test("the shopping page shows the demo chip and footnote while the demo provider answers", () => {
-  const source = read("src/components/aarna/pages/account/AiShopping.jsx");
+  const source = read("src/components/customer/pages/account/AiShopping.jsx");
   /* Comments may explain the business label; the rendered code must not use it. */
   const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.match(code, /Demo assistant · deterministic/);
@@ -94,7 +94,7 @@ test("the Mirror labels its result as a demo, and its stage badge says so", () =
   const stage = read("src/components/aiMirror/AiMirrorStage.jsx");
   assert.match(stage, /"DEMO PREVIEW"/);
   assert.match(stage, /demo imagery/);
-  assert.match(read("src/components/aarna/pages/account/AiMirror.jsx"), /Demo preview module/);
+  assert.match(read("src/components/customer/pages/account/AiMirror.jsx"), /Demo preview module/);
 });
 
 /* ── 3 · the demo try-on claims no result it did not produce ─────────────── */

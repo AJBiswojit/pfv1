@@ -22,7 +22,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 before(async () => {
   h = await startHarness();
-  Security = (await h.load("/src/components/aarna/pages/account/Security.jsx")).default;
+  Security = (await h.load("/src/components/customer/pages/account/Security.jsx")).default;
 });
 
 after(async () => {

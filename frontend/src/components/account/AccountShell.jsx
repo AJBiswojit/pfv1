@@ -1,5 +1,5 @@
 import { AtelierSection, Breadcrumb } from "../../design-system";
-import { useAarnaStorefront } from "../../config/storefrontHome";
+import { useCustomerStorefront } from "../../config/customerRoutes";
 import AccountHero from "./AccountHero";
 import AccountNav from "./AccountNav";
 
@@ -7,8 +7,8 @@ import AccountNav from "./AccountNav";
  * Common layout frame for all customer account pages.
  *
  * In the Atelier storefront, `AccountShell` owns the page's primary `<main>`
- * landmark. When a production account page is mounted inside `AarnaStorefront`,
- * the outer `Layout` (`components/aarna/components/layout/Layout.jsx`) already
+ * landmark. When a production account page is mounted inside `CustomerStorefront`,
+ * the outer `Layout` (`components/customer/components/layout/Layout.jsx`) already
  * provides `<main id="main">`, so `AccountShell` omits the inner `<main>` to
  * avoid nested main landmarks.
  */
@@ -16,7 +16,7 @@ export default function AccountShell({
   breadcrumbItems = [{ label: "Account" }],
   children,
 }) {
-  const aarna = useAarnaStorefront();
+  const storefront = useCustomerStorefront();
   const fullBreadcrumbs = [
     { label: "Atelier", to: "/" },
     ...breadcrumbItems,
@@ -31,5 +31,5 @@ export default function AccountShell({
     </AtelierSection>
   );
 
-  return aarna ? section : <main>{section}</main>;
+  return storefront ? section : <main>{section}</main>;
 }

@@ -47,7 +47,7 @@ const submissionsRoute = (answer) => ({
 
 before(async () => {
   h = await startHarness();
-  Rewards = (await h.load("/src/components/aarna/pages/account/InstagramRewards.jsx")).default;
+  Rewards = (await h.load("/src/components/customer/pages/account/InstagramRewards.jsx")).default;
 });
 
 after(async () => {

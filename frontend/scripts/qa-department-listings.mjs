@@ -1,7 +1,7 @@
 /**
- * Department listing QA — Aarna route + navigation scope + query engine.
+ * Department listing QA — customer route + navigation scope + query engine.
  *
- * Aarna department listings are GET /products-backed. Without a backend the
+ * Customer department listings are GET /products-backed. Without a backend the
  * React page is empty/error; that is honest. This script does not persist
  * PUBLISHED without workflow, and does not require 128 live products.
  */
@@ -68,11 +68,11 @@ check(
 const sarees = queryCatalogue({ scopeFilters: { department: "women", category: "sarees" } });
 check("sarees subcategory listing is only the cotton fixture", sarees.results.length === 1 && sarees.results[0].id === FIXTURE_IDS.COTTON);
 
-const storefrontRoutes = readFileSync(new URL("../src/components/aarna/AarnaStorefront.jsx", import.meta.url), "utf8");
-const listingPage = readFileSync(new URL("../src/components/aarna/pages/Shop.jsx", import.meta.url), "utf8");
-check("Aarna owns the shop and department listing route", storefrontRoutes.includes('<Route path="shop" element={<Shop mode="shop" />} />') && storefrontRoutes.includes('<Route path="*" element={<Shop mode="navigation" />} />'));
-check("Aarna listings use the shared live catalogue query", listingPage.includes("useCatalogueQuery") && listingPage.includes("useCatalog()"));
-check("Aarna listings do not show not-found copy for a valid scope", !/is no longer in the collection/i.test(listingPage));
+const storefrontRoutes = readFileSync(new URL("../src/components/customer/CustomerStorefront.jsx", import.meta.url), "utf8");
+const listingPage = readFileSync(new URL("../src/components/customer/pages/Shop.jsx", import.meta.url), "utf8");
+check("The storefront owns the shop and department listing route", storefrontRoutes.includes('<Route path="shop" element={<Shop mode="shop" />} />') && storefrontRoutes.includes('<Route path="*" element={<Shop mode="navigation" />} />'));
+check("Customer listings use the shared live catalogue query", listingPage.includes("useCatalogueQuery") && listingPage.includes("useCatalog()"));
+check("Customer listings do not show not-found copy for a valid scope", !/is no longer in the collection/i.test(listingPage));
 
 setupCanonicalState();
 console.log(`\nRESULT: ${failures.length ? "FAIL" : "PASS"} — ${failures.length} violation(s).`);

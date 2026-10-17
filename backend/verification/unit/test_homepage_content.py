@@ -400,17 +400,16 @@ async def test_additive_home_preserves_existing_hero_semantics(hero_state, new_a
     db.begin_nested = nested
     service = ExploreService(db)
     active = HeroSlide(id="real-hero", image="/api/v1/media/objects/hero/real.avif")
-    fallback = HeroSlide(id="existing-fallback", image="/api/v1/media/objects/hero/fallback.avif")
+    # STEP-2: no canonical fallback — zero active rows (missing/inactive) and a
+    # failed read (unavailable) all resolve to an honest empty hero list.
     service._build_hero_slides_from_db = AsyncMock(return_value=[active] if hero_state == "active" else [])
-    service._build_hero_slides = Mock(return_value=[fallback])
     service._select_products = AsyncMock(return_value=[])
     service._build_category_cards = AsyncMock(return_value=[])
-    legacy_rows = AsyncMock(side_effect=RuntimeError("offline")) if hero_state == "unavailable" else AsyncMock(return_value=[NS(is_active=False)] if hero_state == "inactive" else [])
     public = {"version": 1, "status": "ready", "sections": [{"key": "hero", "source": "heroSlides", "state": "delegated"}, *[{"key": k, "source": "legacy", "state": "missing", "configured": False, "items": []} for k in REGISTRY]]}
     extension = AsyncMock(return_value=public) if new_available else AsyncMock(side_effect=RuntimeError("new schema unavailable"))
-    with patch.object(MarketingMediaService, "list", new=legacy_rows), patch.object(HomepageContentService, "content", new=extension):
+    with patch.object(HomepageContentService, "content", new=extension):
         home = await service.get_home()
-    assert [slide.id for slide in home.hero_slides] == (["real-hero"] if hero_state == "active" else [] if hero_state == "inactive" else ["existing-fallback"])
+    assert [slide.id for slide in home.hero_slides] == (["real-hero"] if hero_state == "active" else [])
     assert home.homepage_content.status == ("ready" if new_available else "unavailable")
     assert len(home.homepage_content.sections) == 12
     assert home.saree_edit.id == "saree-edit" and home.sale_banner.id == "sale-banner"

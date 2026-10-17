@@ -173,7 +173,7 @@ test("Product Card and homepage product rails contain no hardcoded Kids media pa
   [
     "src/design-system/components/ProductCard.jsx",
     "src/components/storefront/PlacementProductRail.jsx",
-    "src/components/storefront/home/AarnaHomeHero.jsx",
+    "src/components/storefront/home/CustomerHomeHero.jsx",
   ].forEach((relative) => {
     const source = readFileSync(join(process.cwd(), relative), "utf8");
     assert.doesNotMatch(
