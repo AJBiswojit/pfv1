@@ -566,7 +566,7 @@ test("with the switch on, a guest asking for a guarded screen paints no account 
 
   /* The guard's destination, at the one URL a static render can see it at. */
   const signIn = on.render("/signin?returnTo=%2Faccount%2Forders");
-  assert.match(signIn, /class="info container pf-auth"/, "the port's sign-in does not paint at its own URL");
+  assert.match(signIn, /class="pf-auth-experience"/, "the glass auth experience does not paint at its own URL");
   assert.equal(/pf-account/.test(signIn), false, "the sign-in page drew account chrome");
 });
 
