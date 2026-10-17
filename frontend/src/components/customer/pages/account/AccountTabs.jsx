@@ -13,9 +13,10 @@ export default function AccountTabs({ label, tabs, activeId }) {
     const strip = stripRef.current;
     const active = strip?.querySelector('[aria-current="page"]');
     if (!strip || !active) return;
-    const start = active.offsetLeft - strip.offsetLeft;
-    if (start < strip.scrollLeft || start + active.offsetWidth > strip.scrollLeft + strip.clientWidth) {
-      strip.scrollLeft = Math.max(0, start - 8);
+    const bounds = strip.getBoundingClientRect();
+    const current = active.getBoundingClientRect();
+    if (current.left < bounds.left || current.right > bounds.right) {
+      strip.scrollLeft += current.left - bounds.left - 8;
     }
   }, [activeId]);
 

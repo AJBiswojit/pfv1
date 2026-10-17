@@ -59,17 +59,17 @@ export default function AccountSidebar() {
   return (
     <div className={`pf-account__side${open ? ' is-open' : ''}`}>
       <div className="pf-account__mobile-bar">
-      <button
-        type="button"
-        className="btn btn--ghost pf-account__menu-btn"
-        aria-expanded={open}
-        aria-controls="pf-account-drawer"
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? <X size={16} strokeWidth={1.4} aria-hidden="true" /> : <Menu size={16} strokeWidth={1.4} aria-hidden="true" />}
-        <span>Account menu</span>
-      </button>
-      <p className="pf-account__current-section">{section}</p>
+        <button
+          type="button"
+          className="btn btn--ghost pf-account__menu-btn"
+          aria-expanded={open}
+          aria-controls="pf-account-drawer"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? <X size={16} strokeWidth={1.4} aria-hidden="true" /> : <Menu size={16} strokeWidth={1.4} aria-hidden="true" />}
+          <span>Account menu</span>
+        </button>
+        <p className="pf-account__current-section">{section}</p>
       </div>
       {open && (
         <button type="button" className="scrim pf-account__scrim" aria-label="Close account menu" onClick={close} />

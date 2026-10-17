@@ -135,7 +135,7 @@ test('desktop account chrome uses a viewport flex shell with a natural-height he
   assert.match(markup, /class="pf-account-app__header">[\s\S]*class="announce"[\s\S]*<header class="header"/);
   assert.match(markup, /id="pf-account-content" class="pf-account__content" role="region" aria-label="Account content" tabindex="0"/);
   const desktop = '(min-width: 1024px)';
-  for (const declaration of ['display: flex', 'flex-direction: column', 'height: 100dvh', 'overflow: hidden']) {
+  for (const declaration of ['position: fixed', 'inset: 0', 'display: flex', 'flex-direction: column', 'height: 100dvh', 'overflow: hidden']) {
     assert.ok(hasDeclaration(rule('.pf-account-app', desktop), declaration), declaration);
   }
   assert.ok(hasDeclaration(rule('.pf-account-app__header'), 'flex: none'));

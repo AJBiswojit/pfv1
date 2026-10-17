@@ -42,6 +42,7 @@
 
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
+import { assertNoPrivateAccountContent } from "./accountAssertions.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -307,7 +308,7 @@ test("with the switch on, the design's wishlist owns /account/wishlist — and t
      over by name, PHASE 10 the auth screens, PHASE 11 the account.) */
   const account = on.render("/account/orders");
   assert.match(account, /class="pf-root"/, "/account/orders is not the port's, though Phase 11 adopted the account");
-  assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
+  assertNoPrivateAccountContent(account, "/account/orders painted account chrome on the server render — a guest must be shown none");
   assert.equal(/Saved pieces/.test(account), false, "/account/orders was served as the wishlist");
 });
 

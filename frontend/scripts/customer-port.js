@@ -52,7 +52,7 @@ export const CLOSURE = {
   "components/layout/AnnouncementBar.jsx": 2,
   "components/layout/Footer.jsx": 5,  // 1 routing + 4 truthfulness lines
   "components/layout/Header.jsx": 1,
-  "components/layout/Layout.jsx": 10,
+  "components/layout/Layout.jsx": 10, // slot + account footer/workspace rewrites; measured from generated output
   "components/navigation/MegaMenu.jsx": 1,
   "components/navigation/MobileMenu.jsx": 1,
   "components/product/OptionSelector.jsx": 0,
