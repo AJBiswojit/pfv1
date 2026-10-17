@@ -497,14 +497,10 @@ test("the footer renders every group the design declares, on registered routes",
   const footer = markup.slice(at('<footer class="footer"'), at("</footer>"));
   for (const group of data.footerGroups) {
     assert.ok(
-      footer.includes(`<p class="fgroup__title">${esc(group.title)}</p>`),
+      footer.includes(`>${esc(group.title)}</h2>`),
       `the footer's ${group.title} group is missing`,
     );
-    assert.equal(
-      count(`>${esc(group.title)}</span>`),
-      1,
-      `the ${group.title} group has no disclosure control`,
-    );
+    assert.ok(footer.includes(`aria-labelledby="footer-${group.title.toLowerCase().replace(/\\s+/g, '-')}"`), `the ${group.title} links lack a named navigation landmark`);
     for (const link of group.links) {
       assert.ok(
         footer.includes(`>${esc(link.label)}</a>`),
@@ -512,7 +508,7 @@ test("the footer renders every group the design declares, on registered routes",
       );
     }
   }
-  assert.equal(footer.split('class="fgroup"').length - 1 + (footer.includes("fgroup fgroup--contact") ? 0 : 1), data.footerGroups.length, "the footer's group count changed");
+  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, data.footerGroups.length, "the footer's group count changed");
   const hrefs = anchors(footer);
   assert.equal(hrefs.length, data.footerGroups.reduce((total, group) => total + group.links.length, 0));
   for (const href of hrefs) {
@@ -523,16 +519,9 @@ test("the footer renders every group the design declares, on registered routes",
 test("the footer states only what the house can stand behind", () => {
   const footer = markup.slice(at('<footer class="footer"'), at("</footer>"));
 
-  /* Contact: whatever the record holds, in its order — and nothing else. The
-     design published a placeholder address and invented care hours; this
-     application holds neither, so the column carries the city alone. */
-  const contact = footer.slice(footer.indexOf("fgroup__list fgroup__list--always"));
-  const lines = [...contact.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((match) => match[1].replace(/<[^>]*>/g, ""));
-  assert.deepEqual(
-    lines,
-    [data.site.contact.email, data.site.contact.hours, data.site.contact.city].filter(Boolean),
-    "the Contact column invents or drops a fact",
-  );
+  /* Location belongs only in the bottom bar, not a fifth contact column. */
+  assert.ok(footer.includes(`>${data.site.contact.city}</span>`), "the location is missing from the bottom bar");
+  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, 4, "the footer has an unexpected contact column");
   assert.equal(/\(mailto:|tel:/.test(footer), Boolean(data.site.contact.email), "the footer publishes an address the record does not hold");
 
   /* Social: an unset profile is not a link, so the row carries exactly as many
@@ -545,9 +534,8 @@ test("the footer states only what the house can stand behind", () => {
   );
 
   /* Newsletter: present, because the design has it; explicitly unavailable. */
-  assert.ok(footer.includes('class="nform is-unavailable nform--dark"'), "the newsletter form is no longer marked unavailable");
-  assert.equal((footer.match(/ disabled=""/g) ?? []).length, 2, "the newsletter input and its button must both be disabled");
-  assert.ok(footer.includes("opens once the subscription service is connected"), "the newsletter no longer explains itself");
+  assert.ok(footer.includes("The Pratikshya Circle: opening soon"), "the unavailable newsletter is not represented by the compact opening-soon line");
+  assert.doesNotMatch(footer, /class="nform is-unavailable/, "the dead newsletter input is still rendered");
 
   /* Copyright: the house's own line. */
   assert.match(footer, /© \d{4} PRATIKSHYA FASHION\. All rights reserved\./);
