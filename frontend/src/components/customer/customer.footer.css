@@ -1,0 +1,447 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   customer.footer.css — PRATIKSHYA FASHION · the premium storefront footer.
+
+   The house's own sheet for the footer surface, in the port's conventions:
+   every selector scoped under `.pf-root`, every token read from the design's
+   token block (customer.css), no global rule, no host class. `customer.css`
+   stays byte-for-byte the transform of the design's seven sheets — which is why
+   this surface lives beside it rather than inside it, exactly as the checkout,
+   account, order, listing, wishlist and AI sheets do.
+
+   The reference artwork is a single staged plate:
+   `/design/pratikshya-footer-background.webp` (deep burgundy silk, botanical
+   line art upper-left, gold lotus off the right edge, silk waves in both lower
+   corners). Its luminance is shaped to the reference's — a lit top band, a
+   darker middle, the darkest tone at the bottom edge — and the two CSS glows
+   above it carry the warm top the plate alone cannot. Everything else is drawn
+   in CSS or inline SVG.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pf-root .footer{
+  /* The reference's palette, expressed with the port's own burgundy family. */
+  --ft-wine: #26000d;
+  --ft-burgundy: #3b0616;
+  --ft-night: #1b0008;
+  --ft-gold: #b98a48;
+  --ft-gold-soft: rgba(205, 157, 91, 0.42);
+  --ft-gold-line: rgba(205, 157, 91, 0.26);
+  --ft-champagne: #f1cc8e;
+  --ft-ivory: #f7eee7;
+  --ft-muted: #c6adb2;
+  --ft-panel: rgba(88, 22, 38, 0.42);   /* measured: the reference's panel fill is #461622 over the wine */
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--ft-ivory);
+  background-color: var(--ft-wine);
+  /* Five layers, topmost first: a legibility veil, a warm lift along the top and
+     the two corner glows the reference carries up there, then the staged plate.
+     The veil is
+     lightest where the reference is brightest — its top band, ~#4D0B1D — and
+     heaviest under the legal bar, where the reference falls to ~#1C0E0E. */
+  background-image:
+    linear-gradient(180deg, rgba(24, 0, 8, 0.14) 0%, rgba(27, 0, 8, 0.06) 22%, rgba(27, 0, 8, 0.28) 58%, rgba(18, 0, 6, 0.80) 100%),
+    linear-gradient(180deg, rgba(96, 26, 42, 0.42) 0%, rgba(96, 26, 42, 0) 26%, rgba(96, 26, 42, 0) 100%),
+    radial-gradient(78% 58% at 6% -8%, rgba(150, 50, 70, 0.62) 0%, rgba(150, 50, 70, 0) 78%),
+    radial-gradient(60% 50% at 97% 2%, rgba(146, 48, 66, 0.5) 0%, rgba(146, 48, 66, 0) 80%),
+    url("/design/pratikshya-footer-background.webp");
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: cover, 100% 100%, 100% 100%, 100% 100%, cover;
+  background-position: center bottom, left top, left top, right top, center bottom;
+  /* A hairline of champagne at the very top, as the reference has. */
+  box-shadow: inset 0 1px 0 rgba(241, 204, 142, 0.14);
+}
+/* The two navigation columns sit over the middle of the plate, which is where
+   the artwork glows brightest; one soft radial scrim puts the contrast back
+   where the small text needs it without dimming the reference's lit top band. */
+.pf-root .footer::before{
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(115% 135% at 50% 52%, rgba(19, 0, 6, 0.40) 0%, rgba(19, 0, 6, 0.06) 46%, rgba(19, 0, 6, 0.30) 100%);
+}
+.pf-root .footer > *{ position: relative; z-index: 1; }
+
+/* ── the compact footer the design's sheet still describes ──────────────────
+   `customer.css` is byte-for-byte the transform of the design's seven sheets —
+   it may not be edited — and it carries rules for the retired layout: an
+   underlined link, a dimmed hover, an ivory focus ring, a left rule and a
+   40px pad on the groups, a 5px margin under every link, a second border above
+   the legal bar. Each is answered here, property by property, for exactly the
+   selectors this surface reuses, so the two sheets compose instead of fighting.
+   The touch-target rule the design added for small screens (a 44px line for
+   every footer link) is deliberately NOT neutralised: it is the right answer
+   for the reference's own "comfortably clickable" requirement. */
+.pf-root .footer a{ color: var(--ft-ivory); text-decoration: none; transition: color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
+.pf-root .footer a:hover{ opacity: 1; }
+.pf-root .footer :focus-visible,
+.pf-root .footer a:focus-visible{ outline: 2px solid var(--ft-champagne); outline-offset: 3px; border-radius: 2px; }
+.pf-root .footer__groups{ padding-left: 0; border-left: 0; align-content: stretch; }
+
+/* ═══ 1 · the newsletter panel ═══════════════════════════════════════════════ */
+
+.pf-root .fnews{
+  margin: clamp(20px, 3vw, 40px) auto 0;
+  width: min(100% - clamp(24px, 4.6vw, 88px), 1320px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 0.92fr);
+  align-items: center;
+  gap: clamp(16px, 2.4vw, 34px);
+  padding: clamp(16px, 1.7vw, 24px) clamp(18px, 2.4vw, 34px);
+  border: 1px solid var(--ft-gold-soft);
+  border-radius: clamp(28px, 4vw, 58px);
+  background:
+    linear-gradient(120deg, rgba(241, 204, 142, 0.07) 0%, rgba(241, 204, 142, 0) 42%),
+    var(--ft-panel);
+  box-shadow:
+    0 0 0 1px rgba(27, 0, 8, 0.32),
+    0 26px 60px -44px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(241, 204, 142, 0.12);
+  backdrop-filter: blur(1.5px);
+}
+.pf-root .fnews__lead{ display: flex; align-items: center; gap: clamp(14px, 1.6vw, 22px); min-width: 0; }
+.pf-root .fnews__mark{
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(38px, 3.4vw, 48px);
+  height: clamp(38px, 3.4vw, 48px);
+  color: var(--ft-champagne);
+}
+.pf-root .fnews__mark svg{ width: 100%; height: auto; filter: drop-shadow(0 0 10px rgba(241, 204, 142, 0.34)); }
+.pf-root .fnews__copy{ min-width: 0; }
+.pf-root .fnews__eyebrow{
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ft-gold);
+}
+.pf-root .fnews__title{
+  margin: 6px 0 0;
+  font-family: var(--f-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 2.1vw, 33px);
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+  color: var(--ft-ivory);
+}
+.pf-root .fnews__note{
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ft-muted);
+  max-width: 46ch;
+}
+
+/* The hairline between the two halves carries the reference's sparkle. */
+.pf-root .fnews__rule{ position: relative; width: 1px; align-self: stretch; margin-block: 4px; background: linear-gradient(180deg, transparent, var(--ft-gold-line) 22%, var(--ft-gold-line) 78%, transparent); }
+.pf-root .fnews__rule .sparkle{ position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--ft-champagne); }
+
+.pf-root .fnews__form{ min-width: 0; }
+.pf-root .fnews__field{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 5px 5px 5px 16px;
+  border: 1px solid var(--ft-gold-soft);
+  border-radius: 999px;
+  background: rgba(23, 1, 8, 0.30);
+  transition: border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+.pf-root .fnews__field:focus-within{ border-color: rgba(241, 204, 142, 0.78); background: rgba(23, 1, 8, 0.44); }
+.pf-root .fnews.is-error .fnews__field{ border-color: rgba(226, 126, 96, 0.72); }
+.pf-root .fnews__icon{ flex: none; color: var(--ft-champagne); opacity: 0.92; }
+.pf-root .fnews input{
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 10px 0;
+  font-family: var(--f-sans);
+  font-size: 14px;
+  color: var(--ft-ivory);
+  outline: none;
+}
+.pf-root .fnews input::placeholder{ color: rgba(198, 173, 178, 0.86); }
+.pf-root .fnews__submit{
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--f-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #350614;
+  background: linear-gradient(135deg, #fbe6bf 0%, #f1cc8e 46%, #dfae6c 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 10px 22px -14px rgba(0, 0, 0, 0.8);
+  transition: filter var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+.pf-root .fnews__submit:hover:not(:disabled){ filter: brightness(1.06) saturate(1.04); }
+.pf-root .fnews__submit:active:not(:disabled){ transform: translateY(1px); }
+.pf-root .fnews__submit:disabled{ cursor: progress; filter: saturate(0.6) brightness(0.9); }
+.pf-root .fnews__status{
+  min-height: 20px;
+  margin: 9px 4px 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ft-muted);
+}
+.pf-root .fnews__status.is-error{ color: #f0a58f; }
+.pf-root .fnews__status.is-queued{ color: var(--ft-champagne); }
+.pf-root .fnews__status.is-success{ color: var(--ft-champagne); }
+
+/* ═══ 2 · the main content: brand · navigation · care ═══════════════════════ */
+
+.pf-root .footer__main{
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) auto minmax(0, 3.1fr) auto minmax(0, 1fr);
+  column-gap: clamp(14px, 1.9vw, 28px);
+  align-items: start;
+  padding-top: clamp(30px, 3.4vw, 52px);
+  padding-bottom: clamp(26px, 3vw, 44px);
+}
+
+/* The vertical hairlines, each with its four-point sparkle. */
+.pf-root .footer__rule{ position: relative; width: 1px; align-self: stretch; margin-top: 6px; background: linear-gradient(180deg, transparent, var(--ft-gold-line) 14%, var(--ft-gold-line) 86%, transparent); }
+.pf-root .footer__rule .sparkle{ position: absolute; left: 50%; bottom: clamp(-2px, -0.2vw, 0px); transform: translateX(-50%); color: var(--ft-champagne); }
+
+/* ── the brand block ── */
+.pf-root .footer__brand{ min-width: 0; color: var(--ft-ivory); }
+.pf-root .footer__lockup{ display: inline-flex; align-items: center; gap: clamp(12px, 1.4vw, 18px); }
+.pf-root .footer__mark-logo{ display: block; flex: none; width: auto; height: clamp(66px, 5.8vw, 88px); }
+.pf-root .footer__lockup-text{ display: flex; flex-direction: column; align-items: stretch; line-height: 1; }
+.pf-root .footer__word{
+  font-family: var(--f-serif);
+  font-size: clamp(21px, 1.85vw, 27px);
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  margin-right: -0.24em;
+  color: var(--ft-ivory);
+}
+.pf-root .footer__sub{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 7px;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: var(--ft-champagne);
+}
+.pf-root .footer__sub::before, .pf-root .footer__sub::after{ content: ""; flex: 1; height: 1px; background: currentColor; opacity: 0.55; }
+.pf-root .footer__sub::after{ margin-left: -0.6em; }
+.pf-root .footer__lede{
+  margin: clamp(16px, 1.7vw, 22px) 0 0;
+  font-family: var(--f-serif);
+  font-size: clamp(23px, 2vw, 29px);
+  line-height: 1.12;
+  color: var(--ft-ivory);
+}
+.pf-root .footer__lede em{ font-style: italic; font-weight: 500; color: var(--ft-champagne); }
+.pf-root .footer__desc{
+  margin: clamp(10px, 1.1vw, 14px) 0 0;
+  max-width: 42ch;
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: var(--ft-muted);
+}
+
+/* ── the social rail ── */
+.pf-root .footer__social{ display: flex; flex-wrap: wrap; gap: 10px; margin: clamp(18px, 2vw, 26px) 0 0; padding: 0; list-style: none; }
+.pf-root .footer__social li{ display: flex; }
+.pf-root .footer__social .fsocial{
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ft-gold-soft);
+  border-radius: 50%;
+  color: var(--ft-champagne);
+  background: rgba(241, 204, 142, 0.05);
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.pf-root .footer__social a.fsocial:hover{ background: linear-gradient(135deg, #fbe6bf, #e2b478); border-color: transparent; color: #350614; }
+.pf-root .footer__social .fsocial[aria-disabled="true"]{ opacity: 0.66; cursor: default; }
+.pf-root .footer__social .fsocial svg{ width: 19px; height: 19px; }
+
+/* ── the four navigation columns ── */
+.pf-root .footer__groups{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 clamp(12px, 1.6vw, 26px); min-width: 0; }
+.pf-root .fgroup{ min-width: 0; }
+.pf-root .fgroup__title{
+  margin: 0;
+  font-family: var(--f-sans);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ft-champagne);
+}
+.pf-root .fgroup__title::after{ content: ""; display: block; width: 34px; height: 1.5px; margin-top: 9px; background: var(--ft-gold); opacity: 0.8; }
+.pf-root .fgroup__list{ display: flex; flex-direction: column; gap: 8px; margin: clamp(15px, 1.5vw, 20px) 0 0; padding: 0; list-style: none; }
+.pf-root .fgroup__list li{ margin-bottom: 0; }
+.pf-root .fgroup__list a{
+  display: inline-block;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: rgba(247, 238, 231, 0.84);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.pf-root .fgroup__list a:hover{ color: var(--ft-champagne); text-decoration: underline; text-decoration-color: rgba(241, 204, 142, 0.55); opacity: 1; }
+
+/* ── the customer-service column ── */
+.pf-root .footer__care{ display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 22px); min-width: 0; padding-top: 2px; }
+.pf-root .fcare{ display: grid; grid-template-columns: 25px minmax(0, 1fr); column-gap: clamp(9px, 1vw, 13px); align-items: start; }
+.pf-root .fcare__icon{ color: var(--ft-champagne); opacity: 0.95; margin-top: 1px; }
+.pf-root .fcare__body{ min-width: 0; }
+.pf-root .fcare__title{ margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.3; color: var(--ft-ivory); }
+.pf-root .fcare__text{ margin: 3px 0 0; font-size: 13px; line-height: 1.45; color: var(--ft-muted); }
+.pf-root .footer__care .fcare__link{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ft-champagne);
+  text-decoration: underline;
+  text-decoration-color: rgba(241, 204, 142, 0.5);
+  text-underline-offset: 3px;
+}
+.pf-root .footer__care .fcare__link:hover{ color: #fbe6bf; text-decoration-color: currentColor; }
+
+/* ═══ 3 · the legal and brand bar ═══════════════════════════════════════════ */
+
+/* One hairline across the whole width, then the bar inside the container. */
+.pf-root .footer__bar{ position: relative; border-top: 1px solid var(--ft-gold-line); background: linear-gradient(180deg, rgba(19, 0, 6, 0.28), rgba(19, 0, 6, 0.58)); }
+.pf-root .footer__bottom{
+  border-top: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px clamp(14px, 2vw, 28px);
+  padding-top: clamp(14px, 1.5vw, 20px);
+  padding-bottom: clamp(18px, 2vw, 30px);
+  font-size: 12.5px;
+  color: var(--ft-muted);
+}
+.pf-root .footer__copyright{ margin: 0; letter-spacing: 0.01em; }
+.pf-root .footer__tagline{ display: flex; align-items: center; flex: 1 1 320px; gap: clamp(10px, 1.4vw, 18px); min-width: 0; }
+.pf-root .footer__tagline::before, .pf-root .footer__tagline::after{ content: ""; flex: 1 1 0; height: 1px; background: linear-gradient(90deg, transparent, var(--ft-gold-line) 40%, var(--ft-gold-soft)); }
+.pf-root .footer__tagline::after{ background: linear-gradient(90deg, var(--ft-gold-soft), var(--ft-gold-line) 60%, transparent); }
+.pf-root .footer__tagline-inner{ display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.pf-root .footer__tagline-mark{ color: var(--ft-champagne); opacity: 0.9; }
+.pf-root .footer__tagline-text{
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 14.5px;
+  letter-spacing: 0.02em;
+  color: rgba(241, 204, 142, 0.92);
+}
+.pf-root .footer__tagline-text span{ padding-inline: 6px; opacity: 0.55; }
+
+/* payment marks + location share the right-hand side of the row */
+.pf-root .footer__assurance{ display: flex; align-items: center; gap: clamp(12px, 1.6vw, 22px); margin-left: auto; }
+/* `list-style: none` strips the list semantics from VoiceOver; `role="list"`
+   puts them back, so the chip row is announced as the named group it is. */
+.pf-root .footer__payments{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+/* The reference's chips are light: a near-white tile with the instrument's own
+   mark inside, which is the one place on this surface that is not dark-on-gold. */
+.pf-root .paymark{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-width: 38px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #f7f4f2;
+  box-shadow: 0 1px 2px rgba(12, 0, 4, 0.35);
+  font-family: var(--f-sans);
+}
+.pf-root .paymark__art{ display: inline-flex; align-items: center; justify-content: center; }
+.pf-root .paymark__art svg{ display: block; height: 13px; width: auto; }
+.pf-root .paymark__art text{ font-family: var(--f-sans); }
+.pf-root .footer__place{ display: inline-flex; align-items: center; gap: clamp(12px, 1.6vw, 22px); padding-left: clamp(12px, 1.6vw, 22px); border-left: 1px solid var(--ft-gold-line); }
+
+/* ═══ responsive ═══════════════════════════════════════════════════════════ */
+
+/* Wide-but-not-huge desktop: the columns breathe a little tighter. */
+@media (max-width: 1343px){
+  .pf-root .footer__main{ grid-template-columns: minmax(0, 2fr) auto minmax(0, 2.9fr) auto minmax(0, 0.9fr); }
+  .pf-root .footer__groups{ gap: 0 12px; }
+}
+
+/* Tablet: the care column drops under the brand, navigation keeps four lanes. */
+@media (max-width: 1199px){
+  .pf-root .footer__main{ grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); row-gap: clamp(26px, 3.4vw, 40px); }
+  .pf-root .footer__brand{ grid-column: 1; }
+  .pf-root .footer__care{ grid-column: 2; }
+  .pf-root .footer__rule{ display: none; }
+  .pf-root .footer__groups{ grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: clamp(14px, 2.4vw, 26px); }
+  .pf-root .fnews{ grid-template-columns: minmax(0, 1fr); }
+  .pf-root .fnews__rule{ display: none; }
+  .pf-root .fnews__form{ max-width: 640px; }
+}
+
+/* Mobile: everything stacks, the artwork slides to the bottom edge. */
+@media (max-width: 899px){
+  .pf-root .footer{ background-size: cover, 100% 100%, 100% 100%, 100% 100%, 165% auto; background-position: center bottom, left top, left top, right top, 62% bottom; }
+  .pf-root .footer__bottom{ justify-content: center; text-align: center; }
+  .pf-root .footer__assurance{ margin-left: 0; }
+}
+
+@media (max-width: 767px){
+  .pf-root .fnews{ padding: 18px 16px 16px; border-radius: 26px; text-align: center; }
+  .pf-root .fnews__lead{ flex-direction: column; gap: 10px; }
+  .pf-root .fnews__note{ margin-inline: auto; }
+  .pf-root .fnews__field{ flex-wrap: wrap; padding-left: 14px; border-radius: 20px; }
+  .pf-root .fnews__field .fnews__icon{ order: -1; }
+  .pf-root .fnews input{ flex: 1 1 120px; padding: 12px 0; font-size: 15px; }
+  .pf-root .fnews__submit{ width: 100%; justify-content: center; height: 46px; }
+  .pf-root .footer__main{ grid-template-columns: minmax(0, 1fr); }
+  .pf-root .footer__brand, .pf-root .footer__care{ grid-column: 1; }
+  .pf-root .footer__groups{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px clamp(12px, 3vw, 22px); }
+  .pf-root .fgroup__list li{ margin-bottom: 0; }
+.pf-root .fgroup__list a{ font-size: 14.5px; padding-block: 3px; }
+  .pf-root .footer__care{ gap: 18px; }
+  .pf-root .footer__bottom{ flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px 18px; }
+  .pf-root .footer__tagline{ order: 3; flex-basis: 100%; }
+  .pf-root .footer__assurance{ order: 4; flex-wrap: wrap; justify-content: center; }
+  .pf-root .footer__place{ border-left: 0; padding-left: 0; }
+}
+
+@media (max-width: 479px){
+  .pf-root .footer__word{ font-size: 19px; letter-spacing: 0.2em; margin-right: -0.2em; }
+  .pf-root .footer__mark-logo{ height: 58px; }
+  .pf-root .footer__groups{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 10px; }
+  .pf-root .fsocial{ width: 44px; height: 44px; }
+}
+
+/* Very wide: the plate is authored at 1584×672, so let it sit rather than stretch. */
+@media (min-width: 1700px){
+  .pf-root .footer{ background-size: cover, 100% 100%, 100% 100%, 100% 100%, cover; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .pf-root .footer a,
+  .pf-root .fnews__field,
+  .pf-root .fnews__submit,
+  .pf-root .fsocial{ transition: none; }
+  .pf-root .fnews__submit:active:not(:disabled){ transform: none; }
+}

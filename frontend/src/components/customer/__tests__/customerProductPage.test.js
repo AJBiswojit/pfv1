@@ -239,9 +239,14 @@ test("a catalogue that has not arrived renders the design's loading frame, and i
   const markup = fresh.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.match(markup, /Opening this piece/, "no loading state");
   assert.match(markup, /Fetching the catalogue\./);
-  assert.equal(/Phase 6 Silk Saree/.test(markup), false, "a piece appeared before the catalogue did");
-  assert.equal(/₹|4,200|4200/.test(markup), false, "a price appeared before the catalogue did");
-  assert.equal(/pdp__add/.test(markup), false, "a buy button appeared before the catalogue did");
+  /* The claim is about the PAGE, so the page is what is read: the shell's footer
+     quotes the store's own free-delivery threshold, and that number is the
+     checkout's rule rather than a price the page invented. */
+  const page = markup.slice(markup.indexOf("<main"), markup.lastIndexOf("</main>") + 7);
+  assert.ok(page.length > 200, "the page's own markup was not found to read");
+  assert.equal(/Phase 6 Silk Saree/.test(page), false, "a piece appeared before the catalogue did");
+  assert.equal(/₹|4,200|4200/.test(page), false, "a price appeared before the catalogue did");
+  assert.equal(/pdp__add/.test(page), false, "a buy button appeared before the catalogue did");
 });
 
 test("a half-loaded catalogue never claims a piece does not exist", () => {
