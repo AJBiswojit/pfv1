@@ -556,7 +556,10 @@ test("with the switch on, a guest asking for a guarded screen paints no account 
     const markup = on.render(path);
 
     assert.match(markup, /class="pf-root"/, `${path} was not handed to the port`);
-    assert.equal(/pf-account/.test(markup), false, `${path} painted account chrome on the server render — a guest must be shown none`);
+    assert.doesNotMatch(markup, /class="info container account pf-account"|pf-account__(?:layout|content|user|side)/,
+      `${path} painted private account content on the server render`);
+    assert.match(markup, /<main id="main" tabindex="-1" aria-label="Account workspace"><\/main>/,
+      `${path} must leave the guarded page slot empty, even inside the viewport presentation shell`);
     assert.equal(/pf-account__nav/.test(markup), false, `${path} showed account chrome to a guest`);
     assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the production customer header as well`);
   }
@@ -636,7 +639,7 @@ test("a screen may title itself, and the frame marks the tab and the crumb for t
   assert.equal(tabs.length, 7, `the navigation carries ${tabs.length} entries on a section page`);
   assert.deepEqual(tabs.filter((anchor) => anchor.ariaCurrent === "page").map((anchor) => anchor.href), ["/account/orders"],
     "the orders tab is not the current tab");
-  assert.deepEqual(hrefs(markup).slice(0, 2), ["/", "/account"], "the breadcrumb trail is not home → account");
+  assert.deepEqual(hrefs(markup.match(/<nav class="crumbs"[^>]*>[\s\S]*?<\/nav>/)[0]), ["/", "/account"], "the breadcrumb trail is not home → account");
   assert.match(markup, /<span aria-current="page">Orders<\/span>/, "the breadcrumb's last step is not the current page");
 });
 
@@ -928,7 +931,7 @@ test("The customer storefront account screens keep one primary landmark in the a
     const customerMarkup = on.customerPage(React.createElement(Component, null), path);
     assert.equal(count(customerMarkup, "<main"), 1, `${path} in storefront mode did not render exactly one <main> opening tag`);
     assert.equal(count(customerMarkup, "</main>"), 1, `${path} in storefront mode did not render exactly one </main> closing tag`);
-    assert.match(customerMarkup, /<main id="main">/, `${path} in storefront mode lost the outer <main id="main"> landmark`);
+    assert.match(customerMarkup, /<main id="main" tabindex="-1" aria-label="Account workspace">/, `${path} in storefront mode lost the outer <main id="main"> landmark`);
     assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(customerMarkup), false, `${path} in storefront mode nested a <main> inside <main id="main">`);
     assert.match(customerMarkup, /class="skip-link"/, `${path} in storefront mode lost the storefront layout shell`);
     assert.match(customerMarkup, /aria-label="Account navigation"/, `${path} in storefront mode lost the AccountShell navigation`);

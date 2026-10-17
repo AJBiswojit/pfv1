@@ -91,6 +91,16 @@ const SHELL_FILES = [
       ["import ScrollToTop from '../ui/ScrollToTop.jsx';", "import ScrollToTop from '../ui/ScrollToTop.jsx';\nimport { isAccountAreaPath } from '../../utils/accountLayout.js';"],
       ["export default function Layout({ children }) {", "export default function Layout({ children }) {\n  const accountArea = isAccountAreaPath(useLocation().pathname);"],
       ["      <Footer />", "      {!accountArea && <Footer />}"],
+      ["import { isAccountAreaPath } from '../../utils/accountLayout.js';", "import { isAccountAreaPath } from '../../utils/accountLayout.js';\nimport useAccountScrollReset from '../../hooks/useAccountScrollReset.js';"],
+      [
+        "  const accountArea = isAccountAreaPath(useLocation().pathname);",
+        "  const accountArea = isAccountAreaPath(useLocation().pathname);\n  const scrollRef = useAccountScrollReset({ enabled: accountArea, manageRestoration: true });\n  const header = <><AnnouncementBar /><Header /></>;\n  const focusAccountContent = (event) => {\n    const target = scrollRef.current?.querySelector('.pf-account__content') ?? scrollRef.current;\n    if (target) { event.preventDefault(); target.focus({ preventScroll: true }); }\n  };",
+      ],
+      ["    <>", "    <div className={accountArea ? 'pf-account-app' : undefined}>"],
+      ['      <a href="#main" className="skip-link">Skip to content</a>', '      <a href="#main" className="skip-link" onClick={accountArea ? focusAccountContent : undefined}>Skip to content</a>'],
+      ['      <AnnouncementBar />\n      <Header />', '      {accountArea ? <div className="pf-account-app__header">{header}</div> : header}'],
+      ['      <main id="main">', `      <main id="main" ref={scrollRef} tabIndex={accountArea ? -1 : undefined} aria-label={accountArea ? 'Account workspace' : undefined}>`],
+      ["    </>", "    </div>"],
     ],
   ],
   [
@@ -172,7 +182,13 @@ test("the shell asks the host for nothing: no host classes, no application impor
         `${file} imports ${specifier} — the shell may only depend on the port's own modules and the four libraries the design itself uses`,
       );
     }
-    assert.ok(!/pf-/.test(source), `${file} mentions a host class`);
+    const prefixed = [...new Set([...source.matchAll(/\bpf-[a-z0-9_-]+/g)].map((match) => match[0]))].sort();
+    assert.deepEqual(prefixed, file === "components/layout/Layout.jsx"
+      ? ["pf-account-app", "pf-account-app__header", "pf-account__content"]
+      : [], `${file} mentions a class outside the customer workspace's exact allowlist`);
+    for (const className of prefixed) {
+      assert.match(read(`${PORT}/customer.account.css`), new RegExp(`\\.${className}\\b`), `${className} must be owned by customer CSS, not the host`);
+    }
   }
 });
 
