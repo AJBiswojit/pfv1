@@ -364,7 +364,7 @@ const hrefs = (markup) => anchors(markup).map((anchor) => anchor.href);
 const linksTo = (markup, href) => anchors(markup).filter((anchor) => anchor.href === href);
 const tiles = (markup) =>
   anchors(markup)
-    .filter((anchor) => /class="account__tile"/.test(anchor.attributes))
+    .filter((anchor) => /class="account__tile pf-account__stat"/.test(anchor.attributes))
     .map((anchor) => ({
       href: anchor.href,
       figure: (anchor.inner.match(/<strong>([^<]*)<\/strong>/) ?? [])[1] ?? null,
@@ -883,13 +883,15 @@ test("every import the page declares is a module of this repository", () => {
   assert.ok(specifiers.length >= 15, `expected the page's imports, found ${specifiers.length}`);
 
   for (const specifier of specifiers) {
-    if (specifier === "react") continue;
+    if (specifier === "react" || specifier === "lucide-react") continue;
     assert.match(specifier, /^\./, `the page imports an external package: ${specifier}`);
     assert.equal(existsSync(join(ROOT, "src/components/customer/pages/account", specifier)), true,
       `${specifier} does not resolve from the page`);
   }
-  /* React is the only platform import, and no new dependency is named. */
-  assert.equal(specifiers.filter((specifier) => !specifier.startsWith(".")).join(","), "react");
+  /* Icons use the storefront's existing dependency, never a new package. */
+  assert.deepEqual(specifiers.filter((specifier) => !specifier.startsWith(".")), ["react", "lucide-react"]);
+  const dependencies = JSON.parse(read("package.json")).dependencies;
+  assert.ok(dependencies["lucide-react"], "icons must use an existing installed dependency");
 });
 
 test("the tab title and the noindex marker are the production dashboard's own", () => {
@@ -1975,3 +1977,16 @@ test("a read in flight and a failed read are stated, and neither can reach the a
   assert.match(text, /\) : ordersError \? \(\n/, "a failed refresh could still be dressed as all clear");
 });
 
+
+
+test("the compact overview gives real summary values accessible labels and icons without repeating the signed-in email", () => {
+  emptySession();
+  const markup = app.render();
+  assert.doesNotMatch(markup, /Signed in as/);
+  assert.match(markup, /<h1 class="display pf-account__name">Overview<\/h1>/);
+  assert.equal(tiles(markup).length, 3);
+  for (const label of ["Saved pieces", "Orders", "Items in bag"]) {
+    assert.match(markup, new RegExp(`aria-label="${label}: 0"`));
+  }
+  assert.equal((markup.match(/pf-account__stat-icon/g) ?? []).length, 3);
+});

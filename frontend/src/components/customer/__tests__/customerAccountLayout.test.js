@@ -226,3 +226,27 @@ test('stats, AI, detail and commerce cards fill the fluid width using safe auto-
   const orders = parseCssRules(readFileSync(new URL('../customer.orders.css', import.meta.url), 'utf8'));
   assert.ok(hasDeclaration(orders.filter((entry) => entry.selector === '.pf-root .pf-account__order-list'), 'grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr))'));
 });
+
+test('premium shared components use the existing palette/fonts and preserve distinct focus, loading and error states', () => {
+  const sheet = readFileSync(new URL('../customer.account.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(sheet.replace(/\/\*[\s\S]*?\*\//g, ''), /#[\da-f]{3,8}\b|\brgba?\(|\bhsla?\(/i, 'no new colors');
+  const tokens = new Set([...readFileSync(new URL('../customer.css', import.meta.url), 'utf8').matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1]));
+  for (const [, token] of sheet.matchAll(/var\((--[\w-]+)\)/g)) assert.ok(tokens.has(token), token);
+  assert.ok(hasDeclaration(rule('.pf-account__pagehead .pf-account__name'), 'font-size: clamp(24px, 1.8vw, 28px)'));
+  assert.ok(hasDeclaration(rule('.pf-account__stat:focus-visible'), 'outline: 2px solid var(--c-espresso)'));
+  assert.ok(hasDeclaration(rule('.pf-account__nav-link.is-active'), 'background: var(--c-bg-3)'));
+  assert.ok(rule('.empty[aria-busy="true"]::before').length);
+  assert.ok(rule('.empty[role="alert"]').length);
+  assert.ok(hasDeclaration(rule('.pf-account__ai-cta'), 'grid-template-rows: 44px minmax(32px, auto)'));
+  for (const entry of rule('.pf-account__drawer', 'prefers-reduced-motion')) {
+    assert.doesNotMatch(entry.declarations, /transform:\s*none/, 'reduced motion must never reveal a closed drawer');
+  }
+});
+
+test('the AI conversation grows inside the workspace/document, not a nested fixed-height scroller', () => {
+  const sheet = parseCssRules(readFileSync(new URL('../customer.ai.css', import.meta.url), 'utf8'));
+  const logs = sheet.filter((entry) => entry.selector === '.pf-root .pf-ai__log');
+  assert.ok(hasDeclaration(logs, 'height: auto'));
+  assert.ok(hasDeclaration(logs, 'overflow: visible'));
+  for (const entry of logs) assert.doesNotMatch(entry.declarations, /height:\s*5[26]0px|overflow-y:\s*(auto|scroll)/);
+});

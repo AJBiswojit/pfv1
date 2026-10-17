@@ -78,17 +78,24 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 14px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--c-ink-3);
-  transition: color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast), border-color var(--t-fast);
+}
+
+.pf-root .pf-account__nav-link svg {
+  flex: none;
 }
 
 .pf-root .pf-account__nav-link:hover {
   color: var(--c-ink);
+  background: var(--c-bg-3);
 }
 
 .pf-root .pf-account__nav-link:focus-visible {
@@ -98,6 +105,8 @@
 
 .pf-root .pf-account__nav-link.is-active {
   color: var(--c-espresso);
+  background: var(--c-bg-3);
+  border-color: var(--c-line);
 }
 
 .pf-root .pf-account__nav-link.is-active::after {
@@ -111,10 +120,12 @@
 }
 
 .pf-root .pf-account__nav-count {
-  min-width: 18px;
-  padding: 1px 5px;
+  min-width: 22px;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 12px;
   text-align: center;
-  background: var(--c-bg-2);
+  background: var(--c-paper);
   color: var(--c-espresso);
   font-size: 10px;
   font-weight: 700;
@@ -144,8 +155,11 @@
    is not prose. */
 
 .pf-root .pf-account__body .pf-account__lead {
-  margin-bottom: 24px;
-  color: var(--c-ink);
+  margin: 16px 0;
+  font-family: var(--f-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-ink-2);
 }
 
 .pf-root .pf-account__body .pf-account__section {
@@ -187,6 +201,174 @@
   max-width: 760px;
 }
 
+.pf-root .pf-account__body .shop__head .label {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.pf-root .pf-account__body .shop__title {
+  font-size: clamp(22px, 1.6vw, 24px);
+  line-height: 1.15;
+}
+
+.pf-root .pf-account__body .pf-form,
+.pf-root .pf-account__card,
+.pf-root .pf-account__address,
+.pf-root .pf-account__offer,
+.pf-root .pf-account__return,
+.pf-root .pf-account__strip {
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+  box-shadow: var(--shadow-soft);
+}
+
+.pf-root .pf-account__body .pf-form {
+  margin-top: 16px;
+  padding: clamp(16px, 1.6vw, 24px);
+}
+
+.pf-root .pf-account__body .account__tile.pf-account__stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 108px;
+  padding: 18px 20px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+
+.pf-root .pf-account__stat strong {
+  grid-column: 1;
+  font-size: 36px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-ink);
+}
+
+.pf-root .pf-account__stat > span {
+  grid-column: 1;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  color: var(--c-ink-2);
+}
+
+.pf-root .pf-account__stat-icon {
+  grid-area: 1 / 2 / 3 / 3;
+  align-self: start;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-bg-3);
+  color: var(--c-espresso);
+}
+
+.pf-root .pf-account__body .account__tile.pf-account__stat:hover {
+  border-color: var(--c-line-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.pf-root .pf-account__stat:focus-visible {
+  outline: 2px solid var(--c-espresso);
+  outline-offset: 2px;
+}
+
+.pf-root .pf-account .btn {
+  min-height: 44px;
+  max-width: 100%;
+  padding-inline: 18px;
+  border-radius: 8px;
+  text-align: center;
+  white-space: normal;
+  letter-spacing: 0.12em;
+}
+
+.pf-root .pf-account .btn--ghost:focus-visible {
+  color: var(--c-bg);
+}
+
+.pf-root .pf-account .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pf-root .pf-account .btn:disabled::before {
+  transform: scaleX(0);
+}
+
+.pf-root .pf-account__body .empty {
+  min-height: 120px;
+  margin-top: 12px;
+  padding: 20px;
+  gap: 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+}
+
+.pf-root .pf-account__body .empty .empty__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.pf-root .pf-account__body .empty p:not(.empty__title) {
+  margin: 0 0 4px;
+  max-width: 58ch;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.pf-root .pf-account__body .empty[role="alert"] {
+  border-color: var(--c-line-strong);
+  border-inline-start: 3px solid var(--c-espresso);
+}
+
+.pf-root .pf-account__body .empty[aria-busy="true"]::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--c-line);
+  border-top-color: var(--c-espresso);
+  border-radius: 50%;
+  animation: pf-spin 0.9s linear infinite;
+}
+
+.pf-root .pf-account__group {
+  margin: 0 0 16px;
+  padding: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.pf-root .pf-account__check {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.pf-root .pf-account__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  accent-color: var(--c-espresso);
+}
+
+.pf-root .pf-account__check .pf-hint {
+  display: block;
+  margin-top: 4px;
+}
+
 /* ── the two intelligence entry points: production's own bands (its dark mirror
       panel and its assistant panel) drawn in the design's register — the design's
       eyebrow, its serif display and its button — each carrying the disclosure its
@@ -202,7 +384,11 @@
 .pf-root .pf-account__ai-entry {
   display: flex;
   flex-direction: column;
-  padding: clamp(22px, 2.6vw, 34px);
+  min-height: 288px;
+  padding: clamp(20px, 1.8vw, 28px);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
 }
 
 /* The mirror keeps production's dark band; the accent arrives as the design's
@@ -210,7 +396,12 @@
    design's paper so the two read as one pair, not two posters. */
 
 .pf-root .pf-account__ai-entry--mirror {
+  border-color: var(--c-night);
   background: var(--c-night);
+}
+
+.pf-root .pf-account__ai-entry--mirror .pf-account__ai-eyebrow {
+  color: var(--c-muted);
 }
 
 .pf-root .pf-account__ai-entry--assistant {
@@ -227,8 +418,9 @@
    rules give: an equal-specificity rule would win on import order alone. */
 
 .pf-root .pf-account__ai-entry .pf-account__ai-title {
-  margin: 12px 0 0;
-  font-size: var(--fs-display-s);
+  margin: 10px 0 0;
+  font-size: clamp(24px, 1.8vw, 28px);
+  line-height: 1.1;
 }
 
 .pf-root .pf-account__ai-entry--mirror .pf-account__ai-title {
@@ -251,18 +443,20 @@
 }
 
 .pf-root .pf-account__ai-cta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 18px;
+  display: grid;
+  grid-template-rows: 44px minmax(32px, auto);
+  justify-items: start;
+  align-items: start;
+  gap: 10px;
   margin-top: auto;
-  padding-top: 24px;
+  padding-top: 16px;
 }
 
 .pf-root .pf-account__ai-entry .pf-account__ai-note {
   margin: 0;
   font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
 }
 
 .pf-root .pf-account__ai-entry--mirror .pf-account__ai-note {
@@ -296,8 +490,9 @@
    separated by the design's hairline rather than a card. */
 
 .pf-root .pf-account__orders {
-  margin-top: 4px;
-  border-top: 1px solid var(--c-line);
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .pf-root .pf-account__order {
@@ -306,12 +501,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px 20px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--c-line);
+  padding: 16px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
 }
 
 .pf-root .pf-account__order .pf-account__order-id {
   font-size: 12px;
+  overflow-wrap: anywhere;
   letter-spacing: 0.06em;
   color: var(--c-ink);
   text-decoration: underline;
@@ -327,8 +525,9 @@
 
 .pf-root .pf-account__order-aside {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: 8px 16px;
 }
 
 .pf-root .pf-account__order .pf-account__order-total {
@@ -354,7 +553,11 @@
 }
 
 .pf-root .pf-account__actions {
-  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .pf-root .pf-account__body .pf-account__note {
@@ -375,7 +578,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__card .pf-account__card-label {
@@ -490,8 +692,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border: 1px solid transparent;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__address.is-default {
@@ -582,7 +782,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__offer .pf-account__offer-code {
@@ -631,7 +830,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__return .pf-account__return-id {
@@ -784,6 +982,28 @@
     gap: 8px;
   }
 
+  .pf-root .pf-account__body .account__tile.pf-account__stat {
+    min-height: 96px;
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .pf-root .pf-account__stat strong {
+    font-size: 30px;
+  }
+
+  .pf-root .pf-account__stat-icon {
+    width: 24px;
+    height: 24px;
+    padding: 5px;
+  }
+
+  .pf-root .pf-account__stat > span {
+    grid-column: 1 / -1;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
   .pf-root .pf-account__body .grid-4 {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
     gap: 12px;
@@ -856,11 +1076,14 @@
 
 .pf-root .pf-account__pagehead .label {
   margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
 }
 
 .pf-root .pf-account__pagehead .pf-account__name {
-  margin-top: 8px;
-  font-size: var(--fs-display-m);
+  margin-top: 6px;
+  font-size: clamp(24px, 1.8vw, 28px);
+  line-height: 1.12;
 }
 
 /* ── stationary desktop rail / mobile drawer ───────────────────────────── */
@@ -877,6 +1100,7 @@
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-paper);
+  box-shadow: var(--shadow-soft);
 }
 
 .pf-root .pf-account__user {
@@ -965,17 +1189,22 @@
 
 /* ── shared section links, horizontally scrollable below desktop ───────── */
 .pf-root .pf-account__tabs {
-  margin: 16px 0 0;
+  position: relative;
+  margin: 16px 0;
+  padding: 4px;
   overflow-x: auto;
+  scroll-padding-inline: 8px;
   scrollbar-width: thin;
   scrollbar-color: var(--c-muted) var(--c-paper);
-  border-bottom: 1px solid var(--c-line);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-bg-3);
 }
 
 .pf-root .pf-account__tabs-list {
   display: flex;
   align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   min-width: max-content;
 }
 
@@ -985,9 +1214,11 @@
   align-items: center;
   min-height: 44px;
   padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--c-ink-3);
@@ -1005,16 +1236,9 @@
 
 .pf-root .pf-account__tabs-link.is-active {
   color: var(--c-espresso);
-}
-
-.pf-root .pf-account__tabs-link.is-active::after {
-  content: '';
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 0;
-  height: 2px;
-  background: var(--c-espresso);
+  border-color: var(--c-line);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-header);
 }
 
 @media (min-width: 1024px) {
@@ -1239,7 +1463,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pf-root .pf-account__drawer,
-  .pf-root .pf-account__tabs-link {
+  .pf-root .pf-account__tabs-link,
+  .pf-root .pf-account__body .account__tile.pf-account__stat {
     transition-duration: 0.01ms;
+  }
+
+  .pf-root .pf-account__body .account__tile.pf-account__stat:hover {
+    transform: none;
+  }
+
+  .pf-root .pf-account__body .empty[aria-busy="true"]::before {
+    animation: none;
   }
 }

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Link } from '../../router/index.jsx';
 
 /**
@@ -7,8 +8,19 @@ import { Link } from '../../router/index.jsx';
  * router — not a local index — is the source of truth.
  */
 export default function AccountTabs({ label, tabs, activeId }) {
+  const stripRef = useRef(null);
+  useLayoutEffect(() => {
+    const strip = stripRef.current;
+    const active = strip?.querySelector('[aria-current="page"]');
+    if (!strip || !active) return;
+    const start = active.offsetLeft - strip.offsetLeft;
+    if (start < strip.scrollLeft || start + active.offsetWidth > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollLeft = Math.max(0, start - 8);
+    }
+  }, [activeId]);
+
   return (
-    <nav className="pf-account__tabs" aria-label={label}>
+    <nav ref={stripRef} className="pf-account__tabs" aria-label={label}>
       <ul className="pf-account__tabs-list">
         {tabs.map((tab) => {
           const active = tab.id === activeId;

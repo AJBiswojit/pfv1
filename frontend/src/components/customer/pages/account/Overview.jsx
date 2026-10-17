@@ -67,6 +67,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
+import { Heart, Package, ShoppingBag } from 'lucide-react';
 import { Link } from '../../router/index.jsx';
 import Button from '../../components/ui/Button.jsx';
 import ProductCard from '../../components/product/ProductCard.jsx';
@@ -190,7 +191,7 @@ export default function Overview() {
 
   /* Two real sources for the customer's name — the account the server returned
      for this session, then the session's own user — and no stand-in: with
-     neither, the frame simply draws no name (its documented rule). */
+     neither, the page uses its section title, never a stand-in customer name. */
   const firstName = profile?.firstName || user?.firstName || '';
   const greeting = firstName ? <>Namaste, <em>{firstName}.</em></> : undefined;
 
@@ -199,6 +200,7 @@ export default function Overview() {
   const tiles = [
     {
       key: 'wishlist',
+      icon: Heart,
       to: '/account/wishlist',
       label: 'Saved pieces',
       figure: tileFigure({
@@ -209,6 +211,7 @@ export default function Overview() {
     },
     {
       key: 'orders',
+      icon: Package,
       to: '/account/orders',
       label: 'Orders',
       figure: tileFigure({
@@ -219,6 +222,7 @@ export default function Overview() {
     },
     {
       key: 'cart',
+      icon: ShoppingBag,
       to: '/cart',
       label: 'Items in bag',
       figure: tileFigure({
@@ -368,18 +372,23 @@ export default function Overview() {
   const offerCountLabel = `${offers.length} ${offers.length === 1 ? 'offer' : 'offers'}`;
 
   return (
-    <AccountFrame breadcrumbItems={[{ label: 'Account' }]} label="Your account" title={greeting}>
-      {profile?.email ? (
-        <p className="info__lead pf-account__lead">Signed in as {profile.email}.</p>
-      ) : null}
-
-      <div className="account__tiles">
-        {tiles.map((tile) => (
-          <Link key={tile.key} to={tile.to} className="account__tile">
-            <strong>{tile.figure}</strong>
-            <span>{tile.label}</span>
-          </Link>
-        ))}
+    <AccountFrame breadcrumbItems={[{ label: 'Account' }]} label="Your account" title={greeting ?? 'Overview'}>
+      <div className="account__tiles" aria-label="Account summary">
+        {tiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <Link
+              key={tile.key}
+              to={tile.to}
+              className="account__tile pf-account__stat"
+              aria-label={`${tile.label}: ${tile.figure === '—' ? 'Not available yet' : tile.figure}`}
+            >
+              <strong>{tile.figure}</strong>
+              <span>{tile.label}</span>
+              <Icon className="pf-account__stat-icon" size={18} strokeWidth={1.4} aria-hidden="true" />
+            </Link>
+          );
+        })}
       </div>
 
       {/* Production's two intelligence panels — its dark AI Mirror band and its
