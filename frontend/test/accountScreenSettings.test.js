@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/settings — the native Aarna communication-settings screen.
+ * Phase 12 · /account/settings — the native storefront communication-settings screen.
  *
  * Rendered for real, inside the real AccountProvider, with the network stubbed at
  * fetch. Covers: loading, the server's values (never placeholder defaults), a failed
@@ -17,7 +17,7 @@ let trees = [];
 
 before(async () => {
   h = await startHarness();
-  Settings = (await h.load("/src/components/aarna/pages/account/Settings.jsx")).default;
+  Settings = (await h.load("/src/components/customer/pages/account/Settings.jsx")).default;
 });
 
 after(async () => {

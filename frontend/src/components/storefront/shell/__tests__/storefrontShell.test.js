@@ -206,17 +206,17 @@ test("the header drives the existing overlays rather than rebuilding them", () =
   assert.doesNotMatch(source, /createContext|apiClient|fetch\(|useCart|localStorage/);
 });
 
-test("the active customer shell is owned by Aarna and excludes the retired storefront shell", () => {
+test("the active customer shell is owned by the customer storefront and excludes the retired storefront shell", () => {
   const app = read("src/App.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.equal(app.includes("StorefrontHeader"), false);
 
   const layout = read("src/layouts/CustomerLayout.jsx");
-  assert.match(layout, /import AarnaStorefront from "\.\.\/components\/aarna\/AarnaStorefront"/);
-  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.match(layout, /import CustomerStorefront from "\.\.\/components\/customer\/CustomerStorefront"/);
+  assert.match(layout, /<CustomerStorefront \/>/);
   assert.doesNotMatch(layout, /SiteHeader|SiteFooter|CheckoutHeader/);
 
-  /* Retained modules from preview and QA workflows are not part of Aarna. */
+  /* Retained modules from preview and QA workflows are not part of the customer storefront. */
   for (const entryPoint of ["src/App.jsx", "src/layouts/CustomerLayout.jsx"]) {
     assert.doesNotMatch(read(entryPoint), /StorefrontHeader|MegaMenu|MobileNav|SearchPanel/);
   }

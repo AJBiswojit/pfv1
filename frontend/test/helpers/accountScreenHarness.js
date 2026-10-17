@@ -1,7 +1,7 @@
 /**
  * Shared harness for the Phase 12 account-screen suites.
  *
- * It renders the real Aarna account pages through Vite's SSR loader and
+ * It renders the real customer storefront account pages through Vite's SSR loader and
  * react-test-renderer, inside the REAL `AccountProvider` (so the account read,
  * `updatePreferences`, `changePassword` and `signOutOtherSessions` run their own
  * code), with a stubbed `fetch` at the network boundary only.
@@ -180,7 +180,7 @@ export async function startHarness() {
 
   const find = (tree, predicate) => tree.root.findAll(predicate);
   const byName = (tree, name) => find(tree, (n) => n.props && n.props.name === name && typeof n.type === "string");
-  /* The Aarna Button wraps its label in a <span>, so the label is read from the
+  /* The customer storefront Button wraps its label in a <span>, so the label is read from the
      rendered instance tree, not from the element's props. */
   const instanceText = (inst) => (typeof inst === "string" ? inst : (inst.children ?? []).map(instanceText).join(""));
   const buttonWith = (tree, text) =>

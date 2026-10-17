@@ -57,9 +57,9 @@ before(async () => {
   store = await load('services/catalog/catalogStore.js');
   repository = await load('services/catalogRepository.js');
   placements = await load('services/media/marketingPlacementRepository.js');
-  catalogue = await load('components/aarna/services/catalog.js');
-  model = await load('components/storefront/home/aarnaHomeHeroModel.js');
-  HomeHero = (await load('components/storefront/home/AarnaHomeHero.jsx')).default;
+  catalogue = await load('components/customer/services/catalog.js');
+  model = await load('components/storefront/home/customerHomeHeroModel.js');
+  HomeHero = (await load('components/storefront/home/CustomerHomeHero.jsx')).default;
   Selector = (await load('components/admin/ProductCatalogSelector.jsx')).default;
   MarketingPage = (await load('pages/admin/media/AdminMarketingMedia.jsx')).default;
   safety = await load('services/catalog/catalogRecordSafety.js');
@@ -129,7 +129,7 @@ test('hero receives backend copy, order, image and CTA through the actual public
   homeResponse = { ok: true, heroSlides: [slide('second', 'Admin title\nSecond line'), slide('first')] };
   await store.hydrateCatalog({ force: true });
   assert.equal(store.getCatalogState().homeStatus, 'ready');
-  const slides = model.aarnaHomeHeroSlides(store.getHome());
+  const slides = model.customerHomeHeroSlides(store.getHome());
   assert.deepEqual(slides.map((s) => s.id), ['second', 'first']);
   assert.deepEqual(slides[0].lines, ['Admin title', 'Second line']);
   assert.equal(slides[0].layout, 'left');
@@ -140,15 +140,15 @@ test('hero receives backend copy, order, image and CTA through the actual public
   assert.match(html, /Backend editorial copy/);
   assert.match(html, /href="\/women\/sarees"/);
   assert.match(html, /hero\/second.avif/);
-  assert.doesNotMatch(html, /Discover Our Story|aarna-design/);
+  assert.doesNotMatch(html, /Discover Our Story|\/design\/[a-z0-9-]+\.webp/);
   assert.ok(requests.some((r) => r.path === '/api/v1/home'));
   assert.deepEqual(store.getAllProducts().map((p) => p.id), [genuine.id]);
 });
 
 test('malformed or missing hero media cannot fall back to a browser marketing register', () => {
-  assert.deepEqual(model.aarnaHomeHeroSlides({ heroSlides: [null, { id: 'no-image', title: 'No plate' }] }), []);
-  assert.deepEqual(model.aarnaHomeHeroSlides({ heroSlides: {} }), []);
-  assert.match(source('src/components/storefront/home/aarnaHomeHeroModel.js'), /normalizeHeroSlides\(Array.isArray\(raw\) \? raw : \[\], \[\]\)/);
+  assert.deepEqual(model.customerHomeHeroSlides({ heroSlides: [null, { id: 'no-image', title: 'No plate' }] }), []);
+  assert.deepEqual(model.customerHomeHeroSlides({ heroSlides: {} }), []);
+  assert.match(source('src/components/storefront/home/customerHomeHeroModel.js'), /normalizeHeroSlides\(Array.isArray\(raw\) \? raw : \[\], \[\]\)/);
 });
 
 test('an all-inactive /home response removes the hero; no static client fallback', async () => {
@@ -299,7 +299,7 @@ test('server-issued PF-CUST IDs are not confused with browser-local fabricated r
 
 test('the production home slide fields and canonical/CDN media URLs adapt without invented fields', () => {
   for (const image of ['/api/v1/media/objects/hero/registered.avif', 'https://cdn.example.invalid/hero/registered.avif?signature=kept']) {
-    const [adapted] = model.aarnaHomeHeroSlides({ ok: true, heroSlides: [{
+    const [adapted] = model.customerHomeHeroSlides({ ok: true, heroSlides: [{
       id: 'registered-row', title: 'Registered campaign', subtitle: 'Backend subtitle',
       cta: 'View collection', href: '/women/sarees', image,
       mobileImage: '/api/v1/media/objects/hero/mobile.avif', mediaId: 'hero/registered.avif',

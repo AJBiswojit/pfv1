@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/instagram-rewards — the native Aarna Share & Earn screen.
+ * Phase 12 · /account/instagram-rewards — the native storefront Share & Earn screen.
  *
  * Rendered for real, inside the real AccountProvider, with the reward services
  * running their own code over a stubbed fetch. Covers: loading, a failed list with
@@ -47,7 +47,7 @@ const submissionsRoute = (answer) => ({
 
 before(async () => {
   h = await startHarness();
-  Rewards = (await h.load("/src/components/aarna/pages/account/InstagramRewards.jsx")).default;
+  Rewards = (await h.load("/src/components/customer/pages/account/InstagramRewards.jsx")).default;
 });
 
 after(async () => {

@@ -102,11 +102,11 @@ test("placements preserve canonical card/media/navigation and have no fake repos
     const body = readFileSync(tombstone, "utf8");
     assert.doesNotMatch(body, /^\s*(export|import)\b/m, "the retired recommendation file regained code");
   }
-  assert.match(read("components/aarna/pages/account/AiMirror.jsx"), /RecommendationSections placement="mirror"/);
-  const storefront = read("components/aarna/AarnaStorefront.jsx");
-  const homepage = read("components/aarna/pages/Home.jsx");
+  assert.match(read("components/customer/pages/account/AiMirror.jsx"), /RecommendationSections placement="mirror"/);
+  const storefront = read("components/customer/CustomerStorefront.jsx");
+  const homepage = read("components/customer/pages/Home.jsx");
   assert.match(storefront, /import Home from "\.\/pages\/Home\.jsx"/);
-  assert.match(homepage, /<HomepageSection sectionKey=/, "the active Aarna homepage composes its own sections");
+  assert.match(homepage, /<HomepageSection sectionKey=/, "the active storefront homepage composes its own sections");
   assert.doesNotMatch(homepage, /AtelierDesign/, "the removed storefront is not the active homepage");
   assert.match(read("hooks/useRecommendations.js"), /state.key === key/);
   assert.match(read("hooks/useRecommendations.js"), /cancelled = true/);

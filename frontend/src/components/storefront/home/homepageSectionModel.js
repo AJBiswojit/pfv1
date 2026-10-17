@@ -1,18 +1,20 @@
 import { normaliseProduct } from '../../../services/api/productsApi';
 import { isBackendCatalogRecord } from '../../../services/catalog/catalogRecordSafety';
-import { toDesignProduct } from '../../aarna/mock/data/products.js';
+import { toDesignProduct } from '../../customer/mock/data/products.js';
 
 const blank = Object.freeze({ eyebrow: '', title: '', subtitle: '', ctaLabel: '', ctaHref: '', altText: '', url: '' });
 export function homepageSectionMode(snapshot, key) {
   if (snapshot.homeStatus === 'error') return { mode: 'unavailable' };
   if (!snapshot.home || ['idle', 'loading'].includes(snapshot.homeStatus)) return { mode: 'loading' };
   const content = snapshot.home.homepageContent;
-  if (!content) return { mode: 'legacy' }; // older backend, not a failed new read
-  if (content.version !== 1 || content.status !== 'ready') return { mode: 'unavailable' };
+  // No content contract (or a failed/foreign read) is an error, never a
+  // fallback render: the homepage is database-driven end to end.
+  if (!content || content.version !== 1 || content.status !== 'ready') return { mode: 'unavailable' };
   const section = content.sections?.find((s) => s.key === key);
   if (!section || section.state === 'unavailable') return { mode: 'unavailable' };
-  if (section.state === 'missing' && section.configured === false) return { mode: 'legacy' };
-  if (['inactive', 'empty'].includes(section.state)) return { mode: 'hidden' };
+  // Missing, inactive and empty all render nothing — an unconfigured section
+  // never falls back to reference content.
+  if (['missing', 'inactive', 'empty'].includes(section.state)) return { mode: 'hidden' };
   if (section.state !== 'ready' || !section.configured) return { mode: 'unavailable' };
   return { mode: 'configured', section };
 }

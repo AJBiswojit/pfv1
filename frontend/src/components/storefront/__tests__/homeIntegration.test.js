@@ -1,5 +1,5 @@
 /**
- * Customer storefront integration checks. Aarna is the only mounted customer
+ * Customer storefront integration checks. The customer storefront is the only mounted customer
  * UI; App.jsx delegates customer paths to CustomerLayout while staff portals
  * keep their own routes. The legacy editorial composition may remain in the
  * source tree during phased cleanup, but it is not an active customer route.
@@ -27,7 +27,7 @@ function projectRoot() {
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const COMPOSITION = "src/components/storefront/StorefrontHome.jsx";
-const SWITCH = "src/config/storefrontHome.js";
+const SWITCH = "src/config/customerRoutes.js";
 const LAYOUT = "src/layouts/CustomerLayout.jsx";
 
 /** Every source file under `src/` (the scan the isolation tests use). */
@@ -83,7 +83,7 @@ const importsModule = (file, modulePath) =>
  * canonical route manifest the navigation is built from.
  */
 function registeredRoutes() {
-  const sources = [read("src/App.jsx"), read("src/components/aarna/AarnaStorefront.jsx")];
+  const sources = [read("src/App.jsx"), read("src/components/customer/CustomerStorefront.jsx")];
   const staticPaths = new Set(modules.routeManifest.map((route) => route.path));
   const patterns = [];
   for (const source of sources) for (const match of source.matchAll(/<Route path="([^"]+)"/g)) {
@@ -159,26 +159,26 @@ test("the customer selector is gone: there is no Atelier/editorial mode or URL/b
 
 /* ── where it mounts, and what it replaces ───────────────────────────── */
 
-test("the Aarna app shell is the only customer layout and no Atelier/editorial source is mounted", () => {
+test("the customer app shell is the only customer layout and no Atelier/editorial source is mounted", () => {
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
     .filter((file) => importsModule(file, "src/components/storefront/StorefrontHome"));
   assert.deepEqual(importers, [], "the editorial composition is not reachable from customer routes");
 
   const layout = read(LAYOUT);
-  assert.match(layout, /<AarnaStorefront \/>/);
+  assert.match(layout, /<CustomerStorefront \/>/);
   assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|SiteHeader|SiteFooter|CheckoutHeader/);
   const app = read("src/App.jsx");
   assert.doesNotMatch(app, /AtelierDesign|StorefrontHome|VITE_STOREFRONT_HOME/);
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
 });
 
-test("the root URL renders Aarna regardless of former home query values", async () => {
+test("the root URL renders the customer storefront regardless of former home query values", async () => {
   const plain = await renderLayout({ search: "" });
   const formerOverride = await renderLayout({ search: "?home=atelier" });
   const formerEditorial = await renderLayout({ search: "?home=editorial" });
   for (const html of [plain, formerOverride, formerEditorial]) {
-    assert.match(html, /class="aan-root"/);
+    assert.match(html, /class="pf-root"/);
     assert.equal(html.includes("data-storefront-header"), false);
     assert.equal(html.includes("pf-sec-host"), false);
   }
@@ -350,16 +350,16 @@ test("an empty or unavailable backend renders an honest page, never a blank one"
   assert.equal(countOf(html, /data-home-surface="live"/g), 1);
 });
 
-test("App preserves staff portal routes while delegating customer pages to Aarna", () => {
+test("App preserves staff portal routes while delegating customer pages to the customer storefront", () => {
   const app = read("src/App.jsx");
   assert.equal(app.includes("storefront/StorefrontHome"), false);
-  assert.equal(app.includes("storefrontHome"), false);
+  assert.equal(app.includes("customerRoutes"), false);
   /* The staff portal layouts/guards remain in App; customer protection now lives
-     inside the Aarna route table. */
+     inside the customer route table. */
   for (const marker of ["<AdminLayout />", "<EmployeeLayout />", "<CustomerLayout />", "<AdminProtectedRoute />", "<EmployeeProtectedRoute />"]) {
     assert.equal(app.includes(marker), true, `${marker} is still mounted`);
   }
-  const storefront = read("src/components/aarna/AarnaStorefront.jsx");
+  const storefront = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(storefront, /<Route element={<ProtectedRoute \/>}>/);
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.doesNotMatch(app, /<Route path="\/(shop|signin|account)/);
@@ -368,11 +368,11 @@ test("App preserves staff portal routes while delegating customer pages to Aarna
     assert.equal(read(file).includes("StorefrontHome"), false);
   }
   /* The route ownership helper is used only by the legacy account shell;
-     CustomerLayout mounts Aarna directly and does not consult a selector. */
+     CustomerLayout mounts the customer storefront directly and does not consult a selector. */
   const ACCOUNT_SHELL = "src/components/account/AccountShell.jsx";
   const boundaryImporters = sourceFiles()
     .filter((file) => !file.includes("__tests__"))
-    .filter((file) => importsModule(file, "src/config/storefrontHome"))
+    .filter((file) => importsModule(file, "src/config/customerRoutes"))
     .sort();
   assert.deepEqual(boundaryImporters, [ACCOUNT_SHELL]);
 
@@ -434,12 +434,12 @@ async function renderLayout({ search = "" } = {}) {
   }
 }
 
-test("Aarna renders the root with no selector, and former query overrides cannot switch the UI", async () => {
+test("The customer storefront renders the root with no selector, and former query overrides cannot switch the UI", async () => {
   for (const search of ["", "?home=atelier", "?home=editorial", "?home=aarna"]) {
     const html = await renderLayout({ search });
-    assert.match(html, /class="aan-root"/, `${search} did not render Aarna`);
+    assert.match(html, /class="pf-root"/, `${search} did not render the customer storefront`);
     assert.equal(html.includes("data-storefront-header"), false, "the editorial header must not mount");
     assert.equal(html.includes("pf-sec-host"), false, "the editorial sections must not mount");
-    assert.equal(countOf(html, /<footer/g), 1, "Aarna owns exactly one footer");
+    assert.equal(countOf(html, /<footer/g), 1, "The customer storefront owns exactly one footer");
   }
 });

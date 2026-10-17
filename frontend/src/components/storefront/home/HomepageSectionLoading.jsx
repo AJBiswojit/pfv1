@@ -4,12 +4,12 @@ import './homepage-section-loading.css';
 export default function HomepageSectionLoading({ sectionKey }) {
   return (
     <section
-      className={`aan-home-loading aan-home-loading--${sectionKey}`}
+      className={`pf-home-loading pf-home-loading--${sectionKey}`}
       role="status"
       aria-label={sectionKey === 'hero' ? 'Loading featured campaigns' : `Loading ${sectionKey}`}
       aria-busy="true"
     >
-      <div className="aan-home-loading__shimmer" aria-hidden="true" />
+      <div className="pf-home-loading__shimmer" aria-hidden="true" />
     </section>
   );
 }

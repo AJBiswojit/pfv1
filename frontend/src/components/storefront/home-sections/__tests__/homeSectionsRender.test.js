@@ -369,7 +369,7 @@ test("no production module imports the preview fixtures", async () => {
   /* The live homepage is still the production page, and still the index route. */
   const app = read("src/App.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
-  assert.match(read("src/layouts/CustomerLayout.jsx"), /<AarnaStorefront \/>/);
+  assert.match(read("src/layouts/CustomerLayout.jsx"), /<CustomerStorefront \/>/);
 });
 
 test("fixture products carry no live price and are visibly marked", async () => {
@@ -661,7 +661,7 @@ test("the lookbook draws no frame, and no empty column, when no collection has a
 
 test("the lookbook opens on a collection that can fill the frame, and keeps the frame when one can", async () => {
   const { SectionLookbook } = await importLookbook();
-  const plate = { src: "/aarna-design/cat-women.webp" };
+  const plate = { src: "/design/cat-women.webp" };
   const moods = [
     { key: "silk", label: "Silk", note: "Banarasi, Kanjeevaram and the silks the house weaves.", to: "/collections/silk", image: null, count: 3, products: [] },
     { key: "cotton", label: "Cotton", note: "Handloom cotton, woven for the everyday.", to: "/collections/cotton", image: plate, count: 4, products: [] },
@@ -675,6 +675,6 @@ test("the lookbook opens on a collection that can fill the frame, and keeps the 
   assert.match(html, /pf-sec-look__frame/, "the frame is drawn when a collection can fill it");
   assert.match(html, /pf-sec-look__visual/, "the framed column is back");
   assert.equal(html.includes("pf-sec-look__grid--body-only"), false, "the body keeps its own column");
-  assert.match(html, /<img[^>]+src="\/aarna-design\/cat-women\.webp"/, "the plate that exists is the one painted");
+  assert.match(html, /<img[^>]+src="\/design\/cat-women\.webp"/, "the plate that exists is the one painted");
   assert.match(html, /Handloom cotton, woven for the everyday\./, "the open mood's note is the one shown");
 });

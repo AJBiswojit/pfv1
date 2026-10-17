@@ -10,7 +10,7 @@ let vite, Section, Hero, store, originalFetch;
 before(async () => {
   vite = await createServer({ root, appType: 'custom', logLevel: 'error', server: { middlewareMode: true, hmr: false }, optimizeDeps: { noDiscovery: true, include: [] } });
   Section = (await vite.ssrLoadModule('/src/components/storefront/home/HomepageSection.jsx')).default;
-  Hero = (await vite.ssrLoadModule('/src/components/storefront/home/AarnaHomeHero.jsx')).default;
+  Hero = (await vite.ssrLoadModule('/src/components/storefront/home/CustomerHomeHero.jsx')).default;
   store = await vite.ssrLoadModule('/src/services/catalog/catalogStore.js');
   originalFetch = globalThis.fetch;
 });
@@ -18,14 +18,14 @@ after(async () => { globalThis.fetch = originalFetch; await vite?.close(); });
 const Body = ({ content }) => React.createElement('p', null, content ? 'CONFIGURED BODY' : 'SECTION BODY');
 const section = (key) => React.createElement(Section, { sectionKey: key }, React.createElement(Body));
 function assertLoading(html, key) {
-  assert.match(html, new RegExp(`aan-home-loading--${key}`));
+  assert.match(html, new RegExp(`pf-home-loading--${key}`));
   assert.match(html, /role="status"/);
   assert.match(html, /aria-busy="true"/);
   assert.match(html, /aria-label="Loading /);
   assert.match(html, /aria-hidden="true"/);
   assert.equal(html.replace(/<[^>]*>/g, '').trim(), '', 'no visible loading text');
 }
-test('idle/in-flight shimmer transitions preserve hidden, legacy, ready and error states', async () => {
+test('idle/in-flight shimmer transitions preserve hidden, ready and error states', async () => {
   for (const key of keys) assertLoading(render(section(key)), key);
   assertLoading(render(React.createElement(Hero)), 'hero');
   let release;
@@ -38,7 +38,7 @@ test('idle/in-flight shimmer transitions preserve hidden, legacy, ready and erro
   await pending;
   assert.equal(render(section('categories')), '');
   assert.equal(render(section('sarees')), '');
-  assert.equal(render(section('bridal')), '<p>SECTION BODY</p>');
+  assert.equal(render(section('bridal')), '', 'an unconfigured/missing section is hidden, not a legacy render');
   assert.equal(render(section('men')), '<p>CONFIGURED BODY</p>');
   assert.equal(render(React.createElement(Hero)), '');
   globalThis.fetch = async (input) => Response.json(String(input).endsWith('/home') ? { homepageContent: { version: 1, status: 'unavailable', sections: [] } } : { items: [], offers: [], total: 0 });
@@ -53,7 +53,7 @@ test('idle/in-flight shimmer transitions preserve hidden, legacy, ready and erro
 test('all twelve sections reserve responsive space and honor reduced motion', () => {
   const css = readFileSync(`${root}src/components/storefront/home/homepage-section-loading.css`, 'utf8');
   assert.match(css, /height: var\(--loading-height\)/);
-  for (const key of ['hero', ...keys]) assert.equal((css.match(new RegExp(`\\.aan-root \\.aan-home-loading--${key} \\{ --loading-height:`, 'g')) ?? []).length, 2, key);
+  for (const key of ['hero', ...keys]) assert.equal((css.match(new RegExp(`\\.pf-root \\.pf-home-loading--${key} \\{ --loading-height:`, 'g')) ?? []).length, 2, key);
   assert.match(css, /linear-gradient/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation: none/);
 });

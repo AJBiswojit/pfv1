@@ -1,0 +1,229 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PHASE 10 — the authentication screens' own chrome.
+
+   Everything the design DOES draw for these pages is drawn by the design's own
+   stylesheets (`customer.css`, scoped under `.pf-root` and compared against the
+   design on every port run): the page frame (`.container`, `.info`, `.crumbs`,
+   `.label`, `.display`, `.info__title`, `.info__lead`), the form register
+   (`.form`, `.form label`, `.form input`, `.form__err`, `.form__note`) and the
+   button register (`.btn`, `.btn--solid`, `.btn--ghost`, `.btn--block`).
+
+   The design drew no authentication screen — its `/account` is a prototype that
+   stores a name in `localStorage` and says so on the page — so everything a
+   real credential form needs that a prototype did not is declared here: the
+   password field's reveal toggle, the labelled row that carries the "forgot
+   password" link, the remember-me row, the "or continue with" divider, the
+   two-column field pair (and its collapse), the alternate-action block, the
+   confirmation panel and the back link.
+
+   Every declaration is scoped to `.pf-root` and every value is a design token
+   (`--c-*`, `--f-*`, `--fs-*`, `--track-*`, `--t-*`, `--ease-out`), so these
+   rules read as the design's own do and can never reach the host application's
+   pages.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* A note on specificity. Every selector of the design's own stylesheet is
+   scoped under `.pf-root` by the port tool (`scripts/customer-port.js`), so the
+   design's rules arrive as `.pf-root .form label` — one class MORE specific
+   than a plain `.pf-root .pf-…` rule. Wherever a rule below has to outweigh a
+   design declaration (the remember-me row against `.form label`'s flex column,
+   a field error against its uppercase, the divider, the terms notice and the
+   confirmation against `.info p`), the selector is written one step deeper —
+   `.pf-root .form .pf-auth__check` — so it wins on specificity and never on
+   source order alone. This was measured the hard way: the first build of this
+   file lost the remember-me row to `.form label` and the probe recorded it.
+
+   ── the page and the form's width ──────────────────────────────────────── */
+
+.pf-root .pf-auth .info__title { margin-bottom: 14px; }
+
+.pf-root .pf-auth .info__lead { max-width: 52ch; }
+
+/* The design's `.form` is written for a 420px column; a credential form with a
+   two-up name row and a two-up password row needs a little more room, and the
+   sign-up form a little more again. Nothing else about `.form` changes. */
+.pf-root .pf-auth__form { max-width: 480px; margin-top: 22px; }
+
+.pf-root .pf-auth__form--wide { max-width: 620px; }
+
+/* The production screen pairs first/last name and password/confirmation. */
+.pf-root .pf-auth__pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+@media (max-width: 599px) {
+  .pf-root .pf-auth__pair { grid-template-columns: 1fr; }
+}
+
+/* ── the password field: label row, reveal toggle ───────────────────────── */
+
+.pf-root .pf-auth__group { display: flex; flex-direction: column; gap: 6px; }
+
+.pf-root .pf-auth__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pf-root .pf-auth__field { position: relative; display: block; }
+
+.pf-root .pf-auth__field input { width: 100%; padding-right: 46px; }
+
+.pf-root .pf-auth__toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-ink-3);
+  cursor: pointer;
+  transition: color var(--t-base) var(--ease-out);
+}
+
+.pf-root .pf-auth__toggle:hover,
+.pf-root .pf-auth__toggle:focus-visible { color: var(--c-espresso); }
+
+/* ── the small print and the alternate actions ──────────────────────────── */
+
+.pf-root .pf-auth__mark { color: var(--c-accent-deep); }
+
+.pf-root .form .pf-auth__optional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--c-ink-3);
+}
+
+/* A field error sits inside its `.form label`, which is why the label's own
+   casing and tracking are undone here — the sentence stays a sentence. */
+.pf-root .form .pf-auth__err {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.pf-root .info .pf-auth__alert { margin: 18px 0 0; }
+
+.pf-root .pf-auth__status { max-width: 480px; margin-top: 18px; }
+
+.pf-root .form .pf-auth__check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pf-root .form .pf-auth__check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--c-line-strong);
+  background: var(--c-paper);
+  accent-color: var(--c-espresso);
+  cursor: pointer;
+}
+
+.pf-root .form .pf-auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0;
+}
+
+.pf-root .pf-auth__divider::before,
+.pf-root .pf-auth__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--c-line);
+}
+
+.pf-root .pf-auth__divider span {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+
+.pf-root .info .pf-auth__terms { font-size: 12px; line-height: 1.7; color: var(--c-ink-3); }
+
+.pf-root .info .pf-auth__terms a { text-decoration: underline; text-underline-offset: 3px; }
+
+.pf-root .pf-auth__alt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--c-line);
+  font-size: 13px;
+  color: var(--c-ink-2);
+}
+
+.pf-root .pf-auth__form--wide ~ .pf-auth__alt { max-width: 620px; }
+
+.pf-root .pf-auth__alt a,
+.pf-root .info .pf-auth__terms a { color: var(--c-espresso); }
+
+.pf-root .pf-auth__alt a:hover { color: var(--c-accent-deep); }
+
+.pf-root .pf-auth__guest {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── the confirmation panel and the back link ───────────────────────────── */
+
+.pf-root .info .pf-auth__sent { padding: 6px 0 10px; }
+
+.pf-root .pf-auth__sent .info__title { margin-bottom: 12px; }
+
+.pf-root .pf-auth__sent-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  margin-top: 22px;
+}
+
+.pf-root .info .pf-auth__back {
+  max-width: 480px;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--c-line);
+}
+
+.pf-root .pf-auth__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--t-base) var(--ease-out);
+}
+
+.pf-root .pf-auth__link:hover,
+.pf-root .pf-auth__link:focus-visible { color: var(--c-espresso); }
+
+/* The password row's "Forgot password?" link is the same register, at rest. */
+.pf-root .pf-auth__row .pf-auth__link { font-size: 11.5px; }

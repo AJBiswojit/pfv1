@@ -9,8 +9,8 @@
  *   - POST   /orders/{id}/returns  — createReturn
  *   - Admin mutations pass through to /admin/orders/* endpoints
  *
- * Falls back to localStorage (demo orders) when not authenticated or when
- * backend is unreachable.
+ * Falls back to local guest-order storage when not authenticated or when
+ * the backend is unreachable.
  */
 
 import {

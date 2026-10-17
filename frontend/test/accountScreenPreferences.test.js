@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/preferences — the native Aarna style-preferences screen.
+ * Phase 12 · /account/preferences — the native storefront style-preferences screen.
  *
  * The notes are device-local by design (the store's own BACKEND_GAP): the suite
  * proves that they are saved under the customer's scope on this device, that no
@@ -19,7 +19,7 @@ let trees = [];
 
 before(async () => {
   h = await startHarness();
-  Preferences = (await h.load("/src/components/aarna/pages/account/Preferences.jsx")).default;
+  Preferences = (await h.load("/src/components/customer/pages/account/Preferences.jsx")).default;
   ({ getStylePreferences, STYLE_PREFERENCES_STORAGE_KEY } = await h.load("/src/services/customer/stylePreferences.js"));
   /* The chip options are the catalogue's own distinct values. The store is given one
      normalised product through its own snapshot writer, the same one hydration uses. */

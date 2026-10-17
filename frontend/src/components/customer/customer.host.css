@@ -1,0 +1,47 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PHASE 2D — host neutralisation (hand-written, deliberately tiny).
+
+   `customer.css` beside this file is the design's own seven stylesheets, scoped
+   under `.pf-root` by `scripts/customer-port.js`: every declaration in it is the
+   design's, byte for byte, and the regression suite compares it against the
+   source sheets on every run. This file is the one place a rule may differ, and
+   each rule below exists for the same reason: the host application loads
+   Tailwind's preflight once, for the whole document, and preflight says two
+   things the design's own stylesheets never had to say for themselves.
+
+   1 · IMAGES AND ICONS. Preflight sets
+       `img, svg, video, canvas, audio, iframe, embed, object { display: block;
+       vertical-align: middle }`. The design's own reset covers `img` itself and
+       agrees with it, but never `svg`: its icons (lucide) sit inside inline text
+       and buttons and were laid out as inline, baseline-aligned elements.
+
+   2 · HEADING WEIGHT. Preflight sets
+       `h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit }`.
+       Every ported heading declares its own size (checked: the only classes
+       without one — `.display`, `.bridal__name--dark` — are modifiers always
+       paired with a sized class), but seven of them leave the weight to the
+       browser's default: `.bridal__title`, `.bridal__name--dark`,
+       `.collage__title`, `.jewel__title`, `.kurti__title`, `.men__title`,
+       `.saree__title`. Restoring the browser default inside the port keeps them
+       exactly as the design rendered them; every other heading declares its own
+       weight, and a scoped rule (specificity 0-2-0) still beats this one
+       (0-1-1).
+
+   Both rules are scoped to `.pf-root`, carry no design value, and are pinned by
+   the regression suite: it fails if this file grows past three rules, if a rule
+   escapes the port root, or if one appears without one of these declarations.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pf-root svg {
+  display: inline;
+  vertical-align: baseline;
+}
+
+.pf-root h1,
+.pf-root h2,
+.pf-root h3,
+.pf-root h4,
+.pf-root h5,
+.pf-root h6 {
+  font-weight: bold;
+}
