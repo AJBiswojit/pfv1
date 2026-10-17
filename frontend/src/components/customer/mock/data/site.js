@@ -20,9 +20,14 @@
  *     holds no support address yet, so the field is `null` and the ported footer
  *     renders no mailto link at all rather than one that cannot receive.
  *   · `contact.hours`: care hours the application does not hold. Same treatment.
- *   · `social`: the design's three links point at Instagram's, Pinterest's and
- *     YouTube's home pages, not at this house's profiles. An unset profile is
- *     not a link, so the list is empty and the footer renders no social row.
+ *   · `social`: the design's three links point at a platform's home page, not
+ *     at this house's profile. An unset profile is not a link — so the rail
+ *     below carries the five platforms the house has drawn in its footer, each
+ *     with `href: null` until the profile exists. The footer renders the gold
+ *     mark for every entry (that is the reference's composition) and renders an
+ *     ANCHOR for none of them while `href` is null: nothing here points at an
+ *     account this house does not own, and filling one field in this table is
+ *     the whole job of publishing it.
  *   · the design's second announcement advertises its sample offer ("sample
  *     offer details below") — prototype copy about prototype data.
  *
@@ -48,7 +53,20 @@ export const site = {
     hours: null,
     city: "Bhubaneswar, India",
   },
-  social: [],
+  /**
+   * The footer's social rail. `href` is the ONLY thing standing between a
+   * profile and this page: while it is null the mark is drawn, dimmed and
+   * labelled, and carries no anchor. Set it from the business record in
+   * `settingsRepository` (which ships `customer.supportPhone` / `supportEmail`
+   * empty today) or from the published profile URL when the house owns one.
+   */
+  social: [
+    { key: "instagram", label: "Instagram", href: null },
+    { key: "facebook", label: "Facebook", href: null },
+    { key: "youtube", label: "YouTube", href: null },
+    { key: "pinterest", label: "Pinterest", href: null },
+    { key: "whatsapp", label: "WhatsApp", href: null },
+  ],
 };
 
 /**

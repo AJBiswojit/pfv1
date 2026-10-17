@@ -20,10 +20,13 @@
  *      suppressed;
  *   4. the navbar carries the design's five destinations and its five controls,
  *      and every one of them is a route this application registers;
- *   5. the footer closes the page after the last section, renders every group
- *      the design declares, and states only what the house can stand behind —
- *      every available contact fact, no unverified address, no social row, and
- *      a newsletter that is explicitly unavailable rather than silently broken;
+ *   5. the footer closes the page after the last section, renders the house's own
+ *      three bands — newsletter panel, four columns and care rail, legal bar —
+ *      and states only what the house can stand behind: a delivery line read
+ *      from the store's shipping rules, payment marks read from its payment
+ *      methods, social marks drawn but not linked while no profile is
+ *      published, and a newsletter whose panel says plainly that nothing has
+ *      been sent because no subscription service is connected;
  *   6. each of the design's four mega panels renders its columns, its feature
  *      plate and only registered destinations.
  *
@@ -112,27 +115,11 @@ const SHELL_FILES = [
       ],
     ],
   ],
-  [
-    "components/layout/Footer.jsx",
-    [
-      [
-        "import { Link } from 'react-router-dom';",
-        "import { Link } from '../../router/index.jsx';",
-      ],
-      [
-        "              <li><a href={`mailto:${site.contact.email}`}>{site.contact.email.split('@')[0]}@<wbr />{site.contact.email.split('@')[1]}</a></li>\n" +
-          "              <li>{site.contact.hours}</li>\n" +
-          "              <li>{site.contact.city}</li>",
-        "              {site.contact.email && <li><a href={`mailto:${site.contact.email}`}>{site.contact.email}</a></li>}\n" +
-          "              {site.contact.hours && <li>{site.contact.hours}</li>}\n" +
-          "              {site.contact.city && <li>{site.contact.city}</li>}",
-      ],
-      [
-        "{site.brand}. Prototype storefront — sample catalogue, prices and offers.",
-        "{site.brand}. All rights reserved.",
-      ],
-    ],
-  ],
+  /* The footer is not in this list: the house drew its own (see
+     `customerPortParity` — `components/layout/Footer.jsx` is a REPLACED file,
+     written in the port's vocabulary, never copied). Its composition, its
+     honesty and its routes are pinned by the footer tests at the end of this
+     file, which render the surface rather than compare it to a source. */
   [
     "components/navigation/MegaMenu.jsx",
     [
@@ -300,6 +287,10 @@ before(async () => {
     router,
     { default: MegaMenu },
     site,
+    footerPremium,
+    newsletter,
+    { PAYMENT_METHODS },
+    { readShippingRules },
   ] = await Promise.all([
     load("/src/layouts/CustomerLayout.jsx"),
     load("/src/context/AuthContext.jsx"),
@@ -311,6 +302,10 @@ before(async () => {
     load("/src/components/customer/router/routes.js"),
     load("/src/components/customer/components/navigation/MegaMenu.jsx"),
     load("/src/components/customer/data/index.js"),
+    load("/src/components/customer/mock/data/footerPremium.js"),
+    load("/src/components/customer/services/newsletter.js"),
+    load("/src/config/checkoutConfig.js"),
+    load("/src/config/commerceDefaults.js"),
     load("/src/services/catalog/catalogStore.js"),
   ]);
   const catalogStore = (await load("/src/services/catalog/catalogStore.js"));
@@ -325,7 +320,23 @@ before(async () => {
     throw new Error(`the catalogue did not hydrate: ${catalogStore.getCatalogState().status}`);
   }
 
-  data = { ...site, resolveStorefrontPath: router.resolveStorefrontPath, MegaMenu, load };
+  const shipping = readShippingRules();
+  data = {
+    ...site,
+    resolveStorefrontPath: router.resolveStorefrontPath,
+    MegaMenu,
+    load,
+    footerColumns: footerPremium.footerColumns,
+    footerLinkCount: footerPremium.footerLinkCount,
+    careHighlights: footerPremium.careHighlights({
+      shippingEnabled: shipping.enabled,
+      freeShippingThreshold: shipping.freeShippingThreshold,
+    }),
+    paymentMarks: footerPremium.paymentMarks,
+    paymentMethods: PAYMENT_METHODS,
+    freeShippingThreshold: shipping.freeShippingThreshold,
+    newsletterUnavailable: newsletter.UNAVAILABLE_MESSAGE,
+  };
 
   /* The same nesting `src/App.jsx` uses, innermost last. */
   let tree = React.createElement(CustomerLayout);
@@ -490,55 +501,118 @@ test("the footer closes the page, after the last section, exactly once", () => {
   assert.ok(markup.slice(at("</footer>")).includes('class="toasts"'), "the footer is not the page's last block");
 });
 
-test("the footer renders every group the design declares, on registered routes", () => {
-  for (const block of ["footer__top", "footer__brand", "footer__lede", "footer__desc", "footer__news", "footer__groups", "footer__signature", "footer__bottom"]) {
-    assert.equal(count(`class="${block}"`) + count(`class="container ${block}"`), 1, `the footer's ${block} is missing`);
+test("the footer renders the house's four columns, in the reference's order, on registered routes", () => {
+  /* The reference's three bands, each present exactly once. */
+  for (const block of ["fnews", "footer__main", "footer__brand", "footer__lede", "footer__desc", "footer__social", "footer__groups", "footer__care", "container footer__bottom"]) {
+    assert.equal(count(`class="${block}"`), 1, `the footer's ${block} is missing or duplicated`);
   }
   const footer = markup.slice(at('<footer class="footer"'), at("</footer>"));
-  for (const group of data.footerGroups) {
-    assert.ok(
-      footer.includes(`>${esc(group.title)}</h2>`),
-      `the footer's ${group.title} group is missing`,
-    );
-    assert.ok(footer.includes(`aria-labelledby="footer-${group.title.toLowerCase().replace(/\\s+/g, '-')}"`), `the ${group.title} links lack a named navigation landmark`);
-    for (const link of group.links) {
+
+  const titles = [...footer.matchAll(/<h2 class="fgroup__title"[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]);
+  assert.deepEqual(titles, ["Shop", "Edits", "Client Care", "The House"], "the footer's columns are not the reference's four, in the reference's order");
+  assert.deepEqual(
+    [...footer.matchAll(/<nav class="fgroup" aria-labelledby="([^"]+)"/g)].map((match) => match[1]),
+    titles.map((title) => `footer-${title.toLowerCase().replace(/\s+/g, "-")}`),
+    "a navigation column lost the landmark name its links are labelled by",
+  );
+  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, data.footerColumns.length, "the footer's column count changed");
+  assert.equal(
+    data.footerColumns.every((column) => column.links.length === 6),
+    true,
+    "every column does not carry the reference's six links",
+  );
+  for (const column of data.footerColumns) {
+    for (const link of column.links) {
       assert.ok(
         footer.includes(`>${esc(link.label)}</a>`),
-        `the footer lost its ${group.title} → ${link.label} link`,
+        `the footer lost its ${column.title} → ${link.label} link`,
       );
     }
   }
-  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, data.footerGroups.length, "the footer's group count changed");
+  assert.equal(data.footerLinkCount, 24, "the four columns carry 24 links");
+
+  /* Every destination the footer offers is one this application registers. */
   const hrefs = anchors(footer);
-  assert.equal(hrefs.length, data.footerGroups.reduce((total, group) => total + group.links.length, 0));
+  assert.equal(
+    hrefs.length,
+    data.footerLinkCount + 2,
+    `the footer rendered ${hrefs.length} link(s), expected its 24 plus the lockup and the support desk`,
+  );
   for (const href of hrefs) {
     assert.ok(isRegisteredPath(href), `the footer links to ${href}, which this application does not register`);
   }
 });
 
-test("the footer states only what the house can stand behind", () => {
+test("the footer says only what the house can stand behind", () => {
   const footer = markup.slice(at('<footer class="footer"'), at("</footer>"));
+  const band = (open, close = "</ul>") => {
+    const from = footer.indexOf(open);
+    assert.ok(from > -1, `${open} is not on the page`);
+    return footer.slice(from, footer.indexOf(close, from));
+  };
 
-  /* Location belongs only in the bottom bar, not a fifth contact column. */
+  /* Location belongs to the legal bar alone, and no address is invented there. */
   assert.ok(footer.includes(`>${data.site.contact.city}</span>`), "the location is missing from the bottom bar");
-  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, 4, "the footer has an unexpected contact column");
-  assert.equal(/\(mailto:|tel:/.test(footer), Boolean(data.site.contact.email), "the footer publishes an address the record does not hold");
+  assert.equal(/mailto:|tel:/.test(footer), Boolean(data.site.contact.email), "the footer publishes an address the record does not hold");
+  assert.equal((footer.match(/class="fgroup"/g) ?? []).length, 4, "the footer grew a contact column");
 
-  /* Social: an unset profile is not a link, so the row carries exactly as many
-     links as the record carries profiles. */
-  const social = footer.slice(footer.indexOf('class="footer__social"'));
+  /* Social: the rail draws the profiles the record lists and anchors only the
+     ones it has actually published. */
+  const social = band('class="footer__social"');
   assert.equal(
-    social.split("<li>").length - 1,
+    social.split("<li").length - 1,
     data.site.social.length,
+    "the footer's social rail is not the record's list of profiles",
+  );
+  assert.equal(
+    (social.match(/<a /g) ?? []).length,
+    data.site.social.filter((profile) => profile.href).length,
     "the footer links a social profile the house does not own",
   );
+  assert.match(social, /aria-disabled=\"true\"/, "an unpublished profile must read as unpublished");
 
-  /* Newsletter: present, because the design has it; explicitly unavailable. */
-  assert.ok(footer.includes("The Pratikshya Circle: opening soon"), "the unavailable newsletter is not represented by the compact opening-soon line");
-  assert.doesNotMatch(footer, /class="nform is-unavailable/, "the dead newsletter input is still rendered");
+  /* Newsletter: the field is real, it is not dead on arrival, and it does not
+     claim a subscription the house cannot take. */
+  const panel = band('class="fnews"', "</form>");
+  assert.match(panel, /type="email"/, "the panel has no real email field");
+  assert.match(panel, /<label class="sr-only" for="footer-news-email">/, "the field has no accessible name");
+  assert.match(panel, /placeholder="Enter your email address"/, "the field lost the reference's prompt");
+  assert.match(panel, /Subscribe<svg/, "the gold button lost its label");
+  assert.equal(/disabled=""/.test(panel), false, "the panel ships a control that cannot be used");
+  assert.ok(panel.includes(esc(data.newsletterUnavailable)), "an unconnected service is not stated in the panel");
+  assert.doesNotMatch(panel, /Welcome to the Circle/, "the footer claims a subscription nobody can take");
 
-  /* Copyright: the house's own line. */
+  /* The service rail: the store's own delivery rule, not the reference's. */
+  const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+  assert.ok(
+    footer.includes(`standard free at ${esc(inr.format(data.freeShippingThreshold))}+`),
+    "the delivery line does not come from the store's shipping rules",
+  );
+  assert.doesNotMatch(footer, /prepaid/i, "the footer repeats a free-shipping rule this checkout does not have");
+  assert.ok(footer.includes('class="fcare__link" href="/contact"'), "the support item does not reach the contact desk");
+  assert.equal((footer.match(/class="fcare"/g) ?? []).length, data.careHighlights.length, "the care rail is not the record's items");
+
+  /* Payment marks: only instruments the checkout itself names. */
+  const payments = band('class="footer__payments"');
+  assert.equal(payments.split("<li").length - 1, data.paymentMarks.length, "the bar drew a different number of marks than the checkout authorises");
+  assert.equal(data.paymentMarks.every((mark) => mark.verified), true, "a mark is rendered without the checkout vouching for it");
+  for (const mark of data.paymentMarks) {
+    assert.ok(payments.includes(`>${esc(mark.label)}</span>`), `${mark.label} is drawn without its name`);
+    const method = data.paymentMethods.find((entry) => entry.id === mark.method);
+    /* An instrument is named by a method either in its own title ("UPI") or in
+       the list of instruments it takes ("Visa · Mastercard · RuPay"). */
+    assert.ok(
+      [method?.label ?? "", method?.description ?? ""].join(" · ").includes(mark.label),
+      `${mark.label} is advertised although ${method?.label ?? mark.method} does not name it`,
+    );
+  }
+
+  /* The legal bar's own sentences. */
   assert.match(footer, /© \d{4} PRATIKSHYA FASHION\. All rights reserved\./);
+  assert.ok(
+    footer.includes("Rooted in Tradition") && footer.includes("Woven for Today"),
+    "the house's tagline left the legal bar",
+  );
   assert.ok(!/prototype|sample catalogue/i.test(footer), "prototype copy is on the customer's footer");
 });
 

@@ -72,7 +72,7 @@ that renders a destination. It points `Link`/`NavLink` at the port's own router
 |---|---|---|
 | `mock/data/content.js` | 23 | `content-facts` |
 | `components/shopping/CartDrawer.jsx` | 6 | `routing` + `offer-copy` |
-| `components/layout/Footer.jsx` | 5 | `routing` + `footer-facts` |
+| ~~`components/layout/Footer.jsx`~~ | — | no longer copied: the footer moved to the `REPLACED` register when the house drew its own three-band footer (silk band, newsletter panel, brand lockup with its navigation and care rail, legal bar). Its sheet is `customer.footer.css`, its content `mock/data/footerPremium.js`, its tests `customerFooterPremium.test.js`; the `footer-facts` rule it must obey — no invented address, no unclaimed offer, the house's own copyright line — is asserted against the rendered surface instead of a diff. |
 | `components/ui/NewsletterForm.jsx` | 5 | `newsletter-capability` |
 | `components/layout/Layout.jsx` | 2 | `layout-slot` |
 | `components/sections/KurtiLookbook.jsx` | 2 | `kurti-curation` |
@@ -107,7 +107,7 @@ that renders a destination. It points `Link`/`NavLink` at the port's own router
 | `logo-plate` | brand mark `/images/pratikshya-logo.webp` → `/aarna-design/pratikshya-logo.webp` | same file, staged in the port's namespace (the padlock is the design's own supplied artwork) |
 | `fetch-priority` | `fetchpriority` → `fetchPriority` | React 19 spells the prop `fetchPriority`; the design is React 18 |
 | `offer-copy` | 5 lines of the drawer's offer copy | the design's copy names its sample offer ("Festive Edit"). The ported drawer now prints the register's own figures: `discountLabel` ("15% OFF", "₹500 OFF") and `scopeLabel` (the collection the offer is scoped to). |
-| `footer-facts` | 4 lines of the footer's contact block + the signature line | the design's footer prints a placeholder address (`care@…example`), care hours, and "Prototype storefront — sample catalogue, prices and offers". None of it is true of this house: each contact line renders only when the application actually holds the value (its settings record ships empty, so they are omitted), and the signature says only `© <year> <brand>. All rights reserved.` |
+| `footer-facts` | 4 lines of the footer's contact block + the signature line (registered for the design's file; `--copy` no longer writes this file — see the footer row in §3) | the design's footer prints a placeholder address (`care@…example`), care hours, and "Prototype storefront — sample catalogue, prices and offers". None of it is true of this house: each contact line renders only when the application actually holds the value (its settings record ships empty, so they are omitted), and the signature says only `© <year> <brand>. All rights reserved.` |
 | `newsletter-capability` | import + a `live` flag that disables the field and button, and a status line carrying the reason | the application has no subscription capability (no endpoint, list or consent record — §6). A control that cannot work is not offered as if it could; the reference surface substitutes the design's simulated service so the section can still be compared in all four of its states. |
 | `saree-curation` | `getByIds(['p02','p01','p14','p17'])` → `getProductsFor('sarees').slice(0, 4)` | the design curated four *sample* pieces by id. Inventing replacements would be inventing merchandise; asking the live catalogue for the first four pieces of the same edit is the same question the design asked its sample data. |
 | `kurti-curation` | the same, for the kurti lookbook's pairing fill | as above |

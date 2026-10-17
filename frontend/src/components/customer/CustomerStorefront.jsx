@@ -71,6 +71,7 @@ import { UIProvider } from "./state/UIContext.jsx";
 import { ensureDesignFonts } from "./designFonts.js";
 
 import "./customer.css";
+import "./customer.footer.css";
 import "./customer.host.css";
 import "./customer.listing.css";
 import "./customer.wishlist.css";

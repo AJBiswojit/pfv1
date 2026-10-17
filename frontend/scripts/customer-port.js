@@ -50,7 +50,6 @@ export const SCOPE = ".pf-root";
  */
 export const CLOSURE = {
   "components/layout/AnnouncementBar.jsx": 2,
-  "components/layout/Footer.jsx": 5,  // 1 routing + 4 truthfulness lines
   "components/layout/Header.jsx": 1,
   "components/layout/Layout.jsx": 10, // slot + account footer/workspace rewrites; measured from generated output
   "components/navigation/MegaMenu.jsx": 1,
@@ -139,6 +138,15 @@ export const CLOSURE = {
  * subscription. Each one opens with an `ADAPTED AT THE BOUNDARY` note.
  */
 export const REPLACED = {
+  /* THE FOOTER, SINCE THE HOUSE DREW IT AGAIN. The reference footer the design
+   * carried (compact brand block + four groups + a copyright row) is retired on
+   * this surface: the house's own three-band footer — newsletter panel, brand
+   * lockup with its navigation and care rail, legal bar — is written here in the
+   * port's vocabulary, with its content in `mock/data/footerPremium.js` and its
+   * artwork in `customer.footer.css`. The `footer-facts` rewrite below stays
+   * registered: it is what the copied footer used to carry, and `--copy` no
+   * longer touches this file. */
+  "components/layout/Footer.jsx": "the house's own three-band footer, in the reference's composition",
   "mock/data/products.js": "the live catalogue, mapped to the design's product shape",
   "mock/data/promotions.js": "the offer register, mapped to the design's promotion shape",
   "services/newsletter.js": "no subscription capability exists in this application yet",
@@ -149,6 +157,13 @@ export const REPLACED = {
 export const ADDED = [
   "CustomerStorefront.jsx",
   "customer.css",
+  /* The footer's own sheet and the three modules it is built from: the reference
+     asked for artwork, a newsletter panel and a care rail the design never drew,
+     so they are written in the design's vocabulary and scoped to the port. */
+  "customer.footer.css",
+  "components/footer/FooterArt.jsx",
+  "components/footer/FooterNewsletter.jsx",
+  "mock/data/footerPremium.js",
   "customer.host.css",
   "customer.listing.css",
   /* PHASE 8 — the wishlist's own chrome (the design has no such file). */

@@ -102,7 +102,9 @@ test("the port is exactly the design's homepage closure", () => {
      STEP-1 database-driven homepage — its content is unreachable. The count
      moves only when a page of the design is adopted or its data retired,
      never when one is edited. */
-  assert.equal(Object.keys(CLOSURE).length + Object.keys(REPLACED).length, 58, "58 design files are carried");
+  /* 57 carried as the design wrote them (the footer is not among them: the house
+     drew its own, and `REPLACED` says so) + 1 the port answers in its own words. */
+  assert.equal(Object.keys(CLOSURE).length + Object.keys(REPLACED).length, 58, "58 design files are carried or answered");
 });
 
 test("every copied file IS the design's file, adapted by exactly the pinned amount", () => {
@@ -127,7 +129,9 @@ test("the adaptations are the documented ones — nothing else moved", () => {
      Link/NavLink from react-router-dom any more. */
   const ROUTER_EXPORTS = ["Outlet", "useLocation", "useNavigate", "useParams", "useSearchParams"];
   const rendersLink = [];
-  for (const file of Object.keys(CLOSURE)) {
+  /* `REPLACED` joins the walk: the footer is this application's own file now,
+     and a link it renders still owes the shim the same thing a copied file does. */
+  for (const file of [...Object.keys(CLOSURE), ...Object.keys(REPLACED)]) {
     const source = readPort(file);
     const usesLink = /<Link\b|<NavLink\b|<SectionLink\b/.test(source);
     const sectionLinkBoundary = /<SectionLink\b/.test(source) && /import \{[^}]*\bSectionLink\b[^}]*\} from '\.\.\/\.\.\/\.\.\/storefront\/home\/HomepageSection'/.test(source);
@@ -360,9 +364,23 @@ test("the design's plate registry is carried over key for key, and every referen
   /* STEP-2: no duplicate asset tree — only the plates the code still
      references are staged (the 47 registry keys, the logo plate and the
      one fixture-literal plate), byte-for-byte from the design's own files. */
-  const staged = readdirSync(join(ROOT, "public", "design")).filter((name) => name.endsWith(".webp"));
-  assert.equal(staged.length, 49, "only referenced plates are staged");
-  for (const plate of staged) {
+  /* The house's own plates — artwork this application authored for a surface the
+     design never drew — sit beside the design's, are referenced, and are not the
+     design's to be compared with. */
+  const HOUSE_PLATES = ["pratikshya-logo.webp", "p-saree-ivory.webp", "pratikshya-footer-background.webp"];
+  const staged = readdirSync(join(ROOT, "public", "design"))
+    .filter((name) => name.endsWith(".webp"));
+  assert.equal(staged.length, 49 + 1, "only referenced plates are staged");
+  assert.ok(
+    staged.includes("pratikshya-footer-background.webp"),
+    "the footer's silk band is not staged",
+  );
+  assert.ok(
+    readPort("customer.footer.css").includes("/design/pratikshya-footer-background.webp"),
+    "the footer sheet does not address the band it was drawn for",
+  );
+  const referenced = staged.filter((name) => !HOUSE_PLATES.includes(name));
+  for (const plate of referenced) {
     assert.ok(plates.includes(plate), `${plate} is not one of the design's plates`);
     assert.equal(readFileSync(join(ROOT, "public", "design", plate)).length, readFileSync(join(designDir, plate)).length, `${plate} differs from the design's file`);
   }
