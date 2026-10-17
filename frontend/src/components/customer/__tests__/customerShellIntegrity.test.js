@@ -87,6 +87,10 @@ const SHELL_FILES = [
         "export default function Layout({ children }) {",
       ],
       ["        <Outlet />", "        {children ?? <Outlet />}"],
+      ["import { Outlet } from 'react-router-dom';", "import { Outlet, useLocation } from 'react-router-dom';"],
+      ["import ScrollToTop from '../ui/ScrollToTop.jsx';", "import ScrollToTop from '../ui/ScrollToTop.jsx';\nimport { isAccountAreaPath } from '../../utils/accountLayout.js';"],
+      ["export default function Layout({ children }) {", "export default function Layout({ children }) {\n  const accountArea = isAccountAreaPath(useLocation().pathname);"],
+      ["      <Footer />", "      {!accountArea && <Footer />}"],
     ],
   ],
   [
