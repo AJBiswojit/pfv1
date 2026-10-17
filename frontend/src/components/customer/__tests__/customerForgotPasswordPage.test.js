@@ -1,22 +1,21 @@
 /**
- * PRATIKSHYA FASHION — PHASE 10 · the design's password-recovery request page,
- * over this application's recovery endpoint.
+ * PRATIKSHYA FASHION — CINEMATIC GLASS AUTH · password recovery and reset.
  *
- * The production screen (`pages/auth/ForgotPassword.jsx`) asks
- * `POST /auth/customer/forgot-password` for reset instructions through
- * `AuthContext.forgotPassword`, validates the identifier with the application's
- * own `isValidIdentifier`, and shows its confirmation ONLY when the backend
- * accepted the request. This suite pins that shape on the ported page — the
- * import, the messages, the single `setSubmitted` inside the accepted branch,
- * and the confirmation's two actions.
+ * Both recovery surfaces now live inside the single authentication experience:
  *
- * The reset screen is a separate customer route, while this page remains honest
- * about the existing forgot-password endpoint's response. It never claims that
- * an email was sent when the backend only confirms receipt of the request.
+ *   · `/forgot-password` opens its recovery mode, which asks the application's
+ *     existing `AuthContext.forgotPassword` (`POST /auth/customer/forgot-password`)
+ *     and shows the confirmation ONLY when the backend accepted the request;
+ *   · `/reset-password?userId=…&token=…` opens its reset mode, which reads the
+ *     pair from the URL and calls `AuthContext.resetPassword`
+ *     (`POST /auth/customer/reset-password`);
+ *   · "Back to sign in", "Request a new link" and "Return to sign in" are
+ *     in-panel controls: the URL and the campaign photograph never move.
  *
- * Nothing here is an end-to-end verification: there is no backend in this
- * sandbox, so the request itself is not exercised — the pins are that the page
- * calls the application's path and invents nothing.
+ * The honesty rules are the important ones here and are pinned verbatim: no
+ * email is claimed when the backend only stores a token, a refused request shows
+ * the backend's own message, an incomplete reset link offers no form, and a
+ * rejected token is never reported as a changed password.
  */
 
 import test, { before, after } from "node:test";
@@ -40,8 +39,11 @@ function projectRoot() {
 
 const ROOT = projectRoot();
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
-const PORTED = "src/components/customer/pages/ForgotPassword.jsx";
-const PRODUCTION = "src/components/customer/pages/ForgotPassword.jsx";
+const FORGOT = "src/components/customer/auth/AuthPanelForgotPassword.jsx";
+const RESET = "src/components/customer/auth/AuthPanelResetPassword.jsx";
+const EXPERIENCE = "src/components/customer/auth/AuthExperience.jsx";
+const FORGOT_PAGE = "src/components/customer/pages/ForgotPassword.jsx";
+const RESET_PAGE = "src/components/customer/pages/ResetPassword.jsx";
 
 const storage = new Map();
 const localStorageStub = {
@@ -50,9 +52,7 @@ const localStorageStub = {
   removeItem: (key) => storage.delete(String(key)),
   clear: () => storage.clear(),
 };
-
 const NOOP = () => {};
-
 globalThis.window = {
   localStorage: localStorageStub,
   location: { search: "", pathname: "/", href: "http://localhost/" },
@@ -61,13 +61,12 @@ globalThis.window = {
   removeEventListener: NOOP,
 };
 
-async function mount(define) {
+async function mount() {
   const vite = await createServer({
     root: ROOT,
     logLevel: "error",
     server: { middlewareMode: true, hmr: false },
     appType: "custom",
-    define,
   });
   const load = (path) => vite.ssrLoadModule(path);
   const [
@@ -91,9 +90,8 @@ async function mount(define) {
   ]);
 
   let tree = React.createElement(CustomerLayout);
-  for (const Provider of [CheckoutProvider, OrderProvider, ShoppingProvider, InventoryProvider, AccountProvider, AuthProvider]) {
-    tree = React.createElement(Provider, null, tree);
-  }
+  const providers = [CheckoutProvider, OrderProvider, ShoppingProvider, InventoryProvider, AccountProvider, AuthProvider];
+  for (const Provider of providers) tree = React.createElement(Provider, null, tree);
 
   return {
     vite,
@@ -109,143 +107,148 @@ async function mount(define) {
   };
 }
 
-
 let on = null;
-let off = null;
+before(async () => { on = await mount(); });
+after(async () => { await on?.vite.close(); delete globalThis.window; });
 
-before(async () => {
-  on = await mount({});
-  off = await mount({});
-});
+const flat = (value) => value.replace(/\s+/g, " ");
 
-after(async () => {
-  await Promise.all([on?.vite.close(), off?.vite.close()]);
-  delete globalThis.window;
-});
+/* ── 1 · the routes ─────────────────────────────────────────────────────── */
 
-const source = () => read(PORTED);
-
-const RUNTIME_PACKAGES = new Set(["react", "react-dom", "react-router-dom", "lucide-react"]);
-const importSpecifiers = (text) =>
-  [...text.matchAll(/^\s*import\s+(?:[^'"]*?from\s+)?["']([^"']+)["']/gm)].map((match) => match[1]);
-
-/* ── 1 · the switch ─────────────────────────────────────────────────────── */
-
-test("/forgot-password always renders the customer storefront's auth screen regardless of the former override", () => {
-  const markup = off.render("/forgot-password");
-  assert.ok(markup.length > 0, "/forgot-password rendered nothing at all");
-  assert.match(markup, /class="pf-root"/);
-  assert.match(markup, /class="info container pf-auth"/);
-});
-
-test("with the switch on, /forgot-password is the port — inside the design's full shell", () => {
+test("/forgot-password is the experience in recovery mode, inside the design's shell", () => {
   const markup = on.render("/forgot-password");
   assert.match(markup, /class="pf-root"/);
-  assert.match(markup, /class="info container pf-auth"/);
-  assert.match(markup, /class="footer"/, "the design's footer is missing from the recovery page");
-  assert.match(markup, /class="skip-link"/, "the design's skip link is missing from the recovery page");
-  assert.equal(/pf-journey/.test(markup), false, "the recovery page rendered the quiet journey chrome instead");
+  assert.match(markup, /class="pf-auth-experience"/);
+  assert.match(markup, /class="pf-auth-editorial"/);
+  assert.match(markup, /Account Recovery/);
+  assert.match(markup, /Recover your <em>account\.<\/em>/);
+  assert.match(read(FORGOT_PAGE), /initialMode="forgotPassword"/);
+  assert.match(read(FORGOT_PAGE), /document\.title = 'Forgot Password — PRATIKSHYA FASHION';/);
 });
 
-test("the reset screen is adopted by the customer storefront and remains in its customer auth surface", () => {
+test("the reset route stays in the customer auth surface and renders in its own mode", () => {
   const { boundary } = on;
   assert.equal(boundary.isCustomerAuthPath("/forgot-password"), true);
   assert.equal(boundary.CUSTOMER_AUTH_PATHS.has("/reset-password"), true);
   assert.equal(boundary.isCustomerAuthPath("/reset-password"), true);
+
   const markup = on.render("/reset-password?userId=user-1&token=token-1");
-  assert.match(markup, /class="pf-root"/);
-  assert.match(markup, /Create new/);
-  assert.match(markup, /customer-reset-password/);
+  assert.match(markup, /class="pf-auth-experience"/);
+  assert.match(markup, /Create new <em>password\.<\/em>/);
+  assert.match(markup, /id="customer-reset-password"/);
+  assert.match(read(RESET_PAGE), /initialMode="resetPassword"/);
 });
 
-/* ── 2 · the flow is the application's ──────────────────────────────────── */
+/* ── 2 · the recovery flow is the application's ─────────────────────────── */
 
 test("the identifier is production's field, validated by the application's own rule", () => {
-  const text = source();
-  const production = read(PRODUCTION);
+  const text = read(FORGOT);
   assert.match(text, /import \{ isValidIdentifier \} from '\.\.\/\.\.\/\.\.\/utils\/validation\.js';/);
   assert.match(text, /id="forgot-identifier"/);
   assert.match(text, /autoComplete="username"/);
   assert.match(text, /placeholder="e\.g\. ananya\.sharma@example\.com"/);
-  assert.ok(production.includes('id="forgot-identifier"'), "production no longer carries the field id");
-  assert.equal(/const isValidIdentifier =/.test(text), false, "the page re-implemented the identifier rule");
+  assert.equal(/const isValidIdentifier =/.test(text), false, "the panel re-implemented the identifier rule");
 });
 
-test("every message is the production string, and validation stops before the API call", () => {
-  const text = source();
-  const production = read(PRODUCTION);
+test("every recovery message is the production string, and validation stops before the API call", () => {
+  const text = flat(read(FORGOT));
   const messages = [
     "Please enter your registered email address or phone number.",
     "Please enter a valid email format or 10-digit mobile number.",
     "Unable to send reset instructions.",
-    "Password reset emails are not yet connected to this storefront",
+    "Password reset emails are not yet connected to this storefront, so no reset email has been sent.",
   ];
-  const flat = (value) => value.replace(/\s+/g, " ");
   for (const message of messages) {
-    assert.ok(flat(text).includes(message), `the ported page lost the production message: ${message}`);
-    assert.ok(flat(production).includes(message), `production no longer carries: ${message}`);
+    assert.ok(text.includes(message), `the panel lost the production message: ${message}`);
   }
   assert.ok(text.indexOf(messages[0]) < text.indexOf("setIsSubmitting(true)"));
   assert.ok(text.indexOf(messages[1]) < text.indexOf("setIsSubmitting(true)"));
 });
 
 test("the request goes through AuthContext, and the confirmation only through its acceptance", () => {
-  const text = source();
+  const text = read(FORGOT);
   assert.match(text, /const \{ forgotPassword \} = useAuth\(\);/);
   assert.match(text, /const result = await forgotPassword\(identifier\);/);
-  assert.equal(/\bapiClient\b|\bfetch\(|XMLHttpRequest/.test(text), false, "the page reached for the network itself");
-  /* One accepted branch, one submitted state — nothing else may set it. */
+  assert.equal(/\bapiClient\b|\bfetch\(|XMLHttpRequest/.test(text), false, "the panel reached for the network itself");
   assert.match(text, /if \(result\.ok\) \{\s*setSubmitted\(true\);/);
   assert.equal((text.match(/setSubmitted\(/g) ?? []).length, 1, "the confirmation state is set outside the accepted branch");
   assert.match(text, /setError\(result\.error \|\| 'Unable to send reset instructions\.'\);/);
 });
 
-test("the page never claims an email was sent, nor a changed password", () => {
-  const text = source();
-  /* Phase 12: no reset email is dispatched by the backend yet, so the
-     confirmation says so, names the identifier that was submitted, and claims
-     neither an email nor a reset. */
-  assert.match(text, /Password reset\s+emails are not yet connected to this storefront, so no reset email has been sent\./);
+test("the confirmation never claims an email or a reset it cannot perform", () => {
+  const text = read(FORGOT);
+  assert.match(text, /no reset email has been sent/);
   assert.match(text, /<strong>\{identifier\}<\/strong>/);
   const FORBIDDEN = /password (has been|was) (reset|updated|changed)|reset successfully|password updated|instructions (have been|were) (sent|dispatched)|prepared password reset instructions|check your\s+<em>inbox|Instructions Dispatched/i;
-  assert.equal(FORBIDDEN.test(text), false, "the ported page claimed an email or a reset it cannot perform");
+  assert.equal(FORBIDDEN.test(text), false, "the panel claimed an email or a reset it cannot perform");
 });
 
-test("the confirmation offers only the way back to sign-in, not an unlinked reset screen", () => {
-  const text = source();
-  assert.equal(/navigate\('\/reset-password'\)/.test(text), false, "the confirmation still sends the customer to a reset screen with no link");
-  assert.equal(/Proceed to Reset Password/.test(text), false, "the misleading CTA is back");
-  assert.match(text, /to="\/signin"/);
-  assert.match(text, />\s*Return to Sign In\s*</);
+test("Return to Sign In and Back to Sign In are in-panel controls", () => {
+  const text = read(FORGOT);
+  assert.match(text, />Return to Sign In</);
   assert.match(text, /Back to Sign In/);
-  /* The header comment names the reason this phase left the reset flow alone,
-     so the next reader does not have to rediscover it. */
-  assert.match(text, /PHASE 12/);
-  assert.match(text, /no reset email is dispatched yet/);
+  assert.match(text, /onSwitchMode\('login'\)/);
+  assert.equal(/to="\/signin"/.test(text), false, "the confirmation still links to a second sign-in page");
+  assert.equal(/navigate\('\/reset-password'\)/.test(text), false, "the confirmation still sends the customer to an unlinked reset screen");
+  assert.equal(/Proceed to Reset Password/.test(text), false, "the misleading CTA is back");
+  assert.match(read(FORGOT_PAGE), /initialMode="forgotPassword"/);
 });
 
-test("the tab title is set and restored, and the page adds no dependency", () => {
-  const text = source();
-  assert.match(text, /document\.title = 'Forgot Password — PRATIKSHYA FASHION';/);
-  assert.match(text, /return \(\) => \{ document\.title = previous; \};/);
-  for (const specifier of importSpecifiers(text)) {
-    const external = !specifier.startsWith(".");
-    assert.equal(external && !RUNTIME_PACKAGES.has(specifier), false, `unexpected dependency: ${specifier}`);
-  }
-  assert.equal(/window\.localStorage|\.localStorage\.(get|set|remove)Item/.test(text), false, "the page kept state of its own");
+/* ── 3 · reset ──────────────────────────────────────────────────────────── */
+
+test("the reset panel reads the backend's rule and calls the existing service", () => {
+  const text = read(RESET);
+  assert.match(text, /import \{ validateResetPassword, RESET_PASSWORD_MIN \} from '\.\.\/\.\.\/\.\.\/utils\/validation\.js';/);
+  assert.match(text, /const \{ resetPassword \} = useAuth\(\);/);
+  assert.match(text, /const result = await resetPassword\(password, confirmPassword, \{ userId, token \}\);/);
+  assert.match(text, /const LINK_REJECTED_STATUSES = \[401, 404\];/);
+  assert.match(text, /id="customer-reset-password"/);
+  assert.match(text, /id="customer-reset-confirm"/);
+  assert.match(text, /autoComplete="new-password"/);
+  assert.equal(/\bapiClient\b|\bfetch\(|XMLHttpRequest/.test(text), false, "the panel reached for the network itself");
 });
 
-/* ── 3 · rendered against the real providers ────────────────────────────── */
+test("the reset panel tells the truth in every state", () => {
+  const text = read(RESET);
+  assert.match(text, /This link is <em>incomplete\.<\/em>/);
+  assert.match(text, /This reset link is invalid or has expired\. Request a new link to continue\./);
+  assert.match(text, /Password <em>updated\.<\/em>/);
+  /* Success is only set after `result.ok` — never before the backend answered. */
+  assert.match(text, /if \(result\?\.ok\) \{\s*setSuccess\(true\);\s*return;/);
+  assert.match(text, /setError\(result\?\.error \|\| 'We could not update your password\. Please try again\.'\);/);
+});
 
-test("the rendered page is the design's frame around the application's form", () => {
+test("reset tokens are read from the URL and never stored or logged", () => {
+  const text = read(EXPERIENCE);
+  assert.match(text, /searchParams\.get\('userId'\)/);
+  assert.match(text, /searchParams\.get\('token'\)/);
+  assert.equal(/localStorage|sessionStorage/.test(text), false, "the experience persisted the reset token");
+  assert.equal(/console\.(log|info|debug|warn|error)/.test(text), false, "the experience logged the reset token");
+  assert.equal(/localStorage|sessionStorage/.test(read(RESET)), false, "the reset panel stored the token");
+});
+
+test("the reset actions all stay inside the panel", () => {
+  const text = read(RESET);
+  assert.match(text, /onSwitchMode\('forgotPassword'\)/);
+  assert.match(text, /onSwitchMode\('login'\)/);
+  assert.equal(/to="\/(signin|forgot-password|reset-password)"/.test(text), false, "the reset panel links to another authentication page");
+  assert.equal(/useNavigate|navigate\(/.test(text), false, "the reset panel navigates between modes");
+});
+
+/* ── 4 · rendered ───────────────────────────────────────────────────────── */
+
+test("a pristine recovery page shows no confirmation and no error", () => {
   const markup = on.render("/forgot-password");
-  assert.match(markup, /class="display info__title"/);
-  assert.match(markup, /Account Recovery/);
   assert.match(markup, /id="forgot-identifier"/);
-  assert.match(markup, /Submit Request/);
-  assert.doesNotMatch(markup, /aria-label="Breadcrumb"|class="crumbs"/, "customer breadcrumb should be absent");
-  /* Before anything is submitted there is no confirmation and no error. */
-  assert.equal(/pf-auth__sent/.test(markup), false, "the confirmation rendered before any request");
-  assert.equal(/pf-auth__alert/.test(markup), false, "a pristine page showed an error");
-  assert.equal(/Instructions Dispatched/.test(markup), false, "the confirmation copy rendered before any request");
+  assert.match(markup, /Send recovery instructions/);
+  assert.equal(/pf-auth-sent/.test(markup), false, "the confirmation rendered before any request");
+  assert.equal(/pf-auth-alert/.test(markup), false, "a pristine page showed an error");
+  assert.equal(/Request Received/.test(markup), false, "the confirmation copy rendered before any request");
+  assert.equal(/Instructions Dispatched/.test(markup), false);
+});
+
+test("an incomplete reset link renders 'incomplete' and no password field", () => {
+  const markup = on.render("/reset-password?userId=user-1");
+  assert.match(markup, /This link is <em>incomplete\.<\/em>/);
+  assert.equal(/customer-reset-password/.test(markup), false, "a password form was offered without a token");
 });

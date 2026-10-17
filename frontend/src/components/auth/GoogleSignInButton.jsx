@@ -9,8 +9,14 @@ import { AlertCircle } from "lucide-react";
  * Renders a Google Sign-In button for customer SSO authentication.
  * Uses Google Identity Services (GIS) SDK.
  * Dynamically resolves Google Client ID from environment or backend config.
+ *
+ * `variant="glass"` only changes the *unconfigured* fallback control's skin so it
+ * can sit inside the translucent authentication panel; the GIS client, the
+ * one-tap prompt, the credential exchange and every callback are untouched, and
+ * a configured provider still renders Google's own official button.
  */
-export default function GoogleSignInButton({ onSuccess, onError, label = "Sign in with Google" }) {
+export default function GoogleSignInButton({ onSuccess, onError, label = "Sign in with Google", variant = "default" }) {
+  const glass = variant === "glass";
   const { signInWithGoogle } = useAuth();
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -136,15 +142,17 @@ export default function GoogleSignInButton({ onSuccess, onError, label = "Sign i
     <div className="w-full">
       {/* Error alert if any */}
       {errorMsg && (
-        <div className="mb-3 flex items-center gap-2 border border-accent/40 bg-accent/5 p-3 text-accent text-xs">
-          <AlertCircle size={14} className="shrink-0" />
+        <div className={glass
+          ? "pf-auth-google__error"
+          : "mb-3 flex items-center gap-2 border border-accent/40 bg-accent/5 p-3 text-accent text-xs"}>
+          <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Container for rendered official Google GIS Button */}
       {isConfigured ? (
-        <div className="w-full min-h-[44px] flex justify-center items-center">
+        <div className={glass ? "pf-auth-google pf-auth-google--official" : "w-full min-h-[44px] flex justify-center items-center"}>
           <div ref={buttonContainerRef} className="w-full flex justify-center" />
         </div>
       ) : (
@@ -153,7 +161,9 @@ export default function GoogleSignInButton({ onSuccess, onError, label = "Sign i
           type="button"
           onClick={handleManualClick}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 border border-pearl bg-canvas hover:bg-surface/80 py-3.5 px-4 font-ui text-sm font-medium text-ink transition-colors focus:outline-none focus:ring-1 focus:ring-ink"
+          className={glass
+            ? "pf-auth-google"
+            : "w-full flex items-center justify-center gap-3 border border-pearl bg-canvas hover:bg-surface/80 py-3.5 px-4 font-ui text-sm font-medium text-ink transition-colors focus:outline-none focus:ring-1 focus:ring-ink"}
         >
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
             <path
