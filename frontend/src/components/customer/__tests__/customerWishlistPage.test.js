@@ -527,9 +527,20 @@ test("signed-in `/account/wishlist` renders inside `AccountFrame` with active Wi
     ariaCurrent: (attrs.match(/aria-current="([^"]*)"/) ?? [])[1] ?? null,
     inner,
   }));
-  assert.equal(navLinks.length, 11, "signed-in `/account/wishlist` did not render all eleven account navigation tabs");
+  assert.deepEqual(navLinks.map((link) => link.href), [
+    "/account",
+    "/account/orders",
+    "/account/wishlist",
+    "/account/instagram-rewards",
+    "/account/profile",
+    "/account/ai",
+    "/account/settings",
+  ], `signed-in \`/account/wishlist\` did not render the seven sidebar destinations (got ${navLinks.length})`);
   const activeLinks = navLinks.filter((link) => link.ariaCurrent === "page" || link.className.includes("is-active"));
   assert.deepEqual(activeLinks.map((link) => link.href), ["/account/wishlist"], "the Wishlist tab is not the sole active account navigation item on `/account/wishlist`");
+  /* The sidebar card reads the account profile, not the auth session: this
+     harness signs in without an account read, so no card is drawn. */
+  assert.equal(/pf-account__user/.test(emptySignedIn), false, "signed-in `/account/wishlist` drew a customer card with no account behind it");
   assert.equal(/pf-account__nav-count/.test(emptySignedIn), false, "an empty signed-in wishlist rendered a badge count");
 
   /* Populated state inside the signed-in account frame preserves cards, counts, and actions. */

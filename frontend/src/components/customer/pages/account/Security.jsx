@@ -63,7 +63,7 @@ const describeSession = (session) => {
 
 const EMPTY_FORM = { currentPwd: '', newPwd: '', confirmPwd: '' };
 
-export default function Security() {
+export default function Security({ embedded = false }) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { profile, security, changePassword, signOutOtherSessions, isLoading, loadError, loadErrorStatus, refreshAccount } = useAccount();
@@ -163,12 +163,8 @@ export default function Security() {
     }, SIGN_OUT_DELAY_MS);
   };
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Security' }]}
-      label="Your account"
-      title="Security"
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Keep your password current and review where your account is signed in.
       </p>
@@ -267,6 +263,18 @@ export default function Security() {
           </section>
         </>
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Security' }]}
+      label="Your account"
+      title="Security"
+    >
+      {content}
     </AccountFrame>
   );
 }

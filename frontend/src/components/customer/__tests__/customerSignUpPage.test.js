@@ -132,13 +132,13 @@ test("/signup always renders the customer storefront's sign-up screen regardless
   const markup = off.render("/signup");
   assert.ok(markup.length > 0, "/signup rendered nothing at all");
   assert.match(markup, /class="pf-root"/);
-  assert.match(markup, /class="info container pf-auth"/);
+  assert.match(markup, /class="info container pf-auth pf-auth--wide"/);
 });
 
 test("with the switch on, /signup is the port — inside the design's full shell", () => {
   const markup = on.render("/signup");
   assert.match(markup, /class="pf-root"/);
-  assert.match(markup, /class="info container pf-auth"/);
+  assert.match(markup, /class="info container pf-auth pf-auth--wide"/);
   assert.match(markup, /class="footer"/, "the design's footer is missing from the sign-up page");
   assert.match(markup, /class="skip-link"/, "the design's skip link is missing from the sign-up page");
   assert.equal(/pf-journey/.test(markup), false, "the sign-up page rendered the quiet journey chrome instead");

@@ -79,6 +79,7 @@ const code = (relative) =>
 const MIRROR = 'src/components/customer/pages/account/AiMirror.jsx';
 const SHOPPING = 'src/components/customer/pages/account/AiShopping.jsx';
 const MOUNT = 'src/components/customer/CustomerStorefront.jsx';
+const ATELIER = 'src/components/customer/pages/account/AiAtelier.jsx';
 const PRODUCTION_APP = 'src/App.jsx';
 const SHEET = 'src/components/customer/customer.ai.css';
 const DESIGN_SHEET = 'src/components/customer/customer.css';
@@ -224,39 +225,44 @@ const anchors = (markup) =>
 const hrefs = (markup) => anchors(markup).map((anchor) => anchor.href);
 
 /* ── 1 · the boundary ──────────────────────────────────────────────────────── */
-
-test('The customer storefront owns both AI routes inside its shared customer guard', () => {
+test('The customer storefront owns the AI atelier and both legacy AI routes inside its shared customer guard', () => {
   const mountSource = read(MOUNT);
+  const atelierSource = read(ATELIER);
   const appSource = read(PRODUCTION_APP);
 
-  /* The port's own pages, imported where the port mounts them — deliberately not
+  /* The port's own pages, imported where the port mounts them — the mount owns
+     the atelier container, the container owns its two tabs — deliberately not
      through the `lazy` block, which is production's. */
-  assert.match(mountSource, /^import AccountAiMirrorPage from "\.\/pages\/account\/AiMirror\.jsx";$/m,
-    'the port no longer imports its own AI Mirror page');
-  assert.match(mountSource, /^import AccountAiShoppingPage from "\.\/pages\/account\/AiShopping\.jsx";$/m,
-    'the port no longer imports its own AI Shopping page');
+  assert.match(mountSource, /^import AccountAiAtelierPage from "\.\/pages\/account\/AiAtelier\.jsx";$/m,
+    'the port no longer mounts its own AI atelier');
+  assert.match(atelierSource, /^import AiShopping from '\.\/AiShopping\.jsx';$/m,
+    'the atelier no longer imports its own shopping companion');
+  assert.match(atelierSource, /^import AiMirror from '\.\/AiMirror\.jsx';$/m,
+    'the atelier no longer imports its own mirror');
   assert.equal(/const AiMirror = lazy\(/.test(mountSource), false,
     'the AI Mirror is still declared as a production lazy page in the port');
   assert.equal(/const AiShoppingAssistant = lazy\(/.test(mountSource), false,
     'AI Shopping is still declared as a production lazy page in the port');
 
-  /* Both routes are the port's own component, and BOTH sit inside the family's
+  /* The atelier is the port's own component, the two legacy URLs redirect into
+     its tabs, and ALL THREE sit inside the family's single `ProtectedRoute`
      single `ProtectedRoute` block — the same guard production wraps them in. */
-  assert.match(mountSource, /<Route path="account\/ai-mirror" element=\{<AccountAiMirrorPage \/>\} \/>/);
-  assert.match(mountSource, /<Route path="account\/ai-shopping" element=\{<AccountAiShoppingPage \/>\} \/>/);
+  assert.match(mountSource, /<Route path="account\/ai" element=\{<AccountAiAtelierPage \/>\} \/>/);
+  assert.match(mountSource, /<Route path="account\/ai-mirror" element=\{<Navigate to="\/account\/ai\?tab=mirror" replace \/>\} \/>/);
+  assert.match(mountSource, /<Route path="account\/ai-shopping" element=\{<Navigate to="\/account\/ai\?tab=shopping" replace \/>\} \/>/);
   const guarded = mountSource.slice(
     mountSource.indexOf('<Route element={<ProtectedRoute />}>'),
     mountSource.indexOf('</Route>', mountSource.indexOf('account/instagram-rewards')),
   );
+  assert.match(guarded, /account\/ai"/, 'the atelier left the guard block');
   assert.match(guarded, /account\/ai-mirror/, 'the AI Mirror left the guard block');
   assert.match(guarded, /account\/ai-shopping/, 'AI Shopping left the guard block');
 
   /* App no longer carries parallel customer routes; the customer boundary is the
-     sole owner and its two screens stay under the shared account guard. */
+     sole owner and its screens stay under the shared account guard. */
   assert.match(appSource, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.doesNotMatch(appSource, /AiMirror|AiShoppingAssistant|\/account\/ai-/);
-  assert.match(mountSource, /<Route path="account\/ai-mirror" element=\{<AccountAiMirrorPage \/>\} \/>/);
-  assert.match(mountSource, /<Route path="account\/ai-shopping" element=\{<AccountAiShoppingPage \/>\} \/>/);
+  assert.match(mountSource, /<Route path="account\/ai" element=\{<AccountAiAtelierPage \/>\} \/>/);
 });
 
 test('the port’s registry declares both pages and their sheet, once each', () => {
@@ -401,7 +407,7 @@ test('the mirror’s widgets are production’s own files, not copies', () => {
   const customerPage = code(PRODUCTION_MIRROR);
   assert.match(customerPage, /import AccountFrame from '\.\/AccountFrame\.jsx';/);
   assert.match(customerPage, /pf-ai__/);
-  assert.match(read('src/components/customer/CustomerStorefront.jsx'), /import AccountAiMirrorPage from "\.\/pages\/account\/AiMirror\.jsx"/);
+  assert.match(read('src/components/customer/pages/account/AiAtelier.jsx'), /import AiMirror from '\.\/AiMirror\.jsx';/);
 });
 
 test('the mirror states the demo plainly and claims no preview it cannot produce', () => {
@@ -511,7 +517,7 @@ test('the shopping page’s widgets are production’s own files, not copies', (
   const customerPage = code(PRODUCTION_SHOPPING);
   assert.match(customerPage, /import AccountFrame from '\.\/AccountFrame\.jsx';/);
   assert.match(customerPage, /pf-ai__/);
-  assert.match(read('src/components/customer/CustomerStorefront.jsx'), /import AccountAiShoppingPage from "\.\/pages\/account\/AiShopping\.jsx"/);
+  assert.match(read('src/components/customer/pages/account/AiAtelier.jsx'), /import AiShopping from '\.\/AiShopping\.jsx';/);
 });
 
 test('the shopping page labels the demo provider, and never prints the business assistant’s label on it', () => {

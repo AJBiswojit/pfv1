@@ -14,7 +14,8 @@
    password field's reveal toggle, the labelled row that carries the "forgot
    password" link, the remember-me row, the "or continue with" divider, the
    two-column field pair (and its collapse), the alternate-action block, the
-   confirmation panel and the back link.
+   confirmation panel, the back link, and the centered column the pages
+   narrow into.
 
    Every declaration is scoped to `.pf-root` and every value is a design token
    (`--c-*`, `--f-*`, `--fs-*`, `--track-*`, `--t-*`, `--ease-out`), so these
@@ -227,3 +228,36 @@
 
 /* The password row's "Forgot password?" link is the same register, at rest. */
 .pf-root .pf-auth__row .pf-auth__link { font-size: 11.5px; }
+
+/* ── the centered column ────────────────────────────────────────────────────
+
+   The design's `.info` page box is 860px wide; a credential form at that width
+   hugs the left gutter, which reads as a broken layout rather than a narrow
+   form. The auth column narrows the page to the form's own measure and centers
+   it, so the eyebrow, title and fields share one left edge and the page holds
+   together at desktop widths. The two-column registration form takes the wide
+   measure. Inside the narrowed column the form blocks fill the column — a
+   short divider under full-width inputs would read as broken in the same way.
+   The breadcrumb keeps the full column width and stays left-aligned. */
+
+.pf-root .pf-auth {
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.pf-root .pf-auth--wide {
+  max-width: 680px;
+}
+
+.pf-root .pf-auth .pf-auth__form,
+.pf-root .pf-auth .pf-auth__status,
+.pf-root .pf-auth .pf-auth__alt,
+.pf-root .pf-auth .pf-auth__sent-actions {
+  max-width: none;
+}
+
+/* One class deeper than the back link's own rule above, for the reason the
+   doctrine gives: an equal-specificity rule would win on source order alone. */
+.pf-root .info .pf-auth .pf-auth__back {
+  max-width: none;
+}

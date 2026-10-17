@@ -163,7 +163,7 @@ test("all customer auth paths render the customer storefront irrespective of for
     const markup = off.render(path);
     assert.ok(markup.length > 0, `${path} rendered nothing at all`);
     assert.match(markup, /class="pf-root"/, `${path} did not render the customer storefront`);
-    assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render a storefront auth UI`);
+    assert.match(markup, /class="info container pf-auth[ "]|Create new/ , `${path} did not render a storefront auth UI`);
   }
   assert.match(read("src/components/customer/CustomerStorefront.jsx"), /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
@@ -352,4 +352,22 @@ test("the stylesheet carries only what the design never drew, scoped to the port
     );
   }
   assert.equal(/#[0-9a-fA-F]{3,8}\b/.test(css), false, "a raw colour entered the auth stylesheet — use a design token");
+});
+
+test("the auth column is centered, and the registration form takes the wide measure", () => {
+  const css = read(DIALOGUE);
+  /* The 860px page box narrows to the form's own measure and centers; the
+     two-column registration form takes the wide measure. */
+  assert.ok(css.includes(".pf-root .pf-auth {\n  max-width: 560px;\n  margin-inline: auto;\n}"),
+    "the auth column is not centered");
+  assert.ok(css.includes(".pf-root .pf-auth--wide {\n  max-width: 680px;\n}"),
+    "the wide auth measure is missing");
+  assert.ok(read("src/components/customer/pages/SignUp.jsx").includes('<div className="info container pf-auth pf-auth--wide">'),
+    "the registration form does not take the wide measure");
+  for (const page of ["SignIn.jsx", "ForgotPassword.jsx", "ResetPassword.jsx"]) {
+    assert.ok(read(`src/components/customer/pages/${page}`).includes('<div className="info container pf-auth">'),
+      `${page} lost the centered auth column`);
+  }
+  /* ...and the wide measure paints at its own URL. */
+  assert.match(on.render("/signup"), /class="info container pf-auth pf-auth--wide"/, "the wide measure does not paint");
 });

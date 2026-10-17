@@ -15,10 +15,12 @@ const STOREFRONT = "src/components/customer/CustomerStorefront.jsx";
 const CUSTOMER_ACCOUNT = "src/components/customer/pages/account/Overview.jsx";
 const DESIGN_REFERENCE_ACCOUNT = "../home-page/src/pages/Account.jsx";
 const NATIVE = {
-  "account/settings": ["./pages/account/Settings.jsx", "AccountSettings"],
-  "account/security": ["./pages/account/Security.jsx", "AccountSecurity"],
-  "account/preferences": ["./pages/account/Preferences.jsx", "AccountPreferences"],
+  "account/settings": ["./pages/account/SettingsArea.jsx", "AccountSettingsArea"],
   "account/instagram-rewards": ["./pages/account/InstagramRewards.jsx", "InstagramRewards"],
+};
+const REDIRECTS = {
+  "account/security": "/account/settings?tab=security",
+  "account/preferences": "/account/profile?tab=style",
 };
 const REMOVED_LEGACY = ["AccountSettings.jsx", "AccountSecurity.jsx", "AccountPreferences.jsx", "InstagramRewards.jsx"];
 
@@ -27,6 +29,10 @@ test("each migrated account path is mounted on its native customer page", () => 
   for (const [route, [file, component]] of Object.entries(NATIVE)) {
     assert.ok(source.includes(`from "${file}"`), `${file} is imported`);
     assert.match(source, new RegExp(`<Route path="${route}" element=\\{<${component} \/>\\} \/>`), `${route} is routed`);
+  }
+  for (const [route, target] of Object.entries(REDIRECTS)) {
+    const escaped = target.replace(/[.?]/g, "\\$&");
+    assert.match(source, new RegExp(`<Route path="${route}" element=\\{<Navigate to="${escaped}" replace \/>\\} \/>`), `${route} redirects to ${target}`);
   }
 });
 
@@ -54,7 +60,7 @@ test("the four screens remain inside the same ProtectedRoute as other account pa
   const guardOpen = source.indexOf("<Route element={<ProtectedRoute />}>");
   const guardedEnd = source.indexOf('<Route path="account/orders/:orderId"');
   assert.ok(guardOpen > 0 && guardedEnd > guardOpen, "the protected block is present");
-  for (const route of Object.keys(NATIVE)) {
+  for (const route of [...Object.keys(NATIVE), ...Object.keys(REDIRECTS)]) {
     const at = source.indexOf(`<Route path="${route}"`);
     assert.ok(at > guardOpen && at < guardedEnd, `${route} is guarded`);
   }
