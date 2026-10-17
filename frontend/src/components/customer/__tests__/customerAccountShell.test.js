@@ -62,7 +62,7 @@ const REDRAWN_PAGES = MIGRATED_SCREENS.map((screen) => `src/components/customer/
 const ORDER_FRAME = "src/components/customer/pages/account/OrderFrame.jsx";
 const SHEET = "src/components/customer/aarna.account.css";
 const DESIGN_SHEET = "src/components/customer/aarna.css";
-const REGISTRY = "scripts/aarna-port.js";
+const REGISTRY = "scripts/customer-port.js";
 
 /* ── the thirteen URLs, and the two halves production splits them into ───── */
 

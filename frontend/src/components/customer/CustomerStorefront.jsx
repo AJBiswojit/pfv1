@@ -9,7 +9,7 @@
  * three things a design cannot know about the house it is moving into:
  *
  *   · THE ROOT. The design's stylesheet is scoped under `.aan-root`
- *     (`scripts/aarna-port.js`), so the ported page mounts inside that element —
+ *     (`scripts/customer-port.js`), so the ported page mounts inside that element —
  *     a boundary the host's global styles cannot leak across.
  *   · THE PROVIDERS, in the design's own order: motion preferences, then its UI
  *     context, then its shop context — which is an adapter over this

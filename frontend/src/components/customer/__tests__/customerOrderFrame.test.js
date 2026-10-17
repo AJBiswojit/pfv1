@@ -67,7 +67,7 @@ const ORDER_FILES = [FRAME, LIST, DETAIL, TRACKING, RETURN];
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
 const SHEET = "src/components/customer/aarna.orders.css";
-const REGISTRY = "scripts/aarna-port.js";
+const REGISTRY = "scripts/customer-port.js";
 
 /* The three single-order URLs, and the history they hang off. */
 const SINGLE_ORDER_URLS = [

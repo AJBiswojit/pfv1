@@ -78,7 +78,7 @@ const SHEET = "src/components/customer/aarna.account.css";
    shared form register (`pf-form`, `pf-lab`, `pf-req`, `pf-hint`, `pf-alert` —
    declared for the checkout family and reused here), and the account's own. */
 const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.checkout.css", SHEET];
-const REGISTRY = "scripts/aarna-port.js";
+const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */
 

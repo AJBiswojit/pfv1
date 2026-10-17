@@ -3,7 +3,7 @@
  *
  * Phase 8 adopts `home-page/src/pages/Wishlist.jsx` the way Phase 6 adopted the
  * product page and Phase 7 the listing: the design's file carried over by
- * `scripts/aarna-port.js`, adapted only by named rewrites, reachable only
+ * `scripts/customer-port.js`, adapted only by named rewrites, reachable only
  * mounted on the Aarna customer route with no storefront selector, and
  * bound to `WishlistContext` / `ShoppingContext` instead of the design's bundled
  * catalogue.
@@ -50,7 +50,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 import { MemoryRouter } from "react-router-dom";
 
-import { DESIGN_SRC } from "../../../../scripts/aarna-port.js";
+import { DESIGN_SRC } from "../../../../scripts/customer-port.js";
 
 function projectRoot() {
   let directory = new URL(".", import.meta.url);

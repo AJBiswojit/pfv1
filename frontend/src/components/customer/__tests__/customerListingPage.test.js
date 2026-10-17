@@ -2,7 +2,7 @@
  * PRATIKSHYA FASHION — PHASE 7 · the design's shop page, on the real listing routes.
  *
  * Phase 7 adopts `home-page/src/pages/Shop.jsx` the way Phase 6 adopted the
- * product page: the design's file carried over by `scripts/aarna-port.js`,
+ * product page: the design's file carried over by `scripts/customer-port.js`,
  * adapted only by named rewrites, reachable only through the existing
  * `` switch, and wired to the application's own listing engine.
  *

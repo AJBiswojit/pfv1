@@ -34,7 +34,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 import { MemoryRouter } from "react-router-dom";
 
-import { DESIGN_SRC } from "../../../../scripts/aarna-port.js";
+import { DESIGN_SRC } from "../../../../scripts/customer-port.js";
 
 function projectRoot() {
   let directory = new URL(".", import.meta.url);

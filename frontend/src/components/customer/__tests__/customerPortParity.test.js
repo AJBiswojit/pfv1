@@ -8,7 +8,7 @@
  *      nothing missing, nothing extra;
  *   2. every copied file is the design's own file, with a pinned number of
  *      adapted lines, and what IS adapted is exactly what the port tool writes
- *      (`scripts/aarna-port.js`), so the difference can never drift;
+ *      (`scripts/customer-port.js`), so the difference can never drift;
  *   3. the five boundary modules keep the design's export names (every ported
  *      component keeps working) and say in their own header that they are
  *      boundaries;
@@ -42,7 +42,7 @@ import {
   parseDeclarations,
   portFile,
   sheetBanner,
-} from "../../../../scripts/aarna-port.js";
+} from "../../../../scripts/customer-port.js";
 
 /** Walk up until the frontend `package.json` — the Vite project root. */
 function projectRoot() {

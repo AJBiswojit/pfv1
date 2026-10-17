@@ -7,7 +7,7 @@
  * checks whether any application rule can reach a collided class inside the
  * port's scope.
  *
- *   cd frontend && node scripts/aarna-css-audit.mjs
+ *   cd frontend && node scripts/customer-css-audit.mjs
  */
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

@@ -23,7 +23,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* A note on specificity. Every selector of the design's own stylesheet is
-   scoped under `.aan-root` by the port tool (`scripts/aarna-port.js`), so the
+   scoped under `.aan-root` by the port tool (`scripts/customer-port.js`), so the
    design's rules arrive as `.aan-root .form label` — one class MORE specific
    than a plain `.aan-root .pf-…` rule. Wherever a rule below has to outweigh a
    design declaration (the remember-me row against `.form label`'s flex column,

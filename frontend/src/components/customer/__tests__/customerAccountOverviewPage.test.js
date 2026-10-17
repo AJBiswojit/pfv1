@@ -87,7 +87,7 @@ const SHEET = "src/components/customer/aarna.account.css";
    declares for what the design never drew. `pcard-cell` — the wishlist's card
    wrapper, which this page reuses for its rails — lives in the second. */
 const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.wishlist.css", SHEET];
-const REGISTRY = "scripts/aarna-port.js";
+const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */
 

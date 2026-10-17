@@ -4,7 +4,7 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *
  * Two jobs, both mechanical and both re-checkable:
  *
- *   1. THE PORT IS COPIES. `node scripts/aarna-port.js --copy` copies the
+ *   1. THE PORT IS COPIES. `node scripts/customer-port.js --copy` copies the
  *      approved design's homepage dependency closure (`home-page/src/…`) into
  *      `src/components/customer/…`, preserving the design's own directory layout so
  *      that every relative import inside the copied files keeps resolving. The
@@ -13,7 +13,7 @@ import { HOMEPAGE_SECTION_EDITS, homepageSectionRewrite } from "./homepage-secti
  *      DOM property, an asset path + its staged twin, offer copy that cannot be
  *      session-specific, and a capability gate). `--check` re-verifies the pins.
  *
- *   2. THE STYLESHEET IS A TRANSFORM. `node scripts/aarna-port.js --css` reads
+ *   2. THE STYLESHEET IS A TRANSFORM. `node scripts/customer-port.js --css` reads
  *      the design's seven stylesheets and writes `src/components/customer/aarna.css`
  *      with every selector scoped under `.aan-root`. Declarations are copied
  *      byte-for-byte; only selectors change, plus the two global keyframe names

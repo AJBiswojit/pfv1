@@ -2,7 +2,7 @@
  * PRATIKSHYA FASHION — PHASE 6 · the design's product page, on the real route.
  *
  * Phase 6 adopts `home-page/src/pages/Product.jsx` the way Phase 2D adopted the
- * homepage: the design's file carried over by `scripts/aarna-port.js`, adapted
+ * homepage: the design's file carried over by `scripts/customer-port.js`, adapted
  * only by named rewrites, and reachable only through the existing ``
  * switch — never as a re-skin of the production product route.
  *

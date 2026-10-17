@@ -7,7 +7,7 @@
  * through the port's seams (what a reviewer compares against the design). Then
  * reports what the production build actually contains.
  *
- *   cd frontend && node scripts/aarna-ssr-report.mjs
+ *   cd frontend && node scripts/customer-ssr-report.mjs
  */
 import { createServer } from "vite";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -63,6 +63,6 @@ const html = readFileSync("dist/index.html", "utf8");
 const plates = readdirSync("dist/design").filter((f) => f.endsWith(".webp"));
 const mediaUnchanged = readdirSync("dist/images").length;
 console.log("── the build this port ships in ──");
-console.log("   dist entries:", dist.length, "| aarna plates:", plates.length, "| app media files:", mediaUnchanged);
+console.log("   dist entries:", dist.length, "| design plates:", plates.length, "| app media files:", mediaUnchanged);
 console.log("   port CSS in the bundle:", html.includes(".aan-root"), "| unscoped design selector:", /(?<![-\w])(?:html|body|:root)\s*\{/.test(html) ? "CHECK" : "none added by the port");
 console.log("   ported shell markers in the bundle:", ["aan-root", "announce__track", "collage__tile--women", "promo__ledger", "mmenu__col"].filter((m) => html.includes(m)).join(", "));

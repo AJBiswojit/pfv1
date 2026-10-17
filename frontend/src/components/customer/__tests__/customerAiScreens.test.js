@@ -82,7 +82,7 @@ const MOUNT = 'src/components/customer/CustomerStorefront.jsx';
 const PRODUCTION_APP = 'src/App.jsx';
 const SHEET = 'src/components/customer/aarna.ai.css';
 const DESIGN_SHEET = 'src/components/customer/aarna.css';
-const REGISTRY = 'scripts/aarna-port.js';
+const REGISTRY = 'scripts/customer-port.js';
 
 const PRODUCTION_MIRROR = 'src/components/customer/pages/account/AiMirror.jsx';
 const PRODUCTION_SHOPPING = 'src/components/customer/pages/account/AiShopping.jsx';

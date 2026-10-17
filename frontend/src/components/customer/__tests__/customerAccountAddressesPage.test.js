@@ -77,7 +77,7 @@ const MODAL = "src/components/account/AddressModal.jsx";
 const DIALOG = "src/components/orders/ConfirmDialog.jsx";
 const SHEET = "src/components/customer/aarna.account.css";
 const SHEETS = ["src/components/customer/aarna.css", "src/components/customer/aarna.checkout.css", SHEET];
-const REGISTRY = "scripts/aarna-port.js";
+const REGISTRY = "scripts/customer-port.js";
 
 /* ── the browser a server-rendered page still has to believe in ────────────── */
 
