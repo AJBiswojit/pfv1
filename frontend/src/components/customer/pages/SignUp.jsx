@@ -192,10 +192,6 @@ export default function SignUp() {
 
   return (
     <div className="info container pf-auth pf-auth--wide">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span><span>Create Account</span>
-      </nav>
-
       <p className="label">Join The Atelier</p>
       <h1 className="display info__title">Create your <em>account.</em></h1>
       <p className="info__lead">

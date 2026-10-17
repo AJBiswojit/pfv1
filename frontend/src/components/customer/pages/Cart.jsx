@@ -101,8 +101,7 @@ export default function Cart() {
   if (cart.error && cart.items.length === 0) {
     return (
       <div className="container pf-bag">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Bag</span></nav>
-        <header className="pf-head">
+      <header className="pf-head">
           <p className="label">Your bag</p>
           <h1 className="display pf-head__title">Your Collection</h1>
         </header>
@@ -119,8 +118,7 @@ export default function Cart() {
   if (cart.isLoading && cart.items.length === 0) {
     return (
       <div className="container pf-bag">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Bag</span></nav>
-        <header className="pf-head">
+      <header className="pf-head">
           <p className="label">Your bag</p>
           <h1 className="display pf-head__title">Your Collection</h1>
         </header>
@@ -135,8 +133,7 @@ export default function Cart() {
   if (cart.items.length === 0) {
     return (
       <div className="container pf-bag">
-        <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Bag</span></nav>
-        <header className="pf-head">
+      <header className="pf-head">
           <p className="label">Your bag</p>
           <h1 className="display pf-head__title">Your collection is waiting.</h1>
         </header>
@@ -157,8 +154,6 @@ export default function Cart() {
 
   return (
     <div className="container pf-bag">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Bag</span></nav>
-
       <header className="pf-head">
         <p className="label">Your bag</p>
         <h1 className="display pf-head__title">Your Collection</h1>

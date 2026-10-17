@@ -58,10 +58,7 @@ export default function OrderSuccess() {
   if (!currentOrder) {
     return (
       <div className="container pf-journey__page">
-        <nav className="crumbs" aria-label="Breadcrumb">
-          <Link to="/">Home</Link><span>/</span><Link to="/cart">Bag</Link><span>/</span><span>Order Confirmation</span>
-        </nav>
-        <div className="empty">
+      <div className="empty">
           <p className="empty__title">We couldn&rsquo;t find that order.</p>
           <p>
             A confirmation is only available right after a completed checkout. Your collection
@@ -88,12 +85,6 @@ export default function OrderSuccess() {
       <p className="sr-only" role="status" aria-live="polite">
         Order confirmed. Order {order.orderNumber ?? order.id} has been placed successfully.
       </p>
-
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span><Link to="/cart">Bag</Link><span>/</span>
-        <Link to="/checkout">Checkout</Link><span>/</span><span>Order Confirmed</span>
-      </nav>
-
       <header className="pf-head">
         <p className="label pf-confirm__eyebrow">
           <CheckCircle2 size={15} aria-hidden="true" /> Order Confirmed

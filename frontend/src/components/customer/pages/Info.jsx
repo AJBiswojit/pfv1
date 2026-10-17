@@ -21,7 +21,6 @@ export default function Info() {
   const title = meta.label;
   return (
     <article className="info container">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>{title}</span></nav>
       <p className="label">{meta.eyebrow}</p>
       <h1 className="display info__title">{title}</h1>
       <p className="info__lead">{meta.description}</p>

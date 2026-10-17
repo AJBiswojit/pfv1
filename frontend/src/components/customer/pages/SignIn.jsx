@@ -102,10 +102,6 @@ export default function SignIn() {
 
   return (
     <div className="info container pf-auth">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span><span>Sign In</span>
-      </nav>
-
       <p className="label">Welcome Back</p>
       <h1 className="display info__title">Continue your <em>journey.</em></h1>
       <p className="info__lead">

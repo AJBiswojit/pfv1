@@ -73,13 +73,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="info container pf-auth">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span>
-        <Link to="/signin">Sign In</Link><span>/</span>
-        <span>Forgot Password</span>
-      </nav>
-
-      {!submitted ? (
+{!submitted ? (
         <>
           <p className="label">Account Recovery</p>
           <h1 className="display info__title">Reset your <em>password.</em></h1>

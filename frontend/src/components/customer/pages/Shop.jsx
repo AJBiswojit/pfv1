@@ -182,15 +182,6 @@ export default function Shop({ mode = 'category' }) {
 
   return (
     <div className="shop container">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
-        {crumbs.map((crumb) => (
-          <span className="crumbs__step" key={`${crumb.label}-${crumb.to ?? ''}`}>
-            <span>/</span>
-            {crumb.to ? <Link to={crumb.to}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}
-          </span>
-        ))}
-      </nav>
       <header className="shop__head">
         <p className="label">{eyebrow}</p>
         <h1 className="display shop__title">{title}</h1>
