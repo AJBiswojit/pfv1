@@ -1,6 +1,7 @@
 # CINEMATIC GLASS AUTH — the PRATIKSHYA FASHION authentication hero
 
-> **STATUS: implemented; build, unit/source suites and browser flows verified.**
+> **STATUS: implemented; corrected against the approved reference; build, unit/source
+> suites, browser flows and rendered screenshots verified.**
 > This document is the implementation report for the cinematic glass authentication
 > experience: one campaign photograph, one editorial column, one transparent panel,
 > and **one page** for sign-in, registration, password recovery and password reset.
@@ -48,8 +49,8 @@ logged.
 | `frontend/src/components/customer/auth/AuthPanelForgotPassword.jsx` | Recovery panel (request + honest confirmation) |
 | `frontend/src/components/customer/auth/AuthPanelResetPassword.jsx` | Reset panel (incomplete / form / success) |
 | `frontend/src/components/customer/auth/AuthPanelParts.jsx` | Shared panel parts: heading, alert, status, field, password field, divider, text action |
-| `frontend/public/design/pratikshya-auth-campaign.webp` | **Generated** campaign photograph, desktop 1672×941, 100 KB |
-| `frontend/public/design/pratikshya-auth-campaign-mobile.webp` | **Generated** portrait crop, 941×1672, 104 KB |
+| `frontend/public/design/pratikshya-auth-campaign.webp` | **Generated** campaign photograph, desktop 1672×941, 220 KB (regenerated in the correction pass) |
+| `frontend/public/design/pratikshya-auth-campaign-mobile.webp` | **Generated** portrait composition, 941×1672, 244 KB (regenerated in the correction pass) |
 | `frontend/test/cinematicAuthExperience.test.js` | Contract suite for the experience (one page, glass, asset, copy, wiring) |
 | `docs/CINEMATIC-GLASS-AUTH.md` | This report |
 
@@ -76,16 +77,19 @@ stylesheets), `CustomerStorefront.jsx`'s route table, `AuthContext.jsx`,
 
 ## 3 · The background image (actually generated)
 
-Both assets were generated with the image tool from the approved reference's art
-direction — a seated Indian model in a deep burgundy, gold-zari silk saree in a
-heritage sandstone interior, warm amber diya light, deep burgundy shadows, antique
-gold, photographic shallow depth of field — then converted to WebP (quality 82) and
-stripped. The desktop frame keeps the model centre-left, the dark architectural space
-on the far left for the editorial, and the candlelit arch detail on the right behind
-the glass.
+Both assets were **regenerated from scratch** in the fidelity-correction pass rather
+than brightened with CSS. The first pair was underexposed against the approved
+reference; the second generation asks for a warm, richly lit frame instead: the model
+seated centre-left in a burgundy zari saree whose gold embroidery is legible, sandstone
+arches and a candlelit jali behind her, amber highlights on skin and jewellery, visible
+fabric texture, warm — not crushed — shadows, and a recess of darker warm stone on the
+left where the editorial sits. The portrait is a separate composition, not an outpainted
+desktop frame (outpainting left a visible rectangular seam and was discarded).
 
-- Desktop: `frontend/public/design/pratikshya-auth-campaign.webp` — 1672×941, 100 KB
-- Mobile: `frontend/public/design/pratikshya-auth-campaign-mobile.webp` — 941×1672, 104 KB
+- Desktop: `frontend/public/design/pratikshya-auth-campaign.webp` — 1672×941, 220 KB
+- Mobile: `frontend/public/design/pratikshya-auth-campaign-mobile.webp` — 941×1672, 244 KB
+
+Both are WebP quality 84, method 6, metadata stripped.
 
 The `<picture>` swaps to the portrait crop at ≤767 px, so a phone never downloads the
 wrong aspect. `width`/`height` are declared (no layout shift), the image is
@@ -96,25 +100,35 @@ the meaning).
 
 ## 4 · The transparent panel
 
-`customer.auth.css` builds the glass from three layers, transparency first:
+`customer.auth.css` builds the glass from a **single** translucent fill; there is no
+second rectangle anywhere in the panel.
 
 | Layer | Value |
 | --- | --- |
-| Panel fill | `linear-gradient(162deg, rgba(58,13,25,.40), rgba(35,7,17,.32) 48%, rgba(27,5,13,.37))` |
-| Border | `1px solid rgba(235,196,132,.62)` |
-| Radius | `22px` |
-| Blur | `backdrop-filter: blur(8px) saturate(1.08)` |
-| Highlight | `inset 0 1px 0 rgba(255,236,208,.16)` |
+| Panel fill | `linear-gradient(168deg, rgba(48,9,19,.30), rgba(42,8,18,.24) 52%, rgba(35,6,15,.27))` |
+| Border | `1px solid rgba(231,190,125,.62)` — the only border on the panel |
+| Radius | `20px` |
+| Blur | `backdrop-filter: blur(5px) saturate(1.05)` |
+| Shadow | one soft drop shadow + `inset 0 1px 0 rgba(255,236,208,.18)` highlight |
 
-Readability is bought in the order the directive prescribes: the hero scrim first
-(`linear-gradient(90deg, …)` darkening the left, a lighter vignette over the right), the
-panel tint second, local text shadow third. Blur is deliberately restrained (8 px) so
-fabric, zari and candlelight stay legible through the panel; the `@supports not`
-fallback raises the tint to `.62` only where `backdrop-filter` does not exist.
+Readability is bought in the order the directive prescribes: source exposure first
+(the regenerated photograph), local text contrast second, text shadow third, blur last.
+The hero scrim is now **one directional gradient** — `linear-gradient(90deg, …)` from
+`.58` at the left edge to zero at 62 % — plus a very light top/bottom vignette
+(`.12`/`.14`). The previous four-stop, near-opaque overlay stack is gone, so the
+photograph on the right is the photograph, not a dark wash of it. The `@supports not`
+fallback raises the tint to `.58` only where `backdrop-filter` does not exist.
 
-Inputs are translucent glass rows: `rgba(255,244,232,.07)` over
-`1px solid rgba(246,220,187,.5)`, warm-ivory text, champagne icons, gold focus border
-plus a 3 px champagne ring. The primary action is the one intentionally more solid
+**The "inner gold rectangle" is gone.** It was never a wrapper or a pseudo-element: it
+was the browser's default focus outline painted on `.pf-auth-panel__title`, which was
+focused on first load. Two fixes: the focus hand-off now compares against the previous
+mode (so a first paint — including React's development double-effect — never focuses the
+heading), and the heading/body regions explicitly clear `outline` in both `:focus` and
+`:focus-visible`. Keyboard focus rings remain for every real control.
+
+Inputs are translucent glass rows: `rgba(255,244,232,.08)` over
+`1px solid rgba(246,220,187,.46)`, 50 px tall, warm-ivory text, champagne icons, gold
+focus border plus a 3 px champagne ring. The primary action is the one intentionally more solid
 element: a burgundy gradient (`#7A1229 → #560A1E`) with a thin gold border. Google keeps
 its official mark and — when a client id is configured — Google's own rendered button.
 
@@ -133,6 +147,7 @@ All of it is Framer Motion (already a dependency), plays **once**, and is disabl
 | Gold italic line | joins the same reveal, one beat later |
 | Rule, supporting paragraph, highlights, signature | fade + rise, staggered 0.13 s from the container |
 | Panel | fade + 18 px rise, 0.8 s, 0.4 s delay |
+| Form | interactive from the first frame — nothing gates pointer events |
 | Mode change | panel contents cross-fade + 8/−6 px shift, 0.22 s (`AnimatePresence mode="wait"`), the experience itself stays mounted |
 
 Hover transitions (highlight icons, links, buttons) are ≤0.5 s colour/border changes only.
@@ -172,9 +187,43 @@ node --import ./scripts/node-loader/register.mjs --test test/cinematicAuthExperi
 
 ### Browser (headless Chromium against the live dev server, API stubbed at the network layer)
 
-Screenshots at 1440×900, 1024×900 and 390×844 for sign-in, registration, recovery,
-reset-incomplete, reset-form and the home page; measured live computed styles. **30/30
-behavioural checks passed**, including:
+The fidelity-correction pass was verified the same way: headless Chromium at
+1440×900 against `npm run dev`, screenshots compared side by side with the approved
+reference, then the same page at 1280, 1120, 1024, 768, 390 and 360.
+
+**Correction-pass screenshot evidence** (committed under `.p22/evidence/`):
+
+| File | Viewport | Mode |
+| --- | --- | --- |
+| `30-auth-signin-1440-correction.png` | 1440×900 | sign in |
+| `31-auth-signup-1440-correction.png` | 1440×900 (full page 1157) | registration |
+| `32-auth-forgot-1440-correction.png` | 1440×900 | recovery |
+| `33-auth-reset-1440-correction.png` | 1440×900 | reset form |
+| `34-auth-signin-1024-correction.png` | 1024×900 | sign in |
+| `35-auth-signin-768-correction.png` | 768×1254 | sign in |
+| `36-auth-signin-390-correction.png` | 390×1138 | sign in |
+
+**24/24 correction-pass checks passed.** Computed styles and behaviour read live from
+the rendered page:
+
+- exactly one border on the panel (`1px solid rgba(231,190,125,0.62)`); a walk of every
+  element larger than 80×24 inside the panel finds no second border, outline or frame
+  (the only hairline is the intentional divider above the alternate actions);
+- panel fill is the translucent gradient above, `backdrop-filter: blur(5px)`; the
+  photograph's blur, zari and candlelight are still visible through it;
+- `document.activeElement` is `BODY` on arrival — nothing receives focus, so no focus
+  rectangle is painted on the heading;
+- headline copy is exactly `More than` / `an outfit,` / `a part of you.`, eyebrow
+  `TIMELESS IN EVERY DETAIL`, the three highlights and `PRATIKSHYA FASHION`;
+- a mode switch moves focus to the heading, changes the URL not at all, and does **not**
+  re-request the hero (one request before, one after);
+- an empty submit is refused by the existing validation sentence;
+- no horizontal overflow at 1440, 1280, 1024, 768, 390 or 360;
+- under `prefers-reduced-motion: reduce`, eyebrow, headline, lead and panel are at rest
+  (`opacity: 1`, `transform: none`) the moment the panel exists.
+
+Earlier full behavioural run (before the correction pass) — **30/30 checks passed**,
+including:
 
 - sign-in rejection surfaces the backend message and keeps the URL;
 - a successful sign-in hands over to the sanitised `returnTo` (`/account`);
@@ -191,11 +240,24 @@ behavioural checks passed**, including:
 - reduced motion renders the headline at rest (`transform: none`);
 - focus moves to the new panel heading after a mode change.
 
-Measured live: the panel's computed background is the translucent gradient (no solid
-colour), `backdrop-filter: blur(8px) saturate(1.08)`, border `rgba(235,196,132,0.62)`,
-radius 22 px; inputs compute to a transparent background inside a translucent row; the
-navbar's computed height/background are identical on `/` and `/signin` (a pixel
+Measured live in the correction pass: the panel's computed background is the
+translucent gradient (no solid colour), `backdrop-filter: blur(5px) saturate(1.05)`,
+border `rgba(231,190,125,0.62)`, radius 20 px, 560 px wide, 702 px tall at 1440×900;
+inputs compute to a transparent background inside a translucent row. The navbar was not
+touched: its computed height/background are identical on `/` and `/signin` (a pixel
 comparison of the top 99 px of both screenshots differs by **0 pixels**).
+
+### Suite results after the correction
+
+```
+npm run build   ✓ 2755 modules · 3,457.14 kB · 9.50 s
+npm test        # tests 569 · pass 558 · fail 10 · skipped 1   (same ten pre-existing)
+auth suites     sign-in 20/20 · sign-up 12/12 · forgot 13/13 · passwordReset 18/18 · cinematic 7/7
+```
+
+The auth suites' visual assertions were updated to the corrected contract (`blur(5px)`,
+`rgba(231,190,125,.62)`, radius 20 px, `rgba(255,244,232,.08)` inputs) — the behaviour
+they assert is unchanged.
 
 **Not verified (and not claimed):** a real credential exchange, a real Google login and
 a real reset email — there is no database, no Google client id and no mail relay in this
@@ -208,16 +270,23 @@ cannot be held inside this document by design.
 ## 7 · Known differences from the approved reference
 
 1. **Navbar.** The reference shows an editorial dark navbar; this storefront keeps its
-   existing solid cream header, as the directive requires. The hero therefore starts
-   beneath a light bar rather than a dark one.
+   own existing ivory header untouched (same component, same stylesheet, same computed
+   background and height on `/` and `/signin`). The hero therefore starts beneath a
+   light bar rather than a dark one.
 2. **Typography.** `Cormorant Garamond` + `Manrope`, the project's own families, rather
    than the reference's Didone-ish display face. The hierarchy, tracking and italic
    gold phrase match the reference's structure.
-3. **Panel proportions.** The panel is a touch taller than the reference's (the form is
-   a real form), so on a 1440×900 desktop it ends just below the fold rather than
-   floating entirely inside it; registration scrolls naturally.
-4. **Ornaments.** The botanical line work in the panel's corners is drawn as inline SVG
-   near the corners, not the reference's engraved illustration.
-5. **Mobile.** The reference is desktop; on phones the editorial condenses above the
-   panel, the brand highlights are hidden to protect the photograph's subject, and the
-   hero scrolls if the form needs the room.
+3. **Photograph.** The reference's own campaign still is not available to this project;
+   the hero is a generated image at the same art direction. Model pose, jewellery and
+   architecture differ in detail, by nature of generation.
+4. **Panel proportions.** The panel is a touch taller than the reference's (the form is
+   a real form with real validation copy), so at 1440×900 it sits 149 px below the
+   header and ends at 851 px — inside the fold — while registration scrolls naturally.
+   Width is 560 px, inside the directive's 550–600 px.
+5. **Ornaments.** The botanical line work is inline SVG inside the panel's upper-right
+   and lower-right corners at 26 % opacity, at 96 px — deliberately fainter than the
+   reference's engraved illustration so it never crosses the headline, a field or a
+   button.
+6. **Mobile.** The reference is desktop; on phones the editorial condenses over the
+   photograph with the model held to the right of the copy, the brand highlights are
+   hidden to protect the subject, and the hero scrolls if the form needs the room.

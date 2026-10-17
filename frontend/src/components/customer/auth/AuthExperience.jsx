@@ -77,18 +77,18 @@ export default function AuthExperience({ initialMode = 'login' }) {
   /* A mode change is announced by moving focus to the new panel heading (the
      stable body region is the fallback). The wait clears the outgoing panel's
      exit transition, so focus never lands on content that is about to unmount.
-     The first paint is left alone: a customer arriving must not have the focus
-     taken from the page they just opened. */
-  const firstRender = useRef(true);
+     The comparison is against the LAST mode, not "is this the first render?":
+     under React's development double-effect the second run would otherwise look
+     like a change and put a focus ring on the heading of a freshly opened page.
+     A customer arriving never has the focus taken from them. */
+  const lastMode = useRef(initialMode);
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return undefined;
-    }
+    if (lastMode.current === mode) return undefined;
+    lastMode.current = mode;
     const target = () => (titleRef.current ?? panelBodyRef.current)?.focus({ preventScroll: true });
     const timer = setTimeout(target, reduce ? 0 : 260);
     return () => clearTimeout(timer);
-  }, [mode, reduce]);
+  }, [mode, reduce, initialMode]);
 
   const switchMode = (next) => {
     if (next === mode) return;

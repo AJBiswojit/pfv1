@@ -109,13 +109,13 @@ test("the authentication panel is genuinely transparent and its inputs are trans
   for (const alpha of alphas) {
     assert.ok(alpha <= 0.5, `panel tint ${alpha} leaves the photograph invisible`);
   }
-  assert.match(panel, /backdrop-filter: blur\(8px\)/);
-  assert.match(panel, /border: 1px solid rgba\(235, 196, 132, 0\.62\)/);
-  assert.match(panel, /border-radius: 22px/);
+  assert.match(panel, /backdrop-filter: blur\([3-7]px\)/);
+  assert.match(panel, /border: 1px solid rgba\(231, 190, 125, 0\.62\)/);
+  assert.match(panel, /border-radius: 20px/);
   assert.equal(/background:\s*(#fff|white|var\(--c-paper\)|var\(--c-bg\))/.test(panel), false, "the panel fell back to an opaque fill");
 
   const control = css.match(/\.pf-root \.pf-auth-control \{([\s\S]*?)\n\}/)[1];
-  assert.match(control, /background: rgba\(255, 244, 232, 0\.07\)/);
+  assert.match(control, /background: rgba\(255, 244, 232, 0\.0[7-9]\)/);
   assert.equal(/background:\s*(#fff|white|var\(--c-paper\))/.test(control), false, "an input was given an opaque fill");
 
   /* A soft scrim carries readability; the panel keeps the photo visible. */

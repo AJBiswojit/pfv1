@@ -71,25 +71,30 @@
   pointer-events: none;
   background:
     linear-gradient(90deg,
-      rgba(17, 3, 8, 0.84) 0%,
-      rgba(23, 5, 12, 0.56) 32%,
-      rgba(23, 5, 12, 0.24) 56%,
-      rgba(17, 3, 8, 0.34) 100%),
+      rgba(24, 5, 12, 0.58) 0%,
+      rgba(24, 5, 12, 0.34) 22%,
+      rgba(24, 5, 12, 0.06) 42%,
+      rgba(24, 5, 12, 0) 62%,
+      rgba(24, 5, 12, 0.08) 100%),
     linear-gradient(180deg,
-      rgba(17, 3, 8, 0.34) 0%,
-      rgba(17, 3, 8, 0) 26%,
-      rgba(17, 3, 8, 0.34) 100%);
+      rgba(24, 5, 12, 0.12) 0%,
+      rgba(24, 5, 12, 0) 14%,
+      rgba(24, 5, 12, 0) 88%,
+      rgba(24, 5, 12, 0.14) 100%);
 }
 
 .pf-root .pf-auth-experience__inner {
   width: 100%;
   max-width: 1480px;
   margin-inline: auto;
-  padding: clamp(32px, 4.2vw, 60px) var(--gutter);
+  padding: clamp(28px, 3.4vw, 52px)
+    clamp(18px, 4.2vw, 64px)
+    clamp(28px, 3.4vw, 52px)
+    clamp(18px, 6.1vw, 96px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(400px, 596px);
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 560px);
   align-items: center;
-  gap: clamp(32px, 5vw, 88px);
+  gap: clamp(32px, 4.6vw, 84px);
 }
 
 /* ── the left editorial composition ─────────────────────────────────────── */
@@ -112,8 +117,8 @@
 .pf-root .pf-auth-headline {
   font-family: var(--f-serif);
   font-weight: 400;
-  font-size: clamp(42px, 4.6vw, 78px);
-  line-height: 0.98;
+  font-size: clamp(40px, 4.45vw, 72px);
+  line-height: 0.99;
   letter-spacing: -0.012em;
   color: var(--pa-ivory);
   margin: 0;
@@ -145,18 +150,18 @@
 }
 
 .pf-root .pf-auth-lead {
-  max-width: 42ch;
+  max-width: 25ch;
   margin: 0;
   font-size: 15px;
-  line-height: 1.75;
-  color: rgba(247, 238, 237, 0.78);
-  text-shadow: 0 1px 18px rgba(10, 2, 6, 0.45);
+  line-height: 1.8;
+  color: rgba(247, 238, 237, 0.8);
+  text-shadow: 0 1px 18px rgba(10, 2, 6, 0.4);
 }
 
 .pf-root .pf-auth-highlights {
   display: grid;
-  gap: 20px;
-  margin: 36px 0 0;
+  gap: 30px;
+  margin: clamp(28px, 2.2vw, 32px) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -170,8 +175,8 @@
 .pf-root .pf-auth-highlight__icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   flex: none;
   border: 1px solid rgba(235, 196, 132, 0.5);
   border-radius: 50%;
@@ -207,7 +212,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: clamp(32px, 4vw, 56px);
+  margin-top: clamp(30px, 3vw, 44px);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.3em;
@@ -247,21 +252,20 @@
   justify-self: end;
   box-sizing: border-box;
   width: 100%;
-  max-width: 596px;
-  padding: clamp(24px, 2.6vw, 36px) clamp(22px, 3vw, 40px) clamp(20px, 2.4vw, 30px);
-  border: 1px solid rgba(235, 196, 132, 0.62);
-  border-radius: 22px;
+  max-width: 560px;
+  padding: clamp(28px, 2.7vw, 38px) clamp(24px, 3vw, 40px) clamp(24px, 2.3vw, 32px);
+  border: 1px solid rgba(231, 190, 125, 0.62);
+  border-radius: 20px;
   background:
-    linear-gradient(162deg,
-      rgba(58, 13, 25, 0.40) 0%,
-      rgba(35, 7, 17, 0.32) 48%,
-      rgba(27, 5, 13, 0.37) 100%);
-  -webkit-backdrop-filter: blur(8px) saturate(1.08);
-  backdrop-filter: blur(8px) saturate(1.08);
+    linear-gradient(168deg,
+      rgba(48, 9, 19, 0.30) 0%,
+      rgba(42, 8, 18, 0.24) 52%,
+      rgba(35, 6, 15, 0.27) 100%);
+  -webkit-backdrop-filter: blur(5px) saturate(1.05);
+  backdrop-filter: blur(5px) saturate(1.05);
   box-shadow:
-    0 40px 90px -50px rgba(8, 1, 4, 0.9),
-    inset 0 1px 0 rgba(255, 236, 208, 0.16),
-    inset 0 0 0 1px rgba(255, 240, 214, 0.03);
+    0 34px 80px -46px rgba(10, 2, 5, 0.85),
+    inset 0 1px 0 rgba(255, 236, 208, 0.18);
   color: var(--pa-ivory);
   overflow: hidden;
 }
@@ -270,27 +274,28 @@
    tint so the form stays legible), never an opaque card. */
 @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
   .pf-root .pf-auth-panel {
-    background: rgba(45, 8, 17, 0.62);
+    background: rgba(45, 8, 17, 0.58);
   }
 }
 
 .pf-root .pf-auth-ornament {
   position: absolute;
-  width: 128px;
+  z-index: 0;
+  width: 96px;
   height: auto;
   color: rgba(235, 196, 132, 0.55);
-  opacity: 0.45;
+  opacity: 0.26;
   pointer-events: none;
 }
 
 .pf-root .pf-auth-ornament--top {
-  top: -10px;
-  right: -12px;
+  top: 10px;
+  right: 10px;
 }
 
 .pf-root .pf-auth-ornament--bottom {
-  bottom: -12px;
-  left: -16px;
+  right: 8px;
+  bottom: 8px;
   transform: rotate(180deg);
 }
 
@@ -305,26 +310,37 @@
 
 .pf-root .pf-auth-panel__eyebrow {
   margin: 0 0 16px;
-  padding-bottom: 12px;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgba(235, 196, 132, 0.86);
-  background: linear-gradient(90deg, rgba(235, 196, 132, 0.55) 0 30px, transparent 30px) left bottom / 100% 1px no-repeat;
+  color: rgba(240, 205, 148, 0.92);
+  text-shadow: 0 1px 12px rgba(14, 2, 7, 0.35);
+  /* the reference's short gold tick under the greeting */
+  background: linear-gradient(90deg, rgba(235, 196, 132, 0.6) 0 64px, transparent 64px)
+    left bottom / 100% 1px no-repeat;
+  padding-bottom: 13px;
 }
 
 .pf-root .pf-auth-panel__title {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   font-family: var(--f-serif);
   font-weight: 400;
-  font-size: clamp(31px, 2.9vw, 44px);
-  line-height: 1.06;
+  font-size: clamp(31px, 2.8vw, 43px);
+  line-height: 1.08;
   letter-spacing: -0.01em;
-  color: var(--pa-ivory);
+  color: #FBF3E8;
+  text-shadow: 0 1px 16px rgba(14, 2, 7, 0.3);
 }
 
-.pf-root .pf-auth-panel__title:focus {
+/* The heading is focused programmatically so a mode change is announced; it is
+   not an interactive control, so it never draws a focus rectangle. The
+   experience-wide `:focus-visible` ring is declared later in this sheet, so
+   these selectors carry one extra class to outrank it. */
+.pf-root .pf-auth-experience .pf-auth-panel__title:focus,
+.pf-root .pf-auth-experience .pf-auth-panel__title:focus-visible,
+.pf-root .pf-auth-experience .pf-auth-panel__body:focus,
+.pf-root .pf-auth-experience .pf-auth-panel__body:focus-visible {
   outline: none;
 }
 
@@ -334,12 +350,14 @@
 }
 
 .pf-root .pf-auth-panel__lead {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   max-width: 46ch;
-  font-size: 13.5px;
-  line-height: 1.7;
-  color: var(--pa-muted);
-  text-shadow: 0 1px 14px rgba(12, 2, 7, 0.5);
+  font-size: 13.8px;
+  line-height: 1.68;
+  color: rgba(251, 244, 237, 0.94);
+  text-shadow:
+    0 1px 2px rgba(14, 3, 7, 0.62),
+    0 2px 18px rgba(12, 2, 7, 0.34);
 }
 
 /* ── the form register ──────────────────────────────────────────────────── */
@@ -347,14 +365,14 @@
 .pf-root .pf-auth-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 4px;
+  gap: 16px;
+  margin-top: 0;
 }
 
 .pf-root .pf-auth-form__pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 16px 18px;
 }
 
 .pf-root .pf-auth-field {
@@ -372,11 +390,12 @@
 }
 
 .pf-root .pf-auth-field__label {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.17em;
   text-transform: uppercase;
-  color: var(--pa-champagne);
+  color: rgba(250, 228, 198, 0.9);
+  text-shadow: 0 1px 3px rgba(16, 3, 8, 0.5);
 }
 
 .pf-root .pf-auth-field__req {
@@ -386,12 +405,12 @@
 .pf-root .pf-auth-control {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid rgba(246, 220, 187, 0.5);
+  gap: 11px;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid rgba(246, 220, 187, 0.46);
   border-radius: 8px;
-  background: rgba(255, 244, 232, 0.07);
+  background: rgba(255, 244, 232, 0.08);
   transition:
     border-color var(--t-fast) var(--ease-out),
     box-shadow var(--t-fast) var(--ease-out),
@@ -423,7 +442,7 @@
 .pf-root .pf-auth-control input {
   width: 100%;
   min-width: 0;
-  height: 46px;
+  height: 48px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -436,7 +455,7 @@
 }
 
 .pf-root .pf-auth-control input::placeholder {
-  color: rgba(246, 220, 187, 0.46);
+  color: rgba(246, 220, 187, 0.52);
   opacity: 1;
 }
 
@@ -461,8 +480,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   margin-right: -6px;
   flex: none;
   border-radius: 50%;
@@ -575,14 +594,14 @@
   justify-content: center;
   gap: 12px;
   width: 100%;
-  min-height: 48px;
+  min-height: 50px;
   margin-top: 2px;
   padding: 0 22px;
   border: 1px solid rgba(235, 196, 132, 0.55);
   border-radius: 7px;
-  background: linear-gradient(180deg, #7A1229 0%, #560A1E 100%);
+  background: linear-gradient(180deg, #7C1329 0%, #530A1D 100%);
   color: #FBF3E8;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -650,7 +669,7 @@
   width: 100%;
   min-height: 48px;
   padding: 0 16px;
-  border: 1px solid rgba(246, 220, 187, 0.5);
+  border: 1px solid rgba(246, 220, 187, 0.44);
   border-radius: 7px;
   background: rgba(255, 244, 232, 0.045);
   color: var(--pa-ivory);
@@ -689,14 +708,17 @@
 /* ── the alternate actions under the form ───────────────────────────────── */
 
 .pf-root .pf-auth-alt {
-  margin-top: 20px;
-  padding-top: 16px;
+  margin-top: 22px;
+  padding-top: 18px;
   border-top: 1px solid var(--pa-hairline);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-size: 12.5px;
-  color: rgba(247, 238, 237, 0.72);
+  font-size: 13px;
+  color: rgba(249, 241, 234, 0.86);
+  text-shadow:
+    0 1px 2px rgba(14, 3, 7, 0.5),
+    0 2px 12px rgba(14, 2, 7, 0.28);
 }
 
 .pf-root .pf-auth-alt p {
@@ -802,7 +824,25 @@
   }
 }
 
-@media (max-width: 1023px) {
+/* Below this width the two columns stop sharing the frame: the editorial sits
+   over the photograph and the panel follows it, so the campaign is composed as
+   one stacked page rather than two cramped columns. */
+@media (max-width: 1119px) {
+  .pf-root .pf-auth-experience__media img {
+    object-position: 22% top;
+  }
+  .pf-root .pf-auth-experience__scrim {
+    background:
+      linear-gradient(104deg,
+        rgba(17, 3, 8, 0.6) 0%,
+        rgba(17, 3, 8, 0.4) 34%,
+        rgba(17, 3, 8, 0.06) 62%,
+        rgba(17, 3, 8, 0.14) 100%),
+      linear-gradient(180deg,
+        rgba(17, 3, 8, 0.1) 0%,
+        rgba(17, 3, 8, 0.04) 40%,
+        rgba(20, 4, 10, 0.34) 100%);
+  }
   .pf-root .pf-auth-experience__inner {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
@@ -820,7 +860,7 @@
     display: none;
   }
   .pf-root .pf-auth-signature {
-    margin-top: 28px;
+    margin-top: 26px;
   }
   .pf-root .pf-auth-panel {
     justify-self: stretch;
@@ -830,15 +870,22 @@
 
 @media (max-width: 767px) {
   .pf-root .pf-auth-experience__media img {
-    object-position: 58% top;
+    /* the portrait is framed on the model: keep her face clear of the copy by
+       holding the crop to the right of the editorial column */
+    object-position: 30% top;
   }
   .pf-root .pf-auth-experience__scrim {
     background:
+      linear-gradient(102deg,
+        rgba(17, 3, 8, 0.58) 0%,
+        rgba(17, 3, 8, 0.42) 38%,
+        rgba(17, 3, 8, 0.08) 64%,
+        rgba(17, 3, 8, 0.16) 100%),
       linear-gradient(180deg,
-        rgba(17, 3, 8, 0.55) 0%,
-        rgba(17, 3, 8, 0.24) 30%,
-        rgba(20, 4, 10, 0.62) 62%,
-        rgba(17, 3, 8, 0.78) 100%);
+        rgba(17, 3, 8, 0.14) 0%,
+        rgba(17, 3, 8, 0.04) 22%,
+        rgba(20, 4, 10, 0.42) 62%,
+        rgba(17, 3, 8, 0.62) 100%);
   }
   .pf-root .pf-auth-experience__inner {
     padding-block: 30px 40px;
@@ -858,7 +905,7 @@
   .pf-root .pf-auth-lead {
     font-size: 13.5px;
     line-height: 1.65;
-    max-width: 36ch;
+    max-width: 28ch;
   }
   .pf-root .pf-auth-experience__inner {
     padding-inline: 18px;

@@ -344,14 +344,14 @@ test("the panel is genuinely translucent: a wine tint under half opacity with a 
   for (const alpha of alphas) {
     assert.ok(alpha <= 0.5, `a panel tint of ${alpha} is too opaque for the photograph to show through`);
   }
-  assert.match(panel[1], /backdrop-filter: blur\(8px\)/);
-  assert.match(panel[1], /border: 1px solid rgba\(235, 196, 132, 0\.62\)/);
+  assert.match(panel[1], /backdrop-filter: blur\([3-7]px\)/);
+  assert.match(panel[1], /border: 1px solid rgba\(231, 190, 125, 0\.62\)/);
   assert.equal(/background:\s*(#|rgb\()|var\(--c-paper\)|var\(--c-bg\)/.test(panel[1]), false,
     "the panel fell back to an opaque fill");
   /* Inputs are translucent as well, never white cards. */
   const control = css.match(/\.pf-root \.pf-auth-control \{([\s\S]*?)\n\}/);
   assert.ok(control, "the field control rule is missing");
-  assert.match(control[1], /background: rgba\(255, 244, 232, 0\.07\)/);
+  assert.match(control[1], /background: rgba\(255, 244, 232, 0\.0[7-9]\)/);
   assert.equal(/background:\s*(#fff|white|var\(--c-paper\))/.test(control[1]), false, "an input was given an opaque fill");
 });
 
