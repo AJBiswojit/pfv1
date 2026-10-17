@@ -1038,3 +1038,13 @@
   .pf-root .pf-account { width: calc(100% - 32px); }
   .pf-root .pf-account__pagehead .pf-account__name { font-size: clamp(28px, 8vw, 36px); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-root .pf-account__drawer,
+  .pf-root .pf-account__tabs-link { transition-duration: 0.01ms; }
+}
+.pf-root .pf-account__menu-btn,
+.pf-root .pf-account__nav-link,
+.pf-root .pf-account__side-foot .btn { min-height: 44px; }
+.pf-root .pf-account__nav-link:focus-visible,
+.pf-root .pf-account__menu-btn:focus-visible { outline: 2px solid var(--c-espresso); outline-offset: 2px; }
