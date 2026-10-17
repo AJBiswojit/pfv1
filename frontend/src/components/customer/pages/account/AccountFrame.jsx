@@ -19,16 +19,6 @@ export default function AccountFrame({
 
   return (
     <div className="info container account pf-account">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <ol>
-          <li><Link to="/">Home</Link></li>
-          {breadcrumbItems.map((item, index) => (
-            <li key={`${item.label}-${index}`}>
-              {item.to ? <Link to={item.to}>{item.label}</Link> : <span aria-current="page">{item.label}</span>}
-            </li>
-          ))}
-        </ol>
-      </nav>
       <div className="pf-account__layout">
         <AccountSidebar />
         <div className="pf-account__content">

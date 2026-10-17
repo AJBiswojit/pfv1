@@ -1019,3 +1019,32 @@
     cursor: pointer;
   }
 }
+
+/* Account workspace width and compact rhythm; the sidebar and content share
+   the same top edge, while the content can use the full remaining measure. */
+.pf-root .pf-account { width: min(100% - 40px, 1240px); max-width: 1240px; margin-inline: auto; padding-top: clamp(20px, 3vw, 38px); }
+.pf-root .pf-account__layout { grid-template-columns: 272px minmax(0, 1fr); gap: clamp(24px, 3vw, 40px); margin-top: 0; }
+.pf-root .pf-account__pagehead { padding-bottom: 14px; }
+.pf-root .pf-account__body .pf-account__section { margin-top: 20px; }
+.pf-root .pf-account__drawer { border-radius: 12px; padding: 16px; }
+.pf-root .pf-account__user { padding-bottom: 12px; margin-bottom: 10px; }
+.pf-root .pf-account__side-foot { margin-top: 12px; padding-top: 12px; }
+.pf-root .pf-account__tabs-link { min-height: 44px; }
+@media (max-width: 1023px) {
+  .pf-root .pf-account { width: calc(100% - 32px); padding-top: 18px; }
+  .pf-root .pf-account__layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media (max-width: 480px) {
+  .pf-root .pf-account { width: calc(100% - 32px); }
+  .pf-root .pf-account__pagehead .pf-account__name { font-size: clamp(28px, 8vw, 36px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-root .pf-account__drawer,
+  .pf-root .pf-account__tabs-link { transition-duration: 0.01ms; }
+}
+.pf-root .pf-account__menu-btn,
+.pf-root .pf-account__nav-link,
+.pf-root .pf-account__side-foot .btn { min-height: 44px; }
+.pf-root .pf-account__nav-link:focus-visible,
+.pf-root .pf-account__menu-btn:focus-visible { outline: 2px solid var(--c-espresso); outline-offset: 2px; }

@@ -60,13 +60,7 @@ export default function ResetPassword() {
 
   return (
     <div className="info container pf-auth">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span>
-        <Link to="/signin">Sign In</Link><span>/</span>
-        <span>Reset Password</span>
-      </nav>
-
-      {!linkComplete && !success ? (
+{!linkComplete && !success ? (
         <>
           <p className="label">Reset Link</p>
           <h1 className="display info__title">This link is <em>incomplete.</em></h1>

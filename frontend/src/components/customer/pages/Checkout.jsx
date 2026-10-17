@@ -115,10 +115,7 @@ export default function Checkout() {
   if (cart.items.length === 0) {
     return (
       <div className="container pf-journey__page">
-        <nav className="crumbs" aria-label="Breadcrumb">
-          <Link to="/">Home</Link><span>/</span><Link to="/cart">Bag</Link><span>/</span><span>Checkout</span>
-        </nav>
-        <div className="empty">
+      <div className="empty">
           <p className="empty__title">Your collection is empty.</p>
           <p>Add something beautiful before continuing to checkout.</p>
           <Button to="/shop">Continue Shopping</Button>
@@ -167,10 +164,6 @@ export default function Checkout() {
 
   return (
     <div className="container pf-journey__page">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span><Link to="/cart">Bag</Link><span>/</span><span>Checkout</span>
-      </nav>
-
       <header className="pf-head">
         <p className="label">Checkout</p>
         <h1 className="display pf-head__title">Complete your <em>order.</em></h1>

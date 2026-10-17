@@ -243,7 +243,7 @@ test("the rendered page is the design's frame around the application's form", ()
   assert.match(markup, /Account Recovery/);
   assert.match(markup, /id="forgot-identifier"/);
   assert.match(markup, /Submit Request/);
-  assert.match(markup, /class="crumbs"/);
+  assert.doesNotMatch(markup, /aria-label="Breadcrumb"|class="crumbs"/, "customer breadcrumb should be absent");
   /* Before anything is submitted there is no confirmation and no error. */
   assert.equal(/pf-auth__sent/.test(markup), false, "the confirmation rendered before any request");
   assert.equal(/pf-auth__alert/.test(markup), false, "a pristine page showed an error");

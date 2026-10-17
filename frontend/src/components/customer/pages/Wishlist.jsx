@@ -124,7 +124,6 @@ export default function Wishlist() {
   }
   return (
     <div className="shop container">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Wishlist</span></nav>
       <header className="shop__head">
         <p className="label">Saved pieces</p>
         <h1 className="display shop__title">Wishlist</h1>

@@ -103,16 +103,6 @@ export default function OrderFrame({ breadcrumbItems = [], label, title, childre
 
   return (
     <div className="info container">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
-        {breadcrumbItems.map((item) => (
-          <span className="crumbs__step" key={`${item.label}-${item.to ?? ''}`}>
-            <span>/</span>
-            {item.to ? <Link to={item.to}>{item.label}</Link> : <span aria-current="page">{item.label}</span>}
-          </span>
-        ))}
-      </nav>
-
       <header className="pf-account__intro">
         <div className="pf-account__who">
           {label ? <p className="label">{label}</p> : null}

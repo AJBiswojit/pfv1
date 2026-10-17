@@ -80,11 +80,6 @@ export default function Product() {
 
   return (
     <div className="pdp container">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link><span>/</span>
-        <Link to={`/shop/${product.department}`}>{getTitleFor(product.department)}</Link><span>/</span>
-        <Link to={`/shop/${product.type}`}>{getTitleFor(product.type)}</Link>
-      </nav>
       <div className="pdp__grid">
         <div className="pdp__gallery">
           {product.images.map((src, i) => (
@@ -163,7 +158,6 @@ export default function Product() {
 function ProductLoading() {
   return (
     <div className="info container" aria-busy="true">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Loading</span></nav>
       <p className="label">The collection</p>
       <h1 className="display info__title">Opening this piece…</h1>
       <p className="info__lead">Fetching the catalogue.</p>
