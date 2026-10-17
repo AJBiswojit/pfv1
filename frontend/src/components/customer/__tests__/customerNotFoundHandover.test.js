@@ -238,14 +238,14 @@ test("with the switch on, an unknown customer URL is the design's 404 inside the
   }
 });
 
-test("unknown customer URLs always render Aarna's own 404 inside its shell", () => {
+test("unknown customer URLs always render the customer storefront's own 404 inside its shell", () => {
   const markup = off.render("/no-such-page");
   assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="notfound|404/i);
   assert.match(markup, /class="footer"/);
 });
 
-test("the application delegates customer 404 handling to Aarna", () => {
+test("the application delegates customer 404 handling to the customer storefront", () => {
   const app = read("src/App.jsx");
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
   const listing = read("src/components/customer/pages/Shop.jsx");
@@ -256,11 +256,11 @@ test("the application delegates customer 404 handling to Aarna", () => {
   assert.match(read("src/components/customer/pages/NotFound.jsx"), /<p className="label">404<\/p>/);
 });
 
-test("the reset route moves into Aarna while accounts remain correctly routed", () => {
+test("the reset route moves into the customer storefront while accounts remain correctly routed", () => {
   assert.match(on.render("/reset-password?userId=user-1&token=token-1"), /class="pf-root"/);
-  assert.match(off.render("/reset-password"), /class="pf-root"/, "reset-password must always render Aarna");
+  assert.match(off.render("/reset-password"), /class="pf-root"/, "reset-password must always render the customer storefront");
   for (const path of ["/account/orders", "/account/addresses"]) {
-    assert.match(off.render(path), /class="pf-root"/, `${path} must always render Aarna`);
+    assert.match(off.render(path), /class="pf-root"/, `${path} must always render the customer storefront`);
     const handed = on.render(path);
     assert.match(handed, /class="pf-root"/, `${path} was not handed to the port while the switch is on`);
     /* A static render proves one thing here: no account chrome is painted

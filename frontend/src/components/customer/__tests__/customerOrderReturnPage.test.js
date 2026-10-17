@@ -167,7 +167,7 @@ const code = () => source().replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*
 
 /* ── 1 · the route and the read ────────────────────────────────────────────── */
 
-test("Aarna's return screen remains available for guest orders", () => {
+test("The customer storefront's return screen remains available for guest orders", () => {
   const mountFile = read(MOUNT);
 
   assert.match(mountFile, /import AccountOrderReturnPage from "\.\/pages\/account\/OrderReturn\.jsx";/, "the port's return screen is not imported by the mount");
@@ -176,8 +176,8 @@ test("Aarna's return screen remains available for guest orders", () => {
      OUTSIDE the guard — a guest order has to be returnable. */
   const appFile = read("src/App.jsx");
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
-  assert.match(appFile, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
-  assert.match(storefront, /<Route path="account\/orders\/:orderId\/return" element=\{<AccountOrderReturnPage \/>\} \/>/, "Aarna no longer declares the return route");
+  assert.match(appFile, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to the customer storefront");
+  assert.match(storefront, /<Route path="account\/orders\/:orderId\/return" element=\{<AccountOrderReturnPage \/>\} \/>/, "The customer storefront no longer declares the return route");
   const guardOpen = storefront.indexOf("<Route element={<ProtectedRoute />}>");
   const guardClose = storefront.indexOf("</Route>", guardOpen);
   const returnAt = storefront.indexOf('<Route path="account/orders/:orderId/return"');
@@ -254,7 +254,7 @@ test("the return form states each validation message and stops before submission
     "Your return request could not be submitted.",
   ];
   for (const message of messages) {
-    assert.ok(page.includes(`'${message}'`), `Aarna no longer states its validation message: ${message}`);
+    assert.ok(page.includes(`'${message}'`), `The customer storefront no longer states its validation message: ${message}`);
   }
 
   const code_ = code();

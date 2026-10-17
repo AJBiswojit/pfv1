@@ -1,11 +1,11 @@
 /**
- * PRATIKSHYA FASHON — Aarna catalogue listing contracts.
+ * PRATIKSHYA FASHON — the customer storefront catalogue listing contracts.
  *
  * These tests lock down the product-first catalogue UX introduced in the
  * category/subcategory redesign:
  *
  *   - Category and subcategory pages resolve through the ONE generic
- *     Aarna Shop page (no per-department components).
+ *     Customer shop page (no per-department components).
  *   - Scope filters always include department (and category / subcategory
  *     on deeper routes), so /kids/boys never shows Women/Men/Bridal/Girls.
  *   - Product counts come from the canonical query, not hardcoded strings.
@@ -66,9 +66,9 @@ const listing = (pathname, options = {}) => {
 /* Generic catalogue page architecture                                 */
 /* ------------------------------------------------------------------ */
 
-test("every catalogue route is served by Aarna’s generic listing page", () => {
+test("every catalogue route is served by the customer storefront’s generic listing page", () => {
   // There is no per-department page component. Each catalogue path resolves
-  // a navigation scope, and the Aarna route table delegates unmatched customer
+  // a navigation scope, and the customer route table delegates unmatched customer
   // catalogue paths to its one Shop page.
   const storefront = readFileSync(join(ROOT, "src/components/customer/CustomerStorefront.jsx"), "utf8");
   assert.match(storefront, /<Route path="\*" element=\{<Shop mode="navigation" \/>\} \/>/);
@@ -309,7 +309,7 @@ test("category tabs derive from the canonical departments tree (same shape as Ca
 /* Hero removal (no panorama MediaFrame on catalogue pages)            */
 /* ------------------------------------------------------------------ */
 
-test("the Aarna Shop listing does not render the former panorama hero frame", () => {
+test("the customer shop listing does not render the former panorama hero frame", () => {
   const src = readFileSync(
     join(ROOT, "src/components/customer/pages/Shop.jsx"),
     "utf8"
@@ -319,14 +319,14 @@ test("the Aarna Shop listing does not render the former panorama hero frame", ()
   assert.doesNotMatch(
     src,
     /aspect="panorama"/,
-    "Aarna Shop must not render a panorama hero MediaFrame"
+    "Customer shop must not render a panorama hero MediaFrame"
   );
   assert.doesNotMatch(
     src,
     /overlay="inkLeft"/,
-    "Aarna Shop must not render the old hero overlay"
+    "Customer shop must not render the old hero overlay"
   );
-  // The Aarna page keeps product discovery compact and uses the shared listing query.
+  // The customer page keeps product discovery compact and uses the shared listing query.
   assert.match(src, /useCatalogueQuery/);
   assert.match(src, /ProductCard/);
 });
@@ -362,7 +362,7 @@ test("listingPlacementsForScope still resolves curated rails by taxonomy", () =>
   assert.deepEqual(unknown, []);
 });
 
-test("the shared placement rail remains available without coupling Aarna listings to the retired page", () => {
+test("the shared placement rail remains available without coupling customer listings to the retired page", () => {
   const rail = readFileSync(join(ROOT, "src/components/storefront/PlacementProductRail.jsx"), "utf8");
   const shop = readFileSync(join(ROOT, "src/components/customer/pages/Shop.jsx"), "utf8");
   assert.match(rail, /export default function PlacementProductRail/);
@@ -466,16 +466,16 @@ test("kids route resolves through the same generic scope mechanism", () => {
   assert.doesNotMatch(
     customerShopSrc,
     /if\s*\([^)]*['"]kids['"]/,
-    "Aarna Shop must not contain a kids-specific conditional branch"
+    "Customer shop must not contain a kids-specific conditional branch"
   );
   assert.doesNotMatch(
     customerShopSrc,
     /===\s*['"]kids['"]/,
-    "Aarna Shop must not compare against the kids department id"
+    "Customer shop must not compare against the kids department id"
   );
   assert.doesNotMatch(
     customerShopSrc,
     /kidsProducts\s*=|kidsCatalogue|kidsSpecific/i,
-    "Aarna Shop must not import or declare a Kids-only product list"
+    "Customer shop must not import or declare a Kids-only product list"
   );
 });

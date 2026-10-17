@@ -2,9 +2,9 @@
  * PRATIKSHYA FASHION — PHASE 11 · the account overview, on this application's own
  * account.
  *
- * The Aarna-native account overview renders inside the shared account frame and
+ * The storefront-native account overview renders inside the shared account frame and
  * remains behind the customer guard. App.jsx delegates all customer routes to
- * Aarna; its staff routes remain independent.
+ * the customer storefront; its staff routes remain independent.
  *
  * What these tests render is the real composition: the ported page inside this
  * application's provider stack (and the port's own UI/shop providers, exactly as
@@ -415,7 +415,7 @@ test("the index route is the port's own page, still inside the guard the family 
     "the production account screens left the port's route table");
 });
 
-test("the Aarna account route is mounted without an outer legacy page", () => {
+test("the customer storefront account route is mounted without an outer legacy page", () => {
   const production = read(PRODUCTION_DASHBOARD);
   assert.match(production, /useAccount\(|useProfile\(/,
     "the production dashboard no longer reads the account");
@@ -426,11 +426,11 @@ test("the Aarna account route is mounted without an outer legacy page", () => {
   const app = read(PRODUCTION_APP);
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/,
-    "App.jsx no longer delegates customer paths to Aarna");
+    "App.jsx no longer delegates customer paths to the customer storefront");
   assert.doesNotMatch(app, /pages\/account\/AccountDashboard/,
     "the outer route tree still imports an obsolete customer page");
   assert.match(storefront, /<Route path="account"/,
-    "Aarna no longer owns the account route");
+    "The customer storefront no longer owns the account route");
 
   /* And the port's registry declares the ported page, so the closure check
      knows it and the port tool never writes over it. */
@@ -1163,7 +1163,7 @@ test("the two commerce panels are production's own reads, held to the design's r
   /* Production states the same two arguments, one per line; whitespace is not the
      comparison here, the argument object is. */
   assert.match(production, /\.listCustomerVisible\(\{ customerId: user\?\.id, customerEmail: user\?\.email \|\| profile\?\.email \}\)/,
-    "Aarna no longer scopes offers to the signed-in customer");
+    "The customer storefront no longer scopes offers to the signed-in customer");
   assert.match(text, /\.slice\(0, OFFER_LIMIT\),\s+\[user\?\.id, user\?\.email, profile\?\.email\],/,
     "the offers panel is no longer keyed on the customer's identity alone");
 
@@ -1176,7 +1176,7 @@ test("the two commerce panels are production's own reads, held to the design's r
   /* Production's featured-or-listed filter, with production's own five ids: the
      list is read from production here, so a copy that drifted fails. */
   const literal = (production.match(/const FEATURED_COLLECTION_IDS = (\[[^\]]*\]);/) ?? [])[1];
-  assert.ok(literal, "Aarna no longer declares its curated collection IDs");
+  assert.ok(literal, "The customer storefront no longer declares its curated collection IDs");
   const featuredIds = [...literal.matchAll(/'([^']+)'/g)].map((match) => match[1]);
   assert.deepEqual(featuredIds, ["new-arrivals", "bridal-trousseau", "festive-edit", "silk", "wedding"],
     "production's own fallback list moved — the page's copy of it is now wrong");
@@ -1191,8 +1191,8 @@ test("the two commerce panels are production's own reads, held to the design's r
   assert.match(text, /const COLLECTION_LIMIT = 4;/, "the collections restraint left the page");
   assert.match(text, /\.slice\(0, OFFER_LIMIT\),/, "the offers panel draws more than its restraint");
   assert.match(text, /\.slice\(0, COLLECTION_LIMIT\),\s+\[\],/, "the collections panel draws more than its restraint, or no longer reads once");
-  assert.match(production, /const OFFER_LIMIT = 3;/, "Aarna's offer cap moved");
-  assert.match(production, /const COLLECTION_LIMIT = 4;/, "Aarna's collection cap moved");
+  assert.match(production, /const OFFER_LIMIT = 3;/, "The customer storefront's offer cap moved");
+  assert.match(production, /const COLLECTION_LIMIT = 4;/, "The customer storefront's collection cap moved");
   assert.match(production, /\.slice\(0, OFFER_LIMIT\)/);
   assert.match(production, /\.slice\(0, COLLECTION_LIMIT\)/);
 
@@ -1491,7 +1491,7 @@ test("the rail and the style panel read production's own personalisation — onc
   assert.match(text, /\[wishlist\.products, recently\.products, orders, preferences\],/,
     "the personalisation read no longer follows production's own dependencies");
   assert.match(production, personalizedCall,
-    "Aarna no longer derives recommendations from its real customer signals");
+    "The customer storefront no longer derives recommendations from its real customer signals");
   assert.ok(production.includes("[wishlist.products, recently.products, orders, preferences]"),
     "production's own dependency list moved");
 
@@ -1678,7 +1678,7 @@ test("the saved preferences the panel states are the preferences screen's own, a
   const production = read(PRODUCTION_DASHBOARD);
   for (const label of ["Favourite categories", "Favourite collections", "Frequently viewed fabrics", "Occasions you explore"]) {
     assert.ok(text.includes(`label: '${label}'`), `the style panel lost production's group: ${label}`);
-    assert.match(production, new RegExp(`label: ['\"]${label}['\"]`), `Aarna no longer names this style group: ${label}`);
+    assert.match(production, new RegExp(`label: ['\"]${label}['\"]`), `The customer storefront no longer names this style group: ${label}`);
   }
 
   /* What a server render cannot reach — `user` is published by an effect — is
@@ -1764,7 +1764,7 @@ test("the returns panel is production's own rule over the orders this page alrea
     "production no longer closes a return on these two statuses — the page's copy of the rule is now wrong");
   assert.match(text, /const CLOSED_RETURNS = new Set\(\[RETURN_STATUS\.REFUNDED, RETURN_STATUS\.REJECTED\]\);/,
     "the panel no longer closes a return on production's own two statuses");
-  assert.ok(flat.includes("activeReturns.slice(0, RETURN_LIMIT)"), "Aarna's active-return panel lost its explicit cap");
+  assert.ok(flat.includes("activeReturns.slice(0, RETURN_LIMIT)"), "The customer storefront's active-return panel lost its explicit cap");
   assert.match(text, /const RETURN_LIMIT = 2;/, "the panel's own restraint left the page");
   assert.match(text, /activeReturns\.slice\(0, RETURN_LIMIT\)\.map/, "the panel draws more than production's own two");
 
@@ -1786,12 +1786,12 @@ test("the returns panel is production's own rule over the orders this page alrea
   assert.match(text, /const returnsCountLabel = `\$\{activeReturns\.length\} active`;/,
     "the panel no longer states production's own count");
 
-  /* Aarna's copy and destinations stay on the active route, not in the retired page. */
+  /* The customer storefront's copy and destinations stay on the active route, not in the retired page. */
   assert.match(production, /Return in progress/);
-  assert.ok(production.includes("`/account/orders/${order.id}/return`"), "the return action no longer targets the active Aarna order route");
-  assert.ok(production.includes("You&rsquo;re all clear."), "the Aarna all-clear state is missing");
-  assert.ok(production.includes("When a return is in progress, you will find it here."), "the Aarna empty state is missing");
-  assert.ok(production.includes('to="/account/orders"'), "the Aarna order-list action is missing");
+  assert.ok(production.includes("`/account/orders/${order.id}/return`"), "the return action no longer targets the active customer storefront order route");
+  assert.ok(production.includes("You&rsquo;re all clear."), "the customer all-clear state is missing");
+  assert.ok(production.includes("When a return is in progress, you will find it here."), "the customer empty state is missing");
+  assert.ok(production.includes('to="/account/orders"'), "the customer order-list action is missing");
 
   assert.match(text, /<p className="label">Return in progress<\/p>/, "the card lost production's own line");
   assert.match(text, /<h2 id="pf-account-returns" className="display shop__title">Return in <em>progress<\/em><\/h2>/,
@@ -1806,9 +1806,9 @@ test("the returns panel is production's own rule over the orders this page alrea
   assert.match(text, /<p className="pf-account__return-status">\{getReturnStatus\(record\.status\)\.label\}<\/p>/);
   assert.equal(text.includes("Atelier piece"), false, "the panel names a returned piece the record does not carry");
 
-  /* Aarna keeps returns ahead of its saved-pieces section in the account flow. */
+  /* The customer storefront keeps returns ahead of its saved-pieces section in the account flow. */
   assert.ok(production.indexOf('aria-labelledby="pf-account-returns"') < production.indexOf('aria-labelledby="pf-account-saved"'),
-    "Aarna's returns section moved behind saved pieces");
+    "The customer storefront's returns section moved behind saved pieces");
   const ordersAt = text.indexOf('aria-labelledby="pf-account-orders"');
   const returnsAt = text.indexOf("{activeReturns.length ? (");
   const railAt = text.indexOf("label=\"Recently viewed\"");

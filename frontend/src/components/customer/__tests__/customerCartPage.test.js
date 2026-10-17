@@ -5,7 +5,7 @@
  * listing and Phase 8 the wishlist: the page is written in the design's own
  * vocabulary (`.container`, `.crumbs`, `.label`, `.display`, `.totals`, the
  * `.btn` register, the drawer's `qty` control, the `.empty` block) and bound to
- * `CartContext` — the Aarna bag's shared commerce state. It is reachable on
+ * `CartContext` — the customer bag's shared commerce state. It is reachable on
  * the customer route without an environment flag or query-string selector.
  *
  * What these tests render is the real composition: `CustomerLayout` inside this
@@ -267,7 +267,7 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("/cart always renders Aarna's bag regardless of the former override", () => {
+test("/cart always renders the customer storefront's bag regardless of the former override", () => {
   const markup = off.render("/cart");
   assert.ok(markup.length > 0, "/cart rendered nothing at all");
   assert.match(markup, /class="pf-root"/);

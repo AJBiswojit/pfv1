@@ -512,7 +512,7 @@ test("isPlacementRecordLive reports the canonical truth behind admin labels", ()
 const src = (...parts) =>
   readFileSync(join(process.cwd(), "src", ...parts), "utf8");
 
-test("Aarna owns the active homepage and catalogue listing routes", () => {
+test("The customer storefront owns the active homepage and catalogue listing routes", () => {
   const app = src("App.jsx");
   const storefront = src("components", "customer", "CustomerStorefront.jsx");
   const homepage = src("components", "customer", "pages", "Home.jsx");
@@ -525,11 +525,11 @@ test("Aarna owns the active homepage and catalogue listing routes", () => {
   assert.doesNotMatch(app, /AtelierDesign|pages\/(CatalogueListing|Explore|Shop)/);
 });
 
-test("active Aarna pages do not import retired storefront section components", () => {
+test("active customer pages do not import retired storefront section components", () => {
   const homepage = src("components", "customer", "pages", "Home.jsx");
   const listing = src("components", "customer", "pages", "Shop.jsx");
   for (const legacyName of ["HeroCarousel", "SareeEditCarousel", "PlacementProductRail", "CatalogueListing"]) {
-    assert.doesNotMatch(homepage + listing, new RegExp(`\\b${legacyName}\\b`), `${legacyName} is not part of Aarna`);
+    assert.doesNotMatch(homepage + listing, new RegExp(`\\b${legacyName}\\b`), `${legacyName} is not part of the customer storefront`);
   }
   assert.match(src("components", "storefront", "PlacementProductRail.jsx"), /export default function PlacementProductRail/);
 });

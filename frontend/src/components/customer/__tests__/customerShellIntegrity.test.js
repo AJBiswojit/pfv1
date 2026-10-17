@@ -361,7 +361,7 @@ test("the application's own header, footer and drawer are not on this surface", 
   }
   /* The only host class left is the canvas wrapper the layout puts around the
      port — one element, outside `.pf-root`. */
-  assert.equal(count("pf-shell"), 1, "the host shell leaks into the Aarna surface");
+  assert.equal(count("pf-shell"), 1, "the host shell leaks into the storefront surface");
   assert.equal(count('class="min-h-screen flex flex-col pf-shell__surface'), 1);
   assert.ok(at("pf-shell__surface") < at('class="pf-root"'), "the canvas wrapper is not the port's parent");
 });

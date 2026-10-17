@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/settings — the native Aarna communication-settings screen.
+ * Phase 12 · /account/settings — the native storefront communication-settings screen.
  *
  * Rendered for real, inside the real AccountProvider, with the network stubbed at
  * fetch. Covers: loading, the server's values (never placeholder defaults), a failed

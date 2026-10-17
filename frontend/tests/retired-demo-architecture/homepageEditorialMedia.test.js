@@ -171,7 +171,7 @@ test("the Festive Edit banner consumes the FESTIVE_SECTION placement via the sha
 
 test("the CelebrationEdit festive plate consumes the FESTIVE_SECTION placement", () => {
   const home = src("src", "components", "customer", "pages", "Home.jsx");
-  assert.match(home, /HomepageSection/, "Aarna renders managed homepage sections");
+  assert.match(home, /HomepageSection/, "The customer storefront renders managed homepage sections");
   assert.doesNotMatch(home, /CelebrationEdit|SaleBanner|resolveEditorialFrame/);
 });
 

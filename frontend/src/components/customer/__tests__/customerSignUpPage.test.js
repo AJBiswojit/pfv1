@@ -128,7 +128,7 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("/signup always renders Aarna's sign-up screen regardless of the former override", () => {
+test("/signup always renders the customer storefront's sign-up screen regardless of the former override", () => {
   const markup = off.render("/signup");
   assert.ok(markup.length > 0, "/signup rendered nothing at all");
   assert.match(markup, /class="pf-root"/);
@@ -155,7 +155,7 @@ test("the sign-up screen is an auth path, and no other surface claims it", () =>
 
 /* ── 2 · the flow is the application's ──────────────────────────────────── */
 
-test("Aarna renders signup fields with stable identifiers and autofill hints", () => {
+test("The customer storefront renders signup fields with stable identifiers and autofill hints", () => {
   const text = source();
   const fields = [
     ["signup-firstName", "firstName", "given-name"],
@@ -175,9 +175,9 @@ test("Aarna renders signup fields with stable identifiers and autofill hints", (
     assert.ok(nameCarried, `the ported form lost the name ${name}`);
     const hintCarried = [`autoComplete="${autoComplete}"`, `autoComplete: '${autoComplete}'`].some((form) => text.includes(form));
     assert.ok(hintCarried, `the ported form lost the autofill hint for ${name}`);
-    assert.ok(text.includes(`id: '${id}'`) || text.includes(`id="${id}"`), `Aarna source omitted ${id}`);
-    assert.ok(text.includes(`name: '${name}'`) || text.includes(`name="${name}"`), `Aarna source omitted name ${name}`);
-    assert.ok(text.includes(`autoComplete: '${autoComplete}'`) || text.includes(`autoComplete="${autoComplete}"`), `Aarna source omitted ${autoComplete}`);
+    assert.ok(text.includes(`id: '${id}'`) || text.includes(`id="${id}"`), `The customer storefront source omitted ${id}`);
+    assert.ok(text.includes(`name: '${name}'`) || text.includes(`name="${name}"`), `The customer storefront source omitted name ${name}`);
+    assert.ok(text.includes(`autoComplete: '${autoComplete}'`) || text.includes(`autoComplete="${autoComplete}"`), `The customer storefront source omitted ${autoComplete}`);
   }
   assert.match(text, /id="signup-dateOfBirth"/);
   assert.match(text, /type="date"/);

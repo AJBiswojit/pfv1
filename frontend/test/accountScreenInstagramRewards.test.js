@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/instagram-rewards — the native Aarna Share & Earn screen.
+ * Phase 12 · /account/instagram-rewards — the native storefront Share & Earn screen.
  *
  * Rendered for real, inside the real AccountProvider, with the reward services
  * running their own code over a stubbed fetch. Covers: loading, a failed list with

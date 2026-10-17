@@ -1,5 +1,5 @@
 /**
- * Customer account route and shell contracts. Aarna owns the account pages;
+ * Customer account route and shell contracts. The customer storefront owns the account pages;
  * App.jsx delegates the customer catch-all to CustomerLayout while retaining
  * separate staff portal routes. These tests pin the customer guard and the
  * intentionally guest-accessible order detail, tracking, and return paths.
@@ -38,7 +38,7 @@ const NAV = "src/components/customer/pages/account/AccountNav.jsx";
    screens, Stage 2.5 the two AI screens. Each entry names the port's OWN page (a
    name deliberately not in the mount's `lazy` list, so a migrated route can never
    be mistaken for one still served by production), the file it is imported from,
-   and the current Aarna route that serves the path. */
+   and the current customer route that serves the path. */
 const MIGRATED_SCREENS = [
   { path: "account", component: "AccountOverview", page: "Overview.jsx", production: "CustomerOverview" },
   { path: "account/profile", component: "AccountProfilePage", page: "Profile.jsx", production: "CustomerProfile" },
@@ -285,7 +285,7 @@ async function mount(define) {
     render: (path) => atPath(React.createElement(CustomerLayout), path),
     /* One component, inside the application's own providers. */
     element: (element, path) => atPath(element, path),
-    /* One screen mounted inside the Aarna layout shell (`<main id="main">`). */
+    /* One screen mounted inside the storefront layout shell (`<main id="main">`). */
     customerPage: (element, path) =>
       atPath(
         React.createElement(
@@ -402,36 +402,36 @@ test("the hook and the union read the account surface, gated by the same switch"
 
 /* ── 2 · the port's routes, against production's own ────────────────────── */
 
-test("Aarna owns all customer account routes, and App delegates customer paths to its layout", () => {
+test("The customer storefront owns all customer account routes, and App delegates customer paths to its layout", () => {
   const port = accountRoutes(read(MOUNT)).filter((route) => route.path !== "account/wishlist");
   const expected = [...GUARDED_SCREENS, ...GUEST_ORDER_URLS.map((path) => path.replace("pf-9f2c", ":orderId"))]
     .map((path) => path.replace(/^\//, ""))
     .sort();
   const app = read(PRODUCTION_APP);
-  assert.equal(port.length, 13, `Aarna declares ${port.length} account routes, expected thirteen`);
-  assert.deepEqual(port.map((route) => route.path).sort(), expected, "Aarna's account route family is incomplete");
-  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.equal(port.length, 13, `The customer storefront declares ${port.length} account routes, expected thirteen`);
+  assert.deepEqual(port.map((route) => route.path).sort(), expected, "The customer storefront's account route family is incomplete");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to the customer storefront");
   assert.doesNotMatch(app, /<Route path="\/account/, "App still declares legacy customer account routes");
-  assert.match(read(MOUNT), /<Route path="account\/wishlist" element=\{<Wishlist \/>\} \/>/, "Aarna lost its wishlist route");
+  assert.match(read(MOUNT), /<Route path="account\/wishlist" element=\{<Wishlist \/>\} \/>/, "The customer storefront lost its wishlist route");
 });
 
-test("Aarna applies the shared guard to customer screens and leaves single-order routes open to guests", () => {
+test("The customer storefront applies the shared guard to customer screens and leaves single-order routes open to guests", () => {
   const routes = accountRoutes(read(MOUNT));
   const guarded = (key) => routes.find((route) => route.path === key)?.guarded;
   for (const path of GUARDED_SCREENS) {
     const key = path.replace(/^\//, "");
-    assert.equal(guarded(key), true, `${path} is not behind Aarna's customer guard`);
+    assert.equal(guarded(key), true, `${path} is not behind the customer storefront's customer guard`);
   }
   for (const key of ["account/orders/:orderId", "account/orders/:orderId/track", "account/orders/:orderId/return"]) {
     assert.equal(guarded(key), false, `${key} must remain accessible for guest orders`);
   }
-  assert.equal(guardedSpans(read(MOUNT)).length, 1, "Aarna declares more than one account guard block");
+  assert.equal(guardedSpans(read(MOUNT)).length, 1, "The customer storefront declares more than one account guard block");
 });
 
-test("the account and wishlist paths always enter the Aarna shell", () => {
+test("the account and wishlist paths always enter the storefront shell", () => {
   for (const path of [...GUARDED_SCREENS, ...GUEST_ORDER_URLS, "/account/wishlist"]) {
     const markup = off.render(path);
-    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render the customer storefront`);
     assert.equal(/class="fixed top-0 left-0 right-0 z-50"/.test(markup), false, `${path} rendered the retired host header`);
   }
 });
@@ -458,7 +458,7 @@ test("with the switch on, the guest order pages mount the port once — and neve
 });
 
 test("with the switch on, a guest asking for a guarded screen paints no account chrome — and the port's sign-in paints at its own URL", () => {
-  /* What a static render proves here, and only this: no Aarna account chrome is
+  /* What a static render proves here, and only this: no storefront account chrome is
      painted synchronously for a guest. The redirect itself is effect-driven
      (`<Navigate>`), and a lazily imported page suspends into the empty slot, so
      a guarded and an unguarded URL render the SAME markup on the server
@@ -657,7 +657,7 @@ test("the port's registry declares its own account files, once each", () => {
   }
 });
 
-test("Aarna account screens keep one primary landmark in the active customer layout", () => {
+test("The customer storefront account screens keep one primary landmark in the active customer layout", () => {
   const screens = [
     { path: "/account/settings", Component: on.AccountSettings, crumb: "Settings &amp; Preferences" },
     { path: "/account/security", Component: on.AccountSecurity, crumb: "Security" },
@@ -666,16 +666,16 @@ test("Aarna account screens keep one primary landmark in the active customer lay
   ];
 
   for (const { path, Component, crumb } of screens) {
-    /* Aarna mode: the outer `Layout` owns `<main id="main">`; `AccountShell`
+    /* Storefront mode: the outer `Layout` owns `<main id="main">`; `AccountShell`
        must not wrap its section in a second `<main>`. */
     const customerMarkup = on.customerPage(React.createElement(Component, null), path);
-    assert.equal(count(customerMarkup, "<main"), 1, `${path} in Aarna mode did not render exactly one <main> opening tag`);
-    assert.equal(count(customerMarkup, "</main>"), 1, `${path} in Aarna mode did not render exactly one </main> closing tag`);
-    assert.match(customerMarkup, /<main id="main">/, `${path} in Aarna mode lost the outer <main id="main"> landmark`);
-    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(customerMarkup), false, `${path} in Aarna mode nested a <main> inside <main id="main">`);
-    assert.match(customerMarkup, /class="skip-link"/, `${path} in Aarna mode lost the Aarna layout shell`);
-    assert.match(customerMarkup, /aria-label="Account navigation"/, `${path} in Aarna mode lost the AccountShell navigation`);
-    assert.match(customerMarkup, new RegExp(crumb), `${path} in Aarna mode lost its breadcrumb/content`);
+    assert.equal(count(customerMarkup, "<main"), 1, `${path} in storefront mode did not render exactly one <main> opening tag`);
+    assert.equal(count(customerMarkup, "</main>"), 1, `${path} in storefront mode did not render exactly one </main> closing tag`);
+    assert.match(customerMarkup, /<main id="main">/, `${path} in storefront mode lost the outer <main id="main"> landmark`);
+    assert.equal(/<main\b[^>]*>[\s\S]*<main\b/.test(customerMarkup), false, `${path} in storefront mode nested a <main> inside <main id="main">`);
+    assert.match(customerMarkup, /class="skip-link"/, `${path} in storefront mode lost the storefront layout shell`);
+    assert.match(customerMarkup, /aria-label="Account navigation"/, `${path} in storefront mode lost the AccountShell navigation`);
+    assert.match(customerMarkup, new RegExp(crumb), `${path} in storefront mode lost its breadcrumb/content`);
 
 
   }

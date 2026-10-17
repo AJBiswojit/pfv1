@@ -118,7 +118,7 @@ test("Kids is a normal department query over dynamically published canonical rec
   });
 });
 
-test("Aarna listing pages derive from the canonical catalogue without hardcoded product arrays", () => {
+test("Customer listing pages derive from the canonical catalogue without hardcoded product arrays", () => {
   [
     "src/components/customer/pages/Shop.jsx",
     "src/components/storefront/CatalogueBrowser.jsx",

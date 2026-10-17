@@ -152,7 +152,7 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the guard, and no fabricated confirmation ──────────────────────── */
 
-test("/order-success always renders Aarna's confirmation route without inventing an order", () => {
+test("/order-success always renders the customer storefront's confirmation route without inventing an order", () => {
   const markup = off.renderRoute("/order-success");
   assert.ok(markup.length > 0, "/order-success rendered nothing at all");
   assert.match(markup, /class="pf-root"/);

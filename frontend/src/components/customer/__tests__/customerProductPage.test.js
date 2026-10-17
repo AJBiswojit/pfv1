@@ -208,7 +208,7 @@ const seed = () => on.store.applyCatalogSnapshot({ products: RECORDS });
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("the product path always enters Aarna's product page despite a former Atelier override", () => {
+test("the product path always enters the customer storefront's product page despite a former Atelier override", () => {
   const markup = off.render(`/product/${RECORD_IN_STOCK.id}`);
   assert.match(markup, /class="pf-root"/);
   assert.match(markup, /class="pdp container"|Opening this piece|This page has slipped/);

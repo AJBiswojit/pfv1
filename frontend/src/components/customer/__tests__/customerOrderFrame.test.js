@@ -312,7 +312,7 @@ test("the four order screens are the port's own pages, imported where the port m
   }
 });
 
-test("Aarna owns the single-order routes outside its account guard", () => {
+test("The customer storefront owns the single-order routes outside its account guard", () => {
   const mount = source(MOUNT);
   const storefront = source("src/components/customer/CustomerStorefront.jsx");
   const app = source(PRODUCTION_APP);
@@ -321,7 +321,7 @@ test("Aarna owns the single-order routes outside its account guard", () => {
   for (const path of SINGLE_ORDER_URLS) {
     const relative = path.replace(/^\//, "");
     const at = mount.indexOf(`<Route path="${relative}" element=`);
-    assert.ok(at !== -1, `${relative} is not declared by Aarna`);
+    assert.ok(at !== -1, `${relative} is not declared by the customer storefront`);
     assert.ok(at > guardClose || at < guardOpen, `${relative} was put behind the account guard`);
   }
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);

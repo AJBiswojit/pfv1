@@ -324,7 +324,7 @@ test("a refund figure appears only where a return record carries one", () => {
 
 /* ── 5 · nothing is invented ───────────────────────────────────────────────── */
 
-test("the page keeps shared state boundaries and the customer route is owned by Aarna", () => {
+test("the page keeps shared state boundaries and the customer route is owned by the customer storefront", () => {
   const page = code();
 
   for (const banned of ["localStorage", "sessionStorage", "fetch(", "axios", "apiGet", "apiPost", "setInterval"]) {
@@ -333,8 +333,8 @@ test("the page keeps shared state boundaries and the customer route is owned by 
   assert.match(page, /document\.title = order\n\s+\? `Order \$\{order\.orderNumber \?\? order\.id\} — PRATIKSHYA FASHION`\n\s+: 'Order — PRATIKSHYA FASHION';/, "the page's own tab title moved");
   /* Production's screen is untouched and still serves the Atelier storefront. */
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
-  assert.match(read("src/components/customer/CustomerStorefront.jsx"), /<Route path="account\/orders\/:orderId" element=\{<AccountOrderDetailPage \/>\} \/>/, "Aarna no longer owns the guest order detail route");
-  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.match(read("src/components/customer/CustomerStorefront.jsx"), /<Route path="account\/orders\/:orderId" element=\{<AccountOrderDetailPage \/>\} \/>/, "The customer storefront no longer owns the guest order detail route");
+  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to the customer storefront");
   /* The dialog and the invoice document this page leans on are production's. */
   assert.match(read(CONFIRM_DIALOG), /export default function ConfirmDialog/, "the shared dialog moved");
   assert.match(read(INVOICE), /export default function InvoicePreview/, "the invoice document moved");

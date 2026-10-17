@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/security — the native Aarna security screen.
+ * Phase 12 · /account/security — the native customer storefront security screen.
  *
  * Rendered for real, inside the real AccountProvider, with fetch stubbed. Covers:
  * loading, failed read and retry, the client checks that must stop a request, the

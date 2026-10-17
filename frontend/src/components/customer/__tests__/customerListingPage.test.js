@@ -200,11 +200,11 @@ after(async () => {
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("listing routes always render Aarna's listing UI regardless of the former override", () => {
+test("listing routes always render the customer storefront's listing UI regardless of the former override", () => {
   for (const path of ["/shop", "/explore", "/search?q=silk", "/women/sarees", "/category/sarees", "/collections/silk-classics"]) {
     const markup = off.render(path);
-    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
-    assert.match(markup, /class="shop container"/, `${path} did not render Aarna's listing`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render the customer storefront`);
+    assert.match(markup, /class="shop container"/, `${path} did not render the customer storefront's listing`);
   }
 });
 
@@ -224,9 +224,9 @@ test("the switch stops at the routes it does not own", () => {
     const markup = on.render(path);
     assert.equal(/listing-controls/.test(markup), false, `${path} was handed to the port's listing`);
   }
-  /* Reset-password now belongs to the Aarna auth route, never the listing. */
+  /* Reset-password now belongs to the storefront auth route, never the listing. */
   const reset = on.render("/reset-password?userId=user-1&token=token-1");
-  assert.match(reset, /pf-root/, "reset-password did not render in the Aarna shell");
+  assert.match(reset, /pf-root/, "reset-password did not render in the storefront shell");
   assert.equal(/listing-controls/.test(reset), false, "reset-password rendered listing controls");
 });
 

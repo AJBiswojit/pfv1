@@ -247,7 +247,7 @@ test("the shipment, the destination and the ways on are the order's own", () => 
 
 /* ── 3 · nothing is invented ───────────────────────────────────────────────── */
 
-test("the page uses shared tracking state and Aarna owns the route", () => {
+test("the page uses shared tracking state and the customer storefront owns the route", () => {
   const page = code();
 
   for (const banned of ["localStorage", "sessionStorage", "fetch(", "axios", "apiGet", "apiPost", "setInterval"]) {
@@ -261,6 +261,6 @@ test("the page uses shared tracking state and Aarna owns the route", () => {
   assert.match(read(SERVICE), /timestamp: event\?\.at \?\? null,/, "the service no longer withholds a date for an unrecorded step");
   assert.match(read(PRODUCTION_PAGE), /useOrder\(\)/, "the production screen no longer reads the order context");
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
-  assert.match(storefront, /<Route path="account\/orders\/:orderId\/track" element=\{<AccountOrderTrackingPage \/>\} \/>/, "Aarna no longer owns tracking");
-  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to Aarna");
+  assert.match(storefront, /<Route path="account\/orders\/:orderId\/track" element=\{<AccountOrderTrackingPage \/>\} \/>/, "The customer storefront no longer owns tracking");
+  assert.match(read("src/App.jsx"), /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to the customer storefront");
 });

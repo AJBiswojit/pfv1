@@ -1,6 +1,6 @@
 /**
- * Aarna integration and isolation contracts. App.jsx mounts CustomerLayout for
- * customer paths, CustomerLayout mounts Aarna, and Aarna owns the customer route
+ * The customer storefront integration and isolation contracts. App.jsx mounts CustomerLayout for
+ * customer paths, CustomerLayout mounts the customer storefront, and the customer storefront owns the customer route
  * table. The staff portals remain separate; preview fixtures and old customer
  * compositions are not reachable from the production route graph.
  */
@@ -92,12 +92,12 @@ test("every destination the design wrote resolves to a route this application re
 test("the route table is this application's own — checked against App.jsx and the manifest", () => {
   const app = read("src/App.jsx");
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
-  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App must delegate customer paths to Aarna");
+  assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App must delegate customer paths to the customer storefront");
   for (const path of APP_ROUTES) {
     if (path === "/" || path === "/login") continue;
-    assert.ok(isRegisteredPath(path), `Aarna's route register omits ${path}`);
+    assert.ok(isRegisteredPath(path), `The customer storefront's route register omits ${path}`);
   }
-  assert.match(storefront, /<Route index element=\{<Home \/>\} \/>/, "Aarna no longer owns the customer root");
+  assert.match(storefront, /<Route index element=\{<Home \/>\} \/>/, "The customer storefront no longer owns the customer root");
   /* …and every path the manifest carries is a route too. */
   assert.ok(routeManifest.length >= 40, `expected the navigation manifest, found ${routeManifest.length} routes`);
   for (const route of routeManifest) assert.ok(isRegisteredPath(route.path), `${route.path} is not resolvable`);
@@ -165,7 +165,7 @@ test("the translation table only names routes the application registers", () => 
 
 /* ── 2 · the single customer storefront ─────────────────────────────── */
 
-test("Aarna is the only customer surface mounted by the outer catch-all", () => {
+test("The customer storefront is the only customer surface mounted by the outer catch-all", () => {
   const layout = read(LAYOUT);
   assert.match(layout, /<CustomerStorefront \/>/);
   assert.doesNotMatch(layout, /AtelierDesign|StorefrontHome|useEditorialHome|useCustomerStorefront/);
@@ -178,10 +178,10 @@ test("Aarna is the only customer surface mounted by the outer catch-all", () => 
   const importers = sourceFiles()
     .filter((file) => !file.includes("__tests__") && !file.includes("/preview/"))
     .filter((file) => /from "[^"]*customer\/CustomerStorefront/.test(read(file)));
-  assert.deepEqual(importers, [LAYOUT], "Aarna is mounted by the customer layout alone");
+  assert.deepEqual(importers, [LAYOUT], "The customer storefront is mounted by the customer layout alone");
 });
 
-test("the Aarna product predicate matches only a single product route", () => {
+test("the customer storefront product predicate matches only a single product route", () => {
   assert.equal(CUSTOMER_PRODUCT_PATH.source, "^\\/product\\/[^/]+\\/?$");
 
   /* The route matcher is independent of any storefront selector. These cases

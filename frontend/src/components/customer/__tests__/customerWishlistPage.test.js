@@ -4,7 +4,7 @@
  * Phase 8 adopts `home-page/src/pages/Wishlist.jsx` the way Phase 6 adopted the
  * product page and Phase 7 the listing: the design's file carried over by
  * `scripts/customer-port.js`, adapted only by named rewrites, reachable only
- * mounted on the Aarna customer route with no storefront selector, and
+ * mounted on the customer route with no storefront selector, and
  * bound to `WishlistContext` / `ShoppingContext` instead of the design's bundled
  * catalogue.
  *
@@ -271,7 +271,7 @@ after(async () => {
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("the canonical wishlist renders in Aarna and its legacy route remains an in-shell redirect", () => {
+test("the canonical wishlist renders in the customer storefront and its legacy route remains an in-shell redirect", () => {
   const canonical = off.render("/account/wishlist");
   assert.match(canonical, /class="pf-root"/);
   assert.match(canonical, /Saved pieces/);

@@ -1,5 +1,5 @@
 /**
- * The customer account now belongs entirely to Aarna: its native account pages
+ * The customer account now belongs entirely to the customer storefront: its native account pages
  * are mounted by CustomerStorefront, while the former production customer pages
  * are no longer part of the application route tree.
  */
@@ -22,7 +22,7 @@ const NATIVE = {
 };
 const REMOVED_LEGACY = ["AccountSettings.jsx", "AccountSecurity.jsx", "AccountPreferences.jsx", "InstagramRewards.jsx"];
 
-test("each migrated account path is mounted on its native Aarna page", () => {
+test("each migrated account path is mounted on its native customer page", () => {
   const source = read(STOREFRONT);
   for (const [route, [file, component]] of Object.entries(NATIVE)) {
     assert.ok(source.includes(`from "${file}"`), `${file} is imported`);
@@ -30,7 +30,7 @@ test("each migrated account path is mounted on its native Aarna page", () => {
   }
 });
 
-test("Aarna keeps server-backed account ownership while the home-page prototype remains device-local", () => {
+test("The customer storefront keeps server-backed account ownership while the home-page prototype remains device-local", () => {
   const storefront = read(CUSTOMER_ACCOUNT);
   const designReference = read(DESIGN_REFERENCE_ACCOUNT);
   assert.match(storefront, /useAccount\(\)/, "the active account reads the application's account context");
@@ -38,11 +38,11 @@ test("Aarna keeps server-backed account ownership while the home-page prototype 
   assert.equal(read("src/App.jsx").includes("home-page/"), false, "the prototype was imported into the production application");
 });
 
-test("legacy account pages are retired and Aarna owns their canonical routes", () => {
+test("legacy account pages are retired and the customer storefront owns their canonical routes", () => {
   const source = read(STOREFRONT);
   const app = read("src/App.jsx");
   for (const page of REMOVED_LEGACY) {
-    assert.equal(source.includes(`../../pages/account/${page}`), false, `${page} is not imported by Aarna`);
+    assert.equal(source.includes(`../../pages/account/${page}`), false, `${page} is not imported by the customer storefront`);
     assert.equal(app.includes(`pages/account/${page}`), false, `${page} is not imported by App`);
     assert.equal(existsSync(new URL(`src/pages/account/${page}`, `file://${ROOT}`)), false, `${page} was retired`);
   }
@@ -65,7 +65,7 @@ test("the single-order routes stay open to a guest", () => {
   assert.match(source, /<Route path="account\/orders\/:orderId" element=\{<AccountOrderDetailPage \/>\} \/>/);
 });
 
-test("the outer application delegates customer paths to the Aarna customer layout", () => {
+test("the outer application delegates customer paths to the customer layout", () => {
   const app = read("src/App.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/);
   assert.doesNotMatch(app, /<Route path="\/account"/);

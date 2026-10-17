@@ -6,7 +6,7 @@
  * written in the design's own vocabulary (`.container`, `.info`, `.crumbs`,
  * `.label`, `.display`, `.info__lead`, `.form`, `.form__err`, `.form__note`,
  * the `.btn` register) and bound to `AuthContext` — the same context the
- * current Aarna customer route reads. The route no longer depends on an
+ * Current customer route reads. The route no longer depends on an
  * environment flag or query-string selector.
  *
  * What these tests render is the real composition: `CustomerLayout` inside this
@@ -25,7 +25,7 @@
  *      Google button — all pinned at the source, because none of them can be
  *      exercised without a backend and a browser.
  *   3. WHAT THE BOUNDARY LEAVES ALONE. Staff portals keep their production
- *      pages; reset-password joins Aarna auth and remains disjoint from the
+ *      pages; reset-password joins the customer storefront auth and remains disjoint from the
  *      journey, listing and catch-all surfaces.
  *
  * WHAT THIS CANNOT PROVE: clicks, focus order and layout (no DOM here); a real
@@ -158,12 +158,12 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch, and where it stops ─────────────────────────────────── */
 
-test("all customer auth paths render Aarna irrespective of former selector values", () => {
+test("all customer auth paths render the customer storefront irrespective of former selector values", () => {
   for (const path of ["/signin", "/signup", "/forgot-password", "/reset-password"]) {
     const markup = off.render(path);
     assert.ok(markup.length > 0, `${path} rendered nothing at all`);
-    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
-    assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render an Aarna auth UI`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render the customer storefront`);
+    assert.match(markup, /class="info container pf-auth"|Create new/ , `${path} did not render a storefront auth UI`);
   }
   assert.match(read("src/components/customer/CustomerStorefront.jsx"), /<Route path="reset-password" element=\{<ResetPassword \/>\} \/>/);
 });
@@ -204,7 +204,7 @@ test("the auth screens are disjoint from the journey, listing and catch-all surf
   }
 });
 
-test("Aarna declares all four authentication screens and App delegates customer routing", () => {
+test("The customer storefront declares all four authentication screens and App delegates customer routing", () => {
   const mount = read(MOUNT);
   assert.match(mount, /<Route path="signin" element=\{<SignIn \/>\} \/>/);
   assert.match(mount, /<Route path="signup" element=\{<SignUp \/>\} \/>/);

@@ -1,5 +1,5 @@
 /**
- * Phase 12 · /account/preferences — the native Aarna style-preferences screen.
+ * Phase 12 · /account/preferences — the native storefront style-preferences screen.
  *
  * The notes are device-local by design (the store's own BACKEND_GAP): the suite
  * proves that they are saved under the customer's scope on this device, that no

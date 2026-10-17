@@ -2,9 +2,9 @@
  * PRATIKSHYA FASHION — PHASE 11 · STAGE 2.3 — the addresses screen, on this
  * application's own account.
  *
- * The Aarna-native addresses screen renders inside the shared account frame and
+ * The storefront-native addresses screen renders inside the shared account frame and
  * remains behind the customer guard. App.jsx delegates all customer routes to
- * Aarna; its staff routes remain independent.
+ * the customer storefront; its staff routes remain independent.
  *
  * What these tests render is the real composition: the ported page inside this
  * application's provider stack (and the port's own UI/shop providers, exactly as
@@ -221,7 +221,7 @@ const buttons = (markup) => [...markup.matchAll(/<button ([^>]*)>/g)].map(([, at
 
 /* ── 1 · the route, the switch and the guard ───────────────────────────────── */
 
-test("`/account\/addresses` is the port's own page, inside the same guard, and Aarna owns the only customer route", () => {
+test("`/account\/addresses` is the port's own page, inside the same guard, and the customer storefront owns the only customer route", () => {
   const mount = read(MOUNT);
   assert.match(mount, /import AccountAddressesPage from "\.\/pages\/account\/Addresses\.jsx";/,
     "the mount does not import the port's addresses page under its own name");
@@ -238,11 +238,11 @@ test("`/account\/addresses` is the port's own page, inside the same guard, and A
   const app = read(PRODUCTION_APP);
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/,
-    "App.jsx no longer delegates customer paths to Aarna");
+    "App.jsx no longer delegates customer paths to the customer storefront");
   assert.doesNotMatch(app, /pages\/account\/AccountAddresses/,
     "the outer route tree still imports an obsolete customer page");
   assert.match(storefront, /<Route path="account\/addresses"/,
-    "Aarna no longer owns the account route");
+    "The customer storefront no longer owns the account route");
 });
 
 test("the port's registry declares the addresses page once, and the page exists", () => {
@@ -427,7 +427,7 @@ test("a deletion is asked about first, through the application's existing confir
   }
   assert.match(dialog, /isOpen=\{Boolean\(pendingRemoval\)\}/, "the dialog is no longer opened by the address it asks about");
 
-  /* Aarna deliberately requires confirmation before invoking the shared delete action. */
+  /* The customer storefront deliberately requires confirmation before invoking the shared delete action. */
   assert.match(page, /handleConfirmRemoval/);
   assert.match(page, /onConfirm=\{handleConfirmRemoval\}/);
 });
@@ -517,13 +517,13 @@ test("the feedback is the context's own message, clears itself, and is stated on
   assert.match(page, /setFeedback\(\{ ok: result\.ok, message: result\.message \}\);/, "the feedback is not the context's answer");
 });
 
-test("Aarna's tab title is restored on unmount", () => {
+test("The customer storefront's tab title is restored on unmount", () => {
   const page = read(PAGE);
 
   assert.match(page, /document\.title = ADDRESSES_TITLE;/, "the page no longer states its own tab title");
   assert.match(page, /return \(\) => \{\n\s+document\.title = previous;\n\s+\};/, "the tab title is no longer restored");
   assert.match(page, /const ADDRESSES_TITLE = 'Addresses — PRATIKSHYA FASHION';/,
-    "Aarna's accessible tab title is missing");
+    "The customer storefront's accessible tab title is missing");
 });
 
 /* ── 4 · the page invents nothing ──────────────────────────────────────────── */

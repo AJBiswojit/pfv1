@@ -47,7 +47,7 @@ test("real recommendation component renders API-shaped product through canonical
   assert.equal((html.match(/href="\/product\/render-product"/g) ?? []).length, 1);
 });
 
-test("the Aarna AI Mirror includes the separate recommendation concern without a static fake rail", () => {
+test("the customer AI Mirror includes the separate recommendation concern without a static fake rail", () => {
   assert.match(MirrorSource, /<RecommendationSections placement="mirror"/);
   assert.match(MirrorSource, /useRecommendations|RecommendationSections/);
   assert.doesNotMatch(MirrorSource, /\[.*Recommended for You.*\]/);

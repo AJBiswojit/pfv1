@@ -106,7 +106,7 @@ test("placements preserve canonical card/media/navigation and have no fake repos
   const storefront = read("components/customer/CustomerStorefront.jsx");
   const homepage = read("components/customer/pages/Home.jsx");
   assert.match(storefront, /import Home from "\.\/pages\/Home\.jsx"/);
-  assert.match(homepage, /<HomepageSection sectionKey=/, "the active Aarna homepage composes its own sections");
+  assert.match(homepage, /<HomepageSection sectionKey=/, "the active storefront homepage composes its own sections");
   assert.doesNotMatch(homepage, /AtelierDesign/, "the removed storefront is not the active homepage");
   assert.match(read("hooks/useRecommendations.js"), /state.key === key/);
   assert.match(read("hooks/useRecommendations.js"), /cancelled = true/);

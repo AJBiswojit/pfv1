@@ -2,9 +2,9 @@
  * PRATIKSHYA FASHION — PHASE 11 · STAGE 2.3 — the profile screen, on this
  * application's own account.
  *
- * The Aarna-native profile screen renders inside the shared account frame and
+ * The storefront-native profile screen renders inside the shared account frame and
  * remains behind the customer guard. App.jsx delegates all customer routes to
- * Aarna; its staff routes remain independent.
+ * the customer storefront; its staff routes remain independent.
  *
  * What these tests render is the real composition: the ported page inside this
  * application's provider stack (and the port's own UI/shop providers, exactly as
@@ -228,7 +228,7 @@ const inputFor = (markup, id) => inputs(markup).find((attributes) => attributes.
 
 /* ── 1 · the route, the switch and the guard ───────────────────────────────── */
 
-test("`/account\/profile` is the port's own page, inside the same guard, and Aarna owns the only customer route", () => {
+test("`/account\/profile` is the port's own page, inside the same guard, and the customer storefront owns the only customer route", () => {
   const mount = read(MOUNT);
   assert.match(mount, /import AccountProfilePage from "\.\/pages\/account\/Profile\.jsx";/,
     "the mount does not import the port's profile page under its own name");
@@ -245,11 +245,11 @@ test("`/account\/profile` is the port's own page, inside the same guard, and Aar
   const app = read(PRODUCTION_APP);
   const storefront = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/,
-    "App.jsx no longer delegates customer paths to Aarna");
+    "App.jsx no longer delegates customer paths to the customer storefront");
   assert.doesNotMatch(app, /pages\/account\/AccountProfile/,
     "the outer route tree still imports an obsolete customer page");
   assert.match(storefront, /<Route path="account\/profile"/,
-    "Aarna no longer owns the account route");
+    "The customer storefront no longer owns the account route");
 });
 
 test("the port's registry declares the profile page once, and the page exists", () => {
@@ -489,13 +489,13 @@ test("a read that has not landed is loading, and a read that failed is named as 
   assert.equal(/Try again|onRetry/.test(code()), false, "the page invents a retry the account context does not expose");
 });
 
-test("Aarna's profile tab title is restored on unmount", () => {
+test("The customer storefront's profile tab title is restored on unmount", () => {
   const page = read(PAGE);
 
   assert.match(page, /document\.title = PROFILE_TITLE;/, "the page no longer states its own tab title");
   assert.match(page, /return \(\) => \{\n\s+document\.title = previous;\n\s+\};/, "the tab title is no longer restored");
   assert.match(page, /const PROFILE_TITLE = 'Profile — PRATIKSHYA FASHION';/,
-    "Aarna's profile tab title is missing");
+    "The customer storefront's profile tab title is missing");
 });
 
 /* ── 4 · the page invents nothing ──────────────────────────────────────────── */

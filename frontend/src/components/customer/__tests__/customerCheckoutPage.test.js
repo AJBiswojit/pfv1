@@ -211,7 +211,7 @@ const importSpecifiers = (source) =>
 
 /* ── 1 · the switch, the guard, and the quiet chrome ────────────────────── */
 
-test("/checkout always uses Aarna's guarded journey UI", () => {
+test("/checkout always uses the customer storefront's guarded journey UI", () => {
   const markup = off.renderRoute("/checkout");
   assert.ok(markup.length > 0, "/checkout rendered nothing at all");
   assert.match(markup, /class="pf-root"/);
@@ -223,7 +223,7 @@ test("with the switch on, the design's quiet journey chrome wraps the route — 
   assert.match(markup, /class="pf-root"/, "the port did not mount at /checkout");
   assert.match(markup, /<main class="pf-journey">/, "the checkout did not render inside the journey frame");
   assert.match(markup, /Secure Checkout/, "the journey frame lost its own note");
-  /* Aarna keeps checkout focused: no announcement rail, mega menu, search
+  /* The customer storefront keeps checkout focused: no announcement rail, mega menu, search
      overlay, or shopping drawer appears in the order journey. */
   assert.equal(
     /class="announce"|class="drawer"|class="nav__link"|class="mobile-menu"|class="search-overlay"/.test(markup),
@@ -319,7 +319,7 @@ test("the ledger beside the steps is the bag's own, through the bag page's own c
     /import \{ BagTotals, OfferField, lineTotalFor \} from '\.\/Cart\.jsx';/,
     "the journey no longer shares the bag's ledger, offer field and line figure",
   );
-  /* The Aarna bag exports one shared definition of a line's figure. */
+  /* The customer bag exports one shared definition of a line's figure. */
   assert.match(read(BAG), /export const lineTotalFor = /, "the bag no longer exports the line figure");
   assert.equal(
     (read(BAG).match(/Number\.isFinite\(item\??\.lineTotal\)/g) ?? []).length,

@@ -1,5 +1,5 @@
 /*
- * Customer listing regression: the Aarna shop owns the live listing surface.
+ * Customer listing regression: the customer shop owns the live listing surface.
  * It must render while the shared catalogue is unresolved, then render actual
  * backend records when present; the retired production Shop page is not part of
  * the route tree.
@@ -30,7 +30,7 @@ const renderShop = () => renderToStaticMarkup(
   React.createElement(StaticRouter, { location: "/shop" }, React.createElement(Shop, { mode: "shop" }))
 );
 
-test("Aarna shop renders a truthful loading state before the catalogue arrives", () => {
+test("Customer shop renders a truthful loading state before the catalogue arrives", () => {
   catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
   const html = renderShop();
   assert.match(html, /All Pieces/);
@@ -38,7 +38,7 @@ test("Aarna shop renders a truthful loading state before the catalogue arrives",
   assert.doesNotMatch(html, /Demo|Placeholder|collections\/featured/);
 });
 
-test("Aarna shop does not fabricate a featured collection or products before catalogue data is available", () => {
+test("Customer shop does not fabricate a featured collection or products before catalogue data is available", () => {
   catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
   const html = renderShop();
   assert.match(html, /All Pieces/);
@@ -46,7 +46,7 @@ test("Aarna shop does not fabricate a featured collection or products before cat
   assert.doesNotMatch(html, /Sambalpuri Silk Saree|A Backend Edit|The House Edit|collections\/featured/);
 });
 
-test("Aarna search mode uses the same truthful listing state without local fallback results", () => {
+test("The customer storefront search mode uses the same truthful listing state without local fallback results", () => {
   catalogStore.applyCatalogSnapshot({ products: [], categories: [], collections: [] });
   const html = renderToStaticMarkup(
     React.createElement(StaticRouter, { location: "/search" }, React.createElement(Shop, { mode: "search" }))
@@ -56,7 +56,7 @@ test("Aarna search mode uses the same truthful listing state without local fallb
   assert.doesNotMatch(html, /Demo|Placeholder|The House Edit/);
 });
 
-test("Aarna listing keeps its shared query engine and is the routed customer listing", () => {
+test("Customer listing keeps its shared query engine and is the routed customer listing", () => {
   const source = readFileSync(join(ROOT, "src/components/customer/pages/Shop.jsx"), "utf8");
   const app = readFileSync(join(ROOT, "src/App.jsx"), "utf8");
   const routes = readFileSync(join(ROOT, "src/components/customer/CustomerStorefront.jsx"), "utf8");

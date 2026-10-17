@@ -10,7 +10,7 @@
  * import, the messages, the single `setSubmitted` inside the accepted branch,
  * and the confirmation's two actions.
  *
- * The reset screen is a separate Aarna route, while this page remains honest
+ * The reset screen is a separate customer route, while this page remains honest
  * about the existing forgot-password endpoint's response. It never claims that
  * an email was sent when the backend only confirms receipt of the request.
  *
@@ -131,7 +131,7 @@ const importSpecifiers = (text) =>
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("/forgot-password always renders Aarna's auth screen regardless of the former override", () => {
+test("/forgot-password always renders the customer storefront's auth screen regardless of the former override", () => {
   const markup = off.render("/forgot-password");
   assert.ok(markup.length > 0, "/forgot-password rendered nothing at all");
   assert.match(markup, /class="pf-root"/);
@@ -147,7 +147,7 @@ test("with the switch on, /forgot-password is the port — inside the design's f
   assert.equal(/pf-journey/.test(markup), false, "the recovery page rendered the quiet journey chrome instead");
 });
 
-test("the reset screen is adopted by Aarna and remains in its customer auth surface", () => {
+test("the reset screen is adopted by the customer storefront and remains in its customer auth surface", () => {
   const { boundary } = on;
   assert.equal(boundary.isCustomerAuthPath("/forgot-password"), true);
   assert.equal(boundary.CUSTOMER_AUTH_PATHS.has("/reset-password"), true);

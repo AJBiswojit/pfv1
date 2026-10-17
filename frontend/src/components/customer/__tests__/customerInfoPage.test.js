@@ -130,11 +130,11 @@ after(async () => {
 
 /* ── 1 · the switch ─────────────────────────────────────────────────────── */
 
-test("the four information routes always render Aarna's manifest-backed pages", () => {
+test("the four information routes always render the customer storefront's manifest-backed pages", () => {
   for (const path of INFO_PATHS) {
     const markup = off.render(path);
-    assert.match(markup, /class="pf-root"/, `${path} did not render Aarna`);
-    assert.match(markup, /class="info container"/, `${path} did not render the Aarna information page`);
+    assert.match(markup, /class="pf-root"/, `${path} did not render the customer storefront`);
+    assert.match(markup, /class="info container"/, `${path} did not render the customer information page`);
   }
 });
 
