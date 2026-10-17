@@ -61,7 +61,7 @@ function ChipGroup({ name, label, options, selected, onToggle }) {
   );
 }
 
-export default function Preferences() {
+export default function Preferences({ embedded = false }) {
   const { user } = useAuth();
   const customerId = user?.id ?? null;
 
@@ -109,12 +109,8 @@ export default function Preferences() {
     setSaveState(same ? 'saved' : 'failed');
   };
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Style Preferences' }]}
-      label="Your style"
-      title="Style preferences"
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Optional notes the atelier can use to shape what you see next. Nothing here is guessed.
       </p>
@@ -148,6 +144,18 @@ export default function Preferences() {
           ) : null}
         </div>
       </form>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Style Preferences' }]}
+      label="Your style"
+      title="Style preferences"
+    >
+      {content}
     </AccountFrame>
   );
 }

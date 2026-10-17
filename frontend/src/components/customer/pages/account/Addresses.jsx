@@ -57,7 +57,7 @@ const ADDRESSES_TITLE = 'Addresses — PRATIKSHYA FASHION';
 /* Production clears its feedback after three and a half seconds; so does this. */
 const FEEDBACK_MS = 3500;
 
-export default function Addresses() {
+export default function Addresses({ embedded = false }) {
   const {
     addresses,
     addAddress,
@@ -129,12 +129,8 @@ export default function Addresses() {
   const accountLoading = isLoading && !addresses.length;
   const accountFailed = Boolean(loadError) && !addresses.length;
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Saved Addresses' }]}
-      label="Your account"
-      title="Saved Addresses"
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Manage your primary residence, work locations, and celebration delivery addresses.
       </p>
@@ -236,6 +232,18 @@ export default function Addresses() {
         onConfirm={handleConfirmRemoval}
         onCancel={() => setPendingRemoval(null)}
       />
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Saved Addresses' }]}
+      label="Your account"
+      title="Saved Addresses"
+    >
+      {content}
     </AccountFrame>
   );
 }

@@ -189,7 +189,7 @@ const rehydrateMessages = (list) => {
   return changed ? nextList : list;
 };
 
-export default function AiShopping() {
+export default function AiShopping({ embedded = false }) {
   const { user } = useAuth();
   const cart = useCart();
   const wishlist = useWishlist();
@@ -397,12 +397,8 @@ export default function AiShopping() {
   const quickPrompts = contextProduct ? AI_SHOPPING_PRODUCT_PROMPTS : AI_SHOPPING_QUICK_PROMPTS;
   const demoProvider = isMockAiProvider();
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'AI Shopping' }]}
-      label={AI_SHOPPING_BRAND.name}
-      title="Your personal fashion companion."
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Tell me the occasion, the colour, the cloth or the budget — I will walk you through the
         current atelier edit.
@@ -535,6 +531,18 @@ export default function AiShopping() {
           </p>
         </aside>
       </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'AI Shopping' }]}
+      label={AI_SHOPPING_BRAND.name}
+      title="Your personal fashion companion."
+    >
+      {content}
     </AccountFrame>
   );
 }

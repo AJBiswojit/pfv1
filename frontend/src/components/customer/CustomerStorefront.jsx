@@ -41,10 +41,11 @@ import SignUp from "./pages/SignUp.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 /* The account screens are native storefront pages. They keep the existing shared
-   account contexts, service calls, and guest-order route behavior. */
+   account contexts, service calls, and guest-order route behavior. The sidebar
+   groups five leaves into three sections, so the mount imports the three
+   section containers; each container imports its leaves' own pages. */
 import AccountOverview from "./pages/account/Overview.jsx";
-import AccountProfilePage from "./pages/account/Profile.jsx";
-import AccountAddressesPage from "./pages/account/Addresses.jsx";
+import AccountPersonalPage from "./pages/account/Personal.jsx";
 /* The order screens share one frame (`pages/account/OrderFrame.jsx`) — the
    port's equivalent of production's `OrderPageShell`, which is what keeps the
    guest-order surface open: a guest gets the order and the two ways to keep it,
@@ -57,13 +58,11 @@ import AccountOrderReturnPage from "./pages/account/OrderReturn.jsx";
 /* Stage 2.5 redrew the two AI screens. Both sit inside the family's own guard
    (production wraps them in the same `ProtectedRoute`), and both reuse the
    production widgets they were built on — the pages here are the port's, the
-   machines inside them are production's, unchanged. */
-import AccountAiMirrorPage from "./pages/account/AiMirror.jsx";
-import AccountAiShoppingPage from "./pages/account/AiShopping.jsx";
+   machines inside them are production's, unchanged. The atelier container
+   imports them as its two tabs. */
+import AccountAiAtelierPage from "./pages/account/AiAtelier.jsx";
 /* Remaining account pages are also native storefront screens. */
-import AccountSettings from "./pages/account/Settings.jsx";
-import AccountSecurity from "./pages/account/Security.jsx";
-import AccountPreferences from "./pages/account/Preferences.jsx";
+import AccountSettingsArea from "./pages/account/SettingsArea.jsx";
 import InstagramRewards from "./pages/account/InstagramRewards.jsx";
 import JourneyFrame from "./components/layout/JourneyFrame.jsx";
 import ProtectedRoute from "../auth/ProtectedRoute.jsx";
@@ -148,14 +147,15 @@ export default function CustomerStorefront() {
                     inspect and claim their orders. */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="account" element={<AccountOverview />} />
-                  <Route path="account/profile" element={<AccountProfilePage />} />
-                  <Route path="account/addresses" element={<AccountAddressesPage />} />
+                  <Route path="account/profile" element={<AccountPersonalPage />} />
+                  <Route path="account/addresses" element={<Navigate to="/account/profile?tab=addresses" replace />} />
                   <Route path="account/orders" element={<AccountOrdersPage />} />
-                  <Route path="account/settings" element={<AccountSettings />} />
-                  <Route path="account/security" element={<AccountSecurity />} />
-                  <Route path="account/preferences" element={<AccountPreferences />} />
-                  <Route path="account/ai-mirror" element={<AccountAiMirrorPage />} />
-                  <Route path="account/ai-shopping" element={<AccountAiShoppingPage />} />
+                  <Route path="account/settings" element={<AccountSettingsArea />} />
+                  <Route path="account/security" element={<Navigate to="/account/settings?tab=security" replace />} />
+                  <Route path="account/preferences" element={<Navigate to="/account/profile?tab=style" replace />} />
+                  <Route path="account/ai" element={<AccountAiAtelierPage />} />
+                  <Route path="account/ai-mirror" element={<Navigate to="/account/ai?tab=mirror" replace />} />
+                  <Route path="account/ai-shopping" element={<Navigate to="/account/ai?tab=shopping" replace />} />
                   <Route path="account/instagram-rewards" element={<InstagramRewards />} />
                 </Route>
                 <Route path="account/orders/:orderId" element={<AccountOrderDetailPage />} />

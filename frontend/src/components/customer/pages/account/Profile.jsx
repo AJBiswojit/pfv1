@@ -62,7 +62,7 @@ const fieldsFrom = (profile) => ({
   avatar: profile?.avatar || null,
 });
 
-export default function Profile() {
+export default function Profile({ embedded = false }) {
   const { profile, updateProfile, isLoading, loadError, loadErrorStatus } = useAccount();
   const fileInputRef = useRef(null);
 
@@ -183,12 +183,8 @@ export default function Profile() {
   const accountLoading = isLoading && !profile;
   const accountFailed = Boolean(loadError) && !profile;
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Profile' }]}
-      label="Your account"
-      title="Profile"
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Update your personal details, contact information, and portrait.
       </p>
@@ -354,6 +350,18 @@ export default function Profile() {
           </>
         )}
       </section>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Profile' }]}
+      label="Your account"
+      title="Profile"
+    >
+      {content}
     </AccountFrame>
   );
 }

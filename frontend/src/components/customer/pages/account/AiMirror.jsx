@@ -174,7 +174,7 @@ function RecentTryOns({ products, onSelect }) {
   );
 }
 
-export default function AiMirror() {
+export default function AiMirror({ embedded = false }) {
   const { user } = useAuth();
   const cart = useCart();
   const wishlist = useWishlist();
@@ -530,12 +530,8 @@ export default function AiMirror() {
     selectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [cancelTryOn]);
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'AI Mirror' }]}
-      label="PRATIKSHYA AI MIRROR"
-      title="See yourself in the look before you make it yours."
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Choose a look, step into the mirror, and discover how it could feel on you.
       </p>
@@ -628,6 +624,18 @@ export default function AiMirror() {
           </div>
         ))}
       </section>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'AI Mirror' }]}
+      label="PRATIKSHYA AI MIRROR"
+      title="See yourself in the look before you make it yours."
+    >
+      {content}
     </AccountFrame>
   );
 }

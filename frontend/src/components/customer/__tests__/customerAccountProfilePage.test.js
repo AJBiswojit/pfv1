@@ -230,16 +230,16 @@ const inputFor = (markup, id) => inputs(markup).find((attributes) => attributes.
 
 test("`/account\/profile` is the port's own page, inside the same guard, and the customer storefront owns the only customer route", () => {
   const mount = read(MOUNT);
-  assert.match(mount, /import AccountProfilePage from "\.\/pages\/account\/Profile\.jsx";/,
-    "the mount does not import the port's profile page under its own name");
+  assert.match(mount, /import AccountPersonalPage from "\.\/pages\/account\/Personal\.jsx";/,
+    "the mount does not import the port's Personal section under its own name");
   assert.equal(/const AccountProfile = lazy\(/.test(mount), false,
     "the production profile page is still declared lazy in the port");
-  assert.match(mount, /<Route path="account\/profile" element=\{<AccountProfilePage \/>\} \/>/,
+  assert.match(mount, /<Route path="account\/profile" element=\{<AccountPersonalPage \/>\} \/>/,
     "the profile route is not the port's own page");
 
   const guard = mount.slice(mount.indexOf("<Route element={<ProtectedRoute />}>"));
   assert.match(guard.slice(0, guard.indexOf("</Route>")),
-    /<Route path="account\/profile" element=\{<AccountProfilePage \/>\} \/>/,
+    /<Route path="account\/profile" element=\{<AccountPersonalPage \/>\} \/>/,
     "the profile route is outside the guard the family stands behind");
 
   const app = read(PRODUCTION_APP);

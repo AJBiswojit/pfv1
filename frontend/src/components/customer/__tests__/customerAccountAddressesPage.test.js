@@ -70,6 +70,10 @@ const PAGE = "src/components/customer/pages/account/Addresses.jsx";
 const FRAME = "src/components/customer/pages/account/AccountFrame.jsx";
 const NAV = "src/components/customer/pages/account/AccountNav.jsx";
 const OVERVIEW = "src/components/customer/pages/account/Overview.jsx";
+const PERSONAL = "src/components/customer/pages/account/Personal.jsx";
+const SIDEBAR = "src/components/customer/pages/account/AccountSidebar.jsx";
+const TABS = "src/components/customer/pages/account/AccountTabs.jsx";
+const ORDER_FRAME = "src/components/customer/pages/account/OrderFrame.jsx";
 const MOUNT = "src/components/customer/CustomerStorefront.jsx";
 const PRODUCTION_APP = "src/App.jsx";
 const PRODUCTION_PAGE = "src/components/customer/pages/account/Addresses.jsx";
@@ -223,16 +227,17 @@ const buttons = (markup) => [...markup.matchAll(/<button ([^>]*)>/g)].map(([, at
 
 test("`/account\/addresses` is the port's own page, inside the same guard, and the customer storefront owns the only customer route", () => {
   const mount = read(MOUNT);
-  assert.match(mount, /import AccountAddressesPage from "\.\/pages\/account\/Addresses\.jsx";/,
-    "the mount does not import the port's addresses page under its own name");
+  const personal = read(PERSONAL);
+  assert.match(personal, /import Addresses from '\.\/Addresses\.jsx';/,
+    "the Personal section does not import the port’s addresses page under its own name");
   assert.equal(/const AccountAddresses = lazy\(/.test(mount), false,
     "the production addresses page is still declared lazy in the port");
-  assert.match(mount, /<Route path="account\/addresses" element=\{<AccountAddressesPage \/>\} \/>/,
-    "the addresses route is not the port's own page");
+  assert.match(mount, /<Route path="account\/addresses" element=\{<Navigate to="\/account\/profile\?tab=addresses" replace \/>\} \/>/,
+    "the addresses route does not redirect to its section tab");
 
   const guard = mount.slice(mount.indexOf("<Route element={<ProtectedRoute />}>"));
   assert.match(guard.slice(0, guard.indexOf("</Route>")),
-    /<Route path="account\/addresses" element=\{<AccountAddressesPage \/>\} \/>/,
+    /<Route path="account\/addresses" element=\{<Navigate to="\/account\/profile\?tab=addresses" replace \/>\} \/>/,
     "the addresses route is outside the guard the family stands behind");
 
   const app = read(PRODUCTION_APP);
@@ -581,11 +586,11 @@ test("the sheet's own addresses rules are scoped to the port, token-only and dra
 
   const page = read(PAGE);
   /* No dead selector: the book's rules are drawn by this page, and the shared
-     rules they sit beside in the same slice — the frame's action band and the
-     overview's tile grid inside the one small-screen block — are drawn by the
+     rules they sit beside in the same slice — the sidebar frame, the tab strip,
+     the guest-order branch's action band and the overview's blocks — are drawn by the
      components that own them. */
   const drawn = new Set(
-    [FRAME, NAV, OVERVIEW, PAGE]
+    [FRAME, NAV, SIDEBAR, TABS, ORDER_FRAME, OVERVIEW, PAGE]
       .flatMap((file) => [...read(file).matchAll(/pf-account(?:__[a-z-]+)?/g)])
       .map((match) => match[0]),
   );

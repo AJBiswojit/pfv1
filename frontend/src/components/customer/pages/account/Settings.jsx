@@ -79,7 +79,7 @@ const fieldsFrom = (preferences) => ({
   stylingInvitations: Boolean(preferences?.stylingInvitations),
 });
 
-export default function Settings() {
+export default function Settings({ embedded = false }) {
   const { preferences, profile, updatePreferences, isLoading, loadError, loadErrorStatus, refreshAccount } = useAccount();
 
   const [formPrefs, setFormPrefs] = useState(() => fieldsFrom(preferences));
@@ -129,12 +129,8 @@ export default function Settings() {
     setFeedback({ ok: true, message: 'Your communication preferences have been saved.' });
   };
 
-  return (
-    <AccountFrame
-      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Settings & Preferences' }]}
-      label="Your account"
-      title="Settings"
-    >
+  const content = (
+    <>
       <p className="info__lead pf-account__lead">
         Control your communications, seasonal alerts, and tailored styling invitations.
       </p>
@@ -207,6 +203,18 @@ export default function Settings() {
           </>
         )}
       </section>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AccountFrame
+      breadcrumbItems={[{ label: 'Account', to: '/account' }, { label: 'Settings & Preferences' }]}
+      label="Your account"
+      title="Settings"
+    >
+      {content}
     </AccountFrame>
   );
 }

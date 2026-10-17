@@ -407,12 +407,12 @@ test("the index route is the port's own page, still inside the guard the family 
     assert.ok(at > guardCloses, `${path} was put behind the guard`);
   }
 
-  /* The twelve production account screens are still the ones the port mounts
-     lazily under the same guard — this phase moved the index route only. */
+  /* The section containers are the ones the port mounts under the same guard —
+     the leaves render inside them. */
   assert.equal(count(mount, "<Route element={<ProtectedRoute />}>"), 1,
     "the port declares more than one guard block");
-  assert.match(mount, /AccountProfile|AccountAddresses/,
-    "the production account screens left the port's route table");
+  assert.match(mount, /AccountPersonalPage|AccountSettingsArea|AccountAiAtelierPage/,
+    "the section containers left the port's route table");
 });
 
 test("the customer storefront account route is mounted without an outer legacy page", () => {

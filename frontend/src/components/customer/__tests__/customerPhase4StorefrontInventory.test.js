@@ -44,10 +44,12 @@ const PRODUCTION_REMAINING = [];
 /* These customer account screens are native customer pages; App.jsx only mounts
    the customer boundary, while staff routes remain separate. */
 const CUSTOMER_ACCOUNT_SCREENS = {
-  "account/settings": "AccountSettings",
-  "account/security": "AccountSecurity",
-  "account/preferences": "AccountPreferences",
+  "account/settings": "AccountSettingsArea",
   "account/instagram-rewards": "InstagramRewards",
+};
+const CUSTOMER_ACCOUNT_REDIRECTS = {
+  "account/security": "/account/settings?tab=security",
+  "account/preferences": "/account/profile?tab=style",
 };
 
 /** Does the port's boundary (the same predicates `useCustomerStorefront` ORs) answer this path? */
@@ -112,7 +114,7 @@ test("the port's information pages are exactly the manifest's four", () => {
   assert.deepEqual([...CUSTOMER_INFO_PATHS].sort(), ["/about", "/contact", "/privacy", "/terms"]);
 });
 
-test("the four remaining account screens are native to the customer storefront, and App delegates customer routes", () => {
+test("the remaining account screens are native to the customer storefront, and App delegates customer routes", () => {
   const source = read("src/components/customer/CustomerStorefront.jsx");
   const app = read("src/App.jsx");
   for (const [route, component] of Object.entries(CUSTOMER_ACCOUNT_SCREENS)) {
@@ -124,23 +126,41 @@ test("the four remaining account screens are native to the customer storefront, 
     );
     assert.match(source, new RegExp(`<Route path="${route}" element=\\{<${component} />\\} />`), `${route} must mount ${component}`);
     /* App.jsx delegates every customer URL to the customer storefront; no duplicate route remains. */
-    assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>\} \/>/, "App no longer delegates customer paths to the customer storefront");
+    assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>} \/>/, "App no longer delegates customer paths to the customer storefront");
     assert.doesNotMatch(app, new RegExp(`pages\\/account\\/${component}`), `App still imports ${component} for a customer route`);
+  }
+  /* The merged leaves keep their URLs as redirects into their section tabs. */
+  for (const [route, target] of Object.entries(CUSTOMER_ACCOUNT_REDIRECTS)) {
+    const escaped = target.replace(/[.?]/g, "\\$&");
+    assert.match(
+      source,
+      new RegExp(`<Route path="${route}" element=\\{<Navigate to="${escaped}" replace />\\} />`),
+      `${route} must redirect to ${target}`,
+    );
+    assert.match(app, /<Route path="\/\*" element=\{<CustomerLayout \/>} \/>/, "App no longer delegates customer paths to the customer storefront");
   }
 });
 
 test("the redrawn account screens render the storefront-owned pages, not obsolete customer routes", () => {
   const source = read("src/components/customer/CustomerStorefront.jsx");
   assert.match(source, /import AccountOverview from "\.\/pages\/account\/Overview\.jsx"/);
-  assert.match(source, /import AccountProfilePage from "\.\/pages\/account\/Profile\.jsx"/);
-  assert.match(source, /import AccountAddressesPage from "\.\/pages\/account\/Addresses\.jsx"/);
+  assert.match(source, /import AccountPersonalPage from "\.\/pages\/account\/Personal\.jsx"/);
   assert.match(source, /import AccountOrdersPage from "\.\/pages\/account\/Orders\.jsx"/);
-  assert.match(source, /import AccountAiMirrorPage from "\.\/pages\/account\/AiMirror\.jsx"/);
-  assert.match(source, /import AccountAiShoppingPage from "\.\/pages\/account\/AiShopping\.jsx"/);
-  assert.match(source, /import AccountSettings from "\.\/pages\/account\/Settings\.jsx"/);
-  assert.match(source, /import AccountSecurity from "\.\/pages\/account\/Security\.jsx"/);
-  assert.match(source, /import AccountPreferences from "\.\/pages\/account\/Preferences\.jsx"/);
+  assert.match(source, /import AccountAiAtelierPage from "\.\/pages\/account\/AiAtelier\.jsx"/);
+  assert.match(source, /import AccountSettingsArea from "\.\/pages\/account\/SettingsArea\.jsx"/);
   assert.match(source, /import InstagramRewards from "\.\/pages\/account\/InstagramRewards\.jsx"/);
+  /* The section containers import their leaves' own pages — the mount no
+     longer imports a leaf directly. */
+  const personal = read("src/components/customer/pages/account/Personal.jsx");
+  assert.match(personal, /import Profile from '\.\/Profile\.jsx';/);
+  assert.match(personal, /import Addresses from '\.\/Addresses\.jsx';/);
+  assert.match(personal, /import Preferences from '\.\/Preferences\.jsx';/);
+  const atelier = read("src/components/customer/pages/account/AiAtelier.jsx");
+  assert.match(atelier, /import AiShopping from '\.\/AiShopping\.jsx';/);
+  assert.match(atelier, /import AiMirror from '\.\/AiMirror\.jsx';/);
+  const settings = read("src/components/customer/pages/account/SettingsArea.jsx");
+  assert.match(settings, /import Settings from '\.\/Settings\.jsx';/);
+  assert.match(settings, /import Security from '\.\/Security\.jsx';/);
 });
 
 /* ── the homepage's content contract ─────────────────────────────────────── */

@@ -196,6 +196,7 @@ export const CUSTOMER_ACCOUNT_PATHS = new Set([
   "/account/settings",
   "/account/security",
   "/account/preferences",
+  "/account/ai",
   "/account/ai-mirror",
   "/account/ai-shopping",
   "/account/instagram-rewards",

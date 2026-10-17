@@ -236,6 +236,17 @@ export const ADDED = [
   "pages/account/Security.jsx",
   "pages/account/Preferences.jsx",
   "pages/account/InstagramRewards.jsx",
+  /* The sidebar restructure — the grouped navigation model, the sidebar rail
+     with its drawer, the section tab strip, and the three section containers
+     (Personal, AI Atelier, Settings). Each container renders its leaves' own
+     pages, so the seven content pages above stay the single owners of their
+     markup. Declared, so the closure check knows them and never writes them. */
+  "pages/account/accountNavModel.js",
+  "pages/account/AccountSidebar.jsx",
+  "pages/account/AccountTabs.jsx",
+  "pages/account/Personal.jsx",
+  "pages/account/AiAtelier.jsx",
+  "pages/account/SettingsArea.jsx",
   ];
 
 /* ─────────────────────────── the pinned rewrites ────────────────────────── */
