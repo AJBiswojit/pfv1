@@ -78,17 +78,24 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 14px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--c-ink-3);
-  transition: color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast), border-color var(--t-fast);
+}
+
+.pf-root .pf-account__nav-link svg {
+  flex: none;
 }
 
 .pf-root .pf-account__nav-link:hover {
   color: var(--c-ink);
+  background: var(--c-bg-3);
 }
 
 .pf-root .pf-account__nav-link:focus-visible {
@@ -98,6 +105,8 @@
 
 .pf-root .pf-account__nav-link.is-active {
   color: var(--c-espresso);
+  background: var(--c-bg-3);
+  border-color: var(--c-line);
 }
 
 .pf-root .pf-account__nav-link.is-active::after {
@@ -111,10 +120,12 @@
 }
 
 .pf-root .pf-account__nav-count {
-  min-width: 18px;
-  padding: 1px 5px;
+  min-width: 22px;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 12px;
   text-align: center;
-  background: var(--c-bg-2);
+  background: var(--c-paper);
   color: var(--c-espresso);
   font-size: 10px;
   font-weight: 700;
@@ -144,12 +155,15 @@
    is not prose. */
 
 .pf-root .pf-account__body .pf-account__lead {
-  margin-bottom: 24px;
-  color: var(--c-ink);
+  margin: 16px 0;
+  font-family: var(--f-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-ink-2);
 }
 
 .pf-root .pf-account__body .pf-account__section {
-  margin-top: clamp(30px, 3.6vw, 48px);
+  margin-top: 20px;
 }
 
 .pf-root .pf-account__body .pf-account__section .label {
@@ -166,6 +180,195 @@
   color: var(--c-ink);
 }
 
+.pf-root .pf-account__body .account__tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.pf-root .pf-account__body .shop__head {
+  padding: 0 0 12px;
+  gap: 6px 16px;
+}
+
+.pf-root .pf-account__body .grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 16px;
+}
+
+.pf-root .pf-account__body .pf-form {
+  width: 100%;
+  max-width: 760px;
+}
+
+.pf-root .pf-account__body .shop__head .label {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.pf-root .pf-account__body .shop__title {
+  font-size: clamp(22px, 1.6vw, 24px);
+  line-height: 1.15;
+}
+
+.pf-root .pf-account__body .pf-form,
+.pf-root .pf-account__card,
+.pf-root .pf-account__address,
+.pf-root .pf-account__offer,
+.pf-root .pf-account__return,
+.pf-root .pf-account__strip {
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+  box-shadow: var(--shadow-soft);
+}
+
+.pf-root .pf-account__body .pf-form {
+  margin-top: 16px;
+  padding: clamp(16px, 1.6vw, 24px);
+}
+
+.pf-root .pf-account__body .account__tile.pf-account__stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 108px;
+  padding: 18px 20px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+
+.pf-root .pf-account__stat strong {
+  grid-column: 1;
+  font-size: 36px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-ink);
+}
+
+.pf-root .pf-account__stat > span {
+  grid-column: 1;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  color: var(--c-ink-2);
+}
+
+.pf-root .pf-account__stat-icon {
+  grid-area: 1 / 2 / 3 / 3;
+  align-self: start;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-bg-3);
+  color: var(--c-espresso);
+}
+
+.pf-root .pf-account__body .account__tile.pf-account__stat:hover {
+  border-color: var(--c-line-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.pf-root .pf-account__stat:focus-visible {
+  outline: 2px solid var(--c-espresso);
+  outline-offset: 2px;
+}
+
+.pf-root .pf-account .btn {
+  min-height: 44px;
+  max-width: 100%;
+  padding-inline: 18px;
+  border-radius: 8px;
+  text-align: center;
+  white-space: normal;
+  letter-spacing: 0.12em;
+}
+
+.pf-root .pf-account .btn--ghost:focus-visible {
+  color: var(--c-bg);
+}
+
+.pf-root .pf-account .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pf-root .pf-account .btn:disabled::before {
+  transform: scaleX(0);
+}
+
+.pf-root .pf-account__body .empty {
+  min-height: 120px;
+  margin-top: 12px;
+  padding: 20px;
+  gap: 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
+}
+
+.pf-root .pf-account__body .empty .empty__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.pf-root .pf-account__body .empty p:not(.empty__title) {
+  margin: 0 0 4px;
+  max-width: 58ch;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.pf-root .pf-account__body .empty[role="alert"] {
+  border-color: var(--c-line-strong);
+  border-inline-start: 3px solid var(--c-espresso);
+}
+
+.pf-root .pf-account__body .empty[aria-busy="true"]::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--c-line);
+  border-top-color: var(--c-espresso);
+  border-radius: 50%;
+  animation: pf-spin 0.9s linear infinite;
+}
+
+.pf-root .pf-account__group {
+  margin: 0 0 16px;
+  padding: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.pf-root .pf-account__check {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.pf-root .pf-account__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  accent-color: var(--c-espresso);
+}
+
+.pf-root .pf-account__check .pf-hint {
+  display: block;
+  margin-top: 4px;
+}
+
 /* ── the two intelligence entry points: production's own bands (its dark mirror
       panel and its assistant panel) drawn in the design's register — the design's
       eyebrow, its serif display and its button — each carrying the disclosure its
@@ -174,14 +377,18 @@
 
 .pf-root .pf-account__ai {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
 }
 
 .pf-root .pf-account__ai-entry {
   display: flex;
   flex-direction: column;
-  padding: clamp(22px, 2.6vw, 34px);
+  min-height: 288px;
+  padding: clamp(20px, 1.8vw, 28px);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
 }
 
 /* The mirror keeps production's dark band; the accent arrives as the design's
@@ -189,7 +396,12 @@
    design's paper so the two read as one pair, not two posters. */
 
 .pf-root .pf-account__ai-entry--mirror {
+  border-color: var(--c-night);
   background: var(--c-night);
+}
+
+.pf-root .pf-account__ai-entry--mirror .pf-account__ai-eyebrow {
+  color: var(--c-muted);
 }
 
 .pf-root .pf-account__ai-entry--assistant {
@@ -206,8 +418,9 @@
    rules give: an equal-specificity rule would win on import order alone. */
 
 .pf-root .pf-account__ai-entry .pf-account__ai-title {
-  margin: 12px 0 0;
-  font-size: var(--fs-display-s);
+  margin: 10px 0 0;
+  font-size: clamp(24px, 1.8vw, 28px);
+  line-height: 1.1;
 }
 
 .pf-root .pf-account__ai-entry--mirror .pf-account__ai-title {
@@ -230,18 +443,20 @@
 }
 
 .pf-root .pf-account__ai-cta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 18px;
+  display: grid;
+  grid-template-rows: 44px minmax(32px, auto);
+  justify-items: start;
+  align-items: start;
+  gap: 10px;
   margin-top: auto;
-  padding-top: 24px;
+  padding-top: 16px;
 }
 
 .pf-root .pf-account__ai-entry .pf-account__ai-note {
   margin: 0;
   font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
 }
 
 .pf-root .pf-account__ai-entry--mirror .pf-account__ai-note {
@@ -275,8 +490,9 @@
    separated by the design's hairline rather than a card. */
 
 .pf-root .pf-account__orders {
-  margin-top: 4px;
-  border-top: 1px solid var(--c-line);
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .pf-root .pf-account__order {
@@ -285,12 +501,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px 20px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--c-line);
+  padding: 16px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
 }
 
 .pf-root .pf-account__order .pf-account__order-id {
   font-size: 12px;
+  overflow-wrap: anywhere;
   letter-spacing: 0.06em;
   color: var(--c-ink);
   text-decoration: underline;
@@ -306,8 +525,9 @@
 
 .pf-root .pf-account__order-aside {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: 8px 16px;
 }
 
 .pf-root .pf-account__order .pf-account__order-total {
@@ -333,7 +553,11 @@
 }
 
 .pf-root .pf-account__actions {
-  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .pf-root .pf-account__body .pf-account__note {
@@ -346,7 +570,7 @@
 
 .pf-root .pf-account__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -354,7 +578,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__card .pf-account__card-label {
@@ -458,7 +681,7 @@
 
 .pf-root .pf-account__addresses {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
   margin: 24px 0 0;
   padding: 0;
@@ -469,8 +692,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border: 1px solid transparent;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__address.is-default {
@@ -553,7 +774,7 @@
 
 .pf-root .pf-account__offers {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -561,7 +782,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__offer .pf-account__offer-code {
@@ -602,7 +822,7 @@
 
 .pf-root .pf-account__returns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
 }
 
@@ -610,7 +830,6 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background: var(--c-bg-2);
 }
 
 .pf-root .pf-account__return .pf-account__return-id {
@@ -646,7 +865,7 @@
 
 .pf-root .pf-account__collections {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 16px;
 }
 
@@ -751,36 +970,45 @@
 }
 
 @media (max-width: 899px) {
-  .pf-root .pf-account__cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__addresses {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__ai {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__offers {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pf-root .pf-account__collections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .pf-root .pf-account__style {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .pf-root .pf-account__returns {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 599px) {
+  .pf-root .pf-account__body .account__tiles {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+    gap: 8px;
+  }
+
+  .pf-root .pf-account__body .account__tile.pf-account__stat {
+    min-height: 96px;
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .pf-root .pf-account__stat strong {
+    font-size: 30px;
+  }
+
+  .pf-root .pf-account__stat-icon {
+    width: 24px;
+    height: 24px;
+    padding: 5px;
+  }
+
+  .pf-root .pf-account__stat > span {
+    grid-column: 1 / -1;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  .pf-root .pf-account__body .grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+    gap: 12px;
+  }
+
   .pf-root .pf-account__intro {
     align-items: flex-start;
   }
@@ -793,65 +1021,95 @@
     flex: 1;
   }
 
-  .pf-root .pf-account__collections {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
-/* ── the frame's two-column layout: the sidebar rail beside the page ─────── */
+/* ── account application shell ─────────────────────────────────────────────
+   The announcement and header share a natural-height flex item. No account
+   geometry depends on --header-h or a measured/hard-coded header offset. */
+.pf-root .pf-account-app__header {
+  position: relative;
+  z-index: 60;
+  flex: none;
+}
+
+.pf-root .pf-account-app .header {
+  position: relative;
+  top: auto;
+}
+
+.pf-root .pf-account {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 16px clamp(24px, 2vw, 32px);
+}
 
 .pf-root .pf-account__layout {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr);
-  gap: clamp(28px, 3.4vw, 52px);
-  align-items: start;
-  margin-top: clamp(22px, 2.6vw, 34px);
+  grid-template-columns: 256px minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(20px, 1.6vw, 32px);
+  margin-top: 0;
 }
 
+.pf-root .pf-account__side,
 .pf-root .pf-account__content {
   min-width: 0;
+  min-height: 0;
 }
 
-/* ── the page head: the design's eyebrow and the page's own title ─────────── */
+.pf-root .pf-account__content:focus-visible {
+  outline: 2px solid var(--c-line-strong);
+  outline-offset: -2px;
+}
+
+.pf-root .pf-account__content > .crumbs {
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 11px;
+}
 
 .pf-root .pf-account__pagehead {
-  padding-bottom: 20px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--c-line);
 }
 
-/* One class deeper than the ported `.display`, for the reason the doctrine
-   gives: an equal-specificity rule would win on import order alone. */
-.pf-root .pf-account__pagehead .pf-account__name {
-  margin-top: 10px;
-  font-size: var(--fs-display-m);
+.pf-root .pf-account__pagehead .label {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
 }
 
-/* ── the sidebar: the customer's card, the destination rail, the two honest
-      actions. A sticky panel on desktop; the hamburger's drawer below it. ─── */
+.pf-root .pf-account__pagehead .pf-account__name {
+  margin-top: 6px;
+  font-size: clamp(24px, 1.8vw, 28px);
+  line-height: 1.12;
+}
 
-.pf-root .pf-account__menu-btn {
+/* ── stationary desktop rail / mobile drawer ───────────────────────────── */
+.pf-root .pf-account__mobile-bar,
+.pf-root .pf-account__drawer-close {
   display: none;
-  width: 100%;
 }
 
 .pf-root .pf-account__drawer {
-  position: sticky;
-  top: calc(var(--header-h) + 20px);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - var(--header-h) - 40px);
-  overflow-y: auto;
-  padding: 20px;
+  gap: 0;
+  padding: clamp(12px, 2vh, 16px);
   border: 1px solid var(--c-line);
+  border-radius: 12px;
   background: var(--c-paper);
+  box-shadow: var(--shadow-soft);
 }
 
 .pf-root .pf-account__user {
   display: flex;
   align-items: center;
+  flex: none;
   gap: 12px;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
+  padding-bottom: clamp(8px, 1.6vh, 12px);
+  margin-bottom: clamp(8px, 1.6vh, 12px);
   border-bottom: 1px solid var(--c-line);
 }
 
@@ -860,9 +1118,10 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   overflow: hidden;
+  border-radius: 50%;
   background: var(--c-espresso);
   color: var(--c-bg);
   font-family: var(--f-serif);
@@ -880,58 +1139,72 @@
   min-width: 0;
 }
 
-/* One class deeper than the design's `.info p` (0,2,1): these two lines live
-   inside the `.info` page register, so a one-class selector would lose to it. */
 .pf-root .pf-account__user .pf-account__user-name {
   margin: 0;
   max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--f-serif);
   font-size: 18px;
   line-height: 1.25;
   color: var(--c-ink);
-  overflow-wrap: anywhere;
 }
 
 .pf-root .pf-account__user .pf-account__user-email {
   margin: 2px 0 0;
   max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: var(--c-ink-3);
-  overflow-wrap: anywhere;
+}
+
+.pf-root .pf-account__nav {
+  flex: none;
+}
+
+.pf-root .pf-account__nav-link {
+  min-height: 44px;
 }
 
 .pf-root .pf-account__side-foot {
   display: flex;
+  flex: none;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 16px;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: clamp(8px, 1.6vh, 16px);
   border-top: 1px solid var(--c-line);
 }
 
 .pf-root .pf-account__side-foot .btn {
   width: 100%;
+  min-height: 44px;
+  padding-inline: 12px;
+  letter-spacing: 0.12em;
 }
 
-/* ── the section tab strip: the merged leaves one tap away, the active tab
-      underlined in the accent — the rail's own register, laid horizontal ─── */
-
+/* ── shared section links, horizontally scrollable below desktop ───────── */
 .pf-root .pf-account__tabs {
-  margin: 20px 0 0;
+  position: relative;
+  margin: 16px 0;
+  padding: 4px;
   overflow-x: auto;
-  scrollbar-width: none;
-  border-bottom: 1px solid var(--c-line);
-}
-
-.pf-root .pf-account__tabs::-webkit-scrollbar {
-  display: none;
+  scroll-padding-inline: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-muted) var(--c-paper);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-bg-3);
 }
 
 .pf-root .pf-account__tabs-list {
   display: flex;
   align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   min-width: max-content;
 }
 
@@ -939,10 +1212,13 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 12px 14px 11px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--c-ink-3);
@@ -960,38 +1236,190 @@
 
 .pf-root .pf-account__tabs-link.is-active {
   color: var(--c-espresso);
+  border-color: var(--c-line);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-header);
 }
 
-.pf-root .pf-account__tabs-link.is-active::after {
-  content: '';
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 0;
-  height: 2px;
-  background: var(--c-espresso);
+@media (min-width: 1024px) {
+  .pf-root .pf-account-app {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--c-bg);
+  }
+
+  .pf-root .pf-account-app > main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Guest wishlist/order and unmatched account URLs have no AccountFrame.
+     They retain one accessible content scroller without fabricated user chrome. */
+  .pf-root .pf-account-app > main:not(:has(> .pf-account)),
+  .pf-root .pf-account__content {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-muted) var(--c-paper);
+    scroll-behavior: auto;
+  }
+
+  .pf-root .pf-account-app > main::-webkit-scrollbar,
+  .pf-root .pf-account__content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .pf-root .pf-account-app > main::-webkit-scrollbar-thumb,
+  .pf-root .pf-account__content::-webkit-scrollbar-thumb {
+    background: var(--c-muted);
+    border-radius: 12px;
+  }
+
+  .pf-root .pf-account-app > main::-webkit-scrollbar-track,
+  .pf-root .pf-account__content::-webkit-scrollbar-track {
+    background: var(--c-paper);
+  }
+
+  .pf-root .pf-account,
+  .pf-root .pf-account__layout,
+  .pf-root .pf-account__side,
+  .pf-root .pf-account__drawer {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .pf-root .pf-account__drawer {
+    overflow: clip;
+  }
+
+  .pf-root .pf-account__content {
+    padding: 4px 8px 24px 4px;
+  }
 }
 
-/* ── below the desktop breakpoint the rail becomes the hamburger's drawer ───
-   The drawer's geometry follows the design's own `.mmenu` (fixed, z-index 90,
-   above the design's `.scrim` at 80); only its open state is new, held in a
-   class the sidebar toggles. */
+/* Spacing, then secondary information, compact before any controls shrink.
+   At a 560 CSS-pixel height (700px at 125% zoom) all seven links and both
+   bottom-pinned actions still fit; no sidebar scrolling is introduced. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .pf-root .pf-account__drawer {
+    padding: 12px;
+  }
+
+  .pf-root .pf-account__user-email {
+    display: none;
+  }
+
+  .pf-root .pf-account__user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .pf-root .pf-account__nav-list {
+    gap: 0;
+  }
+
+  .pf-root .pf-account__nav-link {
+    min-height: 40px;
+    padding-block: 8px;
+  }
+
+  .pf-root .pf-account__side-foot .btn {
+    min-height: 40px;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 620px) {
+  .pf-root .pf-account {
+    padding-block: 12px;
+  }
+
+  .pf-root .pf-account__drawer {
+    padding: 10px;
+  }
+
+  .pf-root .pf-account__user {
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .pf-root .pf-account__nav-link {
+    min-height: 32px;
+    padding-block: 5px;
+    line-height: 1.4;
+    letter-spacing: 0.1em;
+  }
+
+  .pf-root .pf-account__side-foot {
+    gap: 4px;
+    padding-top: 8px;
+  }
+
+  .pf-root .pf-account__side-foot .btn {
+    min-height: 32px;
+  }
+}
 
 @media (max-width: 1023px) {
+  .pf-root .pf-account {
+    width: 100%;
+    padding: 0 clamp(16px, 2vw, 20px) 24px;
+  }
+
   .pf-root .pf-account__layout {
-    grid-template-columns: minmax(0, 1fr);
+    display: block;
+  }
+
+  .pf-root .pf-account__content {
+    padding-top: 16px;
+    overflow: visible;
+  }
+
+  .pf-root .pf-account__side {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .pf-root .pf-account__side.is-open {
+    z-index: 90;
+  }
+
+  .pf-root .pf-account__mobile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 56px;
+    border-bottom: 1px solid var(--c-line);
+    background: var(--c-bg);
   }
 
   .pf-root .pf-account__menu-btn {
-    display: inline-flex;
-    margin-bottom: 20px;
+    min-height: 44px;
+    padding-inline: 12px;
+    gap: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  .pf-root .pf-account__mobile-bar .pf-account__current-section {
+    margin: 0;
+    font-family: var(--f-serif);
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--c-ink);
   }
 
   .pf-root .pf-account__drawer {
     position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
+    inset: 0 auto 0 0;
     z-index: 90;
     width: min(340px, 88vw);
     height: 100vh;
@@ -999,8 +1427,10 @@
     max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding: 16px;
     border: 0;
     border-right: 1px solid var(--c-line);
+    border-radius: 0;
     transform: translateX(-102%);
     visibility: hidden;
     transition: transform var(--t-base) var(--ease-out), visibility 0s linear var(--t-base);
@@ -1013,6 +1443,21 @@
     box-shadow: var(--shadow-soft);
   }
 
+  .pf-root .pf-account__drawer-close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    margin-bottom: 12px;
+    font-size: var(--fs-sm);
+    color: var(--c-ink-2);
+  }
+
+  .pf-root .pf-account__side-foot {
+    margin-top: auto;
+  }
+
   .pf-root .pf-account__scrim {
     padding: 0;
     border: 0;
@@ -1020,31 +1465,52 @@
   }
 }
 
-/* Account workspace width and compact rhythm; the sidebar and content share
-   the same top edge, while the content can use the full remaining measure. */
-.pf-root .pf-account { width: min(100% - 40px, 1240px); max-width: 1240px; margin-inline: auto; padding-top: clamp(20px, 3vw, 38px); }
-.pf-root .pf-account__layout { grid-template-columns: 272px minmax(0, 1fr); gap: clamp(24px, 3vw, 40px); margin-top: 0; }
-.pf-root .pf-account__pagehead { padding-bottom: 14px; }
-.pf-root .pf-account__body .pf-account__section { margin-top: 20px; }
-.pf-root .pf-account__drawer { border-radius: 12px; padding: 16px; }
-.pf-root .pf-account__user { padding-bottom: 12px; margin-bottom: 10px; }
-.pf-root .pf-account__side-foot { margin-top: 12px; padding-top: 12px; }
-.pf-root .pf-account__tabs-link { min-height: 44px; }
-@media (max-width: 1023px) {
-  .pf-root .pf-account { width: calc(100% - 32px); padding-top: 18px; }
-  .pf-root .pf-account__layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-}
-@media (max-width: 480px) {
-  .pf-root .pf-account { width: calc(100% - 32px); }
-  .pf-root .pf-account__pagehead .pf-account__name { font-size: clamp(28px, 8vw, 36px); }
+/* A short mobile drawer still keeps all actions visible at zoomed heights. */
+@media (max-width: 1023px) and (max-height: 620px) {
+  .pf-root .pf-account__drawer {
+    padding: 12px;
+  }
+
+  .pf-root .pf-account__drawer-close {
+    margin-bottom: 8px;
+  }
+
+  .pf-root .pf-account__user {
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .pf-root .pf-account__user-email {
+    display: none;
+  }
+
+  .pf-root .pf-account__user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .pf-root .pf-account__nav-list {
+    gap: 0;
+  }
+
+  .pf-root .pf-account__side-foot {
+    gap: 4px;
+    padding-top: 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pf-root .pf-account__drawer,
-  .pf-root .pf-account__tabs-link { transition-duration: 0.01ms; }
+  .pf-root .pf-account__tabs-link,
+  .pf-root .pf-account__body .account__tile.pf-account__stat {
+    transition-duration: 0.01ms;
+  }
+
+  .pf-root .pf-account__body .account__tile.pf-account__stat:hover {
+    transform: none;
+  }
+
+  .pf-root .pf-account__body .empty[aria-busy="true"]::before {
+    animation: none;
+  }
 }
-.pf-root .pf-account__menu-btn,
-.pf-root .pf-account__nav-link,
-.pf-root .pf-account__side-foot .btn { min-height: 44px; }
-.pf-root .pf-account__nav-link:focus-visible,
-.pf-root .pf-account__menu-btn:focus-visible { outline: 2px solid var(--c-espresso); outline-offset: 2px; }

@@ -32,6 +32,7 @@
 
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
+import { assertNoPrivateAccountContent } from "./accountAssertions.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -269,7 +270,7 @@ test("the reset route moves into the customer storefront while accounts remain c
        pinned at the source level: the port's nesting and its parity with
        `App.jsx` in `customerAccountShell.test.js`, and `ProtectedRoute`'s own
        `returnTo` encoding in `customerCheckoutPage.test.js`. */
-    assert.equal(/pf-account/.test(handed), false, `${path} painted account chrome on the server render — a guest must be shown none`);
+    assertNoPrivateAccountContent(handed, `${path} painted account chrome on the server render — a guest must be shown none`);
     assert.equal(/pf-account__nav/.test(handed), false, `${path} drew account chrome for a guest`);
   }
 });
@@ -287,7 +288,7 @@ test("a customer URL that IS served keeps its own page while the switch is on", 
   assert.match(on.render("/cart"), /class="pf-root"/, "/cart is served by the port yet was not handed over");
   const account = on.render("/account/orders");
   assert.match(account, /class="pf-root"/, "/account/orders was not handed over while the switch is on");
-  assert.equal(/pf-account/.test(account), false, "/account/orders painted account chrome on the server render — a guest must be shown none");
+  assertNoPrivateAccountContent(account, "/account/orders painted account chrome on the server render — a guest must be shown none");
   const wishlist = on.render("/account/wishlist");
   assert.match(wishlist, /class="pf-root"/, "/account/wishlist is served by the port yet was not handed over");
 });

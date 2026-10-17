@@ -47,6 +47,7 @@
 
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
+import { assertNoPrivateAccountContent } from "./accountAssertions.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -261,7 +262,7 @@ test("the port's registry declares the profile page once, and the page exists", 
 
 test("with the switch off, the URL is production's — nothing of this page mounts", () => {
   const markup = off.renderLayout("/account\/profile");
-  assert.equal(/pf-account/.test(markup), false, "the Atelier storefront mounted the port's account chrome");
+  assertNoPrivateAccountContent(markup, "the Atelier storefront mounted the port's account chrome");
   assert.equal(/Personal details/.test(markup), false, "the Atelier storefront rendered the port's profile screen");
   assert.equal(/Your personal/.test(markup), false, "the Atelier storefront rendered the port's profile heading");
 });
@@ -274,7 +275,7 @@ test("a session the application has not restored yet is shown the guard, not the
     const markup = on.renderLayout("/account\/profile");
 
     assert.match(markup, /Verifying atelier access/, "a guarded URL painted past the guard");
-    assert.equal(/pf-account/.test(markup), false, "the guard painted account chrome for an unrestored session");
+    assertNoPrivateAccountContent(markup, "the guard painted account chrome for an unrestored session");
     assert.equal(/Personal details/.test(markup), false, "the profile screen painted for an unrestored session");
   } finally {
     clearTokens("customer");

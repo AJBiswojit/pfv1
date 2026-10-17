@@ -45,6 +45,8 @@
 
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
+import { assertNoPrivateAccountContent } from "./accountAssertions.js";
+import { parseCssRules } from "../../../../scripts/customer-port.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -259,7 +261,7 @@ test("the port's registry declares the addresses page once, and the page exists"
 
 test("with the switch off, the URL is production's — nothing of this page mounts", () => {
   const markup = off.renderLayout("/account\/addresses");
-  assert.equal(/pf-account/.test(markup), false, "the Atelier storefront mounted the port's account chrome");
+  assertNoPrivateAccountContent(markup, "the Atelier storefront mounted the port's account chrome");
   assert.equal(/Delivery book/.test(markup), false, "the Atelier storefront rendered the port's addresses screen");
   assert.equal(/Your saved/.test(markup), false, "the Atelier storefront rendered the port's addresses heading");
 });
@@ -272,7 +274,7 @@ test("a session the application has not restored yet is shown the guard, not the
     const markup = on.renderLayout("/account\/addresses");
 
     assert.match(markup, /Verifying atelier access/, "a guarded URL painted past the guard");
-    assert.equal(/pf-account/.test(markup), false, "the guard painted account chrome for an unrestored session");
+    assertNoPrivateAccountContent(markup, "the guard painted account chrome for an unrestored session");
     assert.equal(/Delivery book/.test(markup), false, "the addresses screen painted for an unrestored session");
   } finally {
     clearTokens("customer");
@@ -604,9 +606,16 @@ test("the sheet's own addresses rules are scoped to the port, token-only and dra
   for (const name of ["pf-account__addresses", "pf-account__address", "pf-account__address-top", "pf-account__address-name", "pf-account__address-line", "pf-account__address-acts", "pf-account__badge"]) {
     assert.ok(page.includes(name), `${name} is styled by this stage but this page never draws it`);
   }
-  /* The small-screen block keeps the book readable: one card per row. */
-  assert.match(sheet, /@media \(max-width: 899px\) \{[\s\S]*\.pf-root \.pf-account__addresses \{\n\s+grid-template-columns: minmax\(0, 1fr\);/,
-    "the delivery book no longer collapses to one card per row on a narrow screen");
+  /* Safe auto-fit replaces the old fixed breakpoint: one readable card per
+     phone row, expanding only when another 280px card actually fits. */
+  const book = parseCssRules(sheet).find((rule) => rule.selector === ".pf-root .pf-account__addresses" && rule.conditions.length === 0);
+  const grid = book?.declarations.match(/grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, (\d+)px\), 1fr\)\);/);
+  assert.ok(grid, "the address book must use a bounded auto-fit grid");
+  const minimum = Number(grid[1]);
+  assert.equal(minimum, 280);
+  for (const width of [360, 390]) {
+    assert.equal(Math.floor((width - 32 + 12) / (minimum + 12)), 1, `${width}px must show one readable address per row`);
+  }
 });
 
 test("the shared frame is reused, not re-drawn: the page declares no shell of its own", () => {

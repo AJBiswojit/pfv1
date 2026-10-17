@@ -88,7 +88,9 @@
 .pf-root .pf-ai__panel {
   padding: 20px;
   border: 1px solid var(--c-line);
+  border-radius: 12px;
   background: var(--c-paper);
+  box-shadow: var(--shadow-soft);
 }
 
 .pf-root .pf-ai__panel .label {
@@ -109,8 +111,8 @@
 .pf-root .pf-ai__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
-  gap: clamp(22px, 2.6vw, 40px);
-  margin-top: clamp(24px, 3vw, 36px);
+  gap: 20px;
+  margin-top: 20px;
   align-items: start;
 }
 
@@ -372,8 +374,8 @@
 .pf-root .pf-ai__chat {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
-  gap: clamp(22px, 2.6vw, 40px);
-  margin-top: clamp(24px, 3vw, 36px);
+  gap: 20px;
+  margin-top: 20px;
   align-items: start;
 }
 
@@ -381,13 +383,15 @@
   min-width: 0;
 }
 
-/* The conversation's own region is the widget's: it draws its hairline, its
-   canvas and its own padding. Production gives it its height from the page
-   (`h-[520px] sm:h-[560px]`) so the log scrolls instead of growing without
-   bound; the port states the same two heights and nothing else there. */
-
+/* The account workspace/document owns scrolling at every breakpoint. The log
+   grows with its real messages instead of adding a second vertical scroller. */
 .pf-root .pf-ai__log {
-  height: 520px;
+  height: auto;
+  min-height: 280px;
+  overflow: visible;
+  border-color: var(--c-line);
+  border-radius: 12px;
+  background: var(--c-paper);
 }
 
 .pf-root .pf-ai__composer {
@@ -479,14 +483,5 @@
 
   .pf-root .pf-ai__context-actions {
     grid-column: 1 / -1;
-  }
-}
-
-/* From the design's own second breakpoint: the conversation keeps production's
-   taller log once the layout has room for it. */
-
-@media (min-width: 640px) {
-  .pf-root .pf-ai__log {
-    height: 560px;
   }
 }

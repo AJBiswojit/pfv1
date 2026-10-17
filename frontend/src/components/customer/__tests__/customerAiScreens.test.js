@@ -493,7 +493,10 @@ test('the shopping page keeps production’s conversation machine, argument for 
   assert.match(page, /searchParams\.delete\('product'\);/);
   assert.match(page, /setSearchParams\(searchParams, \{ replace: true \}\)/);
   assert.match(page, /const SHOPPING_TITLE = 'AI Shopping — My PRATIKSHYA';/);
-  assert.match(page, /if \(el\) el\.scrollTop = el\.scrollHeight;/);
+  assert.match(page, /const hadMessages = previousMessageCount\.current > 0;/);
+  assert.match(page, /previousMessageCount\.current = messages\.length;/);
+  assert.match(page, /if \(el && hadMessages\) el\.lastElementChild\?\.scrollIntoView\(\{ block: 'nearest', inline: 'nearest', behavior: 'auto' \}\);/);
+  assert.doesNotMatch(page, /el\.scrollTop = el\.scrollHeight/, 'the conversation must use the owning content scroller');
 });
 
 test('the shopping page’s widgets are production’s own files, not copies', () => {

@@ -52,7 +52,7 @@ export const CLOSURE = {
   "components/layout/AnnouncementBar.jsx": 2,
   "components/layout/Footer.jsx": 5,  // 1 routing + 4 truthfulness lines
   "components/layout/Header.jsx": 1,
-  "components/layout/Layout.jsx": 2,
+  "components/layout/Layout.jsx": 10, // slot + account footer/workspace rewrites; measured from generated output
   "components/navigation/MegaMenu.jsx": 1,
   "components/navigation/MobileMenu.jsx": 1,
   "components/product/OptionSelector.jsx": 0,
@@ -160,6 +160,8 @@ export const ADDED = [
   "router/index.jsx",
   "router/routes.js",
   "utils/mediaFallback.js",
+  "utils/accountLayout.js",
+  "hooks/useAccountScrollReset.js",
   /* PHASE 9 — the money path. The design drew a cart DRAWER (carried in the
      closure) and a checkout PROTOTYPE whose own note says it cannot place an
      order; it has no bag page, no journey chrome and no confirmation page.
@@ -389,6 +391,32 @@ const layoutSlotRewrite = (file, source) =>
   source
     .replace("export default function Layout() {", "export default function Layout({ children }) {")
     .replace("<Outlet />", "{children ?? <Outlet />}");
+
+/** Account chrome is a presentation boundary, not the guarded route family.
+ * A prefix covers wishlist, guest orders and future account descendants without
+ * duplicating the route table or changing its guards. */
+const accountFooterRewrite = (file, source) =>
+  source
+    .replace("import { Outlet } from 'react-router-dom';", "import { Outlet, useLocation } from 'react-router-dom';")
+    .replace("import ScrollToTop from '../ui/ScrollToTop.jsx';", "import ScrollToTop from '../ui/ScrollToTop.jsx';\nimport { isAccountAreaPath } from '../../utils/accountLayout.js';")
+    .replace("export default function Layout({ children }) {", "export default function Layout({ children }) {\n  const accountArea = isAccountAreaPath(useLocation().pathname);")
+    .replace("      <Footer />", "      {!accountArea && <Footer />}");
+
+/** Account application shell. Its header is one natural-height flex item, not
+ * a viewport subtraction: dismissing the announcement needs no JS measurement.
+ * Non-account pages retain their full-page sticky header and footer. */
+const accountWorkspaceRewrite = (file, source) =>
+  source
+    .replace("import { isAccountAreaPath } from '../../utils/accountLayout.js';", "import { isAccountAreaPath } from '../../utils/accountLayout.js';\nimport useAccountScrollReset from '../../hooks/useAccountScrollReset.js';")
+    .replace(
+      "  const accountArea = isAccountAreaPath(useLocation().pathname);",
+      "  const accountArea = isAccountAreaPath(useLocation().pathname);\n  const scrollRef = useAccountScrollReset({ enabled: accountArea, manageRestoration: true });\n  const header = <><AnnouncementBar /><Header /></>;\n  const focusAccountContent = (event) => {\n    const target = scrollRef.current?.querySelector('.pf-account__content') ?? scrollRef.current;\n    if (target) { event.preventDefault(); target.focus({ preventScroll: true }); }\n  };",
+    )
+    .replace("    <>", "    <div className={accountArea ? 'pf-account-app' : undefined}>")
+    .replace('      <a href="#main" className="skip-link">Skip to content</a>', '      <a href="#main" className="skip-link" onClick={accountArea ? focusAccountContent : undefined}>Skip to content</a>')
+    .replace("      <AnnouncementBar />\n      <Header />", '      {accountArea ? <div className="pf-account-app__header">{header}</div> : header}')
+    .replace('      <main id="main">', `      <main id="main" ref={scrollRef} tabIndex={accountArea ? -1 : undefined} aria-label={accountArea ? 'Account workspace' : undefined}>`)
+    .replace("    </>", "    </div>");
 
 /**
  * Rewrite 6 — THE SUBSCRIPTION CAPABILITY. This application has no newsletter
@@ -1113,6 +1141,8 @@ export const REWRITES = [
   { id: "promo-feedback", files: ["components/shopping/CartDrawer.jsx"], apply: promoFeedbackRewrite },
   { id: "view-bag", files: ["components/shopping/CartDrawer.jsx"], apply: viewBagRewrite },
   { id: "layout-slot", files: ["components/layout/Layout.jsx"], apply: layoutSlotRewrite },
+  { id: "account-footer", files: ["components/layout/Layout.jsx"], apply: accountFooterRewrite },
+  { id: "account-workspace", files: ["components/layout/Layout.jsx"], apply: accountWorkspaceRewrite },
   { id: "newsletter-capability", files: ["components/ui/NewsletterForm.jsx"], apply: newsletterCapabilityRewrite },
   { id: "art-base", files: ["mock/assets/images.js"], apply: artBaseRewrite },
   { id: "footer-facts", files: ["components/layout/Footer.jsx"], apply: footerFactsRewrite },

@@ -65,8 +65,8 @@
  *     label of the BUSINESS assistant ("live business data") — under a customer
  *     surface answered by the demo provider. The port prints the demo note while
  *     the provider is the demo one, and the provider's own label otherwise.
- *   · production's fixed 520px / 560px conversation height is kept (see
- *     `customer.ai.css`), because the log has to scroll rather than grow.
+ *   · the conversation grows in the account content column, rather than adding
+ *     a nested scroll area. Arriving messages stay in view after the first render.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -206,6 +206,7 @@ export default function AiShopping({ embedded = false }) {
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
   const logRef = useRef(null);
+  const previousMessageCount = useRef(0);
   const sessionLogged = useRef(false);
   const scopeRef = useRef(user?.id);
 
@@ -292,10 +293,13 @@ export default function AiShopping({ embedded = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  /* Keep the newest message in view. */
+  /* Scroll the owning content/document region, never a nested conversation.
+     An initial greeting/restored session must not undo the route's top reset. */
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    const hadMessages = previousMessageCount.current > 0;
+    previousMessageCount.current = messages.length;
+    if (el && hadMessages) el.lastElementChild?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
   }, [messages, thinking]);
 
   const applySideEffects = useCallback(
