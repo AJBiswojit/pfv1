@@ -46,8 +46,8 @@ import { reviewFlagLabel } from "../../services/productReviewFlags";
 import mediaOwnershipService from "../../services/media/mediaOwnershipService";
 import { formatINR } from "../../utils/shopping";
 
-const fieldClass = "w-full border border-mist bg-canvas px-3 py-2 font-ui text-sm outline-none focus:border-accent";
-const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-taupe";
+const fieldClass = "w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-sm outline-none focus:border-pf-gold-deep";
+const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted";
 const statusTone = { PUBLISHED: "ink", PENDING_REVIEW: "alert", DRAFT: "quiet", ARCHIVED: "muted" };
 const VIEW_LABEL_OPTIONS = ["", "front", "side", "left-side", "right-side", "back", "detail", "close", "front-close", "multiple"];
 const discountPercent = (price, compareAt) => {
@@ -207,16 +207,16 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
   const assignedEmployee = useMemo(() => product.assignedEmployeeId ? getEmployee(loadEmployees(), product.assignedEmployeeId) : null, [product.assignedEmployeeId]);
 
   return (
-    <div className="border border-mist bg-canvas">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-mist px-4 py-3">
+    <div className="border border-pf-border bg-pf-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pf-border px-4 py-3">
         <div>
-          <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">Product ID · {product.id}</p>
-          <p className="font-display text-xl font-light text-ink">{product.name?.trim() || <span className="text-taupe">[Not yet defined]</span>}</p>
+          <p className="font-ui text-[10px] uppercase tracking-[.24em] text-pf-burgundy">Product ID · {product.id}</p>
+          <p className="font-display text-xl font-light text-pf-text">{product.name?.trim() || <span className="text-pf-muted">[Not yet defined]</span>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={getProductStatusLabel(product.status)} tone={statusTone[product.status] ?? "quiet"} />
           {assignedEmployee ? (<StatusBadge label={`Assigned · ${employeeFullName(assignedEmployee)}`} tone="ink" />) : (<StatusBadge label="Unassigned" tone="quiet" />)}
-          <Link to={`/admin/products/${product.id}`} className="font-ui text-[11px] text-accent underline-offset-2 hover:underline">Open full record →</Link>
+          <Link to={`/admin/products/${product.id}`} className="font-ui text-[11px] text-pf-burgundy underline-offset-2 hover:underline">Open full record →</Link>
         </div>
       </div>
 
@@ -224,13 +224,13 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
         <ProductPreview product={product} category={product.category} />
         <div className="space-y-4">
           {product.reviewFlags?.length ? (
-            <div className="border border-mist bg-ivory/60 px-3 py-2">
-              <p className="mb-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Review flags</p>
+            <div className="border border-pf-border bg-pf-ivory/60 px-3 py-2">
+              <p className="mb-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Review flags</p>
               <ul className="flex flex-wrap gap-1.5">
                 {product.reviewFlags.map((flag) => (
-                  <li key={flag} className="inline-flex items-center gap-1.5 border border-mist bg-canvas px-2 py-1 font-ui text-[10px] uppercase tracking-[.1em] text-ink/80">
+                  <li key={flag} className="inline-flex items-center gap-1.5 border border-pf-border bg-pf-card px-2 py-1 font-ui text-[10px] uppercase tracking-[.1em] text-pf-text/80">
                     {reviewFlagLabel(flag)}
-                    <button type="button" disabled={busy === `flag-${flag}`} onClick={() => clearFlag(flag)} title={`Resolve: ${reviewFlagLabel(flag)}`} aria-label={`Resolve: ${reviewFlagLabel(flag)}`} className={`text-taupe transition-colors hover:text-accent ${busy ? "opacity-40" : ""}`}>✕</button>
+                    <button type="button" disabled={busy === `flag-${flag}`} onClick={() => clearFlag(flag)} title={`Resolve: ${reviewFlagLabel(flag)}`} aria-label={`Resolve: ${reviewFlagLabel(flag)}`} className={`text-pf-muted transition-colors hover:text-pf-burgundy ${busy ? "opacity-40" : ""}`}>✕</button>
                   </li>
                 ))}
               </ul>
@@ -238,29 +238,29 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
           ) : null}
 
           {conflicts.length ? (
-            <div className="border border-accent/40 bg-accent/5 px-3 py-2">
-              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent">Media ownership</p>
+            <div className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-3 py-2">
+              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy">Media ownership</p>
               {conflicts.map((conflict) => (
                 <div key={conflict.mediaId} className="mt-1 flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-ui text-[11px] text-ink/80">{conflict.file} — MEDIA ALREADY ASSIGNED{conflict.ownerProductId ? ` to ${conflict.ownerProductId}` : ""}</p>
-                  <button type="button" disabled={busy === "transfer"} onClick={() => resolveConflict(conflict)} className={`border border-accent px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-accent transition-colors hover:bg-accent hover:text-ivory ${busy ? "opacity-40" : ""}`}>{confirmTransfer === conflict.mediaId ? "Confirm transfer of ownership" : "Transfer ownership to this draft"}</button>
+                  <p className="font-ui text-[11px] text-pf-text/80">{conflict.file} — MEDIA ALREADY ASSIGNED{conflict.ownerProductId ? ` to ${conflict.ownerProductId}` : ""}</p>
+                  <button type="button" disabled={busy === "transfer"} onClick={() => resolveConflict(conflict)} className={`border border-pf-gold-deep px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory ${busy ? "opacity-40" : ""}`}>{confirmTransfer === conflict.mediaId ? "Confirm transfer of ownership" : "Transfer ownership to this draft"}</button>
                 </div>
               ))}
             </div>
           ) : null}
 
           {view?.mediaSet?.gallery?.length ? (
-            <div className="border border-mist bg-ivory/60 px-3 py-2">
-              <p className="mb-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">View labels &amp; primary image</p>
+            <div className="border border-pf-border bg-pf-ivory/60 px-3 py-2">
+              <p className="mb-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">View labels &amp; primary image</p>
               <ul className="space-y-1.5">
                 {view.mediaSet.gallery.map((item) => (
                   <li key={item.id ?? item.src} className="flex flex-wrap items-center gap-2">
-                    {item.src ? (<img src={item.src} alt="" loading="lazy" className="h-12 w-10 shrink-0 border border-mist object-cover" />) : null}
-                    <span className="min-w-0 flex-1 truncate font-ui text-[11px] text-taupe">{item.fileName ?? item.src?.split("/").pop() ?? item.id}</span>
-                    <select value={item.view ?? ""} onChange={(event) => setViewLabel(item.id, event.target.value)} disabled={!item.id || busy} className="border border-mist bg-canvas px-2 py-1 font-ui text-[11px] outline-none focus:border-accent disabled:opacity-40" aria-label={`View label for ${item.fileName ?? item.id}`}>
+                    {item.src ? (<img src={item.src} alt="" loading="lazy" className="h-12 w-10 shrink-0 border border-pf-border object-cover" />) : null}
+                    <span className="min-w-0 flex-1 truncate font-ui text-[11px] text-pf-muted">{item.fileName ?? item.src?.split("/").pop() ?? item.id}</span>
+                    <select value={item.view ?? ""} onChange={(event) => setViewLabel(item.id, event.target.value)} disabled={!item.id || busy} className="border border-pf-border bg-pf-card px-2 py-1 font-ui text-[11px] outline-none focus:border-pf-gold-deep disabled:opacity-40" aria-label={`View label for ${item.fileName ?? item.id}`}>
                       {VIEW_LABEL_OPTIONS.map((option) => (<option key={option || "unlabelled"} value={option}>{option ? option.replace(/-/g, " ") : "Unlabelled"}</option>))}
                     </select>
-                    <button type="button" onClick={() => setPrimary(item.id)} disabled={!item.id || busy} className={`border border-mist px-2 py-1 font-ui text-[10px] uppercase tracking-[.1em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40 ${busy ? "opacity-40" : ""}`}><Star size={10} className="mr-1 inline" aria-hidden="true" />{product.primaryMediaId === item.id || item.role === "COVER" ? "Primary" : "Set primary"}</button>
+                    <button type="button" onClick={() => setPrimary(item.id)} disabled={!item.id || busy} className={`border border-pf-border px-2 py-1 font-ui text-[10px] uppercase tracking-[.1em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40 ${busy ? "opacity-40" : ""}`}><Star size={10} className="mr-1 inline" aria-hidden="true" />{product.primaryMediaId === item.id || item.role === "COVER" ? "Primary" : "Set primary"}</button>
                   </li>
                 ))}
               </ul>
@@ -276,11 +276,11 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
             <div><label htmlFor={`price-${product.id}`} className={labelClass}>Price (₹)</label><input id={`price-${product.id}`} type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="1290" className={fieldClass} /></div>
             <div><label htmlFor={`compare-${product.id}`} className={labelClass}>Compare-at price (₹)</label><input id={`compare-${product.id}`} type="number" min="0" value={compareAt} onChange={(event) => setCompareAt(event.target.value)} placeholder="1690" className={fieldClass} /></div>
           </div>
-          {discountPercent(price, compareAt) != null ? (<p className="font-ui text-[11px] text-taupe">Discount: <span className="text-accent">{discountPercent(price, compareAt)}% off</span> ({formatINR(Number(price) || 0)} vs {formatINR(Number(compareAt) || 0)}) — derived from price &amp; compare-at, never stored separately.</p>) : null}
+          {discountPercent(price, compareAt) != null ? (<p className="font-ui text-[11px] text-pf-muted">Discount: <span className="text-pf-burgundy">{discountPercent(price, compareAt)}% off</span> ({formatINR(Number(price) || 0)} vs {formatINR(Number(compareAt) || 0)}) — derived from price &amp; compare-at, never stored separately.</p>) : null}
           <div><label htmlFor={`desc-${product.id}`} className={labelClass}>Description</label><textarea id={`desc-${product.id}`} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Fabric, fit, occasion — the commercial information a customer needs." className={fieldClass} /></div>
-          {issues.length ? (<div className="border border-accent/40 bg-accent/5 px-3 py-2"><p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent">Before publishing</p><ul className="mt-1 list-disc pl-4 font-ui text-[11px] text-ink/80">{issues.map((issue) => (<li key={issue}>{issue}</li>))}</ul></div>) : null}
-          <div className="flex flex-wrap items-center gap-2 border-t border-mist pt-4">
-            <button type="button" disabled={!!busy} onClick={save} className={`inline-flex items-center gap-1.5 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ivory transition-colors hover:bg-transparent hover:text-ink ${busy ? "opacity-40" : ""}`}><Save size={11} aria-hidden="true" /> {busy === "save" ? "Saving…" : "Save Draft"}</button>
+          {issues.length ? (<div className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-3 py-2"><p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy">Before publishing</p><ul className="mt-1 list-disc pl-4 font-ui text-[11px] text-pf-text/80">{issues.map((issue) => (<li key={issue}>{issue}</li>))}</ul></div>) : null}
+          <div className="flex flex-wrap items-center gap-2 border-t border-pf-border pt-4">
+            <button type="button" disabled={!!busy} onClick={save} className={`inline-flex items-center gap-1.5 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory transition-colors hover:bg-transparent hover:text-pf-text ${busy ? "opacity-40" : ""}`}><Save size={11} aria-hidden="true" /> {busy === "save" ? "Saving…" : "Save Draft"}</button>
             {/* Phase 3D — inside the unified Product Review workspace the
                 lifecycle actions live on the workspace's ONE canonical action
                 bar (ProductReviewDetail). `hideLifecycleActions` hides the
@@ -288,15 +288,15 @@ export default function ProductDraftReviewPanel({ product, actor, onNotice, hide
                 historical behaviour for any standalone embedding. */}
             {!hideLifecycleActions ? (
               <>
-                <button type="button" disabled={!!busy} onClick={submit} className={`inline-flex items-center gap-1.5 border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ink transition-colors hover:bg-ink hover:text-ivory ${busy ? "opacity-40" : ""}`}><ArrowRight size={11} aria-hidden="true" /> {busy === "submit" ? "Submitting…" : "Submit for Review"}</button>
-                <button type="button" disabled={!!busy} onClick={approve} className={`inline-flex items-center gap-1.5 border border-accent px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-accent transition-colors hover:bg-accent hover:text-ivory ${busy ? "opacity-40" : ""}`}><Check size={11} aria-hidden="true" /> {busy === "approve" ? "Approving…" : "Approve"}</button>
-                <button type="button" disabled={!!busy} onClick={publish} className={`border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe transition-colors hover:border-ink hover:text-ink ${busy ? "opacity-40" : ""}`}>{busy === "publish" ? "Publishing…" : "Publish"}</button>
-                <button type="button" disabled={!!busy} onClick={archive} className={`inline-flex items-center gap-1.5 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe transition-colors hover:border-accent hover:text-accent ${busy ? "opacity-40" : ""}`}><Archive size={11} aria-hidden="true" /> {busy === "archive" ? "Archiving…" : "Archive"}</button>
+                <button type="button" disabled={!!busy} onClick={submit} className={`inline-flex items-center gap-1.5 border border-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory ${busy ? "opacity-40" : ""}`}><ArrowRight size={11} aria-hidden="true" /> {busy === "submit" ? "Submitting…" : "Submit for Review"}</button>
+                <button type="button" disabled={!!busy} onClick={approve} className={`inline-flex items-center gap-1.5 border border-pf-gold-deep px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory ${busy ? "opacity-40" : ""}`}><Check size={11} aria-hidden="true" /> {busy === "approve" ? "Approving…" : "Approve"}</button>
+                <button type="button" disabled={!!busy} onClick={publish} className={`border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text ${busy ? "opacity-40" : ""}`}>{busy === "publish" ? "Publishing…" : "Publish"}</button>
+                <button type="button" disabled={!!busy} onClick={archive} className={`inline-flex items-center gap-1.5 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted transition-colors hover:border-pf-gold-deep hover:text-pf-burgundy ${busy ? "opacity-40" : ""}`}><Archive size={11} aria-hidden="true" /> {busy === "archive" ? "Archiving…" : "Archive"}</button>
               </>
             ) : null}
           </div>
-          <p className="border-t border-mist pt-3 font-ui text-[11px] text-taupe">
-            Product ID <span className="font-medium text-ink">{product.id}</span> is allocated from the
+          <p className="border-t border-pf-border pt-3 font-ui text-[11px] text-pf-muted">
+            Product ID <span className="font-medium text-pf-text">{product.id}</span> is allocated from the
             canonical taxonomy and remains read-only.
           </p>
         </div>

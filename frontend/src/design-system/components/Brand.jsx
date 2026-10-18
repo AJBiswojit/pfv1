@@ -6,11 +6,11 @@
  * employee portal, login pages, order confirmation, etc.).
  *
  * It auto-uses the supplied logo asset when present at the canonical path
- * `src/assets/pratikshya_logo.png` and gracefully falls back to the
+ * the canonical `/design/pratikshya-logo.webp` and gracefully falls back to the
  * typographic wordmark when the asset has not yet been materialised on
  * disk. No surface hard-codes its own logo or wordmark: every place reads
  * from this component, so a single drop-in of
- * `src/assets/pratikshya_logo.png` updates the whole application at
+ * the canonical `/design/pratikshya-logo.webp` updates the whole application at
  * once.
  *
  * Visual rules — kept intentionally restrained per the Atelier language:
@@ -44,28 +44,15 @@ import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
 
 /**
- * Vite `import.meta.glob` is the canonical way to reference the optional
- * logo without breaking the build when the asset file is not yet on disk.
- * The build emits an empty map if no file matches the pattern, and the
- * component falls back to the typographic wordmark.
+ * THE canonical brand asset — the exact mark the homepage navbar renders
+ * (`/design/pratikshya-logo.webp`, also used by `ui/Logo.jsx` and the
+ * staff login). Referenced by public URL so every surface — storefront,
+ * Admin, Super Admin, Employee, login — shows the identical supplied
+ * artwork at its native aspect ratio. The previous
+ * the canonical `/design/pratikshya-logo.webp` glob served a different file to the
+ * portals than the homepage shows; it is no longer used.
  */
-const LOGO_GLOB = import.meta.glob("../../assets/pratikshya_logo.*", {
-  eager: true,
-  import: "default",
-});
-
-const SUPPORTED_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "svg"];
-
-function resolveLogoUrl() {
-  for (const key of Object.keys(LOGO_GLOB)) {
-    for (const ext of SUPPORTED_EXTENSIONS) {
-      if (key.endsWith(`.${ext}`)) return LOGO_GLOB[key];
-    }
-  }
-  return null;
-}
-
-const LOGO_URL = resolveLogoUrl();
+const LOGO_URL = "/design/pratikshya-logo.webp";
 /** Public constant so other surfaces can point to the canonical place. */
 export const BRAND_ASSET_URL = LOGO_URL || "";
 
@@ -107,8 +94,8 @@ const THEME_EYEBROW = {
 
 /**
  * The single image renderer — only mounted when the canonical logo asset
- * is present in `import.meta.glob` (i.e. when the supplied
- * `src/assets/pratikshya_logo.png` is on disk). Uses object-contain so
+ * is served from the canonical public path (when the supplied
+ * the canonical `/design/pratikshya-logo.webp` is on disk). Uses object-contain so
  * the supplied mark keeps its native aspect ratio, never distorts or crops.
  */
 function BrandMarkImage({ className, alt }) {

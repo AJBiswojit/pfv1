@@ -53,7 +53,7 @@ export default function EmployeeOrderDetail() {
   if (!order) {
     return (
       <EmployeePage eyebrow="Orders" title="Order not found" description="No such order in this browser.">
-        <Link to="/employee/orders" className="font-ui text-sm text-brass hover:text-accent">Back to orders</Link>
+        <Link to="/employee/orders" className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">Back to orders</Link>
       </EmployeePage>
     );
   }
@@ -68,60 +68,60 @@ export default function EmployeeOrderDetail() {
       eyebrow={`Orders / ${order.id}`}
       title={<><span className="font-mono">{order.id}</span> · {order.customer?.fullName}</>}
       description={`${order.items.length} items · ${formatINR(order.pricing.total)} · ${order.status.replace(/_/g, " ")}`}
-      actions={<Link to="/employee/orders" className="inline-flex items-center gap-2 border border-mist bg-canvas px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em]"><ArrowLeft size={12} /> Back</Link>}
+      actions={<Link to="/employee/orders" className="inline-flex items-center gap-2 border border-pf-border bg-pf-card px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em]"><ArrowLeft size={12} /> Back</Link>}
     >
-      {notice && <p className="mb-4 border border-accent/30 bg-accent/5 px-4 py-2 font-ui text-[11px] text-accent">{notice}</p>}
+      {notice && <p className="mb-4 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-2 font-ui text-[11px] text-pf-burgundy">{notice}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-6">
-          <div className="border border-mist/70 bg-surface/30 p-5">
+          <div className="border border-pf-border/70 bg-pf-ivory/30 p-5">
             <div className="flex flex-wrap gap-2 items-center">
               <OrderStatusBadge status={order.status} />
               <OrderStatusBadge status={order.paymentStatus} kind="payment" />
-              <span className="font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</span>
+              <span className="font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</span>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Customer</p>
+                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Customer</p>
                 <p className="mt-1 font-ui text-sm">{order.customer.fullName} · {order.customer.phone}</p>
-                <p className="font-ui text-xs text-taupe">{order.customer.email}</p>
+                <p className="font-ui text-xs text-pf-muted">{order.customer.email}</p>
                 <p className="mt-2 font-ui text-xs flex gap-1"><MapPin size={12} /> {order.address?.city}, {order.address?.pincode}</p>
               </div>
               <div>
-                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Fulfillment</p>
+                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Fulfillment</p>
                 <p className="mt-1 font-ui text-sm">{order.fulfillment?.assignedEmployeeName || "Unassigned"} · {order.fulfillment?.sourceLocationId}</p>
-                <p className="font-ui text-[11px] text-taupe">{order.fulfillment?.fulfillmentType} · {order.fulfillment?.status}</p>
+                <p className="font-ui text-[11px] text-pf-muted">{order.fulfillment?.fulfillmentType} · {order.fulfillment?.status}</p>
               </div>
             </div>
           </div>
 
-          <div className="border border-mist/70 bg-surface/20 p-5">
-            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-accent mb-3">Picking — Physical placement</h3>
-            <p className="font-ui text-[11px] text-taupe mb-3">Pick each item from its rack. Data from Phase 14 inventory placement.</p>
+          <div className="border border-pf-border/70 bg-pf-ivory/20 p-5">
+            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy mb-3">Picking — Physical placement</h3>
+            <p className="font-ui text-[11px] text-pf-muted mb-3">Pick each item from its rack. Data from Phase 14 inventory placement.</p>
             <div className="space-y-3">
               {inventoryDetails.map((item) => (
-                <div key={item.lineId} className="flex gap-3 border border-mist/50 bg-canvas p-3">
-                  <div className="h-12 w-12 bg-mist/20 grid place-items-center"><Package size={14} /></div>
+                <div key={item.lineId} className="flex gap-3 border border-pf-border/50 bg-pf-card p-3">
+                  <div className="h-12 w-12 bg-pf-border/20 grid place-items-center"><Package size={14} /></div>
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-sm">{item.name} ×{item.quantity}</p>
                     {canViewInventoryPlacement ? (
-                      <p className="font-ui text-[11px] text-taupe">Zone {item.zone} · Rack {item.rack} · Shelf {item.shelf} · Bin {item.bin} · {item.placement}</p>
+                      <p className="font-ui text-[11px] text-pf-muted">Zone {item.zone} · Rack {item.rack} · Shelf {item.shelf} · Bin {item.bin} · {item.placement}</p>
                     ) : (
-                      <p className="font-ui text-[11px] text-taupe">Location: {order.fulfillment?.sourceLocationId} · Qty {item.quantity}</p>
+                      <p className="font-ui text-[11px] text-pf-muted">Location: {order.fulfillment?.sourceLocationId} · Qty {item.quantity}</p>
                     )}
-                    <p className="font-ui text-[10px] mt-1">{order.fulfillment?.picking?.[item.lineId]?.picked ? <span className="text-accent inline-flex gap-1 items-center"><Check size={10} /> Picked</span> : "Pending"}</p>
+                    <p className="font-ui text-[10px] mt-1">{order.fulfillment?.picking?.[item.lineId]?.picked ? <span className="text-pf-burgundy inline-flex gap-1 items-center"><Check size={10} /> Picked</span> : "Pending"}</p>
                   </div>
                   {canPick && order.status === ORDER_STATUS.ALLOCATED || order.status === ORDER_STATUS.PICKING ? (
-                    <button onClick={() => handle(markItemPicked, { lineId: item.lineId, actor: { name: employee?.name, employeeId: employee?.employeeId } }, "Item picked")} className="self-center border border-accent text-accent px-3 py-1 font-ui text-[11px]">Pick</button>
+                    <button onClick={() => handle(markItemPicked, { lineId: item.lineId, actor: { name: employee?.name, employeeId: employee?.employeeId } }, "Item picked")} className="self-center border border-pf-gold-deep text-pf-burgundy px-3 py-1 font-ui text-[11px]">Pick</button>
                   ) : null}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border border-mist/70 bg-surface/20 p-5">
-            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-accent mb-3">Items & Pricing</h3>
-            <div className="divide-y divide-mist/50">
+          <div className="border border-pf-border/70 bg-pf-ivory/20 p-5">
+            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy mb-3">Items & Pricing</h3>
+            <div className="divide-y divide-pf-border/50">
               {order.items.map((it) => (
                 <div key={it.lineId} className="flex justify-between py-2 font-ui text-sm">
                   <span>{it.name} ×{it.quantity}</span>
@@ -130,32 +130,32 @@ export default function EmployeeOrderDetail() {
               ))}
             </div>
             {order.pricing.couponCode ? (
-              <div className="mt-3 flex justify-between font-ui text-sm text-taupe">
+              <div className="mt-3 flex justify-between font-ui text-sm text-pf-muted">
                 <span>Offer · {order.pricing.couponCode}</span>
                 <span>{order.pricing.couponDiscount > 0 ? `− ${formatINR(order.pricing.couponDiscount)}` : "Applied"}</span>
               </div>
             ) : null}
-            <div className="mt-3 flex justify-between font-medium border-t border-mist/60 pt-2"><span>Total</span><span>{formatINR(order.pricing.total)}</span></div>
+            <div className="mt-3 flex justify-between font-medium border-t border-pf-border/60 pt-2"><span>Total</span><span>{formatINR(order.pricing.total)}</span></div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="border border-mist/70 bg-surface/30 p-5">
-            <h3 className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe mb-3">Operations</h3>
+          <div className="border border-pf-border/70 bg-pf-ivory/30 p-5">
+            <h3 className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted mb-3">Operations</h3>
             <div className="space-y-3">
               {order.status === ORDER_STATUS.PICKING && canPack && (
-                <button onClick={() => handle(markPacked, { packageCount: 1, notes: "Packed securely", actor: { name: employee?.name } }, "Packed")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Mark as Packed</button>
+                <button onClick={() => handle(markPacked, { packageCount: 1, notes: "Packed securely", actor: { name: employee?.name } }, "Packed")} className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Mark as Packed</button>
               )}
               {order.status === ORDER_STATUS.PACKED && (
-                <button onClick={() => handle(markReadyToDispatch, { actor: { name: employee?.name } }, "Ready to dispatch")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Ready to Dispatch</button>
+                <button onClick={() => handle(markReadyToDispatch, { actor: { name: employee?.name } }, "Ready to dispatch")} className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Ready to Dispatch</button>
               )}
               {order.status === ORDER_STATUS.READY_TO_DISPATCH && canDispatch && (
                 <div className="space-y-2">
-                  <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                  <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                     <option value="">Select a carrier…</option>
                     {CARRIERS.map((c) => <option key={c.id} value={c.label}>{c.label}</option>)}
                   </select>
-                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Carrier tracking number" className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
+                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Carrier tracking number" className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs" />
                   {/*
                     PHASE 3: dispatch used to invent a tracking number
                     (`TRK-<timestamp>`) when the field was left blank, and
@@ -166,46 +166,46 @@ export default function EmployeeOrderDetail() {
                   <button
                     disabled={!carrier || !tracking.trim()}
                     onClick={() => handle(dispatchOrder, { carrier, trackingNumber: tracking.trim(), shippingMethod: carrier, actor: { name: employee?.name } }, "Dispatched")}
-                    className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                    className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Dispatch
                   </button>
                   {!carrier || !tracking.trim() ? (
-                    <p className="font-ui text-[10px] text-taupe">Carrier and the real tracking number are required before dispatch.</p>
+                    <p className="font-ui text-[10px] text-pf-muted">Carrier and the real tracking number are required before dispatch.</p>
                   ) : null}
                 </div>
               )}
               {order.status === ORDER_STATUS.SHIPPED && canDispatch && (
-                <button onClick={() => handle(markOutForDelivery, { actor: { name: "Courier" } }, "Out for delivery")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Out for Delivery</button>
+                <button onClick={() => handle(markOutForDelivery, { actor: { name: "Courier" } }, "Out for delivery")} className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Out for Delivery</button>
               )}
               {order.status === ORDER_STATUS.OUT_FOR_DELIVERY && canDispatch && (
-                <button onClick={() => handle(markDelivered, { actor: { name: "Courier" } }, "Delivered")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Delivered</button>
+                <button onClick={() => handle(markDelivered, { actor: { name: "Courier" } }, "Delivered")} className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Delivered</button>
               )}
               {!["DELIVERED", "CANCELLED", "RETURNED", "REFUNDED"].includes(order.status) && (
-                <p className="font-ui text-[11px] text-taupe">Use status actions above. Inventory quantity is not re-deducted on picking — reservation already handled at checkout.</p>
+                <p className="font-ui text-[11px] text-pf-muted">Use status actions above. Inventory quantity is not re-deducted on picking — reservation already handled at checkout.</p>
               )}
             </div>
           </div>
 
-          <div className="border border-mist/70 bg-surface/30 p-5">
-            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-3">Timeline</h3>
+          <div className="border border-pf-border/70 bg-pf-ivory/30 p-5">
+            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-3">Timeline</h3>
             <OrderTimeline events={(order.timeline && order.timeline.length ? order.timeline.map((t) => ({ status: t.status, title: t.status?.replace(/_/g, " ") || t.type, description: t.note, timestamp: t.at, state: "done" })) : order.statusHistory.map((h) => ({ status: h.status, title: h.status.replace(/_/g, " "), timestamp: h.at, state: "done" })))} />
           </div>
 
-          <div className="border border-mist/70 bg-surface/30 p-5">
-            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-2">Internal notes (not visible to customer)</h3>
+          <div className="border border-pf-border/70 bg-pf-ivory/30 p-5">
+            <h3 className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-2">Internal notes (not visible to customer)</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
               {(order.notes?.internal || []).map((n, i) => (
-                <div key={i} className="border-l-2 border-brass bg-canvas px-2 py-1">
+                <div key={i} className="border-l-2 border-pf-gold-deep bg-pf-card px-2 py-1">
                   <p className="font-ui text-xs">{n.note ?? n.text}</p>
-                  <p className="font-ui text-[10px] text-taupe">{n.authorName ?? n.by ?? "Staff"}</p>
+                  <p className="font-ui text-[10px] text-pf-muted">{n.authorName ?? n.by ?? "Staff"}</p>
                 </div>
               ))}
-              {!(order.notes?.internal?.length) && <p className="font-ui text-xs text-taupe">No notes.</p>}
+              {!(order.notes?.internal?.length) && <p className="font-ui text-xs text-pf-muted">No notes.</p>}
             </div>
             <div className="flex gap-2">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add note — e.g. evening delivery" className="flex-1 h-9 border border-mist bg-canvas px-2 font-ui text-xs" />
-              <button onClick={() => { if (!note.trim()) return; handle(addInternalNote, { text: note, actor: { name: employee?.name } }, "Note added"); setNote(""); }} className="px-3 bg-ink text-ivory font-ui text-[11px] uppercase">Add</button>
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add note — e.g. evening delivery" className="flex-1 h-9 border border-pf-border bg-pf-card px-2 font-ui text-xs" />
+              <button onClick={() => { if (!note.trim()) return; handle(addInternalNote, { text: note, actor: { name: employee?.name } }, "Note added"); setNote(""); }} className="px-3 bg-pf-burgundy text-pf-ivory font-ui text-[11px] uppercase">Add</button>
             </div>
           </div>
         </div>

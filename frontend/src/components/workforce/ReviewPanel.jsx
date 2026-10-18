@@ -18,18 +18,18 @@ export function FeedbackReadout({ review }) {
     ["Employee comments", review.employeeComments],
   ].filter(([, value]) => value);
   if (!rows.length) {
-    return <p className="font-ui text-sm text-taupe">No written review yet.</p>;
+    return <p className="font-ui text-sm text-pf-muted">No written review yet.</p>;
   }
   return (
     <dl className="space-y-4">
       {rows.map(([label, value]) => (
         <div key={label}>
-          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-          <dd className="mt-1 font-ui text-sm leading-relaxed text-ink">{value}</dd>
+          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+          <dd className="mt-1 font-ui text-sm leading-relaxed text-pf-text">{value}</dd>
         </div>
       ))}
       {review.reviewerName ? (
-        <p className="font-ui text-[11px] text-taupe">
+        <p className="font-ui text-[11px] text-pf-muted">
           {review.reviewerName}
           {review.reviewedAt ? ` · ${new Date(review.reviewedAt).toLocaleDateString("en-IN")}` : ""}
         </p>
@@ -64,7 +64,7 @@ export function EmployeeCommentForm({ record, actor }) {
         <textarea id="perf-emp-comments" value={comments} onChange={(event) => setComments(event.target.value)} rows={3} className={employeeInputClass()} />
       </EmployeeField>
       {message ? (
-        <p className="mt-2 font-ui text-xs text-cocoa" role="status">
+        <p className="mt-2 font-ui text-xs text-pf-cocoa" role="status">
           {message}
         </p>
       ) : null}
@@ -119,7 +119,7 @@ export default function ReviewForm({ record, actor, canFinalize = false }) {
 
   return (
     <div className="space-y-4">
-      <p className="font-ui text-[11px] text-taupe">
+      <p className="font-ui text-[11px] text-pf-muted">
         Calculated score {formatPercent(record.score)}. Weighting: 50% target · 25% attendance · 25% operational quality.
       </p>
       <EmployeeField label="Strengths" id="rev-strengths">
@@ -144,8 +144,8 @@ export default function ReviewForm({ record, actor, canFinalize = false }) {
           className={employeeInputClass()}
         />
       </EmployeeField>
-      {error ? <p className="font-ui text-xs text-accent" role="alert">{error}</p> : null}
-      {message ? <p className="font-ui text-xs text-cocoa" role="status">{message}</p> : null}
+      {error ? <p className="font-ui text-xs text-pf-burgundy" role="alert">{error}</p> : null}
+      {message ? <p className="font-ui text-xs text-pf-cocoa" role="status">{message}</p> : null}
       {!locked ? (
         <div className="flex flex-wrap gap-2">
           <AtelierButton type="button" size="chip" onClick={() => save(false)}>
@@ -158,7 +158,7 @@ export default function ReviewForm({ record, actor, canFinalize = false }) {
           ) : null}
         </div>
       ) : (
-        <p className="font-ui text-xs text-taupe">This review is finalized.</p>
+        <p className="font-ui text-xs text-pf-muted">This review is finalized.</p>
       )}
     </div>
   );

@@ -59,33 +59,33 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
   return (
     <div
       role="status"
-      className="border border-ink bg-ink p-6 text-ivory sm:p-8"
+      className="border border-pf-burgundy bg-pf-burgundy p-6 text-pf-ivory sm:p-8"
       data-credential-sheet="true"
     >
-      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-gold">Temporary credentials</p>
+      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-pf-gold-text">Temporary credentials</p>
       <h2 className="mt-2 font-display text-3xl font-light tracking-tight">
-        Employee <span className="italic text-gold">created.</span>
+        Employee <span className="italic text-pf-gold-text">created.</span>
       </h2>
       <Rule width="w-10" tone="gold" className="my-4" />
-      <p className="font-ui text-xs leading-relaxed text-ash">
+      <p className="font-ui text-xs leading-relaxed text-pf-muted">
         Share these once, then put the sheet away. The password change happens once you login —
         not a production secret store.
       </p>
 
       <dl className="mt-6 space-y-4">
         <div>
-          <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-ash">Name</dt>
+          <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Name</dt>
           <dd className="mt-1 font-display text-xl font-light">{employeeFullName(employee)}</dd>
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-ash">Employee ID</dt>
+            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Employee ID</dt>
             <dd className="mt-1 font-ui text-lg tracking-wide">{employee.employeeId}</dd>
           </div>
           <button
             type="button"
             onClick={() => handleCopy("id", employee.employeeId)}
-            className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-ivory hover:text-gold"
+            className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory hover:text-pf-gold-text"
           >
             {copied === "id" ? <Check size={12} /> : <Copy size={12} />}
             {copied === "id" ? "Copied" : "Copy ID"}
@@ -93,7 +93,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
-            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-ash">
+            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">
               Temporary password
             </dt>
             <dd className="mt-1 font-ui text-lg tracking-wide">{temporaryPassword}</dd>
@@ -101,7 +101,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
           <button
             type="button"
             onClick={() => handleCopy("password", temporaryPassword)}
-            className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-ivory hover:text-gold"
+            className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory hover:text-pf-gold-text"
           >
             {copied === "password" ? <Check size={12} /> : <Copy size={12} />}
             {copied === "password" ? "Copied" : "Copy password"}
@@ -109,11 +109,11 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-ash">Role</dt>
+            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Role</dt>
             <dd className="mt-1 font-ui text-sm">{getRoleLabel(employee.role)}</dd>
           </div>
           <div>
-            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-ash">Department</dt>
+            <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Department</dt>
             <dd className="mt-1 font-ui text-sm">{getDepartmentLabel(employee.department)}</dd>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function CredentialSheet({ employee, temporaryPassword, onDone })
           <Printer size={12} aria-hidden="true" /> Print credential sheet
         </AtelierButton>
         {onDone ? (
-          <AtelierButton variant="outline" size="chip" onClick={onDone} className="border-ivory/30 text-ivory hover:bg-ivory hover:text-ink">
+          <AtelierButton variant="outline" size="chip" onClick={onDone} className="border-ivory/30 text-pf-ivory hover:bg-pf-ivory hover:text-pf-text">
             Continue
           </AtelierButton>
         ) : null}

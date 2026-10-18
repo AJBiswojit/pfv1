@@ -3,8 +3,8 @@ export default function ProgressBar({ value = 0, label, className = "" }) {
   const width = Math.max(0, Math.min(100, raw));
   return (
     <div className={className}>
-      <div className="h-1.5 w-full bg-mist/80" aria-hidden="true">
-        <div className="h-full bg-accent" style={{ width: `${width}%` }} />
+      <div className="h-1.5 w-full bg-pf-border/80" aria-hidden="true">
+        <div className="h-full bg-pf-burgundy" style={{ width: `${width}%` }} />
       </div>
       <span className="sr-only">{label || `${Math.round(raw)} percent`}</span>
     </div>

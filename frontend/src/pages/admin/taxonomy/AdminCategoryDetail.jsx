@@ -18,13 +18,13 @@ import { formatAdminError } from "../../../services/admin/adminError";
 import { formatINR } from "../../../utils/shopping";
 import { slugify } from "../../../services/catalogRepository";
 
-const inputClass = "w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent";
+const inputClass = "w-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep";
 const statusTone = { ACTIVE: "ink", DRAFT: "quiet", ARCHIVED: "muted" };
 const emptySubDraft = { name: "", slug: "", description: "", sortOrder: 100 };
 const lifecycleIcon = { activate: Play, archive: Archive, restore: RotateCcw };
 
 const Term = ({ label, value }) => (
-  <div><dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt><dd className="mt-1 font-ui text-sm font-medium text-ink">{value || "—"}</dd></div>
+  <div><dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt><dd className="mt-1 font-ui text-sm font-medium text-pf-text">{value || "—"}</dd></div>
 );
 
 export default function AdminCategoryDetail() {
@@ -75,13 +75,13 @@ export default function AdminCategoryDetail() {
   );
 
   if (load.state === "loading") {
-    return <AdminPage title="Loading category…"><p role="status" className="font-ui text-sm text-taupe">Loading category…</p></AdminPage>;
+    return <AdminPage title="Loading category…"><p role="status" className="font-ui text-sm text-pf-muted">Loading category…</p></AdminPage>;
   }
 
   if (load.state !== "ready" || !category) {
     return (
       <AdminPage title={load.state === "notfound" ? "Category not found" : "Category could not be loaded"}>
-        <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">
+        <p role="alert" className="mb-5 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3 font-ui text-sm text-pf-burgundy">
           {load.state === "notfound" ? "Category not found." : load.message || "The category could not be loaded from the server."}
         </p>
         <div className="flex flex-wrap gap-3">
@@ -149,7 +149,7 @@ export default function AdminCategoryDetail() {
         </>
       }
     >
-      {notice ? <p role="status" className="mb-5 border border-mist bg-canvas px-4 py-3 font-ui text-sm text-ink">{notice}</p> : null}
+      {notice ? <p role="status" className="mb-5 border border-pf-border bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">{notice}</p> : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
@@ -174,15 +174,15 @@ export default function AdminCategoryDetail() {
               <input type="number" className={inputClass} value={subDraft.sortOrder} onChange={(event) => setSubDraft((current) => ({ ...current, sortOrder: event.target.value }))} aria-label="Sort order" />
               <AtelierButton type="submit" size="chip">Create</AtelierButton>
             </form>
-            <p className="mb-4 font-ui text-[11px] text-taupe">New subcategories start as Draft. Activate a row to make it assignable on product forms.</p>
-            <div className="divide-y divide-mist/70 border border-mist/80 bg-canvas">
+            <p className="mb-4 font-ui text-[11px] text-pf-muted">New subcategories start as Draft. Activate a row to make it assignable on product forms.</p>
+            <div className="divide-y divide-pf-border/70 border border-pf-border/80 bg-pf-card">
               {subcategories.map((subcategory) => {
                 const count = products.filter((product) => product.subcategory === subcategory.name || product.subcategory === subcategory.id || product.subcategory === subcategory.slug).length;
                 return (
                   <div key={subcategory.id} className="flex flex-col gap-3 p-3 font-ui text-sm sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-ink">{subcategory.name}</p>
-                      <p className="text-[11px] text-taupe">/{subcategory.slug} · {count} product{count === 1 ? "" : "s"}</p>
+                      <p className="font-medium text-pf-text">{subcategory.name}</p>
+                      <p className="text-[11px] text-pf-muted">/{subcategory.slug} · {count} product{count === 1 ? "" : "s"}</p>
                     </div>
                     <StatusBadge label={subcategory.status} tone={statusTone[subcategory.status] || "quiet"} />
                     <div className="flex flex-wrap gap-2">{renderLifecycleButtons(TAXONOMY_KIND.SUBCATEGORY, subcategory)}</div>
@@ -195,15 +195,15 @@ export default function AdminCategoryDetail() {
           <AdminPanel eyebrow="Category → Product view" title={`Products (${products.length})`}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left">
-                <thead><tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">{["Product", "SKU", "Subcategory", "Price", "Status"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
-                <tbody>{products.map((product) => <tr key={product.id} className="border-b border-mist/60 font-ui text-sm"><td className="px-3 py-3"><Link to={`${prefix}/products/${product.id}`} className="font-medium text-ink hover:text-accent">{product.name}</Link></td><td className="px-3 py-3 text-taupe">{product.sku}</td><td className="px-3 py-3">{product.subcategory || "—"}</td><td className="px-3 py-3">{formatINR(product.price)}</td><td className="px-3 py-3"><StatusBadge label={product.status} tone={product.status === "PUBLISHED" ? "ink" : product.status === "ARCHIVED" ? "muted" : "quiet"} /></td></tr>)}</tbody>
+                <thead><tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">{["Product", "SKU", "Subcategory", "Price", "Status"].map((h) => <th key={h} className="px-3 py-3">{h}</th>)}</tr></thead>
+                <tbody>{products.map((product) => <tr key={product.id} className="border-b border-pf-border/60 font-ui text-sm"><td className="px-3 py-3"><Link to={`${prefix}/products/${product.id}`} className="font-medium text-pf-text hover:text-pf-burgundy">{product.name}</Link></td><td className="px-3 py-3 text-pf-muted">{product.sku}</td><td className="px-3 py-3">{product.subcategory || "—"}</td><td className="px-3 py-3">{formatINR(product.price)}</td><td className="px-3 py-3"><StatusBadge label={product.status} tone={product.status === "PUBLISHED" ? "ink" : product.status === "ARCHIVED" ? "muted" : "quiet"} /></td></tr>)}</tbody>
               </table>
             </div>
           </AdminPanel>
         </div>
 
         <AdminPanel eyebrow="Activity" title="Taxonomy diary">
-          <p className="font-ui text-sm leading-relaxed text-taupe">Creates, updates, archives and restores are intended for the shared activity log. The log surface is deferred until the backend audit writer pipeline exists (blocker B-09) — product records keep their IDs and are never deleted when a category is archived.</p>
+          <p className="font-ui text-sm leading-relaxed text-pf-muted">Creates, updates, archives and restores are intended for the shared activity log. The log surface is deferred until the backend audit writer pipeline exists (blocker B-09) — product records keep their IDs and are never deleted when a category is archived.</p>
         </AdminPanel>
       </div>
     </AdminPage>

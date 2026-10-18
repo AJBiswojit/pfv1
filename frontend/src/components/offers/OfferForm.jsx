@@ -198,13 +198,13 @@ export default function OfferForm({
   return (
     <form onSubmit={submit} className="space-y-8">
       {notice ? (
-        <p role="status" className="border border-mist/80 bg-canvas px-4 py-3 font-ui text-sm text-ink">
+        <p role="status" className="border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">
           {notice}
         </p>
       ) : null}
 
-      <section className="border border-mist/80 bg-surface/40 p-5 sm:p-6">
-        <h2 className="font-display text-2xl font-light tracking-tight text-ink">Identity</h2>
+      <section className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-light tracking-tight text-pf-text">Identity</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <EmployeeField label="Offer name" required error={errors.name}>
             <input
@@ -239,8 +239,8 @@ export default function OfferForm({
         </div>
       </section>
 
-      <section className="border border-mist/80 bg-surface/40 p-5 sm:p-6">
-        <h2 className="font-display text-2xl font-light tracking-tight text-ink">Discount</h2>
+      <section className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-light tracking-tight text-pf-text">Discount</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <EmployeeField label="Discount type" required>
             <select
@@ -278,7 +278,7 @@ export default function OfferForm({
               onChange={(event) => setField("minimumOrderValue", event.target.value)}
             />
           </EmployeeField>
-          <p className="border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink md:col-span-2" role="note">
+          <p className="border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-pf-text md:col-span-2" role="note">
             No per-customer maximum-discount cap: the coupon table has no such column
             (BACKEND_GAP — future phase), so a cap entered here could never be enforced
             at checkout and is deliberately not offered.
@@ -286,8 +286,8 @@ export default function OfferForm({
         </div>
       </section>
 
-      <section className="border border-mist/80 bg-surface/40 p-5 sm:p-6">
-        <h2 className="font-display text-2xl font-light tracking-tight text-ink">Validity & limits</h2>
+      <section className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-light tracking-tight text-pf-text">Validity & limits</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <EmployeeField label="Start date">
             <input
@@ -323,7 +323,7 @@ export default function OfferForm({
               onChange={(event) => setField("perCustomerLimit", event.target.value)}
             />
           </EmployeeField>
-          <div className="md:col-span-2 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
+          <div className="md:col-span-2 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-pf-text" role="note">
             <p>
               <strong>Activation is server-derived:</strong> a saved coupon is
               {isEdit ? " " : " active as soon as it is created ("}
@@ -339,22 +339,22 @@ export default function OfferForm({
               code at a time.)
             </p>
           </div>
-          <label className="flex items-center gap-3 font-ui text-sm text-ink md:col-span-2">
+          <label className="flex items-center gap-3 font-ui text-sm text-pf-text md:col-span-2">
             <input
               type="checkbox"
               checked={draft.stackable}
               onChange={(event) => setField("stackable", event.target.checked)}
             />
             Stackable with another offer
-            <span className="text-[11px] text-taupe">
+            <span className="text-[11px] text-pf-muted">
               The bag still accepts one coupon at a time.
             </span>
           </label>
         </div>
       </section>
 
-      <section className="border border-mist/80 bg-surface/40 p-5 sm:p-6">
-        <h2 className="font-display text-2xl font-light tracking-tight text-ink">Eligibility</h2>
+      <section className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-light tracking-tight text-pf-text">Eligibility</h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <EmployeeField label="Customers">
             <select
@@ -386,17 +386,17 @@ export default function OfferForm({
 
         {draft.customerEligibility === CUSTOMER_ELIGIBILITY.SPECIFIC_CUSTOMERS ? (
           <fieldset className="mt-5">
-            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
               Included customers
             </legend>
             {errors.specificCustomerIds ? (
-              <p className="mb-2 font-ui text-[11px] text-accent">{errors.specificCustomerIds}</p>
+              <p className="mb-2 font-ui text-[11px] text-pf-burgundy">{errors.specificCustomerIds}</p>
             ) : null}
             <div className="grid gap-2 sm:grid-cols-2">
               {customers.map((customer) => {
                 const id = String(customer.id);
                 return (
-                  <label key={id} className="flex items-center gap-2 border border-mist/70 px-3 py-2 font-ui text-sm">
+                  <label key={id} className="flex items-center gap-2 border border-pf-border/70 px-3 py-2 font-ui text-sm">
                     <input
                       type="checkbox"
                       checked={draft.specificCustomerIds.includes(id)}
@@ -414,12 +414,12 @@ export default function OfferForm({
 
         {draft.productEligibility === PRODUCT_ELIGIBILITY.CATEGORY ? (
           <fieldset className="mt-5">
-            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
               Included categories
             </legend>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map((category) => (
-                <label key={category.id} className="flex items-center gap-2 border border-mist/70 px-3 py-2 font-ui text-sm">
+                <label key={category.id} className="flex items-center gap-2 border border-pf-border/70 px-3 py-2 font-ui text-sm">
                   <input
                     type="checkbox"
                     checked={draft.includedCategories.includes(category.id)}
@@ -436,12 +436,12 @@ export default function OfferForm({
 
         {draft.productEligibility === PRODUCT_ELIGIBILITY.COLLECTION ? (
           <fieldset className="mt-5">
-            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
               Included collections
             </legend>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {collections.map((collection) => (
-                <label key={collection.id} className="flex items-center gap-2 border border-mist/70 px-3 py-2 font-ui text-sm">
+                <label key={collection.id} className="flex items-center gap-2 border border-pf-border/70 px-3 py-2 font-ui text-sm">
                   <input
                     type="checkbox"
                     checked={draft.includedCollections.includes(collection.id)}
@@ -461,7 +461,7 @@ export default function OfferForm({
 
         {draft.productEligibility === PRODUCT_ELIGIBILITY.SPECIFIC_PRODUCTS ? (
           <fieldset className="mt-5">
-            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+            <legend className="mb-2 font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
               Included products
             </legend>
             <input
@@ -472,7 +472,7 @@ export default function OfferForm({
             />
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {filteredProducts.map((product) => (
-                <label key={product.id} className="flex items-center gap-2 border border-mist/70 px-3 py-2 font-ui text-sm">
+                <label key={product.id} className="flex items-center gap-2 border border-pf-border/70 px-3 py-2 font-ui text-sm">
                   <input
                     type="checkbox"
                     checked={draft.includedProducts.includes(product.id)}
@@ -481,7 +481,7 @@ export default function OfferForm({
                     }
                   />
                   <span className="min-w-0 truncate">{product.name}</span>
-                  <span className="ml-auto font-ui text-[11px] text-taupe">
+                  <span className="ml-auto font-ui text-[11px] text-pf-muted">
                     {categoryLabels[product.category] || product.category}
                   </span>
                 </label>
@@ -554,9 +554,9 @@ export default function OfferForm({
         </div>
       </section>
 
-      <section className="border border-mist/80 bg-surface/40 p-5 sm:p-6">
-        <h2 className="font-display text-2xl font-light tracking-tight text-ink">Estimated preview</h2>
-        <p className="mt-2 font-ui text-sm text-taupe">
+      <section className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-light tracking-tight text-pf-text">Estimated preview</h2>
+        <p className="mt-2 font-ui text-sm text-pf-muted">
           A desk estimate only. Checkout remains the source of truth.
         </p>
         <div className="mt-5 max-w-xs">
@@ -571,22 +571,22 @@ export default function OfferForm({
           </EmployeeField>
         </div>
         <dl className="mt-5 grid gap-3 sm:grid-cols-4">
-          <div className="border border-mist/70 p-4">
-            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Order</dt>
+          <div className="border border-pf-border/70 p-4">
+            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Order</dt>
             <dd className="mt-1 font-display text-xl">{formatINR(preview.sampleAmount)}</dd>
           </div>
-          <div className="border border-mist/70 p-4">
-            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Offer</dt>
+          <div className="border border-pf-border/70 p-4">
+            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Offer</dt>
             <dd className="mt-1 font-display text-xl">{formatOfferDiscount(draft)}</dd>
           </div>
-          <div className="border border-mist/70 p-4">
-            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Discount</dt>
-            <dd className="mt-1 font-display text-xl text-accent">
+          <div className="border border-pf-border/70 p-4">
+            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Discount</dt>
+            <dd className="mt-1 font-display text-xl text-pf-burgundy">
               {preview.available ? formatINR(preview.discount) : "Unavailable"}
             </dd>
           </div>
-          <div className="border border-mist/70 p-4">
-            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Final</dt>
+          <div className="border border-pf-border/70 p-4">
+            <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Final</dt>
             <dd className="mt-1 font-display text-xl">{formatINR(preview.final)}</dd>
           </div>
         </dl>

@@ -94,27 +94,27 @@ export function SectionPricing({ draft, patch }) {
       {/* Visible Pricing Summary & Calculation Matrix */}
       <div
         aria-live="polite"
-        className="border border-mist bg-canvas p-5 sm:p-6"
+        className="border border-pf-border bg-pf-card p-5 sm:p-6"
       >
-        <p className="font-ui text-[10px] uppercase tracking-[.22em] text-accent">
+        <p className="font-ui text-[10px] uppercase tracking-[.22em] text-pf-burgundy">
           Pricing Calculation Summary
         </p>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="border-l border-mist/80 pl-3">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-taupe">MRP</p>
-            <p className="mt-1 font-display text-lg text-ink">
+          <div className="border-l border-pf-border/80 pl-3">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-muted">MRP</p>
+            <p className="mt-1 font-display text-lg text-pf-text">
               {computed.mrp > 0 ? formatINR(computed.mrp) : "—"}
             </p>
           </div>
-          <div className="border-l border-mist/80 pl-3">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-taupe">Selling Price</p>
-            <p className="mt-1 font-display text-lg text-ink">
+          <div className="border-l border-pf-border/80 pl-3">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-muted">Selling Price</p>
+            <p className="mt-1 font-display text-lg text-pf-text">
               {computed.sellingPrice > 0 ? formatINR(computed.sellingPrice) : "—"}
             </p>
           </div>
-          <div className="border-l border-mist/80 pl-3">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-taupe">Discount</p>
-            <p className="mt-1 font-display text-lg text-ink">
+          <div className="border-l border-pf-border/80 pl-3">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-muted">Discount</p>
+            <p className="mt-1 font-display text-lg text-pf-text">
               {pricing.discountType === "percentage" && pricing.discountValue > 0
                 ? `${pricing.discountValue}%`
                 : pricing.discountType === "fixed" && pricing.discountValue > 0
@@ -124,27 +124,27 @@ export function SectionPricing({ draft, patch }) {
                     : "0%"}
             </p>
           </div>
-          <div className="border-l border-mist/80 pl-3">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-taupe">GST Rate</p>
-            <p className="mt-1 font-display text-lg text-ink">{pricing.taxRate ?? 0}%</p>
+          <div className="border-l border-pf-border/80 pl-3">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-muted">GST Rate</p>
+            <p className="mt-1 font-display text-lg text-pf-text">{pricing.taxRate ?? 0}%</p>
           </div>
-          <div className="border-l border-mist/80 pl-3">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-taupe">Tax Mode</p>
-            <p className="mt-1 font-display text-lg text-ink">
+          <div className="border-l border-pf-border/80 pl-3">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-muted">Tax Mode</p>
+            <p className="mt-1 font-display text-lg text-pf-text">
               {pricing.taxMode === "EXCLUSIVE" ? "Exclusive" : "Inclusive"}
             </p>
           </div>
-          <div className="border-l-2 border-ink pl-3 bg-surface/30 p-2">
-            <p className="font-ui text-[10px] uppercase tracking-wider text-ink font-semibold">Final Price</p>
-            <p className="mt-1 font-display text-xl font-medium text-ink">
+          <div className="border-l-2 border-pf-burgundy pl-3 bg-pf-ivory/30 p-2">
+            <p className="font-ui text-[10px] uppercase tracking-wider text-pf-text font-semibold">Final Price</p>
+            <p className="mt-1 font-display text-xl font-medium text-pf-text">
               {computed.finalPrice > 0 ? formatINR(computed.finalPrice) : "—"}
             </p>
           </div>
         </div>
 
         {computed.savings > 0 ? (
-          <p className="mt-4 font-ui text-[11px] text-taupe border-t border-mist/60 pt-3">
-            Customer saves <span className="font-medium text-ink">{formatINR(computed.savings)}</span> ({computed.effectiveDiscountPercent}% off list MRP)
+          <p className="mt-4 font-ui text-[11px] text-pf-muted border-t border-pf-border/60 pt-3">
+            Customer saves <span className="font-medium text-pf-text">{formatINR(computed.savings)}</span> ({computed.effectiveDiscountPercent}% off list MRP)
           </p>
         ) : null}
       </div>
@@ -153,15 +153,15 @@ export function SectionPricing({ draft, patch }) {
       {computed.errors.length ? (
         <div
           role="alert"
-          className="border border-accent/40 bg-accent/[0.05] p-4"
+          className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-4"
           aria-label="Pricing validation errors"
         >
-          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-accent font-semibold">
+          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy font-semibold">
             Pricing Validation Issues ({computed.errors.length})
           </p>
           <ul className="mt-2 space-y-1">
             {computed.errors.map((error) => (
-              <li key={error} className="font-ui text-sm text-accent">
+              <li key={error} className="font-ui text-sm text-pf-burgundy">
                 — {error}
               </li>
             ))}
@@ -170,9 +170,9 @@ export function SectionPricing({ draft, patch }) {
       ) : null}
 
       {/* Tax / GST section */}
-      <div className="border-t border-mist/70 pt-6">
-        <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">Tax / GST</p>
-        <p className="mt-2 max-w-xl font-ui text-[11px] leading-relaxed text-taupe">
+      <div className="border-t border-pf-border/70 pt-6">
+        <p className="font-ui text-[10px] uppercase tracking-[.24em] text-pf-burgundy">Tax / GST</p>
+        <p className="mt-2 max-w-xl font-ui text-[11px] leading-relaxed text-pf-muted">
           Specify the GST rate and whether customer pricing is tax-inclusive or exclusive.
         </p>
         <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -258,10 +258,10 @@ export function SectionVariants({ draft, patch, errors }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-ui text-sm font-medium text-ink">
+          <p className="font-ui text-sm font-medium text-pf-text">
             Product Variants ({variants.length})
           </p>
-          <p className="mt-1 max-w-xl font-ui text-[11px] leading-relaxed text-taupe">
+          <p className="mt-1 max-w-xl font-ui text-[11px] leading-relaxed text-pf-muted">
             Each variant pairs a colour with a size and may carry its own SKU, barcode, price override and status.
             Inactive variants stay stored but are hidden from customers.
           </p>
@@ -269,27 +269,27 @@ export function SectionVariants({ draft, patch, errors }) {
         <button
           type="button"
           onClick={handleAddVariant}
-          className="inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory transition-colors hover:bg-transparent hover:text-ink"
+          className="inline-flex items-center gap-2 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory transition-colors hover:bg-transparent hover:text-pf-text"
         >
           <Plus size={13} aria-hidden="true" /> Add variant
         </button>
       </div>
 
       {errors.variants ? (
-        <p role="alert" className="border border-accent/40 bg-accent/[0.05] p-3 font-ui text-sm text-accent">
+        <p role="alert" className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-3 font-ui text-sm text-pf-burgundy">
           {errors.variants}
         </p>
       ) : null}
 
       {!variants.length ? (
-        <div className="border border-dashed border-mist/90 bg-canvas px-4 py-12 text-center">
-          <p className="font-ui text-sm text-taupe">
+        <div className="border border-dashed border-pf-border/90 bg-pf-card px-4 py-12 text-center">
+          <p className="font-ui text-sm text-pf-muted">
             No variants created yet. A product without variants sells in its base colour and size.
           </p>
           <button
             type="button"
             onClick={handleAddVariant}
-            className="mt-4 inline-flex items-center gap-2 border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+            className="mt-4 inline-flex items-center gap-2 border border-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
           >
             <Plus size={12} aria-hidden="true" /> Create first variant
           </button>
@@ -306,13 +306,13 @@ export function SectionVariants({ draft, patch, errors }) {
             const variantSummary = `${variant.color || "No color"} | ${variant.size || "No size"} | ${variant.sku || "No SKU"} | ${formatINR(effectivePrice)} | ${variant.status === VARIANT_STATUSES.ACTIVE ? "Active" : "Inactive"}`;
 
             return (
-              <div key={variant.id} className="border border-mist/80 bg-canvas p-4 sm:p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-mist/60 pb-3">
+              <div key={variant.id} className="border border-pf-border/80 bg-pf-card p-4 sm:p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-pf-border/60 pb-3">
                   <div className="flex items-center gap-3">
-                    <span className="bg-ink px-2 py-0.5 font-ui text-[9px] uppercase tracking-wider text-ivory">
+                    <span className="bg-pf-burgundy px-2 py-0.5 font-ui text-[9px] uppercase tracking-wider text-pf-ivory">
                       #{index + 1}
                     </span>
-                    <span className="font-ui text-xs text-ink font-medium">
+                    <span className="font-ui text-xs text-pf-text font-medium">
                       {variantSummary}
                     </span>
                   </div>
@@ -320,7 +320,7 @@ export function SectionVariants({ draft, patch, errors }) {
                     type="button"
                     aria-label={`Remove variant ${index + 1}`}
                     onClick={() => removeVariant(variant.id)}
-                    className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-[.14em] text-taupe transition-colors hover:text-accent"
+                    className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:text-pf-burgundy"
                   >
                     <Trash2 size={13} aria-hidden="true" /> Remove
                   </button>
@@ -409,8 +409,8 @@ export function SectionVariants({ draft, patch, errors }) {
                           className={cn(
                             "flex-1 border px-2.5 py-2 font-ui text-[10px] uppercase tracking-[.14em] transition-colors",
                             variant.status === status
-                              ? "border-ink bg-ink text-ivory font-medium"
-                              : "border-mist text-taupe hover:border-ink hover:text-ink"
+                              ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory font-medium"
+                              : "border-pf-border text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
                           )}
                         >
                           {status === VARIANT_STATUSES.ACTIVE ? "Active" : "Inactive"}
@@ -427,7 +427,7 @@ export function SectionVariants({ draft, patch, errors }) {
             <button
               type="button"
               onClick={handleAddVariant}
-              className="inline-flex items-center gap-2 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink"
+              className="inline-flex items-center gap-2 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"
             >
               <Plus size={12} aria-hidden="true" /> Add another variant
             </button>

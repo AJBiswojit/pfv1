@@ -116,8 +116,8 @@ function MediaInboxCardComponent({ row, actor, onNotice }) {
   const employees = useMemo(() => getAssignableEmployees(), []);
 
   return (
-    <article className="flex flex-col border border-mist bg-canvas">
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-ivory">
+    <article className="flex flex-col border border-pf-border bg-pf-card">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-pf-ivory">
         <PratikshyaImage
           image={{ src: media.url || media.thumbnail || media.optimizedPath || "" }}
           category={row.categoryId ?? "default"}
@@ -130,41 +130,41 @@ function MediaInboxCardComponent({ row, actor, onNotice }) {
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 border-t border-mist px-3 py-3 font-ui text-[11px]">
-        <p className="truncate font-medium text-ink">{media.currentFilename || media.fileName || media.id}</p>
-        <p className="text-taupe">Media ID: <span className="text-ink/80">{media.id}</span></p>
-        <p className="text-taupe">View: <span className="text-ink/80">{viewLabel}</span></p>
-        <p className="text-taupe">
-          Product: {owner ? (<Link to={`/admin/products/${owner.id}`} className="text-ink/80 underline-offset-2 hover:text-accent hover:underline">{owner.id}</Link>) : (<span className="text-ink/80">None</span>)}
-          {draftClaim ? (<><span> · </span><span className="text-ink/80">claimed by draft <Link to={`/admin/products/review?draft=${draftClaim.id}`} className="underline-offset-2 hover:text-accent hover:underline">{draftClaim.id}</Link></span></>) : null}
+      <div className="flex flex-1 flex-col gap-1.5 border-t border-pf-border px-3 py-3 font-ui text-[11px]">
+        <p className="truncate font-medium text-pf-text">{media.currentFilename || media.fileName || media.id}</p>
+        <p className="text-pf-muted">Media ID: <span className="text-pf-text/80">{media.id}</span></p>
+        <p className="text-pf-muted">View: <span className="text-pf-text/80">{viewLabel}</span></p>
+        <p className="text-pf-muted">
+          Product: {owner ? (<Link to={`/admin/products/${owner.id}`} className="text-pf-text/80 underline-offset-2 hover:text-pf-burgundy hover:underline">{owner.id}</Link>) : (<span className="text-pf-text/80">None</span>)}
+          {draftClaim ? (<><span> · </span><span className="text-pf-text/80">claimed by draft <Link to={`/admin/products/review?draft=${draftClaim.id}`} className="underline-offset-2 hover:text-pf-burgundy hover:underline">{draftClaim.id}</Link></span></>) : null}
         </p>
-        <p className="text-taupe">Category: <span className="text-ink/80">{categoryLabel ?? row.categoryId ?? "—"}</span></p>
-        <p className="text-taupe">Assigned: <span className="text-ink/80">{assignedDisplay}</span></p>
+        <p className="text-pf-muted">Category: <span className="text-pf-text/80">{categoryLabel ?? row.categoryId ?? "—"}</span></p>
+        <p className="text-pf-muted">Assigned: <span className="text-pf-text/80">{assignedDisplay}</span></p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 border-t border-mist px-3 py-2.5">
+      <div className="flex flex-wrap gap-1.5 border-t border-pf-border px-3 py-2.5">
         {targetProduct ? (
-          <Link to={`/admin/products/${targetProduct.id}`} className="inline-flex items-center gap-1 border border-ink px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-ink transition-colors hover:bg-ink hover:text-ivory"><Eye size={11} aria-hidden="true" /> Open Product</Link>
+          <Link to={`/admin/products/${targetProduct.id}`} className="inline-flex items-center gap-1 border border-pf-burgundy px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"><Eye size={11} aria-hidden="true" /> Open Product</Link>
         ) : null}
         {!targetProduct ? (
-          <Link to="/admin/products/new" className="inline-flex items-center gap-1 border border-accent px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-accent transition-colors hover:bg-accent hover:text-ivory"><PackagePlus size={11} aria-hidden="true" /> Create Product First</Link>
+          <Link to="/admin/products/new" className="inline-flex items-center gap-1 border border-pf-gold-deep px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"><PackagePlus size={11} aria-hidden="true" /> Create Product First</Link>
         ) : draftClaim ? (
-          <Link to={`/admin/products/review?draft=${draftClaim.id}`} className="inline-flex items-center gap-1 border border-accent px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-accent transition-colors hover:bg-accent hover:text-ivory"><Eye size={11} aria-hidden="true" /> Review</Link>
+          <Link to={`/admin/products/review?draft=${draftClaim.id}`} className="inline-flex items-center gap-1 border border-pf-gold-deep px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"><Eye size={11} aria-hidden="true" /> Review</Link>
         ) : null}
         {targetProduct ? (
-          <button type="button" onClick={() => setAssigning((value) => !value)} className="inline-flex items-center gap-1 border border-mist px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-taupe transition-colors hover:border-ink hover:text-ink"><UserPlus size={11} aria-hidden="true" /> Assign</button>
+          <button type="button" onClick={() => setAssigning((value) => !value)} className="inline-flex items-center gap-1 border border-pf-border px-2.5 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"><UserPlus size={11} aria-hidden="true" /> Assign</button>
         ) : null}
       </div>
 
       {assigning && targetProduct ? (
-        <form className="border-t border-mist bg-ivory px-3 py-3" onSubmit={(event) => { event.preventDefault(); assignTo(assignTarget); }}>
-          <label htmlFor={`assign-${targetProduct.id}`} className="mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Assign {targetProduct.id} to employee</label>
+        <form className="border-t border-pf-border bg-pf-ivory px-3 py-3" onSubmit={(event) => { event.preventDefault(); assignTo(assignTarget); }}>
+          <label htmlFor={`assign-${targetProduct.id}`} className="mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Assign {targetProduct.id} to employee</label>
           <div className="flex gap-2">
-            <select id={`assign-${targetProduct.id}`} value={employeeId} onChange={(event) => { const next = event.target.value; setEmployeeId(next); setAssignTarget({ ...targetProduct, assignedEmployeeId: next || null }); }} className="min-w-0 flex-1 border border-mist bg-canvas px-2 py-1.5 font-ui text-xs outline-none focus:border-accent">
+            <select id={`assign-${targetProduct.id}`} value={employeeId} onChange={(event) => { const next = event.target.value; setEmployeeId(next); setAssignTarget({ ...targetProduct, assignedEmployeeId: next || null }); }} className="min-w-0 flex-1 border border-pf-border bg-pf-card px-2 py-1.5 font-ui text-xs outline-none focus:border-pf-gold-deep">
               <option value="">— Unassigned —</option>
               {employees.map((employee) => (<option key={employee.id} value={employee.employeeId}>{employeeFullName(employee)} ({employee.employeeId})</option>))}
             </select>
-            <button type="submit" disabled={!employeeId || busy === "assign"} className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-ink transition-colors hover:bg-ink hover:text-ivory disabled:cursor-not-allowed disabled:opacity-40">{busy === "assign" ? "Saving…" : "Save"}</button>
+            <button type="submit" disabled={!employeeId || busy === "assign"} className="border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory disabled:cursor-not-allowed disabled:opacity-40">{busy === "assign" ? "Saving…" : "Save"}</button>
           </div>
         </form>
       ) : null}

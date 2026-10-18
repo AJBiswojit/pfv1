@@ -12,8 +12,8 @@ import { useAdminAuth } from "../../../context/AdminAuthContext";
 function Row({ label, value, strong = false }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="font-ui text-[11px] text-graphite">{label}</dt>
-      <dd className={strong ? "font-display text-lg font-light text-ink" : "font-ui text-xs text-ink"}>{value}</dd>
+      <dt className="font-ui text-[11px] text-pf-muted">{label}</dt>
+      <dd className={strong ? "font-display text-lg font-light text-pf-text" : "font-ui text-xs text-pf-text"}>{value}</dd>
     </div>
   );
 }
@@ -68,7 +68,7 @@ export default function AdminOrderInvoice() {
   if (loading) {
     return (
       <AdminPage eyebrow="Orders" title="Loading invoice…">
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading invoice…
         </p>
       </AdminPage>
@@ -89,14 +89,14 @@ export default function AdminOrderInvoice() {
         : error?.message ?? "Something went wrong on our side. Please try again.";
     return (
       <AdminPage eyebrow="Orders" title={title}>
-        <p role="alert" className="font-ui text-sm text-graphite">{detail}</p>
+        <p role="alert" className="font-ui text-sm text-pf-muted">{detail}</p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {status >= 500 || status === 0 ? (
             <AtelierButton type="button" variant="outline" size="chip" onClick={reload}>
               Try again
             </AtelierButton>
           ) : null}
-          <Link to={`${prefix}/orders`} className="font-ui text-sm text-brass hover:text-accent">
+          <Link to={`${prefix}/orders`} className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
             Back to orders
           </Link>
         </div>
@@ -131,16 +131,16 @@ export default function AdminOrderInvoice() {
         </>
       }
     >
-      <div className="mx-auto max-w-3xl border border-mist bg-ivory px-6 py-8 sm:px-10 sm:py-12">
+      <div className="mx-auto max-w-3xl border border-pf-border bg-pf-ivory px-6 py-8 sm:px-10 sm:py-12">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <h2 className="font-display text-2xl font-light tracking-[.08em] text-ink">PRATIKSHYA FASHION</h2>
-            <p className="mt-1 font-ui text-[10px] uppercase tracking-[.24em] text-brass">Atelier of Handcrafted Indian Couture</p>
+            <h2 className="font-display text-2xl font-light tracking-[.08em] text-pf-text">PRATIKSHYA FASHION</h2>
+            <p className="mt-1 font-ui text-[10px] uppercase tracking-[.24em] text-pf-gold-text">Atelier of Handcrafted Indian Couture</p>
           </div>
           <div className="text-left sm:text-right">
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">{invoiceIssued ? "Invoice" : "Order Summary"}</p>
-            <p className="mt-1 font-display text-lg font-light text-ink">{invoiceIssued ? invoiceNumber : orderRef}</p>
-            <p className="mt-1 font-ui text-[11px] text-taupe">{invoiceIssuedAt ? formatOrderDate(invoiceIssuedAt) : "No invoice issued yet"}</p>
+            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">{invoiceIssued ? "Invoice" : "Order Summary"}</p>
+            <p className="mt-1 font-display text-lg font-light text-pf-text">{invoiceIssued ? invoiceNumber : orderRef}</p>
+            <p className="mt-1 font-ui text-[11px] text-pf-muted">{invoiceIssuedAt ? formatOrderDate(invoiceIssuedAt) : "No invoice issued yet"}</p>
           </div>
         </div>
 
@@ -148,44 +148,44 @@ export default function AdminOrderInvoice() {
 
         <div className="grid gap-7 sm:grid-cols-2">
           <div>
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Billed To</p>
-            <p className="mt-2.5 font-display text-base font-light text-ink">{order.customer.fullName}</p>
-            <p className="font-ui text-xs text-graphite">{order.customer.email}</p>
-            {order.customer.phone && <p className="font-ui text-xs text-graphite">{formatPhone(order.customer.phone)}</p>}
+            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Billed To</p>
+            <p className="mt-2.5 font-display text-base font-light text-pf-text">{order.customer.fullName}</p>
+            <p className="font-ui text-xs text-pf-muted">{order.customer.email}</p>
+            {order.customer.phone && <p className="font-ui text-xs text-pf-muted">{formatPhone(order.customer.phone)}</p>}
           </div>
           {address && (
             <div>
-              <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Delivered To</p>
-              <p className="mt-2.5 font-display text-base font-light text-ink">{address.fullName}</p>
-              <p className="font-ui text-xs leading-relaxed text-graphite">{address.addressLine}{address.landmark ? `, ${address.landmark}` : ""}</p>
-              <p className="font-ui text-xs text-graphite">{address.city}, {address.state} — {address.pincode}</p>
+              <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Delivered To</p>
+              <p className="mt-2.5 font-display text-base font-light text-pf-text">{address.fullName}</p>
+              <p className="font-ui text-xs leading-relaxed text-pf-muted">{address.addressLine}{address.landmark ? `, ${address.landmark}` : ""}</p>
+              <p className="font-ui text-xs text-pf-muted">{address.city}, {address.state} — {address.pincode}</p>
             </div>
           )}
         </div>
 
-        <div className="mt-8 grid gap-4 border border-mist/80 bg-surface/30 p-5 sm:grid-cols-3">
-          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Order ID</p><p className="mt-1 font-ui text-sm text-ink">{orderRef}</p></div>
-          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Order Date</p><p className="mt-1 font-ui text-sm text-ink">{formatOrderDate(order.createdAt)}</p></div>
-          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Payment</p><p className="mt-1 font-ui text-sm text-ink">{order.paymentMethod.label} · {payment.label}</p></div>
+        <div className="mt-8 grid gap-4 border border-pf-border/80 bg-pf-ivory/30 p-5 sm:grid-cols-3">
+          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Order ID</p><p className="mt-1 font-ui text-sm text-pf-text">{orderRef}</p></div>
+          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Order Date</p><p className="mt-1 font-ui text-sm text-pf-text">{formatOrderDate(order.createdAt)}</p></div>
+          <div><p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Payment</p><p className="mt-1 font-ui text-sm text-pf-text">{order.paymentMethod.label} · {payment.label}</p></div>
         </div>
 
         <table className="mt-8 w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-ink/20">
-              <th className="pb-3 font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Piece</th>
-              <th className="pb-3 text-center font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Qty</th>
-              <th className="pb-3 text-right font-ui text-[10px] uppercase tracking-[.2em] text-taupe">Amount</th>
+            <tr className="border-b border-pf-burgundy/20">
+              <th className="pb-3 font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Piece</th>
+              <th className="pb-3 text-center font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Qty</th>
+              <th className="pb-3 text-right font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">Amount</th>
             </tr>
           </thead>
           <tbody>
             {order.items.map((item) => (
-              <tr key={item.lineId} className="border-b border-mist/70">
+              <tr key={item.lineId} className="border-b border-pf-border/70">
                 <td className="py-3.5 pr-4">
-                  <p className="font-display text-base font-light text-ink">{item.name}</p>
-                  <p className="mt-0.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe">{[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"}</p>
+                  <p className="font-display text-base font-light text-pf-text">{item.name}</p>
+                  <p className="mt-0.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">{[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"}</p>
                 </td>
-                <td className="py-3.5 text-center font-ui text-xs text-graphite">{item.quantity}</td>
-                <td className="py-3.5 text-right font-ui text-xs text-ink">{formatINR(item.lineTotal)}</td>
+                <td className="py-3.5 text-center font-ui text-xs text-pf-muted">{item.quantity}</td>
+                <td className="py-3.5 text-right font-ui text-xs text-pf-text">{formatINR(item.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
@@ -198,12 +198,12 @@ export default function AdminOrderInvoice() {
             {order.pricing.couponDiscount > 0 && <Row label={`Offer · ${order.pricing.couponCode ?? "Applied"}`} value={`− ${formatINR(order.pricing.couponDiscount)}`} />}
             <Row label="Delivery" value={order.pricing.shipping === 0 ? "Complimentary" : formatINR(order.pricing.shipping)} />
             {order.pricing.codFee > 0 && <Row label="Cash on delivery fee" value={formatINR(order.pricing.codFee)} />}
-            <div className="border-t border-ink/20 pt-3"><Row label="Total" value={formatINR(order.pricing.total)} strong /></div>
+            <div className="border-t border-pf-burgundy/20 pt-3"><Row label="Total" value={formatINR(order.pricing.total)} strong /></div>
           </dl>
         </div>
 
         <Rule width="w-full" tone="accent" className="my-8" />
-        <p className="font-ui text-[10px] uppercase leading-relaxed tracking-[.16em] text-taupe">{invoiceIssued ? "Rendered from the PRATIKSHYA FASHION order record. Not a tax invoice — no tax is charged or recorded on this order." : "No invoice has been issued for this order. This is a summary of the order record, not a tax invoice."}</p>
+        <p className="font-ui text-[10px] uppercase leading-relaxed tracking-[.16em] text-pf-muted">{invoiceIssued ? "Rendered from the PRATIKSHYA FASHION order record. Not a tax invoice — no tax is charged or recorded on this order." : "No invoice has been issued for this order. This is a summary of the order record, not a tax invoice."}</p>
       </div>
     </AdminPage>
   );

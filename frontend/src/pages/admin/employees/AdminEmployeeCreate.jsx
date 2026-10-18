@@ -126,11 +126,11 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
   return (
     <AdminPage
       eyebrow="People / Organization / New"
-      title={<>Add a <span className="italic text-accent">staff account.</span></>}
+      title={<>Add a <span className="italic text-pf-burgundy">staff account.</span></>}
       description="Create an account on the hierarchy. Available levels and delegable capabilities never exceed the signed-in creator's own authority — the server enforces the same ceiling."
     >
       {submitError ? (
-        <p role="alert" className="mb-6 border border-accent/40 bg-accent/5 px-4 py-3 font-ui text-sm text-accent">
+        <p role="alert" className="mb-6 border border-pf-gold-deep/40 bg-pf-burgundy/5 px-4 py-3 font-ui text-sm text-pf-burgundy">
           {submitError}
         </p>
       ) : null}
@@ -141,8 +141,8 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
           title="Where this account sits"
           action={
             <div className="text-right">
-              <p className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe">Employee ID</p>
-              <p className="mt-1 font-ui text-xs text-ink">Assigned when saved</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted">Employee ID</p>
+              <p className="mt-1 font-ui text-xs text-pf-text">Assigned when saved</p>
             </div>
           }
         >
@@ -159,8 +159,8 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
                   onClick={() => handleLevelChange(level)}
                   className={
                     isActive
-                      ? "border-ink bg-ink px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-ivory transition-colors"
-                      : "border-pearl bg-canvas px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink"
+                      ? "border-pf-burgundy bg-pf-burgundy px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-ivory transition-colors"
+                      : "border-pf-border bg-pf-card px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"
                   }
                 >
                   {meta.label}
@@ -172,11 +172,11 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
             })}
           </div>
           {creatableLevels.length === 0 ? (
-            <p className="mt-3 font-ui text-xs text-accent">
+            <p className="mt-3 font-ui text-xs text-pf-burgundy">
               Your account level cannot create accounts. Ask a higher-level account to grant access.
             </p>
           ) : null}
-          <p className="mt-3 font-ui text-[11px] leading-relaxed text-taupe">
+          <p className="mt-3 font-ui text-[11px] leading-relaxed text-pf-muted">
             A business role (e.g. Store Manager) is chosen with the assignment below; the account level above only
             determines authority. Existing credentials and the employee portal are unaffected.
           </p>
@@ -187,7 +187,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
           title={adminDomain ? "Account details" : "Employee details"}
         >
           <EmployeeForm values={draft} errors={errors} onChange={handleChange} idPrefix="admin-create-employee" adminDomain={adminDomain} hideStatus />
-          <p className="mt-5 border-l-2 border-accent pl-3 font-ui text-[11px] leading-relaxed text-taupe">
+          <p className="mt-5 border-l-2 border-pf-gold-deep pl-3 font-ui text-[11px] leading-relaxed text-pf-muted">
             A unique, deterministic employee ID and temporary password are generated when saved. The account holder must change that password on first sign-in.
           </p>
         </AdminPanel>
@@ -195,7 +195,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
         <AdminPanel eyebrow="Operational access" title={capabilityDriven ? "Delegated capabilities" : "Permissions"} bodyClassName="max-h-[62vh] overflow-y-auto">
           {capabilityDriven ? (
             <>
-              <label className="mb-4 flex items-start gap-3 font-ui text-sm text-ink">
+              <label className="mb-4 flex items-start gap-3 font-ui text-sm text-pf-text">
                 <input
                   type="checkbox"
                   checked={customPermissions}
@@ -208,12 +208,12 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
                 />
                 <span>
                   Assign a custom capability set
-                  <span className="mt-1 block text-[11px] text-taupe">
+                  <span className="mt-1 block text-[11px] text-pf-muted">
                     Off, the account inherits its Admin or business-role defaults. On, only the switches below apply — they do not add on top of the role catalogue.
                   </span>
                 </span>
               </label>
-              <p className="mb-4 font-ui text-[11px] leading-relaxed text-taupe">
+              <p className="mb-4 font-ui text-[11px] leading-relaxed text-pf-muted">
                 {ceiling === null
                   ? "All capability groups are available to delegate."
                   : "Rows you cannot see enabled are outside your own authority and cannot be delegated."}
@@ -233,7 +233,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
             </>
           ) : (
             <>
-              <label className="flex items-start gap-3 font-ui text-sm text-ink">
+              <label className="flex items-start gap-3 font-ui text-sm text-pf-text">
                 <input
                   type="checkbox"
                   checked={customPermissions}
@@ -246,12 +246,12 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
                 />
                 <span>
                   Customise operational permissions
-                  <span className="mt-1 block text-[11px] text-taupe">
+                  <span className="mt-1 block text-[11px] text-pf-muted">
                     Off, the new account simply inherits the selected role's established set.
                   </span>
                 </span>
               </label>
-              {errors.permissions ? <p className="mt-3 font-ui text-xs text-accent">{errors.permissions}</p> : null}
+              {errors.permissions ? <p className="mt-3 font-ui text-xs text-pf-burgundy">{errors.permissions}</p> : null}
               {customPermissions ? (
                 <PermissionMatrix
                   className="mt-6"
@@ -264,7 +264,7 @@ export default function AdminEmployeeCreate({ basePath } = {}) {
                   }
                 />
               ) : (
-                <p className="mt-4 font-ui text-xs text-taupe">
+                <p className="mt-4 font-ui text-xs text-pf-muted">
                   The selected role's established operational permission set will be used.
                 </p>
               )}

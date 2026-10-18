@@ -161,7 +161,7 @@ export default function AdminOffers() {
       eyebrow="Business / Offers"
       title={
         <>
-          Offers <span className="italic text-accent">& promotions.</span>
+          Offers <span className="italic text-pf-burgundy">& promotions.</span>
         </>
       }
       description="Coupons are backend-owned: this desk lists, filters and toggles the live coupon table. Eligibility at checkout is decided by the server's validation gate — never by this page."
@@ -173,11 +173,11 @@ export default function AdminOffers() {
     >
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {listError ? (
-          <p className="col-span-full font-ui text-xs text-accent" role="alert">
+          <p className="col-span-full font-ui text-xs text-pf-burgundy" role="alert">
             Tiles unavailable — {listError}
           </p>
         ) : !metrics ? (
-          <p className="col-span-full font-ui text-xs text-taupe">Loading offer counts from the server…</p>
+          <p className="col-span-full font-ui text-xs text-pf-muted">Loading offer counts from the server…</p>
         ) : (
           <>
             <AdminMetricCard label="Total Offers" value={metrics.total} hint="Every coupon record" />
@@ -200,7 +200,7 @@ export default function AdminOffers() {
       </div>
 
       {notice ? (
-        <p aria-live="polite" className="mb-5 border border-mist/80 bg-canvas px-4 py-3 font-ui text-sm text-ink">
+        <p aria-live="polite" className="mb-5 border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">
           {notice}
         </p>
       ) : null}
@@ -209,7 +209,7 @@ export default function AdminOffers() {
         eyebrow="Register"
         title="Offers"
         action={
-          <span className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+          <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
             {total} offer{total === 1 ? "" : "s"}{debouncedQuery ? ` matching “${debouncedQuery}”` : ""}
           </span>
         }
@@ -217,7 +217,7 @@ export default function AdminOffers() {
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end">
           <label className="relative flex-1">
             <span className="sr-only">Search offers</span>
-            <Search className="absolute left-3 top-3 text-taupe" size={15} aria-hidden="true" />
+            <Search className="absolute left-3 top-3 text-pf-muted" size={15} aria-hidden="true" />
             <input
               className={cn(employeeInputClass(), "pl-9")}
               placeholder="Search code or name (server-side)"
@@ -238,8 +238,8 @@ export default function AdminOffers() {
                 }}
                 className={
                   status === option.id
-                    ? "border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory"
-                    : "border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink"
+                    ? "border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory"
+                    : "border border-pf-border px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"
                 }
               >
                 {option.label}
@@ -249,12 +249,12 @@ export default function AdminOffers() {
         </div>
 
         {listError ? (
-          <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-accent/50 bg-canvas px-4 py-4">
-            <p className="font-ui text-sm text-accent">{listError}</p>
+          <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-pf-gold-deep/50 bg-pf-card px-4 py-4">
+            <p className="font-ui text-sm text-pf-burgundy">{listError}</p>
             <button
               type="button"
               onClick={load}
-              className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink hover:bg-ink hover:text-ivory"
+              className="border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text hover:bg-pf-burgundy hover:text-pf-ivory"
             >
               Retry
             </button>
@@ -264,7 +264,7 @@ export default function AdminOffers() {
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[920px] text-left">
             <thead>
-              <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+              <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                 {["Offer Code", "Name", "Type", "Discount", "Eligibility", "Start", "End", "Usage", "Status", "Actions"].map(
                   (heading) => (
                     <th key={heading} className="px-3 py-3" scope="col">
@@ -277,29 +277,29 @@ export default function AdminOffers() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center font-ui text-sm text-taupe">
+                  <td colSpan={10} className="py-12 text-center font-ui text-sm text-pf-muted">
                     Loading the offer register from the server…
                   </td>
                 </tr>
               ) : (
                 offers.map((offer) => (
-                  <tr key={offer.id} className="border-b border-mist/60 font-ui text-sm">
+                  <tr key={offer.id} className="border-b border-pf-border/60 font-ui text-sm">
                     <td className="px-3 py-4 font-medium">
-                      <Link to={`${prefix}/offers/${offer.id}`} className="underline-offset-4 hover:text-accent hover:underline">
+                      <Link to={`${prefix}/offers/${offer.id}`} className="underline-offset-4 hover:text-pf-burgundy hover:underline">
                         {offer.code}
                       </Link>
                     </td>
                     <td className="px-3 py-4">{offer.name}</td>
-                    <td className="px-3 py-4 text-taupe">{offer.type === "FIXED_AMOUNT" ? "Fixed" : offer.type === "FREE_SHIPPING" ? "Free shipping" : "Percent"}</td>
+                    <td className="px-3 py-4 text-pf-muted">{offer.type === "FIXED_AMOUNT" ? "Fixed" : offer.type === "FREE_SHIPPING" ? "Free shipping" : "Percent"}</td>
                     <td className="px-3 py-4">{formatOfferDiscount(offer)}</td>
-                    <td className="px-3 py-4 text-taupe">
+                    <td className="px-3 py-4 text-pf-muted">
                       {describeEligibility(offer)}
                       {offer.minimumOrderValue > 0 ? (
                         <span className="block text-[11px]">{formatINR(offer.minimumOrderValue)} minimum</span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-4 text-taupe">{formatShortDate(offer.startDate ?? offer.startsAt)}</td>
-                    <td className="px-3 py-4 text-taupe">{formatShortDate(offer.endDate ?? offer.expiresAt)}</td>
+                    <td className="px-3 py-4 text-pf-muted">{formatShortDate(offer.startDate ?? offer.startsAt)}</td>
+                    <td className="px-3 py-4 text-pf-muted">{formatShortDate(offer.endDate ?? offer.expiresAt)}</td>
                     <td className="px-3 py-4">{usageLabel(offer)}</td>
                     <td className="px-3 py-4">
                       <OfferStatusBadge status={offer.status ?? offer.displayStatus ?? OFFER_STATUS.DRAFT} />
@@ -308,7 +308,7 @@ export default function AdminOffers() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           to={`${prefix}/offers/${offer.id}/edit`}
-                          className="font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:text-accent"
+                          className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold-text hover:text-pf-burgundy"
                         >
                           Edit
                         </Link>
@@ -317,7 +317,7 @@ export default function AdminOffers() {
                             type="button"
                             disabled={busyId === offer.id}
                             onClick={() => runAction(offer, "activate")}
-                            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-ink disabled:opacity-40"
+                            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text disabled:opacity-40"
                           >
                             <Play size={11} aria-hidden="true" /> Activate
                           </button>
@@ -327,7 +327,7 @@ export default function AdminOffers() {
                             type="button"
                             disabled={busyId === offer.id}
                             onClick={() => runAction(offer, "pause")}
-                            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40"
+                            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted disabled:opacity-40"
                           >
                             <Pause size={11} aria-hidden="true" /> Pause
                           </button>
@@ -342,7 +342,7 @@ export default function AdminOffers() {
         </div>
 
         {!isLoading && !listError && !offers.length ? (
-          <p className="py-12 text-center font-ui text-sm text-taupe">
+          <p className="py-12 text-center font-ui text-sm text-pf-muted">
             {total === 0 && !debouncedQuery && status === "ALL"
               ? "No offers exist on the server yet — create the first coupon."
               : "No offers match the current search/status filters."}
@@ -350,7 +350,7 @@ export default function AdminOffers() {
         ) : null}
 
         {!isLoading && !listError && total > pageSize ? (
-          <div className="mt-5 flex items-center justify-between font-ui text-[11px] text-taupe">
+          <div className="mt-5 flex items-center justify-between font-ui text-[11px] text-pf-muted">
             <p>
               Page {page} of {totalPages} · {total} offer{total === 1 ? "" : "s"}
             </p>
@@ -359,7 +359,7 @@ export default function AdminOffers() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
-                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+                className="border border-pf-border px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
               >
                 Previous
               </button>
@@ -367,7 +367,7 @@ export default function AdminOffers() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+                className="border border-pf-border px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
               >
                 Next
               </button>

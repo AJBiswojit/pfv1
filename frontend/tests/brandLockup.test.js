@@ -35,10 +35,12 @@ const footerSource = readFileSync(
 );
 
 test("the canonical logo asset exists at the documented path", () => {
+  /* Phase 2: the homepage navbar asset is THE canonical mark for every
+     surface (storefront, staff portals, login). */
   assert.equal(
-    existsSync(join(ROOT, "src/assets/pratikshya_logo.webp")),
+    existsSync(join(ROOT, "public/design/pratikshya-logo.webp")),
     true,
-    "src/assets/pratikshya_logo.webp must be present"
+    "public/design/pratikshya-logo.webp must be present"
   );
 });
 
@@ -57,14 +59,14 @@ test("the active storefront header and footer use the shared logo components", (
   assert.match(footerSource, /<BrandMark/, "Storefront footer uses the shared BrandMark");
 });
 
-test("the Brand component resolves the logo through import.meta.glob, never a hardcoded path", () => {
-  assert.match(brandSource, /import\.meta\.glob/, "logo is resolved through Vite glob");
-  /* No surface may hard-code the logo address or image filename. */
-  assert.doesNotMatch(
-    brandSource,
-    /["'`]\/(?:images|assets|library)\//,
-    "no hardcoded image path in Brand"
-  );
+test("the Brand component renders the canonical homepage navbar logo asset", () => {
+  /* Phase 2 mandate: one canonical asset (`/design/pratikshya-logo.webp`,
+     the mark the homepage navbar renders) for every surface. The former
+     glob served a different file to the staff portals than the
+     homepage shows, so it must never return. */
+  assert.match(brandSource, /\/design\/pratikshya-logo\.webp/, "Brand uses the homepage navbar asset");
+  assert.doesNotMatch(brandSource, /import\.meta\.glob/, "no divergent glob-resolved logo");
+  assert.doesNotMatch(brandSource, /pratikshya_logo/, "no divergent bundled logo file");
 });
 
 test("the storefront header delegates its logo to the shared Logo component", () => {

@@ -112,12 +112,12 @@ export default function AdminProductReview() {
   return (
     <AdminPage
       eyebrow="Business / Products"
-      title={<>Product <span className="italic text-accent">review.</span></>}
+      title={<>Product <span className="italic text-pf-burgundy">review.</span></>}
       description="One workspace over one product lifecycle: every product waits in the same unified queue, is reviewed in the same detail, and moves only through the canonical approve, return and publish commands. Nothing reaches the storefront until it is approved and then explicitly published."
       actions={<AtelierButton as={Link} to={`${prefix}/products`} size="chip" variant="outline">Back to catalog</AtelierButton>}
     >
       {notice ? (
-        <p aria-live="polite" className={`mb-6 border px-4 py-3 font-ui text-sm ${notice.tone === "warn" ? "border-accent/60 bg-accent/5 text-accent" : "border-mist/80 bg-canvas text-ink"}`}>{notice.text}</p>
+        <p aria-live="polite" className={`mb-6 border px-4 py-3 font-ui text-sm ${notice.tone === "warn" ? "border-pf-gold-deep/60 bg-pf-burgundy/5 text-pf-burgundy" : "border-pf-border/80 bg-pf-card text-pf-text"}`}>{notice.text}</p>
       ) : null}
 
       {/* UNIFIED REVIEW QUEUE ------------------------------------------ */}
@@ -139,7 +139,7 @@ export default function AdminProductReview() {
           {focusedProductId ? (
             <ProductReviewDetail productId={focusedProductId} actor={actor} onNotice={setNotice} />
           ) : (
-            <p className="py-10 text-center font-ui text-sm text-taupe">
+            <p className="py-10 text-center font-ui text-sm text-pf-muted">
               Choose a product above to review it — identity, media, information, workflow, review
               flags and canonical validation all live in this one place.
             </p>
@@ -150,13 +150,13 @@ export default function AdminProductReview() {
       {/* MEDIA INBOX — media intake, a separate concern (unchanged) ----- */}
       <div className="mt-8">
         <AdminPanel eyebrow={`Media inbox · ${filteredInbox.length} of ${inbox.length}`} title="Media inbox">
-          <div className="mb-4 flex flex-wrap gap-1.5 border-b border-mist pb-4">
+          <div className="mb-4 flex flex-wrap gap-1.5 border-b border-pf-border pb-4">
             {INBOX_FILTERS.map((filter) => (
               <button
                 key={filter.id}
                 type="button"
                 onClick={() => { setInboxFilter(filter.id); setInboxVisible(INBOX_PAGE_SIZE); }}
-                className={`px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] transition-colors ${inboxFilter === filter.id ? "bg-ink text-ivory" : "text-taupe hover:bg-mist/60 hover:text-ink"}`}
+                className={`px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] transition-colors ${inboxFilter === filter.id ? "bg-pf-burgundy text-pf-ivory" : "text-pf-muted hover:bg-pf-border/60 hover:text-pf-text"}`}
                 aria-pressed={inboxFilter === filter.id}
               >
                 {filter.label}
@@ -165,7 +165,7 @@ export default function AdminProductReview() {
           </div>
 
           {!filteredInbox.length ? (
-            <p className="py-10 text-center font-ui text-sm text-taupe">Nothing in this inbox view. The atelier is in order.</p>
+            <p className="py-10 text-center font-ui text-sm text-pf-muted">Nothing in this inbox view. The atelier is in order.</p>
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -175,7 +175,7 @@ export default function AdminProductReview() {
               </div>
               {visibleInbox.length < filteredInbox.length ? (
                 <div className="mt-6 flex justify-center">
-                  <button type="button" onClick={() => setInboxVisible(v => v + INBOX_PAGE_SIZE)} className="border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink">
+                  <button type="button" onClick={() => setInboxVisible(v => v + INBOX_PAGE_SIZE)} className="border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text">
                     Load more · {filteredInbox.length - visibleInbox.length} remaining
                   </button>
                 </div>
@@ -196,18 +196,18 @@ export default function AdminProductReview() {
       {recentlyReviewed.length ? (
         <div className="mt-8">
           <AdminPanel eyebrow="Decisions" title="Recently reviewed">
-            <ul className="divide-y divide-mist/70">
+            <ul className="divide-y divide-pf-border/70">
               {recentlyReviewed.map((product) => (
                 <li key={product.id} className="flex flex-wrap items-center justify-between gap-3 px-1 py-3">
                   <div>
                     <button
                       type="button"
                       onClick={() => focusProduct(product.id)}
-                      className="font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
+                      className="font-ui text-sm text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline"
                     >
                       {product.name}
                     </button>
-                    <p className="font-ui text-[11px] text-taupe">{product.review?.reviewedBy ?? "—"} · {product.review?.reviewedAt ? formatEmployeeDateTime(product.review.reviewedAt) : ""}{product.review?.state === "REJECTED" && product.review?.rejectionReason ? ` — ${product.review.rejectionReason}` : ""}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">{product.review?.reviewedBy ?? "—"} · {product.review?.reviewedAt ? formatEmployeeDateTime(product.review.reviewedAt) : ""}{product.review?.state === "REJECTED" && product.review?.rejectionReason ? ` — ${product.review.rejectionReason}` : ""}</p>
                   </div>
                   <StatusBadge label={product.review?.state === "APPROVED" ? "Approved" : "Returned"} tone={product.review?.state === "APPROVED" ? "ink" : "danger"} />
                 </li>

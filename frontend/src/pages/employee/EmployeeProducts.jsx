@@ -94,7 +94,7 @@ function ProductWorkspace() {
       eyebrow="Catalogue"
       title={
         <>
-          The product <span className="italic text-accent">workspace.</span>
+          The product <span className="italic text-pf-burgundy">workspace.</span>
         </>
       }
       description="One shared catalogue. Draft pieces, complete their records and submit them for review — approved pieces reach the storefront."
@@ -113,15 +113,15 @@ function ProductWorkspace() {
           ["Drafts", counts.drafts],
           ["Pending review", counts.pending],
         ].map(([label, value]) => (
-          <div key={label} className="border border-mist bg-surface/30 p-4">
-            <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">{label}</p>
+          <div key={label} className="border border-pf-border bg-pf-ivory/30 p-4">
+            <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">{label}</p>
             <p className="mt-1 font-display text-2xl font-light">{value}</p>
           </div>
         ))}
       </div>
 
       {notice ? (
-        <p aria-live="polite" className="mb-5 border border-mist bg-surface/30 px-4 py-3 font-ui text-sm">
+        <p aria-live="polite" className="mb-5 border border-pf-border bg-pf-ivory/30 px-4 py-3 font-ui text-sm">
           {notice}
         </p>
       ) : null}
@@ -129,7 +129,7 @@ function ProductWorkspace() {
       <div className="mb-5 flex flex-col gap-3 sm:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Search products</span>
-          <Search className="absolute left-3 top-3 text-taupe" size={15} aria-hidden="true" />
+          <Search className="absolute left-3 top-3 text-pf-muted" size={15} aria-hidden="true" />
           <input
             aria-label="Search products"
             className={employeeInputClass() + " pl-9"}
@@ -183,24 +183,24 @@ function ProductWorkspace() {
               <div>
                 <Link
                   to={`/employee/products/${row.id}/edit`}
-                  className="font-ui text-sm font-medium underline-offset-4 hover:text-accent hover:underline"
+                  className="font-ui text-sm font-medium underline-offset-4 hover:text-pf-burgundy hover:underline"
                 >
                   {row.name}
                 </Link>
                 {row.review?.state === "REJECTED" && row.review.rejectionReason ? (
-                  <p className="mt-1 text-[11px] text-accent font-medium">Rejected: {row.review.rejectionReason}</p>
+                  <p className="mt-1 text-[11px] text-pf-burgundy font-medium">Rejected: {row.review.rejectionReason}</p>
                 ) : null}
               </div>
             ),
           },
-          { id: "sku", label: "SKU", render: (row) => <span className="font-mono text-xs text-taupe">{row.sku}</span> },
+          { id: "sku", label: "SKU", render: (row) => <span className="font-mono text-xs text-pf-muted">{row.sku}</span> },
           {
             id: "category",
             label: "Category",
             render: (row) => (
               <span>
                 {categoryLabels[row.category] ?? row.category ?? "—"}
-                {row.subcategory ? <span className="block text-[11px] text-taupe">{row.subcategory}</span> : null}
+                {row.subcategory ? <span className="block text-[11px] text-pf-muted">{row.subcategory}</span> : null}
               </span>
             ),
           },
@@ -220,7 +220,7 @@ function ProductWorkspace() {
                 <Link
                   to={`/employee/products/${row.id}/edit`}
                   aria-label={`Edit ${row.name}`}
-                  className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-brass-deep underline-offset-4 hover:text-accent hover:underline"
+                  className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-pf-gold-text-deep underline-offset-4 hover:text-pf-burgundy hover:underline"
                 >
                   <Pencil size={12} aria-hidden="true" /> Edit
                 </Link>
@@ -228,7 +228,7 @@ function ProductWorkspace() {
                   <button
                     type="button"
                     onClick={() => submit(row)}
-                    className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-accent underline-offset-4 hover:text-ink hover:underline"
+                    className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-pf-burgundy underline-offset-4 hover:text-pf-text hover:underline"
                   >
                     <UploadCloud size={12} aria-hidden="true" /> Submit
                   </button>
@@ -237,7 +237,7 @@ function ProductWorkspace() {
                   href={`/product/${row.slug}?preview=1`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-taupe underline-offset-4 hover:text-ink hover:underline"
+                  className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-widest text-pf-muted underline-offset-4 hover:text-pf-text hover:underline"
                 >
                   <Eye size={12} aria-hidden="true" /> Preview
                 </a>
@@ -263,13 +263,13 @@ function ProductSearch() {
       eyebrow="Catalogue"
       title={
         <>
-          Search the <span className="italic text-accent">house.</span>
+          Search the <span className="italic text-pf-burgundy">house.</span>
         </>
       }
       description="The same catalogue the storefront uses. Availability here is what the floor can promise today."
     >
       <div className="mb-6 max-w-md">
-        <label htmlFor="product-search" className="mb-2 block font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+        <label htmlFor="product-search" className="mb-2 block font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
           Product search
         </label>
         <input
@@ -293,7 +293,7 @@ function ProductSearch() {
             id: "open",
             label: "Storefront",
             render: (row) => (
-              <Link to={`/product/${row.slug}`} className="text-brass hover:text-accent">
+              <Link to={`/product/${row.slug}`} className="text-pf-gold-text hover:text-pf-burgundy">
                 View
               </Link>
             ),

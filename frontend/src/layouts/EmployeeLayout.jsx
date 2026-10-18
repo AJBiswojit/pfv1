@@ -33,7 +33,7 @@ export default function EmployeeLayout() {
     pathname !== "/employee/access-denied";
 
   return (
-    <div className="min-h-screen bg-pf-ivory text-pf-text font-display selection:bg-pf-gold/30">
+    <div className="pf-staff min-h-screen bg-pf-ivory text-pf-text font-ui selection:bg-pf-gold/30">
       <EmployeeHeader navOpen={navOpen} onToggleNav={toggleNav} menuButtonRef={triggerRef} />
 
       <PortalShell

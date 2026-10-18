@@ -32,7 +32,7 @@ function StatusBadge({ isActive }) {
         "inline-flex items-center gap-1 px-2 py-0.5 font-ui text-[10px] uppercase tracking-[.13em]",
         isActive
           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-          : "bg-surface text-taupe border border-mist/80",
+          : "bg-pf-ivory text-pf-muted border border-pf-border/80",
       )}
     >
       {isActive ? <CheckCircle2 size={10} /> : <X size={10} />}
@@ -43,7 +43,7 @@ function StatusBadge({ isActive }) {
 
 function TypeBadge({ type }) {
   return (
-    <span className="inline-block px-2 py-0.5 border border-mist/80 bg-surface font-ui text-[10px] uppercase tracking-[.13em] text-taupe">
+    <span className="inline-block px-2 py-0.5 border border-pf-border/80 bg-pf-ivory font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted">
       {type}
     </span>
   );
@@ -76,44 +76,44 @@ function InlineEditForm({ initial, onSave, onCancel, saving }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="border border-accent/20 bg-accent/5 p-4">
-      <p className="mb-4 font-ui text-[11px] uppercase tracking-[.18em] text-accent">
+    <form onSubmit={handleSubmit} noValidate className="border border-pf-gold-deep/20 bg-pf-burgundy/5 p-4">
+      <p className="mb-4 font-ui text-[11px] uppercase tracking-[.18em] text-pf-burgundy">
         Edit Warehouse
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Name */}
-        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
           Name *
           <input
             value={form.name}
             onChange={set("name")}
             placeholder="Main Warehouse"
             className={cn(
-              "mt-1.5 h-9 w-full border bg-canvas px-3 font-ui text-xs text-ink outline-none focus:border-accent",
-              errors.name ? "border-red-400" : "border-mist",
+              "mt-1.5 h-9 w-full border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep",
+              errors.name ? "border-red-400" : "border-pf-border",
             )}
           />
           {errors.name && <p className="mt-1 text-[10px] text-red-500">{errors.name}</p>}
         </label>
 
         {/* Code — immutable after creation */}
-        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
           Code
           <input
             value={form.code}
             disabled
-            className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs text-ink opacity-50 outline-none"
+            className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text opacity-50 outline-none"
           />
         </label>
 
         {/* Address */}
-        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+        <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
           Address
           <input
             value={form.address}
             onChange={set("address")}
             placeholder="123 Main St, City"
-            className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs text-ink outline-none focus:border-accent"
+            className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
           />
         </label>
       </div>
@@ -122,14 +122,14 @@ function InlineEditForm({ initial, onSave, onCancel, saving }) {
         <button
           type="submit"
           disabled={saving}
-          className="border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ivory hover:bg-ink/80 disabled:opacity-50"
+          className="border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory hover:bg-pf-burgundy/80 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Update"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe hover:border-ink hover:text-ink"
+          className="border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
         >
           Cancel
         </button>
@@ -216,7 +216,7 @@ export default function AdminWarehouses() {
       eyebrow="Inventory / Warehouses"
       title={
         <>
-          Warehouse <span className="italic text-accent">management.</span>
+          Warehouse <span className="italic text-pf-burgundy">management.</span>
         </>
       }
       description="Create and manage physical and virtual warehouse locations. Warehouses are referenced by all stock records and transfers."
@@ -224,7 +224,7 @@ export default function AdminWarehouses() {
         <button
           type="button"
           onClick={() => navigate(`${prefix}/warehouses/new`)}
-          className="inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80"
+          className="inline-flex items-center gap-2 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80"
         >
           <Plus size={13} /> New Warehouse
         </button>
@@ -237,7 +237,7 @@ export default function AdminWarehouses() {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="mb-4 flex items-center gap-2 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="mb-4 flex items-center gap-2 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           <AlertTriangle size={13} /> {actionError}
         </div>
       )}
@@ -247,7 +247,7 @@ export default function AdminWarehouses() {
         title={`Warehouses (${total})`}
         bodyClassName="px-0 py-0 sm:px-0"
         action={
-          <label className="flex cursor-pointer items-center gap-2 font-ui text-[10px] uppercase tracking-[.13em] text-taupe">
+          <label className="flex cursor-pointer items-center gap-2 font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted">
             <input
               type="checkbox"
               checked={includeInactive}
@@ -260,14 +260,14 @@ export default function AdminWarehouses() {
       >
         {/* Loading */}
         {loading && (
-          <p role="status" aria-live="polite" aria-busy="true" className="px-4 py-6 font-ui text-sm text-taupe">
+          <p role="status" aria-live="polite" aria-busy="true" className="px-4 py-6 font-ui text-sm text-pf-muted">
             Loading warehouses…
           </p>
         )}
 
         {/* Error */}
         {!loading && error && (
-          <div role="alert" className="px-4 py-4 font-ui text-sm text-accent">
+          <div role="alert" className="px-4 py-4 font-ui text-sm text-pf-burgundy">
             {error}
             <button
               type="button"
@@ -282,12 +282,12 @@ export default function AdminWarehouses() {
         {/* Empty state */}
         {!loading && !error && warehouses.length === 0 && (
           <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-            <Building2 size={32} className="text-mist" />
-            <p className="font-ui text-sm text-taupe">No warehouses yet.</p>
+            <Building2 size={32} className="text-pf-border" />
+            <p className="font-ui text-sm text-pf-muted">No warehouses yet.</p>
             <button
               type="button"
               onClick={() => navigate(`${prefix}/warehouses/new`)}
-              className="font-ui text-[11px] uppercase tracking-[.14em] text-accent underline-offset-2 hover:underline"
+              className="font-ui text-[11px] uppercase tracking-[.14em] text-pf-burgundy underline-offset-2 hover:underline"
             >
               Create the first warehouse
             </button>
@@ -299,12 +299,12 @@ export default function AdminWarehouses() {
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left">
-                <thead className="border-b border-mist/80 bg-canvas/80">
+                <thead className="border-b border-pf-border/80 bg-pf-card/80">
                   <tr>
                     {["Name", "Code", "Type", "Address", "Status", "Actions"].map((h) => (
                       <th
                         key={h}
-                        className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                        className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                       >
                         {h}
                       </th>
@@ -313,7 +313,7 @@ export default function AdminWarehouses() {
                 </thead>
                 <tbody>
                   {warehouses.map((wh) => (
-                    <tr key={wh.id} className="border-b border-mist/50 last:border-0 hover:bg-surface/30">
+                    <tr key={wh.id} className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30">
                       {editingId === wh.id ? (
                         <td colSpan={6} className="px-4 py-3">
                           <InlineEditForm
@@ -330,22 +330,22 @@ export default function AdminWarehouses() {
                             <button
                               type="button"
                               onClick={() => navigate(`${prefix}/warehouses/${wh.id}`)}
-                              className="group inline-flex items-center gap-1 font-ui text-sm font-medium text-ink hover:text-accent"
+                              className="group inline-flex items-center gap-1 font-ui text-sm font-medium text-pf-text hover:text-pf-burgundy"
                             >
                               {wh.name}
                               <ChevronRight size={13} className="opacity-0 group-hover:opacity-60" />
                             </button>
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-taupe">{wh.code}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-pf-muted">{wh.code}</td>
                           <td className="px-4 py-3"><TypeBadge type={wh.type} /></td>
-                          <td className="px-4 py-3 font-ui text-xs text-taupe">{wh.address ?? "—"}</td>
+                          <td className="px-4 py-3 font-ui text-xs text-pf-muted">{wh.address ?? "—"}</td>
                           <td className="px-4 py-3"><StatusBadge isActive={wh.is_active} /></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <button
                                 type="button"
                                 onClick={() => { setEditingId(wh.id); setActionError(null); }}
-                                className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent"
+                                className="inline-flex items-center gap-1 font-ui text-[11px] text-pf-gold-text hover:text-pf-burgundy"
                               >
                                 <Pencil size={11} /> Edit
                               </button>
@@ -353,7 +353,7 @@ export default function AdminWarehouses() {
                                 type="button"
                                 onClick={() => handleToggleActive(wh)}
                                 disabled={saving}
-                                className="font-ui text-[11px] text-taupe hover:text-ink disabled:opacity-40"
+                                className="font-ui text-[11px] text-pf-muted hover:text-pf-text disabled:opacity-40"
                               >
                                 {wh.is_active ? "Disable" : "Enable"}
                               </button>
@@ -370,7 +370,7 @@ export default function AdminWarehouses() {
             {/* Cards — mobile */}
             <div className="grid gap-3 p-3 md:hidden">
               {warehouses.map((wh) => (
-                <div key={wh.id} className="border border-mist/70 bg-canvas p-4">
+                <div key={wh.id} className="border border-pf-border/70 bg-pf-card p-4">
                   {editingId === wh.id ? (
                     <InlineEditForm
                       initial={wh}
@@ -385,13 +385,13 @@ export default function AdminWarehouses() {
                           <button
                             type="button"
                             onClick={() => navigate(`${prefix}/warehouses/${wh.id}`)}
-                            className="font-ui text-sm font-medium text-ink hover:text-accent"
+                            className="font-ui text-sm font-medium text-pf-text hover:text-pf-burgundy"
                           >
                             {wh.name}
                           </button>
-                          <p className="mt-0.5 font-mono text-xs text-taupe">{wh.code}</p>
+                          <p className="mt-0.5 font-mono text-xs text-pf-muted">{wh.code}</p>
                           {wh.address && (
-                            <p className="mt-1 font-ui text-[11px] text-taupe">{wh.address}</p>
+                            <p className="mt-1 font-ui text-[11px] text-pf-muted">{wh.address}</p>
                           )}
                         </div>
                         <StatusBadge isActive={wh.is_active} />
@@ -402,7 +402,7 @@ export default function AdminWarehouses() {
                           <button
                             type="button"
                             onClick={() => { setEditingId(wh.id); setActionError(null); }}
-                            className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent"
+                            className="inline-flex items-center gap-1 font-ui text-[11px] text-pf-gold-text hover:text-pf-burgundy"
                           >
                             <Pencil size={11} /> Edit
                           </button>
@@ -410,7 +410,7 @@ export default function AdminWarehouses() {
                             type="button"
                             onClick={() => handleToggleActive(wh)}
                             disabled={saving}
-                            className="font-ui text-[11px] text-taupe hover:text-ink disabled:opacity-40"
+                            className="font-ui text-[11px] text-pf-muted hover:text-pf-text disabled:opacity-40"
                           >
                             {wh.is_active ? "Disable" : "Enable"}
                           </button>

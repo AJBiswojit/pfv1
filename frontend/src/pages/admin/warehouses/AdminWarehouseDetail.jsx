@@ -48,7 +48,7 @@ function StatusBadge({ isActive }) {
         "inline-flex items-center gap-1 px-2 py-0.5 font-ui text-[10px] uppercase tracking-[.13em]",
         isActive
           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-          : "bg-surface text-taupe border border-mist/80",
+          : "bg-pf-ivory text-pf-muted border border-pf-border/80",
       )}
     >
       {isActive ? <CheckCircle2 size={10} /> : <X size={10} />}
@@ -59,7 +59,7 @@ function StatusBadge({ isActive }) {
 
 function TypeBadge({ type }) {
   return (
-    <span className="inline-block px-2 py-0.5 border border-mist/80 bg-surface font-ui text-[10px] uppercase tracking-[.13em] text-taupe">
+    <span className="inline-block px-2 py-0.5 border border-pf-border/80 bg-pf-ivory font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted">
       {type}
     </span>
   );
@@ -93,9 +93,9 @@ function StockStatusBadge({ available, threshold }) {
 
 function MetricTile({ label, value, highlight = false }) {
   return (
-    <div className={cn("border p-4", highlight ? "border-accent/30 bg-accent/5" : "border-mist/80 bg-surface/40")}>
-      <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">{label}</p>
-      <p className={cn("mt-1 font-display text-2xl font-light", highlight ? "text-accent" : "text-ink")}>
+    <div className={cn("border p-4", highlight ? "border-pf-gold-deep/30 bg-pf-burgundy/5" : "border-pf-border/80 bg-pf-ivory/40")}>
+      <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">{label}</p>
+      <p className={cn("mt-1 font-display text-2xl font-light", highlight ? "text-pf-burgundy" : "text-pf-text")}>
         {value ?? "—"}
       </p>
     </div>
@@ -109,23 +109,23 @@ function MetricTile({ label, value, highlight = false }) {
 function Pagination({ page, totalPages, onPrev, onNext }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between border-t border-mist/60 px-4 py-3">
+    <div className="flex items-center justify-between border-t border-pf-border/60 px-4 py-3">
       <button
         type="button"
         onClick={onPrev}
         disabled={page <= 1}
-        className="font-ui text-[10px] uppercase tracking-[.13em] text-taupe hover:text-ink disabled:opacity-40"
+        className="font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted hover:text-pf-text disabled:opacity-40"
       >
         ← Prev
       </button>
-      <p className="font-ui text-[10px] text-taupe">
+      <p className="font-ui text-[10px] text-pf-muted">
         Page {page} of {totalPages}
       </p>
       <button
         type="button"
         onClick={onNext}
         disabled={page >= totalPages}
-        className="font-ui text-[10px] uppercase tracking-[.13em] text-taupe hover:text-ink disabled:opacity-40"
+        className="font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted hover:text-pf-text disabled:opacity-40"
       >
         Next →
       </button>
@@ -254,10 +254,10 @@ export default function AdminWarehouseDetail() {
     return (
       <AdminPage
         eyebrow="Inventory / Warehouses"
-        title={<>Warehouse <span className="italic text-accent">detail.</span></>}
+        title={<>Warehouse <span className="italic text-pf-burgundy">detail.</span></>}
         description=""
       >
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading warehouse…
         </p>
       </AdminPage>
@@ -268,19 +268,19 @@ export default function AdminWarehouseDetail() {
     return (
       <AdminPage
         eyebrow="Inventory / Warehouses"
-        title={<>Warehouse <span className="italic text-accent">detail.</span></>}
+        title={<>Warehouse <span className="italic text-pf-burgundy">detail.</span></>}
         description=""
         actions={
           <button
             type="button"
             onClick={() => navigate(`${prefix}/warehouses`)}
-            className="inline-flex items-center gap-2 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+            className="inline-flex items-center gap-2 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           >
             <ArrowLeft size={13} /> All warehouses
           </button>
         }
       >
-        <div role="alert" className="flex items-center gap-2 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="flex items-center gap-2 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           <AlertTriangle size={13} /> {whError}
           <button
             type="button"
@@ -300,7 +300,7 @@ export default function AdminWarehouseDetail() {
       title={
         <>
           {warehouse.name}{" "}
-          <span className="italic text-accent">detail.</span>
+          <span className="italic text-pf-burgundy">detail.</span>
         </>
       }
       description={warehouse.address ?? "No address recorded."}
@@ -309,14 +309,14 @@ export default function AdminWarehouseDetail() {
           <button
             type="button"
             onClick={() => navigate(`${prefix}/warehouses`)}
-            className="inline-flex items-center gap-2 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+            className="inline-flex items-center gap-2 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           >
             <ArrowLeft size={13} /> All warehouses
           </button>
           <button
             type="button"
             onClick={() => navigate(`${prefix}/warehouses/${warehouseId}/edit`)}
-            className="inline-flex items-center gap-2 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+            className="inline-flex items-center gap-2 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           >
             <Pencil size={13} /> Edit
           </button>
@@ -330,7 +330,7 @@ export default function AdminWarehouseDetail() {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="mb-4 flex items-center gap-2 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="mb-4 flex items-center gap-2 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           <AlertTriangle size={13} /> {actionError}
         </div>
       )}
@@ -341,20 +341,20 @@ export default function AdminWarehouseDetail() {
           {/* Left: metadata */}
           <dl className="grid gap-y-3 sm:grid-cols-2 lg:grid-cols-4 gap-x-8">
             <div>
-              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Code</dt>
-              <dd className="mt-1 font-mono text-sm text-ink">{warehouse.code}</dd>
+              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Code</dt>
+              <dd className="mt-1 font-mono text-sm text-pf-text">{warehouse.code}</dd>
             </div>
             <div>
-              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Type</dt>
+              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Type</dt>
               <dd className="mt-1"><TypeBadge type={warehouse.type} /></dd>
             </div>
             <div>
-              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Status</dt>
+              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Status</dt>
               <dd className="mt-1"><StatusBadge isActive={warehouse.is_active} /></dd>
             </div>
             <div>
-              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Address</dt>
-              <dd className="mt-1 font-ui text-sm text-ink">{warehouse.address ?? "—"}</dd>
+              <dt className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Address</dt>
+              <dd className="mt-1 font-ui text-sm text-pf-text">{warehouse.address ?? "—"}</dd>
             </div>
           </dl>
 
@@ -366,7 +366,7 @@ export default function AdminWarehouseDetail() {
               onClick={() =>
                 navigate(`${prefix}/inventory/transfers?fromWarehouseId=${warehouseId}`)
               }
-              className="inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80"
+              className="inline-flex items-center gap-2 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80"
             >
               <ArrowLeftRight size={13} /> Create transfer
             </button>
@@ -377,7 +377,7 @@ export default function AdminWarehouseDetail() {
               className={cn(
                 "border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] disabled:opacity-40",
                 warehouse.is_active
-                  ? "border-mist text-taupe hover:border-accent hover:text-accent"
+                  ? "border-pf-border text-pf-muted hover:border-pf-gold-deep hover:text-pf-burgundy"
                   : "border-emerald-200 text-emerald-700 hover:bg-emerald-50",
               )}
             >
@@ -405,7 +405,7 @@ export default function AdminWarehouseDetail() {
             type="button"
             onClick={loadStock}
             aria-label="Refresh stock"
-            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.13em] text-taupe hover:text-ink"
+            className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted hover:text-pf-text"
           >
             <RefreshCw size={11} /> Refresh
           </button>
@@ -413,14 +413,14 @@ export default function AdminWarehouseDetail() {
       >
         {/* Loading */}
         {stockLoading && (
-          <p role="status" aria-live="polite" aria-busy="true" className="px-4 py-6 font-ui text-sm text-taupe">
+          <p role="status" aria-live="polite" aria-busy="true" className="px-4 py-6 font-ui text-sm text-pf-muted">
             Loading stock…
           </p>
         )}
 
         {/* Error */}
         {!stockLoading && stockError && (
-          <div role="alert" className="flex items-center gap-2 px-4 py-4 font-ui text-sm text-accent">
+          <div role="alert" className="flex items-center gap-2 px-4 py-4 font-ui text-sm text-pf-burgundy">
             <AlertTriangle size={14} /> {stockError}
             <button
               type="button"
@@ -435,9 +435,9 @@ export default function AdminWarehouseDetail() {
         {/* Empty state */}
         {!stockLoading && !stockError && stockItems.length === 0 && (
           <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-            <PackageOpen size={32} className="text-mist" />
-            <p className="font-ui text-sm text-taupe">No stock records at this warehouse.</p>
-            <p className="font-ui text-[11px] text-taupe/70">
+            <PackageOpen size={32} className="text-pf-border" />
+            <p className="font-ui text-sm text-pf-muted">No stock records at this warehouse.</p>
+            <p className="font-ui text-[11px] text-pf-muted/70">
               Use Receive or a Transfer to add stock here.
             </p>
           </div>
@@ -448,12 +448,12 @@ export default function AdminWarehouseDetail() {
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-left">
-                <thead className="border-b border-mist/80 bg-canvas/80">
+                <thead className="border-b border-pf-border/80 bg-pf-card/80">
                   <tr>
                     {["SKU", "Product", "On Hand", "Reserved", "Available", "Low Threshold", "Status"].map((h) => (
                       <th
                         key={h}
-                        className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                        className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                       >
                         {h}
                       </th>
@@ -470,24 +470,24 @@ export default function AdminWarehouseDetail() {
                     return (
                       <tr
                         key={item.id ?? item.sku}
-                        className="border-b border-mist/50 last:border-0 hover:bg-surface/30"
+                        className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30"
                       >
-                        <td className="px-4 py-3 font-mono text-xs text-taupe">
+                        <td className="px-4 py-3 font-mono text-xs text-pf-muted">
                           {item.sku ?? "—"}
                         </td>
-                        <td className="px-4 py-3 font-ui text-sm text-ink">
+                        <td className="px-4 py-3 font-ui text-sm text-pf-text">
                           {item.product_name ?? item.product?.name ?? "—"}
                         </td>
-                        <td className="px-4 py-3 font-ui text-sm text-ink tabular-nums">
+                        <td className="px-4 py-3 font-ui text-sm text-pf-text tabular-nums">
                           {onHand}
                         </td>
-                        <td className="px-4 py-3 font-ui text-sm text-taupe tabular-nums">
+                        <td className="px-4 py-3 font-ui text-sm text-pf-muted tabular-nums">
                           {reserved}
                         </td>
-                        <td className="px-4 py-3 font-ui text-sm font-medium text-ink tabular-nums">
+                        <td className="px-4 py-3 font-ui text-sm font-medium text-pf-text tabular-nums">
                           {available}
                         </td>
-                        <td className="px-4 py-3 font-ui text-sm text-taupe tabular-nums">
+                        <td className="px-4 py-3 font-ui text-sm text-pf-muted tabular-nums">
                           {threshold ?? "—"}
                         </td>
                         <td className="px-4 py-3">
@@ -509,13 +509,13 @@ export default function AdminWarehouseDetail() {
                 const threshold = item.low_stock_threshold ?? null;
 
                 return (
-                  <div key={item.id ?? item.sku} className="border border-mist/70 bg-canvas p-4">
+                  <div key={item.id ?? item.sku} className="border border-pf-border/70 bg-pf-card p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-ui text-sm font-medium text-ink">
+                        <p className="font-ui text-sm font-medium text-pf-text">
                           {item.product_name ?? item.product?.name ?? "—"}
                         </p>
-                        <p className="mt-0.5 font-mono text-xs text-taupe">{item.sku ?? "—"}</p>
+                        <p className="mt-0.5 font-mono text-xs text-pf-muted">{item.sku ?? "—"}</p>
                       </div>
                       <StockStatusBadge available={available} threshold={threshold} />
                     </div>
@@ -526,17 +526,17 @@ export default function AdminWarehouseDetail() {
                         { label: "Available", value: available },
                       ].map(({ label, value }) => (
                         <div key={label}>
-                          <p className="font-ui text-[9px] uppercase tracking-[.13em] text-taupe">
+                          <p className="font-ui text-[9px] uppercase tracking-[.13em] text-pf-muted">
                             {label}
                           </p>
-                          <p className="mt-0.5 font-ui text-sm font-medium text-ink tabular-nums">
+                          <p className="mt-0.5 font-ui text-sm font-medium text-pf-text tabular-nums">
                             {value}
                           </p>
                         </div>
                       ))}
                     </div>
                     {threshold != null && (
-                      <p className="mt-2 font-ui text-[10px] text-taupe">
+                      <p className="mt-2 font-ui text-[10px] text-pf-muted">
                         Low threshold: {threshold}
                       </p>
                     )}

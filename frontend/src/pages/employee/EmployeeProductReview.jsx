@@ -40,8 +40,8 @@ import { formatINR } from "../../utils/shopping";
 import { reviewFlagLabel } from "../../services/productReviewFlags";
 
 const fieldClass =
-  "w-full border border-mist bg-canvas px-3 py-2 font-ui text-sm outline-none focus:border-accent";
-const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-taupe";
+  "w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-sm outline-none focus:border-pf-gold-deep";
+const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted";
 const statusTone = { PUBLISHED: "ink", PENDING_REVIEW: "alert", DRAFT: "quiet", ARCHIVED: "muted" };
 
 export default function EmployeeProductReview() {
@@ -180,7 +180,7 @@ export default function EmployeeProductReview() {
       eyebrow="Catalogue / Products"
       title={
         <>
-          My assigned <span className="italic text-accent">products.</span>
+          My assigned <span className="italic text-pf-burgundy">products.</span>
         </>
       }
       description="Only the products assigned to you. Every product shows its complete media group — you never edit a product without seeing its imagery. Save as draft, then submit for review."
@@ -190,8 +190,8 @@ export default function EmployeeProductReview() {
           aria-live="polite"
           className={`mb-6 border px-4 py-3 font-ui text-sm ${
             notice.tone === "warn"
-              ? "border-accent/60 bg-accent/5 text-accent"
-              : "border-mist/80 bg-canvas text-ink"
+              ? "border-pf-gold-deep/60 bg-pf-burgundy/5 text-pf-burgundy"
+              : "border-pf-border/80 bg-pf-card text-pf-text"
           }`}
         >
           {notice.text}
@@ -199,9 +199,9 @@ export default function EmployeeProductReview() {
       ) : null}
 
       {!assigned.length ? (
-        <div className="border border-mist bg-canvas px-6 py-16 text-center">
-          <p className="font-display text-xl font-light text-ink">No assigned products yet.</p>
-          <p className="mx-auto mt-2 max-w-md font-ui text-sm text-taupe">
+        <div className="border border-pf-border bg-pf-card px-6 py-16 text-center">
+          <p className="font-display text-xl font-light text-pf-text">No assigned products yet.</p>
+          <p className="mx-auto mt-2 max-w-md font-ui text-sm text-pf-muted">
             When an admin assigns a product draft to you, it appears here with its complete
             image preview.
           </p>
@@ -210,7 +210,7 @@ export default function EmployeeProductReview() {
         <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
           {/* Assigned list ------------------------------------------- */}
           <aside className="space-y-2">
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-taupe">
+            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-muted">
               Assigned to you · {assigned.length}
             </p>
             {assigned.map((product) => (
@@ -220,14 +220,14 @@ export default function EmployeeProductReview() {
                 onClick={() => setSearchParams({ product: product.id })}
                 className={`w-full border px-3 py-2.5 text-left transition-colors ${
                   selected?.id === product.id
-                    ? "border-ink bg-canvas"
-                    : "border-mist bg-canvas/60 hover:border-ink/50"
+                    ? "border-pf-burgundy bg-pf-card"
+                    : "border-pf-border bg-pf-card/60 hover:border-pf-burgundy/50"
                 }`}
               >
-                <span className="block font-ui text-xs font-medium text-ink">
+                <span className="block font-ui text-xs font-medium text-pf-text">
                   {product.id}
                 </span>
-                <span className="block truncate font-ui text-[11px] text-taupe">
+                <span className="block truncate font-ui text-[11px] text-pf-muted">
                   {product.name?.trim() || "[Not yet defined]"}
                 </span>
                 <span className="mt-1 block">
@@ -243,24 +243,24 @@ export default function EmployeeProductReview() {
           {/* Workspace ----------------------------------------------- */}
           <section className="min-w-0">
             {!canEdit ? (
-              <div className="border border-accent/50 bg-accent/5 px-6 py-10 text-center">
-                <p className="font-display text-xl font-light text-ink">
+              <div className="border border-pf-gold-deep/50 bg-pf-burgundy/5 px-6 py-10 text-center">
+                <p className="font-display text-xl font-light text-pf-text">
                   You are not authorized to edit {selected?.id ?? "this product"}.
                 </p>
-                <p className="mx-auto mt-2 max-w-md font-ui text-sm text-taupe">
+                <p className="mx-auto mt-2 max-w-md font-ui text-sm text-pf-muted">
                   Only the employee the product is assigned to may edit it. Choose one of your
                   assigned products on the left.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 border border-mist bg-canvas px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border border-pf-border bg-pf-card px-4 py-3">
                   <div>
-                    <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">
+                    <p className="font-ui text-[10px] uppercase tracking-[.24em] text-pf-burgundy">
                       Product ID · {selected.id}
                     </p>
-                    <p className="font-display text-xl font-light text-ink">
-                      {selected.name?.trim() || <span className="text-taupe">[Not yet defined]</span>}
+                    <p className="font-display text-xl font-light text-pf-text">
+                      {selected.name?.trim() || <span className="text-pf-muted">[Not yet defined]</span>}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -280,39 +280,39 @@ export default function EmployeeProductReview() {
                 </div>
 
                 {/* Media, taxonomy & hover facts ---------------------- */}
-                <dl className="grid gap-x-6 gap-y-1 border border-mist bg-canvas px-4 py-3 font-ui text-[11px] text-taupe sm:grid-cols-2 lg:grid-cols-3">
+                <dl className="grid gap-x-6 gap-y-1 border border-pf-border bg-pf-card px-4 py-3 font-ui text-[11px] text-pf-muted sm:grid-cols-2 lg:grid-cols-3">
                   <div className="flex gap-2">
-                    <dt className="uppercase tracking-[.14em] text-taupe/70">Media file</dt>
-                    <dd className="text-ink">{primaryFileName ?? "—"}</dd>
+                    <dt className="uppercase tracking-[.14em] text-pf-muted/70">Media file</dt>
+                    <dd className="text-pf-text">{primaryFileName ?? "—"}</dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="uppercase tracking-[.14em] text-taupe/70">Category</dt>
-                    <dd className="text-ink">{selected.category || "—"}</dd>
+                    <dt className="uppercase tracking-[.14em] text-pf-muted/70">Category</dt>
+                    <dd className="text-pf-text">{selected.category || "—"}</dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="uppercase tracking-[.14em] text-taupe/70">Subcategory</dt>
-                    <dd className={selected.subcategory ? "text-ink" : "text-accent"}>
+                    <dt className="uppercase tracking-[.14em] text-pf-muted/70">Subcategory</dt>
+                    <dd className={selected.subcategory ? "text-pf-text" : "text-pf-burgundy"}>
                       {selected.subcategory || "SUBCATEGORY REVIEW REQUIRED"}
                     </dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="uppercase tracking-[.14em] text-taupe/70">Assignment</dt>
-                    <dd className="text-ink">
+                    <dt className="uppercase tracking-[.14em] text-pf-muted/70">Assignment</dt>
+                    <dd className="text-pf-text">
                       {selected.assignedEmployeeId ?? "—"}
                     </dd>
                   </div>
                   {hover ? (
                     <div className="flex gap-2">
-                      <dt className="uppercase tracking-[.14em] text-taupe/70">Hover</dt>
-                      <dd className="text-ink">
+                      <dt className="uppercase tracking-[.14em] text-pf-muted/70">Hover</dt>
+                      <dd className="text-pf-text">
                         {hover.changesOnHover ? hover.hoverFile : "no change (single image)"}
                       </dd>
                     </div>
                   ) : null}
                   {selected.reviewFlags?.length ? (
                     <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
-                      <dt className="uppercase tracking-[.14em] text-taupe/70">Review flags</dt>
-                      <dd className="text-accent">
+                      <dt className="uppercase tracking-[.14em] text-pf-muted/70">Review flags</dt>
+                      <dd className="text-pf-burgundy">
                         {selected.reviewFlags.map((flag) => reviewFlagLabel(flag)).join(" · ")}
                       </dd>
                     </div>
@@ -328,7 +328,7 @@ export default function EmployeeProductReview() {
 
                 {/* Editable fields ------------------------------------ */}
                 {draft ? (
-                  <div className="space-y-4 border border-mist bg-canvas p-4">
+                  <div className="space-y-4 border border-pf-border bg-pf-card p-4">
                     <div>
                       <label htmlFor={`emp-name-${selected.id}`} className={labelClass}>
                         Product name
@@ -341,7 +341,7 @@ export default function EmployeeProductReview() {
                         className={fieldClass}
                       />
                       {nameNeedsReview ? (
-                        <p className="mt-1 font-ui text-[10px] uppercase tracking-[.12em] text-accent">
+                        <p className="mt-1 font-ui text-[10px] uppercase tracking-[.12em] text-pf-burgundy">
                           Name review required — this name reads like another department&apos;s product.
                           Describe the actual product.
                         </p>
@@ -457,11 +457,11 @@ export default function EmployeeProductReview() {
                     </div>
 
                     {issues.length ? (
-                      <div className="border border-accent/40 bg-accent/5 px-3 py-2">
-                        <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent">
+                      <div className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-3 py-2">
+                        <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy">
                           Still needed before publishing
                         </p>
-                        <ul className="mt-1 list-disc pl-4 font-ui text-[11px] text-ink/80">
+                        <ul className="mt-1 list-disc pl-4 font-ui text-[11px] text-pf-text/80">
                           {issues.map((issue) => (
                             <li key={issue}>{issue}</li>
                           ))}
@@ -469,12 +469,12 @@ export default function EmployeeProductReview() {
                       </div>
                     ) : null}
 
-                    <div className="flex flex-wrap items-center gap-2 border-t border-mist pt-4">
+                    <div className="flex flex-wrap items-center gap-2 border-t border-pf-border pt-4">
                       <button
                         type="button"
                         disabled={busy}
                         onClick={save}
-                        className="inline-flex items-center gap-1.5 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ivory transition-colors hover:bg-transparent hover:text-ink disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory transition-colors hover:bg-transparent hover:text-pf-text disabled:opacity-40"
                       >
                         <Save size={11} aria-hidden="true" /> Save Draft
                       </button>
@@ -482,13 +482,13 @@ export default function EmployeeProductReview() {
                         type="button"
                         disabled={busy}
                         onClick={submit}
-                        className="inline-flex items-center gap-1.5 border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ink transition-colors hover:bg-ink hover:text-ivory disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 border border-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory disabled:opacity-40"
                       >
                         <ArrowRight size={11} aria-hidden="true" /> Submit for Review
                       </button>
                     </div>
 
-                    <p className="font-ui text-[10px] leading-relaxed text-taupe/70">
+                    <p className="font-ui text-[10px] leading-relaxed text-pf-muted/70">
                       You can edit name, category, subcategory, price, compare-at price and
                       description. Publishing, media ownership and assignment stay with the
                       admin review desk.

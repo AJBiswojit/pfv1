@@ -20,7 +20,7 @@ const fields = [
   ['title', 'Title'], ['subtitle', 'Subtitle'], ['ctaLabel', 'CTA label'],
   ['ctaHref', 'CTA destination'], ['altText', 'Media alt text'],
 ];
-const button = 'border border-mist bg-canvas px-3 py-2 text-xs disabled:opacity-40';
+const button = 'border border-pf-border bg-pf-card px-3 py-2 text-xs disabled:opacity-40';
 
 export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentType = 'MEDIA', onDirtyChange, actor }) {
   const { admin: sessionAdmin } = useAdminAuth();
@@ -107,23 +107,23 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
       <button type="button" className={button} disabled={busy} onClick={() => { if (discard()) { resetForm(); load(); } }}>Refresh placement</button>
       {access.create && contentType === 'MEDIA' && <button type="button" className={button} disabled={busy} onClick={() => beginEdit()}>Add registered media</button>}
     </div>}>
-    <p className="mb-4 text-xs text-taupe">Changes save to the existing marketing-media backend. New entries start inactive. Text belongs to a media entry, not a standalone section. {placement === 'HOME_HERO' ? 'Blank title/CTA fields use existing backend defaults. Public /home does not expose altText.' : 'Saved here does not mean displayed on the customer storefront; this section does not consume these placement rows yet.'}</p>
+    <p className="mb-4 text-xs text-pf-muted">Changes save to the existing marketing-media backend. New entries start inactive. Text belongs to a media entry, not a standalone section. {placement === 'HOME_HERO' ? 'Blank title/CTA fields use existing backend defaults. Public /home does not expose altText.' : 'Saved here does not mean displayed on the customer storefront; this section does not consume these placement rows yet.'}</p>
     {message && <p role={message.type === 'error' ? 'alert' : 'status'} className={`mb-4 border p-3 text-sm ${message.type === 'error' ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'}`}>{message.text}</p>}
     {state.status === 'loading' ? <p role="status">Loading {placement} from backend…</p> : state.status === 'error' ?
       <div role="alert"><p>Placement reload failed: {state.error}</p><p>No fallback content or saved state is inferred from this error.</p><button type="button" className={button} onClick={load} disabled={busy}>Retry placement</button></div> :
       <>
         <p className="mb-3 text-xs">{state.items.length} saved entries · {state.items.filter((item) => item.isActive).length} active</p>
-        {!state.items.length && <p className="mb-4 border border-dashed border-mist p-6 text-sm">No saved entries. {placement === 'HOME_HERO' ? 'With no hero rows, the backend may return its canonical fallback. All-inactive configured rows intentionally hide the hero.' : 'No client content is substituted.'}</p>}
+        {!state.items.length && <p className="mb-4 border border-dashed border-pf-border p-6 text-sm">No saved entries. {placement === 'HOME_HERO' ? 'With no hero rows, the backend may return its canonical fallback. All-inactive configured rows intentionally hide the hero.' : 'No client content is substituted.'}</p>}
         <ul className="grid gap-3 lg:grid-cols-2">
           {state.items.map((item, index) => {
             const rawUrl = item.url || '';
             const url = isSafeMediaUrl(rawUrl) ? resolveMediaUrl(rawUrl) : '';
-            return <li key={item.id} className="min-w-0 border border-mist bg-canvas p-3">
+            return <li key={item.id} className="min-w-0 border border-pf-border bg-pf-card p-3">
               {contentType === 'MEDIA' && url && <img src={url} alt={item.altText || ''} className="mb-3 h-32 w-full object-cover" loading="lazy" />}
               {!url && <p className="text-xs text-amber-900">No safe media preview available.</p>}
               <p className="font-display text-lg">{item.title || 'Untitled entry'}</p>
               <p className="text-sm">{item.subtitle}</p>
-              <p className="break-all text-xs text-taupe">{item.objectKey} · {item.isActive ? 'Active' : 'Inactive'} · saved</p>
+              <p className="break-all text-xs text-pf-muted">{item.objectKey} · {item.isActive ? 'Active' : 'Inactive'} · saved</p>
               <p className="break-all text-xs">CTA: {item.ctaLabel || '—'} → {item.ctaHref || '—'}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {access.edit && <>
@@ -140,13 +140,13 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
           })}
         </ul>
       </>}
-    {editing && <form onSubmit={handleSave} className="mt-5 space-y-4 border border-accent bg-canvas p-4">
+    {editing && <form onSubmit={handleSave} className="mt-5 space-y-4 border border-pf-gold-deep bg-pf-card p-4">
       <h3 className="font-display text-xl">{editing.id ? 'Edit saved entry' : 'New inactive media entry'}</h3>
       <p role="status" className="text-xs">{dirty ? 'Pending — unsaved changes' : 'No pending changes'} · {placement}</p>
       {contentType === 'MEDIA' && <RegisteredMediaPicker admin={admin} value={asset} disabled={busy} onChange={(value) => { setAsset(value); setDirty(true); }} />}
       <fieldset disabled={busy} className="grid gap-3 md:grid-cols-2">
         {fields.map(([key, label]) => <label key={key} className="text-xs">{label}
-          <input className="mt-1 block w-full border border-mist bg-surface p-2 text-sm" value={draft[key]} onChange={(e) => { setDraft((old) => ({ ...old, [key]: e.target.value })); setDirty(true); }} />
+          <input className="mt-1 block w-full border border-pf-border bg-pf-ivory p-2 text-sm" value={draft[key]} onChange={(e) => { setDraft((old) => ({ ...old, [key]: e.target.value })); setDirty(true); }} />
         </label>)}
       </fieldset>
       <div className="flex gap-3">

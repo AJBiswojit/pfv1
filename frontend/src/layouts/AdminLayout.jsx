@@ -5,32 +5,38 @@ import { LoadingState, PageTransition } from "../design-system";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import PortalShell from "../components/navigation/PortalShell";
+import StaffDeskErrorBoundary from "../components/navigation/StaffDeskErrorBoundary";
 import usePortalDrawer from "../components/navigation/usePortalDrawer";
 import usePortalSidebarCollapse from "../components/navigation/usePortalSidebarCollapse";
+import { useAdminAuth } from "../context/AdminAuthContext";
 
 /**
  * The Admin shell.
  *
  * Desktop keeps a persistent sidebar that can collapse to an icon rail;
- * tablet and mobile use a drawer over a scrim. The header is the only
- * ink-dark band — content sits on the Atelier canvas so the portal still
- * reads as PRATIKSHYA FASHION rather than a generic dashboard chrome.
+ * tablet and mobile use a drawer over a scrim. Content sits on the warm
+ * ivory staff canvas (`.pf-staff` scope) under the burgundy masthead.
+ * Each desk renders inside StaffDeskErrorBoundary so one failing view
+ * can never white-screen the whole portal.
  */
 export default function AdminLayout() {
   const { pathname } = useLocation();
+  const { isSuperAdmin } = useAdminAuth();
   const { navOpen, toggleNav, closeNav, triggerRef, drawerRef } = usePortalDrawer();
   const { collapsed, toggleCollapsed } = usePortalSidebarCollapse("admin");
 
   useEffect(() => {
     const previous = document.title;
-    document.title = "Admin Portal — PRATIKSHYA FASHION";
+    document.title = isSuperAdmin
+      ? "Super Admin — PRATIKSHYA FASHION"
+      : "Admin Portal — PRATIKSHYA FASHION";
     return () => {
       document.title = previous;
     };
-  }, []);
+  }, [isSuperAdmin]);
 
   return (
-    <div className="min-h-screen bg-pf-ivory font-display text-pf-text selection:bg-pf-gold/30">
+    <div className="pf-staff min-h-screen bg-pf-ivory font-ui text-pf-text selection:bg-pf-gold/30">
       <AdminHeader navOpen={navOpen} onToggleNav={toggleNav} menuButtonRef={triggerRef} />
 
       <PortalShell
@@ -53,7 +59,9 @@ export default function AdminLayout() {
         <AnimatePresence mode="wait" initial={false}>
           <PageTransition key={pathname} className="min-w-0 w-full max-w-full">
             <Suspense fallback={<LoadingState label="Opening this desk" />}>
-              <Outlet />
+              <StaffDeskErrorBoundary key={pathname}>
+                <Outlet />
+              </StaffDeskErrorBoundary>
             </Suspense>
           </PageTransition>
         </AnimatePresence>

@@ -60,7 +60,7 @@ export default function EmployeeReports() {
       eyebrow="Reports"
       title={
         <>
-          Store <span className="italic text-accent">reports.</span>
+          Store <span className="italic text-pf-burgundy">reports.</span>
         </>
       }
       description="The same analytics read-model as the Admin Portal, limited to the sections your role may see. Customers never see this desk."

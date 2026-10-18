@@ -124,24 +124,24 @@ export default function ProductGroupReviewPanel({ actor, onNotice }) {
   return (
     <div className="space-y-6">
       {!candidates.length ? (
-        <p className="py-10 text-center font-ui text-sm text-taupe">
+        <p className="py-10 text-center font-ui text-sm text-pf-muted">
           No group candidates. Every multi-view set in the library already follows the filename convention.
         </p>
       ) : null}
 
       {hasPending ? (
-        <p className="border border-accent/40 bg-accent/5 px-4 py-3 font-ui text-sm text-ink">
+        <p className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-4 py-3 font-ui text-sm text-pf-text">
           Similarity is a review signal only. The system never merges products on looks alone — a human decides whether these are photographs of ONE product or of different products.
         </p>
       ) : null}
 
       <ul className="grid gap-4 md:grid-cols-2">
         {candidates.map((group) => (
-          <li key={group.id} className="border border-mist bg-canvas">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-mist px-3 py-2">
+          <li key={group.id} className="border border-pf-border bg-pf-card">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-pf-border px-3 py-2">
               <div>
-                <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">{group.confirmed ? "Multi-view group" : "Potential same product"}</p>
-                <p className="font-ui text-[11px] text-taupe">{group.id}</p>
+                <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">{group.confirmed ? "Multi-view group" : "Potential same product"}</p>
+                <p className="font-ui text-[11px] text-pf-muted">{group.id}</p>
               </div>
               {group.existingProductId ? (<StatusBadge label={`Existing · ${group.existingProductId}`} tone="ink" />) : group.confirmed ? (<StatusBadge label="Filename group" tone="quiet" />) : (<StatusBadge label="Needs decision" tone="alert" />)}
             </div>
@@ -149,18 +149,18 @@ export default function ProductGroupReviewPanel({ actor, onNotice }) {
             <div className="grid grid-cols-3 gap-2 px-3 py-3">
               {group.media.slice(0, 3).map((row) => (
                 <figure key={row.mediaId} className="min-w-0">
-                  <div className="aspect-[4/5] w-full overflow-hidden border border-mist bg-ivory">
+                  <div className="aspect-[4/5] w-full overflow-hidden border border-pf-border bg-pf-ivory">
                     {row.src ? (<img src={row.src} alt="" className="h-full w-full object-cover" loading="lazy" />) : null}
                   </div>
-                  <figcaption className="mt-1 truncate text-center font-ui text-[10px] text-taupe">{row.file}</figcaption>
+                  <figcaption className="mt-1 truncate text-center font-ui text-[10px] text-pf-muted">{row.file}</figcaption>
                 </figure>
               ))}
             </div>
 
-            <div className="border-t border-mist px-3 py-2">
-              <p className="font-ui text-[11px] text-ink/80">{group.reason}</p>
+            <div className="border-t border-pf-border px-3 py-2">
+              <p className="font-ui text-[11px] text-pf-text/80">{group.reason}</p>
               {!group.confirmed ? (
-                <label className="mt-2 block font-ui text-[10px] uppercase tracking-[.12em] text-taupe">
+                <label className="mt-2 block font-ui text-[10px] uppercase tracking-[.12em] text-pf-muted">
                   Assign views to canonical Product
                   <select
                     value={group.existingProductId || productTargets[group.id] || ""}
@@ -169,7 +169,7 @@ export default function ProductGroupReviewPanel({ actor, onNotice }) {
                       ...current,
                       [group.id]: event.target.value,
                     }))}
-                    className="mt-1 block w-full border border-mist bg-canvas px-2 py-1.5 font-ui text-[11px] normal-case tracking-normal text-ink outline-none focus:border-accent disabled:opacity-60"
+                    className="mt-1 block w-full border border-pf-border bg-pf-card px-2 py-1.5 font-ui text-[11px] normal-case tracking-normal text-pf-text outline-none focus:border-pf-gold-deep disabled:opacity-60"
                   >
                     <option value="">Select an existing Product…</option>
                     {products.map((product) => (
@@ -178,22 +178,22 @@ export default function ProductGroupReviewPanel({ actor, onNotice }) {
                   </select>
                 </label>
               ) : (
-                <p className="mt-1 font-ui text-[10px] text-taupe">Existing Product: {group.existingProductId ?? "None"}</p>
+                <p className="mt-1 font-ui text-[10px] text-pf-muted">Existing Product: {group.existingProductId ?? "None"}</p>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 border-t border-mist px-3 py-2.5">
+            <div className="flex flex-wrap gap-1.5 border-t border-pf-border px-3 py-2.5">
               {!group.confirmed ? (
                 <>
-                  <button type="button" disabled={busy === group.id || !(group.existingProductId || productTargets[group.id])} onClick={() => decide(group, "SAME_PRODUCT", group.existingProductId || productTargets[group.id])} className={`border border-ink bg-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-ivory transition-colors hover:bg-transparent hover:text-ink disabled:cursor-not-allowed disabled:opacity-40`}>{busy === group.id ? "Assigning…" : "Assign views to Product"}</button>
-                  {!(group.existingProductId || productTargets[group.id]) ? (<Link to="/admin/products/new" className="border border-accent px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-accent transition-colors hover:bg-accent hover:text-ivory">Create Product First</Link>) : null}
-                  <button type="button" disabled={busy === group.id} onClick={() => decide(group, "SEPARATE_PRODUCTS")} className={`border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink ${busy ? "opacity-40" : ""}`}>Keep as separate products</button>
-                  <button type="button" disabled={busy === group.id} onClick={() => decide(group, "REVIEW_LATER")} className={`border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-taupe transition-colors hover:border-ink hover:text-ink ${busy ? "opacity-40" : ""}`}>Review later</button>
+                  <button type="button" disabled={busy === group.id || !(group.existingProductId || productTargets[group.id])} onClick={() => decide(group, "SAME_PRODUCT", group.existingProductId || productTargets[group.id])} className={`border border-pf-burgundy bg-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-ivory transition-colors hover:bg-transparent hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40`}>{busy === group.id ? "Assigning…" : "Assign views to Product"}</button>
+                  {!(group.existingProductId || productTargets[group.id]) ? (<Link to="/admin/products/new" className="border border-pf-gold-deep px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory">Create Product First</Link>) : null}
+                  <button type="button" disabled={busy === group.id} onClick={() => decide(group, "SEPARATE_PRODUCTS")} className={`border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text ${busy ? "opacity-40" : ""}`}>Keep as separate products</button>
+                  <button type="button" disabled={busy === group.id} onClick={() => decide(group, "REVIEW_LATER")} className={`border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text ${busy ? "opacity-40" : ""}`}>Review later</button>
                 </>
               ) : group.existingProductId ? (
-                <Link to={`/admin/products/${group.existingProductId}`} className="font-ui text-[11px] text-accent underline-offset-2 hover:underline">Open {group.existingProductId} →</Link>
+                <Link to={`/admin/products/${group.existingProductId}`} className="font-ui text-[11px] text-pf-burgundy underline-offset-2 hover:underline">Open {group.existingProductId} →</Link>
               ) : (
-                <span className="font-ui text-[11px] text-taupe">One product, {group.media.length} views — the naming convention groups these automatically.</span>
+                <span className="font-ui text-[11px] text-pf-muted">One product, {group.media.length} views — the naming convention groups these automatically.</span>
               )}
             </div>
           </li>
@@ -201,34 +201,34 @@ export default function ProductGroupReviewPanel({ actor, onNotice }) {
       </ul>
 
       {savedGroups.length ? (
-        <div className="border border-mist bg-canvas">
-          <div className="border-b border-mist px-4 py-3">
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Saved groups · {savedGroups.length}</p>
-            <p className="mt-1 font-ui text-[11px] text-taupe">Groups created or decided by hand. Move media between groups, split a group or merge two groups.</p>
+        <div className="border border-pf-border bg-pf-card">
+          <div className="border-b border-pf-border px-4 py-3">
+            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Saved groups · {savedGroups.length}</p>
+            <p className="mt-1 font-ui text-[11px] text-pf-muted">Groups created or decided by hand. Move media between groups, split a group or merge two groups.</p>
           </div>
-          <ul className="divide-y divide-mist/70">
+          <ul className="divide-y divide-pf-border/70">
             {savedGroups.map((group) => (
               <li key={group.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-ui text-sm text-ink">{group.id}</p>
-                    <p className="font-ui text-[10px] text-taupe">{group.mediaIds.length} media asset{group.mediaIds.length === 1 ? "" : "s"} · {group.decision ?? "no decision"} · {group.status}</p>
+                    <p className="truncate font-ui text-sm text-pf-text">{group.id}</p>
+                    <p className="font-ui text-[10px] text-pf-muted">{group.mediaIds.length} media asset{group.mediaIds.length === 1 ? "" : "s"} · {group.decision ?? "no decision"} · {group.status}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <AtelierButton type="button" size="chip" variant="outline" onClick={() => doSplit(group.id)} disabled={!!busy}><Scissors size={11} aria-hidden="true" className="mr-1" />{confirmAction === `split-${group.id}` ? "Confirm split" : "Split"}</AtelierButton>
-                    <select value={mergeTarget === group.id ? group.id : ""} onChange={(event) => setMergeTarget(event.target.value || null)} className="border border-mist bg-canvas px-2 py-1.5 font-ui text-[11px] outline-none focus:border-accent" aria-label={`Merge ${group.id} with…`}><option value="">Merge with…</option>{getAllGroups().filter((entry) => entry.id !== group.id).map((entry) => (<option key={entry.id} value={entry.id}>{entry.id}</option>))}</select>
+                    <select value={mergeTarget === group.id ? group.id : ""} onChange={(event) => setMergeTarget(event.target.value || null)} className="border border-pf-border bg-pf-card px-2 py-1.5 font-ui text-[11px] outline-none focus:border-pf-gold-deep" aria-label={`Merge ${group.id} with…`}><option value="">Merge with…</option>{getAllGroups().filter((entry) => entry.id !== group.id).map((entry) => (<option key={entry.id} value={entry.id}>{entry.id}</option>))}</select>
                     {mergeTarget === group.id ? (<AtelierButton type="button" size="chip" variant="outline" onClick={doMerge} disabled={!!busy}><Merge size={11} aria-hidden="true" className="mr-1" />{confirmAction === `merge-${group.id}` ? "Confirm merge" : "Merge"}</AtelierButton>) : null}
                   </div>
                 </div>
                 {group.mediaIds.length ? (
-                  <ul className="mt-3 space-y-1.5 border-t border-mist/60 pt-3">
+                  <ul className="mt-3 space-y-1.5 border-t border-pf-border/60 pt-3">
                     {group.mediaIds.map((mediaId) => {
                       const media = mediaRepository.getById(mediaId);
                       const targets = getAllGroups().filter((entry) => entry.id !== group.id);
                       return (
                         <li key={mediaId} className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate font-ui text-[11px] text-taupe">{media?.currentFilename || media?.fileName || mediaId}</span>
-                          <select value="" disabled={!targets.length || !!busy} onChange={(event) => { const targetId = event.target.value; if (!targetId) return; removeMediaFromGroup(group.id, [mediaId], actorLabel(actor)); addMediaToGroup(targetId, [mediaId], actorLabel(actor)); setConfirmAction(null); onNotice?.({ tone: "ok", text: `Moved ${mediaId} to ${targetId}.` }); }} className="border border-mist bg-canvas px-2 py-1 font-ui text-[11px] outline-none focus:border-accent disabled:opacity-40" aria-label={`Move ${mediaId} to another group`}><option value="">Move to…</option>{targets.map((entry) => (<option key={entry.id} value={entry.id}>{entry.id}</option>))}</select>
+                          <span className="min-w-0 flex-1 truncate font-ui text-[11px] text-pf-muted">{media?.currentFilename || media?.fileName || mediaId}</span>
+                          <select value="" disabled={!targets.length || !!busy} onChange={(event) => { const targetId = event.target.value; if (!targetId) return; removeMediaFromGroup(group.id, [mediaId], actorLabel(actor)); addMediaToGroup(targetId, [mediaId], actorLabel(actor)); setConfirmAction(null); onNotice?.({ tone: "ok", text: `Moved ${mediaId} to ${targetId}.` }); }} className="border border-pf-border bg-pf-card px-2 py-1 font-ui text-[11px] outline-none focus:border-pf-gold-deep disabled:opacity-40" aria-label={`Move ${mediaId} to another group`}><option value="">Move to…</option>{targets.map((entry) => (<option key={entry.id} value={entry.id}>{entry.id}</option>))}</select>
                         </li>
                       );
                     })}

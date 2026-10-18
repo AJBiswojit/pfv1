@@ -11,7 +11,7 @@ export default function SupportDashboard() {
     <DashboardFrame description="Customers, orders and returns — the care desk for the house. Inventory and people administration stay elsewhere.">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Support cases</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Support cases</h2>
           <DataTable
             rows={cases}
             columns={[
@@ -24,14 +24,14 @@ export default function SupportDashboard() {
           />
         </section>
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Recent feedback</h2>
-          <ul className="divide-y divide-mist/70 border border-mist/80 bg-surface/30">
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Recent feedback</h2>
+          <ul className="divide-y divide-pf-border/70 border border-pf-border/80 bg-pf-ivory/30">
             {feedback.map((item) => (
               <li key={item.id} className="px-4 py-3">
-                <p className="font-ui text-sm text-ink">
+                <p className="font-ui text-sm text-pf-text">
                   {item.customer} · {item.score}/5
                 </p>
-                <p className="mt-1 font-ui text-xs leading-relaxed text-taupe">{item.note}</p>
+                <p className="mt-1 font-ui text-xs leading-relaxed text-pf-muted">{item.note}</p>
               </li>
             ))}
           </ul>

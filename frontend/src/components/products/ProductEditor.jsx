@@ -538,18 +538,18 @@ export default function ProductEditor({
 
   if (productId && loadState === "loading") {
     return (
-      <div className="border border-mist/80 bg-canvas p-8 text-center">
-        <p className="font-display text-2xl font-light text-ink">Loading product…</p>
-        <p className="mt-2 font-ui text-sm text-taupe">Fetching the authoritative record from the server.</p>
+      <div className="border border-pf-border/80 bg-pf-card p-8 text-center">
+        <p className="font-display text-2xl font-light text-pf-text">Loading product…</p>
+        <p className="mt-2 font-ui text-sm text-pf-muted">Fetching the authoritative record from the server.</p>
       </div>
     );
   }
 
   if (productId && loadState === "error") {
     return (
-      <div className="border border-mist/80 bg-canvas p-8 text-center">
-        <p className="font-display text-2xl font-light text-ink">Product unavailable</p>
-        <p className="mt-2 font-ui text-sm text-taupe">
+      <div className="border border-pf-border/80 bg-pf-card p-8 text-center">
+        <p className="font-display text-2xl font-light text-pf-text">Product unavailable</p>
+        <p className="mt-2 font-ui text-sm text-pf-muted">
           {loadError || "That product could not be found on the server."}
         </p>
         <AtelierButton size="chip" className="mt-5" onClick={() => navigate(exitTo)}>
@@ -576,21 +576,21 @@ export default function ProductEditor({
     <div className="pb-24">
       {/* Rejection Alert Header */}
       {draft.review?.state === "REJECTED" && draft.review.rejectionReason ? (
-        <div className="mb-6 border-l-4 border-accent bg-accent/[0.06] p-4 text-ink">
-          <p className="font-ui text-[11px] uppercase tracking-wider text-accent font-semibold">
+        <div className="mb-6 border-l-4 border-pf-gold-deep bg-pf-burgundy/[0.06] p-4 text-pf-text">
+          <p className="font-ui text-[11px] uppercase tracking-wider text-pf-burgundy font-semibold">
             Action Required: Reviewer Rejection
           </p>
-          <p className="mt-1 font-ui text-sm font-medium text-accent">
+          <p className="mt-1 font-ui text-sm font-medium text-pf-burgundy">
             &ldquo;{draft.review.rejectionReason}&rdquo;
           </p>
-          <p className="mt-2 font-ui text-xs text-taupe">
+          <p className="mt-2 font-ui text-xs text-pf-muted">
             Please make the necessary corrections across the tabs below and click &quot;Submit for review&quot; to resubmit.
           </p>
         </div>
       ) : null}
 
       {/* Section tabs */}
-      <div className="mb-8 overflow-x-auto border-b border-mist/80" role="tablist" aria-label="Product sections" onKeyDown={onTabKeyDown}>
+      <div className="mb-8 overflow-x-auto border-b border-pf-border/80" role="tablist" aria-label="Product sections" onKeyDown={onTabKeyDown}>
         <div className="flex min-w-max gap-1">
           {SECTIONS.map((entry) => {
             const active = section === entry.id;
@@ -611,15 +611,15 @@ export default function ProductEditor({
                 className={cn(
                   "relative whitespace-nowrap px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] transition-colors",
                   active
-                    ? "border-b-2 border-accent text-ink font-semibold"
-                    : "border-b-2 border-transparent text-taupe hover:text-ink"
+                    ? "border-b-2 border-pf-gold-deep text-pf-text font-semibold"
+                    : "border-b-2 border-transparent text-pf-muted hover:text-pf-text"
                 )}
               >
                 {entry.label}
                 {hasIssue ? (
                   <span
                     aria-label="needs attention"
-                    className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
+                    className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-pf-burgundy align-middle"
                   />
                 ) : null}
               </button>
@@ -635,8 +635,8 @@ export default function ProductEditor({
             className={cn(
               "mb-5 border px-4 py-3 font-ui text-sm",
               feedback.kind === "error"
-                ? "border-accent/40 bg-accent/[0.05] text-accent"
-                : "border-mist/80 bg-canvas text-ink"
+                ? "border-pf-gold-deep/40 bg-pf-burgundy/[0.05] text-pf-burgundy"
+                : "border-pf-border/80 bg-pf-card text-pf-text"
             )}
           >
             {feedback.message}
@@ -658,7 +658,7 @@ export default function ProductEditor({
         role="tabpanel"
         id={`panel-${section}`}
         aria-labelledby={`tab-${section}`}
-        className="border border-mist/80 bg-surface/40 p-5 sm:p-7"
+        className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-7"
       >
         {section === "basics" ? <SectionBasics draft={draft} patch={patch} errors={errors} isNew={isNew} /> : null}
         {section === "attributes" ? <SectionAttributes draft={draft} patch={patch} /> : null}
@@ -671,12 +671,12 @@ export default function ProductEditor({
         ) : null}
 
         {/* Section stepping navigation */}
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-mist/70 pt-5">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-pf-border/70 pt-5">
           {prevSection ? (
             <button
               type="button"
               onClick={() => setSection(prevSection.id)}
-              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-taupe transition-colors hover:text-ink"
+              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-pf-muted transition-colors hover:text-pf-text"
             >
               <ArrowLeft size={13} aria-hidden="true" /> {prevSection.label}
             </button>
@@ -688,7 +688,7 @@ export default function ProductEditor({
             <button
               type="button"
               onClick={() => setSection(nextSection.id)}
-              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-ink transition-colors hover:text-accent font-medium"
+              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-pf-text transition-colors hover:text-pf-burgundy font-medium"
             >
               {nextSection.label} <ArrowRight size={13} aria-hidden="true" />
             </button>
@@ -697,13 +697,13 @@ export default function ProductEditor({
       </div>
 
       {/* Action bar */}
-      <div className="mt-8 flex flex-col-reverse gap-3 border border-mist/80 bg-canvas p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-8 flex flex-col-reverse gap-3 border border-pf-border/80 bg-pf-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <AtelierButton variant="outline" size="chip" onClick={handleCancel}>
             Cancel
           </AtelierButton>
           {dirty ? (
-            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
               Unsaved changes
             </span>
           ) : null}
@@ -764,15 +764,15 @@ export default function ProductEditor({
           role="dialog"
           aria-modal="true"
           aria-label="Discard unsaved changes?"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/50 p-4"
           onClick={() => setConfirmCancel(false)}
         >
           <div
-            className="w-full max-w-md border border-mist bg-ivory p-7"
+            className="w-full max-w-md border border-pf-border bg-pf-ivory p-7"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="font-display text-2xl font-light text-ink">Leave without saving?</p>
-            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+            <p className="font-display text-2xl font-light text-pf-text">Leave without saving?</p>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">
               This product has unsaved changes. If you leave now, everything entered since the last
               save will be lost.
             </p>
@@ -805,12 +805,12 @@ export default function ProductEditor({
           role="dialog"
           aria-modal="true"
           aria-label="Approve and publish this product?"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/50 p-4"
           onClick={() => setConfirmPublish(false)}
         >
-          <div className="w-full max-w-md border border-mist bg-ivory p-7" onClick={(event) => event.stopPropagation()}>
-            <p className="font-display text-2xl font-light text-ink">Approve and publish?</p>
-            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-7" onClick={(event) => event.stopPropagation()}>
+            <p className="font-display text-2xl font-light text-pf-text">Approve and publish?</p>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">
               Because you created this product, you can submit, approve and publish it in one step.
               The server still runs the same publish checklist. The piece will appear on the storefront.
             </p>

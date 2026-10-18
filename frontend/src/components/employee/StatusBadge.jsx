@@ -2,13 +2,13 @@ import { getEmployeeStatus } from "../../config/employeeStatus";
 import { cn } from "../../utils/cn";
 
 const tones = {
-  ink: "bg-ink text-ivory",
-  accent: "bg-accent text-white",
-  quiet: "bg-surface text-cocoa border border-mist",
-  danger: "bg-accent/10 text-accent border border-accent/30",
+  ink: "bg-pf-burgundy text-pf-ivory",
+  accent: "bg-pf-burgundy text-white",
+  quiet: "bg-pf-ivory text-pf-cocoa border border-pf-border",
+  danger: "bg-pf-burgundy/10 text-pf-burgundy border border-pf-gold-deep/30",
   alert: "bg-amber-500/10 text-amber-800 border border-amber-500/30",
-  brass: "bg-brass/15 text-brass-deep border border-brass/30",
-  muted: "bg-canvas-deep text-taupe border border-mist",
+  brass: "bg-pf-gold/15 text-pf-gold-text-deep border border-pf-gold-deep/30",
+  muted: "bg-pf-ivory text-pf-muted border border-pf-border",
 };
 
 export default function StatusBadge({ status, label, tone, className = "" }) {
@@ -19,7 +19,7 @@ export default function StatusBadge({ status, label, tone, className = "" }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-1 font-ui text-[9px] uppercase tracking-widest",
+        "inline-flex items-center rounded-full px-2.5 py-1 font-ui text-[11px] font-semibold uppercase tracking-[0.08em]",
         tones[resolvedTone] ?? tones.quiet,
         className
       )}

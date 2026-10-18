@@ -14,10 +14,10 @@ import { formatINR } from "../../../utils/shopping";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { formatAdminError } from "../../../services/admin/adminError";
 
-const inputClass = "min-w-0 w-full max-w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent";
+const inputClass = "min-w-0 w-full max-w-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep";
 const tone = { ACTIVE: "ink", SCHEDULED: "brass", PAUSED: "alert", EXPIRED: "muted", ARCHIVED: "muted", DRAFT: "quiet" };
 
-const Term = ({ label, value }) => <div className="min-w-0"><dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt><dd className="mt-1 break-words font-ui text-sm font-medium text-ink">{value || "—"}</dd></div>;
+const Term = ({ label, value }) => <div className="min-w-0"><dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt><dd className="mt-1 break-words font-ui text-sm font-medium text-pf-text">{value || "—"}</dd></div>;
 
 export default function AdminCollectionDetail() {
   const { collectionId } = useParams();
@@ -70,7 +70,7 @@ export default function AdminCollectionDetail() {
   if (!collection) {
     return (
       <AdminPage title="Collection unavailable">
-        <p className="font-ui text-sm text-taupe">
+        <p className="font-ui text-sm text-pf-muted">
           {collectionError ?? "Fetching this collection from the server…"}
         </p>
         <AtelierButton as={Link} to={`${prefix}/collections`} size="chip" className="mt-4">Back to collections</AtelierButton>
@@ -145,12 +145,12 @@ export default function AdminCollectionDetail() {
         </>
       }
     >
-      {notice ? <p role="status" className="mb-5 border border-mist bg-canvas px-4 py-3 font-ui text-sm text-ink">{notice}</p> : null}
+      {notice ? <p role="status" className="mb-5 border border-pf-border bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">{notice}</p> : null}
       <div className="grid min-w-0 w-full max-w-full gap-6 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <AdminPanel eyebrow="Hero media" title="Visual">
-            {heroSrc ? <img src={heroSrc} alt={collection.name} className="h-64 w-full max-w-full object-cover border border-mist" /> : <div className="flex h-64 items-center justify-center bg-mist/50 font-ui text-xs uppercase tracking-widest text-taupe">Fallback artwork</div>}
-            <p className="mt-3 font-ui text-xs text-taupe">{hero ? `Media ${hero.id} · ${hero.status}` : "Using premium fallback artwork."}</p>
+            {heroSrc ? <img src={heroSrc} alt={collection.name} className="h-64 w-full max-w-full object-cover border border-pf-border" /> : <div className="flex h-64 items-center justify-center bg-pf-border/50 font-ui text-xs uppercase tracking-widest text-pf-muted">Fallback artwork</div>}
+            <p className="mt-3 font-ui text-xs text-pf-muted">{hero ? `Media ${hero.id} · ${hero.status}` : "Using premium fallback artwork."}</p>
           </AdminPanel>
           <AdminPanel eyebrow="Collection information" title="Lifecycle">
             <dl className="grid min-w-0 gap-4">
@@ -168,7 +168,7 @@ export default function AdminCollectionDetail() {
             <div className="min-w-0 max-w-full overflow-x-auto">
               <table className="w-full table-fixed text-left">
                 <thead>
-                  <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     <th className="w-10 px-2 py-3 sm:px-3" scope="col"><span className="sr-only">Select</span></th>
                     <th className="min-w-0 px-2 py-3 sm:px-3" scope="col">Product</th>
                     <th className="w-[18%] px-2 py-3 sm:px-3" scope="col">SKU</th>
@@ -179,17 +179,17 @@ export default function AdminCollectionDetail() {
                 </thead>
                 <tbody>
                   {assigned.map((product) => (
-                    <tr key={product.id} className="border-b border-mist/60 font-ui text-sm">
+                    <tr key={product.id} className="border-b border-pf-border/60 font-ui text-sm">
                       <td className="px-2 py-3 sm:px-3">
                         <input type="checkbox" checked={selected.includes(product.id)} onChange={() => toggle(product.id)} aria-label={`Select ${product.name}`} />
                       </td>
                       <td className="min-w-0 px-2 py-3 sm:px-3">
-                        <Link to={`${prefix}/products/${product.id}`} className="block truncate font-medium text-ink hover:text-accent" title={product.name}>{product.name}</Link>
+                        <Link to={`${prefix}/products/${product.id}`} className="block truncate font-medium text-pf-text hover:text-pf-burgundy" title={product.name}>{product.name}</Link>
                       </td>
-                      <td className="truncate px-2 py-3 text-taupe sm:px-3" title={product.sku}>{product.sku}</td>
+                      <td className="truncate px-2 py-3 text-pf-muted sm:px-3" title={product.sku}>{product.sku}</td>
                       <td className="min-w-0 px-2 py-3 sm:px-3">
                         <span className="block truncate">{taxonomyRepository.getCategoryLabel(product.category)}</span>
-                        <span className="block truncate text-[11px] text-taupe">{product.subcategory}</span>
+                        <span className="block truncate text-[11px] text-pf-muted">{product.subcategory}</span>
                       </td>
                       <td className="truncate px-2 py-3 sm:px-3">{formatINR(product.price)}</td>
                       <td className="overflow-hidden px-2 py-3 sm:px-3">
@@ -206,7 +206,7 @@ export default function AdminCollectionDetail() {
           <AdminPanel eyebrow="Product assignment" title="Search and assign">
             <div className="mb-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <label className="relative min-w-0 sm:col-span-3 2xl:col-span-1">
-                <Search className="absolute left-3 top-3 text-taupe" size={15} />
+                <Search className="absolute left-3 top-3 text-pf-muted" size={15} />
                 <input className={inputClass + " pl-9"} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products or SKU" aria-label="Search products" />
               </label>
               <select className={inputClass} value={category} onChange={(event) => { setCategory(event.target.value); setSubcategory("ALL"); }} aria-label="Filter by category">
@@ -225,13 +225,13 @@ export default function AdminCollectionDetail() {
                 <option value="ARCHIVED">Archived</option>
               </select>
             </div>
-            <div className="max-h-[34rem] min-w-0 overflow-y-auto border border-mist/80">
+            <div className="max-h-[34rem] min-w-0 overflow-y-auto border border-pf-border/80">
               {filteredProducts.map((product) => (
-                <label key={product.id} className="flex min-w-0 items-center gap-3 border-b border-mist/60 p-3 font-ui text-sm">
+                <label key={product.id} className="flex min-w-0 items-center gap-3 border-b border-pf-border/60 p-3 font-ui text-sm">
                   <input type="checkbox" checked={selected.includes(product.id)} onChange={() => toggle(product.id)} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink" title={product.name}>{product.name}</span>
-                    <span className="block truncate text-[11px] text-taupe">{product.sku} · {taxonomyRepository.getCategoryLabel(product.category)} · {formatINR(product.price)} · {product.status}</span>
+                    <span className="block truncate font-medium text-pf-text" title={product.name}>{product.name}</span>
+                    <span className="block truncate text-[11px] text-pf-muted">{product.sku} · {taxonomyRepository.getCategoryLabel(product.category)} · {formatINR(product.price)} · {product.status}</span>
                   </span>
                   {assignedIds.has(product.id) ? <StatusBadge label="Assigned" tone="ink" className="shrink-0" /> : null}
                 </label>
@@ -241,7 +241,7 @@ export default function AdminCollectionDetail() {
               <AtelierButton onClick={addSelected} size="chip" disabled={!selected.length}>Add selected to collection</AtelierButton>
               <AtelierButton onClick={() => setSelected([])} variant="outline" size="chip">Clear selection</AtelierButton>
             </div>
-            <p className="mt-3 font-ui text-xs text-taupe">Archived products can be assigned for admin planning, but customer collection pages only show customer-visible published products.</p>
+            <p className="mt-3 font-ui text-xs text-pf-muted">Archived products can be assigned for admin planning, but customer collection pages only show customer-visible published products.</p>
           </AdminPanel>
         </div>
       </div>

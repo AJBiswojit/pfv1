@@ -33,8 +33,6 @@ export default function PortalSidebar({
   resolveActiveId,
   badges = {},
   identity = {},
-  footerLinks = [],
-  signOut,
   onNavigate,
   storageKey,
   iconResolver,
@@ -110,10 +108,6 @@ export default function PortalSidebar({
   };
 
   const isOpen = (groupId) => expanded.has(groupId);
-  const LogoutIcon = resolveIcon("logout");
-
-  /* Sign out stays a handler, never a route. */
-  const handleSignOut = typeof signOut === "function" ? signOut : undefined;
 
   /* Identity may still be hydrating on the first paint, so every field has a
      rendering-only fallback. No real person is ever hardcoded. */
@@ -124,7 +118,7 @@ export default function PortalSidebar({
   const collapseLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-pf-burgundy">
+    <div className="flex h-full min-h-0 flex-col bg-gradient-to-b from-pf-burgundy via-pf-burgundy to-pf-wine">
       {/* ------------------------------------------------ identity */}
       <div className={cn("px-4 py-4", collapsed && "lg:px-2")}>
         <div className={cn("flex items-center gap-3", collapsed && "lg:flex-col lg:gap-2")}>
@@ -145,10 +139,10 @@ export default function PortalSidebar({
             )}
           </RailTooltip>
           <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-            <p className="truncate font-display text-base font-medium leading-tight text-pf-ivory">
+            <p className="truncate font-display text-[18px] font-medium leading-tight text-pf-ivory">
               {displayName}
             </p>
-            <p className="mt-0.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-gold/70">
+            <p className="mt-0.5 font-ui text-[11px] font-semibold uppercase tracking-[.16em] text-pf-gold">
               {displayRole}
             </p>
           </div>
@@ -161,7 +155,7 @@ export default function PortalSidebar({
               aria-label={collapseLabel}
               aria-expanded={!collapsed}
               className={cn(
-                "mt-3 hidden w-full items-center gap-2 border border-pf-ivory/15 px-2 py-1.5 text-pf-ivory/60 transition-colors duration-200 hover:border-pf-gold/40 hover:text-pf-ivory lg:flex",
+                "mt-3 hidden w-full items-center gap-2 rounded-lg border border-pf-ivory/20 px-2.5 py-2 text-pf-ivory/75 transition-colors duration-200 hover:border-pf-gold/50 hover:text-pf-ivory lg:flex",
                 collapsed && "lg:justify-center lg:px-0"
               )}
             >
@@ -170,7 +164,7 @@ export default function PortalSidebar({
               ) : (
                 <PanelLeftClose size={14} strokeWidth={1.5} aria-hidden="true" />
               )}
-              <span className={cn("font-ui text-[10px] uppercase tracking-[.14em]", collapsed && "lg:sr-only")}>
+              <span className={cn("font-ui text-[11px] font-semibold uppercase tracking-[.14em]", collapsed && "lg:sr-only")}>
                 {collapsed ? "Expand" : "Collapse"}
               </span>
             </button>
@@ -197,7 +191,7 @@ export default function PortalSidebar({
                   aria-expanded={open}
                   aria-controls={`navgroup-${group.id}`}
                   className={cn(
-                    "group/heading flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left",
+                    "group/heading flex w-full items-center justify-between gap-2 px-1 py-2 text-left",
                     collapsed && "lg:hidden"
                   )}
                 >
@@ -208,7 +202,7 @@ export default function PortalSidebar({
                       aria-hidden="true"
                       className="shrink-0 text-pf-gold/70"
                     />
-                    <span className="truncate font-ui text-[10px] font-medium uppercase tracking-[.18em] text-pf-ivory/50 group-hover/heading:text-pf-ivory/80">
+                    <span className="truncate font-ui text-[11px] font-semibold uppercase tracking-[.18em] text-pf-ivory/70 group-hover/heading:text-pf-ivory">
                       {group.label}
                     </span>
                   </span>
@@ -254,28 +248,18 @@ export default function PortalSidebar({
         })}
       </nav>
 
-      {/* ------------------------------------------------ footer (sign out only) */}
-      {handleSignOut ? (
-        <div className={cn("border-t border-pf-ivory/10 px-3 py-3", collapsed && "lg:px-1")}>
-          <ul className="space-y-0.5">
-            <li>
-              <RailTooltip label="Sign out" enabled={collapsed}>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className={cn(
-                    "flex w-full items-center gap-3 px-3 py-2 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-ivory/50 transition-colors duration-200 hover:bg-pf-ivory/5 hover:text-pf-ivory",
-                    collapsed && "lg:justify-center lg:px-0"
-                  )}
-                >
-                  <LogoutIcon aria-hidden="true" size={14} strokeWidth={1.5} />
-                  <span className={cn(collapsed && "lg:sr-only")}>Sign out</span>
-                </button>
-              </RailTooltip>
-            </li>
-          </ul>
-        </div>
-      ) : null}
+      {/* ------------------------------------------------ footer
+          Brand signature only. Profile and Sign Out are intentionally
+          ABSENT from the sidebar (approved design lock) — both live in
+          the header account menu. */}
+      <div className={cn("border-t border-pf-ivory/10 px-4 py-4", collapsed && "lg:hidden")}>
+        <p className="font-display text-[13px] uppercase tracking-[0.22em] text-pf-ivory/70">
+          Pratikshya Fashion
+        </p>
+        <p className="mt-1 font-ui text-[11px] uppercase tracking-[0.18em] text-pf-gold">
+          The house of timeless fashion
+        </p>
+      </div>
     </div>
   );
 }
@@ -309,18 +293,18 @@ function GroupItems({ item, activeId, badge, onNavigate, iconResolver, collapsed
           title={collapsed ? undefined : item.label}
           aria-current={isActive ? "page" : undefined}
           className={cn(
-            "relative flex min-w-0 items-center gap-2.5 rounded-none border-l-2 py-2 pl-3 pr-2 font-ui text-[11px] uppercase tracking-[.12em] transition-colors duration-200",
+            "relative flex min-w-0 items-center gap-3 rounded-lg border-l-2 py-2.5 pl-3 pr-2 font-ui text-[13.5px] font-medium leading-snug transition-colors duration-200",
             collapsed && "lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5",
             isActive
               ? "border-pf-gold bg-pf-wine text-pf-ivory"
-              : "border-transparent text-pf-ivory/60 hover:bg-pf-ivory/5 hover:text-pf-ivory"
+              : "border-transparent text-pf-ivory/75 hover:bg-pf-ivory/8 hover:text-pf-ivory"
           )}
         >
           <Icon
-            size={14}
+            size={17}
             strokeWidth={isActive ? 2 : 1.5}
             aria-hidden="true"
-            className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/60")}
+            className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/80")}
           />
           <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{item.label}</span>
           {badge > 0 ? (
@@ -379,18 +363,18 @@ function ChildLink({ child, activeId, onNavigate, iconResolver, collapsed }) {
         title={collapsed ? undefined : child.label}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "relative flex min-w-0 items-center gap-2 rounded-none border-l-2 py-1.5 pl-3 pr-2 font-ui text-[10px] uppercase tracking-[.12em] transition-colors duration-200",
+          "relative flex min-w-0 items-center gap-2.5 rounded-lg border-l-2 py-2 pl-3 pr-2 font-ui text-[12.5px] font-medium leading-snug transition-colors duration-200",
           collapsed && "lg:justify-center lg:gap-0 lg:px-0 lg:py-2",
           isActive
             ? "border-pf-gold bg-pf-wine text-pf-ivory"
-            : "border-transparent text-pf-ivory/50 hover:bg-pf-ivory/5 hover:text-pf-ivory"
+            : "border-transparent text-pf-ivory/70 hover:bg-pf-ivory/8 hover:text-pf-ivory"
         )}
       >
         <Icon
-          size={12}
+          size={15}
           strokeWidth={isActive ? 2 : 1.5}
           aria-hidden="true"
-          className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/50")}
+          className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/75")}
         />
         <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{child.label}</span>
       </Link>

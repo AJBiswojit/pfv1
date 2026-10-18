@@ -2,33 +2,58 @@ import { formatCompactINR } from "../../utils/admin";
 import { formatINR } from "../../utils/shopping";
 
 /**
- * Revenue split by fashion category for the same seven days as the sales
- * overview. A definition list rather than a chart widget: the label, the
- * amount and a proportional hairline bar.
+ * Category performance — a real table (category, units sold, revenue,
+ * share) with a proportional bar, per the approved reference. Every
+ * figure comes from the dashboard summary's category aggregates; share
+ * is each category's part of the listed categories' combined revenue.
  */
+const BAR_TONES = ["#6E0F2A", "#8A3B4F", "#B98948", "#C98A5E", "#C4898A"];
+
 export default function CategorySalesBars({ categories = [] }) {
   if (!categories.length) return null;
-  const peak = Math.max(...categories.map((category) => category.sales));
+  const peak = Math.max(...categories.map((category) => category.sales), 0);
+  const totalRevenue = categories.reduce((sum, category) => sum + (category.sales || 0), 0);
 
   return (
-    <dl className="space-y-3.5">
-      {categories.map((category) => {
-        const width = peak > 0 ? Math.max(4, Math.round((category.sales / peak) * 100)) : 0;
-        return (
-          <div key={category.id}>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="font-ui text-xs text-ink">{category.label}</dt>
-              <dd className="font-ui text-xs text-taupe">
-                <span className="sr-only">{formatINR(category.sales)}</span>
-                <span aria-hidden="true">{formatCompactINR(category.sales)}</span>
-              </dd>
-            </div>
-            <div className="mt-1.5 h-1.5 w-full bg-mist/70" aria-hidden="true">
-              <div className="h-full bg-accent/80" style={{ width: `${width}%` }} />
-            </div>
-          </div>
-        );
-      })}
-    </dl>
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left">
+        <thead>
+          <tr className="border-b border-pf-border">
+            <th scope="col" className="py-2.5 pr-3">Category</th>
+            <th scope="col" className="px-3 py-2.5 text-right">Units sold</th>
+            <th scope="col" className="px-3 py-2.5 text-right">Revenue</th>
+            <th scope="col" className="px-3 py-2.5 text-right">Share</th>
+            <th scope="col" className="hidden py-2.5 pl-3 sm:table-cell">
+              <span className="sr-only">Revenue bar</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {categories.map((category, index) => {
+            const width = peak > 0 ? Math.max(4, Math.round((category.sales / peak) * 100)) : 0;
+            const share = totalRevenue > 0 ? (category.sales / totalRevenue) * 100 : 0;
+            return (
+              <tr key={category.id} className="border-b border-pf-border-light last:border-0">
+                <td className="py-3 pr-3 font-medium">{category.label}</td>
+                <td className="px-3 py-3 text-right tabular-nums text-pf-muted">{category.units ?? "—"}</td>
+                <td className="px-3 py-3 text-right font-medium tabular-nums">
+                  <span className="sr-only">{formatINR(category.sales)}</span>
+                  <span aria-hidden="true">{formatCompactINR(category.sales)}</span>
+                </td>
+                <td className="px-3 py-3 text-right tabular-nums text-pf-muted">{share.toFixed(0)}%</td>
+                <td className="hidden w-[28%] py-3 pl-3 sm:table-cell">
+                  <div className="h-2 w-full rounded-full bg-pf-border-light" aria-hidden="true">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${width}%`, backgroundColor: BAR_TONES[index % BAR_TONES.length] }}
+                    />
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

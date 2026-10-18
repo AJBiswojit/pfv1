@@ -55,7 +55,7 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
       >
         <InventoryNav portal={portal} />
         <AdminPanel eyebrow="Permission boundary" title="Stock alerts are operational">
-          <p className="font-ui text-sm leading-relaxed text-taupe">
+          <p className="font-ui text-sm leading-relaxed text-pf-muted">
             Ask a Store Manager or Inventory Manager to review low-stock actions. Product availability remains visible on your Inventory page.
           </p>
         </AdminPanel>
@@ -71,13 +71,13 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
       actions={<AtelierButton as={Link} to={root} variant="outline" size="chip">Back to inventory</AtelierButton>}
     >
       <InventoryNav portal={portal} />
-      {feedback ? <p role="status" className="mb-5 border border-mist bg-canvas p-3 font-ui text-sm text-ink">{feedback}</p> : null}
+      {feedback ? <p role="status" className="mb-5 border border-pf-border bg-pf-card p-3 font-ui text-sm text-pf-text">{feedback}</p> : null}
       <AdminPanel
         eyebrow="Action queue"
         title={`${rows.length} stock alert${rows.length === 1 ? "" : "s"}`}
         bodyClassName="px-0 py-0 sm:px-0"
         action={
-          <label className="inline-flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.13em] text-taupe">
+          <label className="inline-flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.13em] text-pf-muted">
             <input type="checkbox" checked={showOut} onChange={(event) => setShowOut(event.target.checked)} className="accent-[var(--color-accent)]" />
             Include out of stock
           </label>
@@ -88,9 +88,9 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
           rows={rows}
           empty="No visible products are low or out of stock."
           columns={[
-            { id: "product", label: "Product", render: (row) => <div className="min-w-40"><p>{row.productName}</p><p className="mt-1 font-mono text-[10px] text-taupe">{row.sku} · {row.variantLabel}</p></div> },
-            { id: "location", label: "Location", render: (row) => <div><p>{row.location?.name}</p><p className="mt-1 text-[10px] text-taupe">{row.placementLabel}</p></div> },
-            { id: "available", label: "Available", render: (row) => <strong className="text-accent">{row.quantity.available}</strong> },
+            { id: "product", label: "Product", render: (row) => <div className="min-w-40"><p>{row.productName}</p><p className="mt-1 font-mono text-[10px] text-pf-muted">{row.sku} · {row.variantLabel}</p></div> },
+            { id: "location", label: "Location", render: (row) => <div><p>{row.location?.name}</p><p className="mt-1 text-[10px] text-pf-muted">{row.placementLabel}</p></div> },
+            { id: "available", label: "Available", render: (row) => <strong className="text-pf-burgundy">{row.quantity.available}</strong> },
             { id: "threshold", label: "Threshold", render: (row) => row.lowStockThreshold },
             { id: "status", label: "Status", render: (row) => <InventoryStatusBadge status={row.status} /> },
             { id: "recommended", label: "Recommended action", render: (row) => row.status === STOCK_STATUS.OUT_OF_STOCK ? "Receive or transfer immediately" : row.location?.type === "STORE" ? "Transfer from warehouse" : "Receive supplier stock" },
@@ -99,13 +99,13 @@ export default function InventoryLowStockPage({ portal = "admin" }) {
               label: "Actions",
               render: (row) => (
                 <div className="flex min-w-36 flex-col gap-1.5">
-                  {canReceive ? <Link to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`} className="text-[11px] text-brass hover:text-accent">Receive stock</Link> : null}
-                  {canTransfer ? <Link to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`} className="text-[11px] text-brass hover:text-accent">Transfer stock</Link> : null}
+                  {canReceive ? <Link to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`} className="text-[11px] text-pf-gold-text hover:text-pf-burgundy">Receive stock</Link> : null}
+                  {canTransfer ? <Link to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`} className="text-[11px] text-pf-gold-text hover:text-pf-burgundy">Transfer stock</Link> : null}
                   {canManage ? (
                     <div className="mt-1 flex items-center gap-1">
                       <label className="sr-only" htmlFor={`threshold-${row.id}`}>Threshold for {row.productName}</label>
-                      <input id={`threshold-${row.id}`} type="number" min="0" className="h-8 w-14 border border-mist bg-canvas px-2 text-xs outline-none focus:border-accent" value={thresholds[row.id] ?? row.lowStockThreshold} onChange={(event) => setThresholds((current) => ({ ...current, [row.id]: event.target.value }))} />
-                      <button type="button" onClick={() => saveThreshold(row)} className="h-8 border border-mist px-2 font-ui text-[9px] uppercase tracking-wider text-ink hover:border-ink focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">Save</button>
+                      <input id={`threshold-${row.id}`} type="number" min="0" className="h-8 w-14 border border-pf-border bg-pf-card px-2 text-xs outline-none focus:border-pf-gold-deep" value={thresholds[row.id] ?? row.lowStockThreshold} onChange={(event) => setThresholds((current) => ({ ...current, [row.id]: event.target.value }))} />
+                      <button type="button" onClick={() => saveThreshold(row)} className="h-8 border border-pf-border px-2 font-ui text-[9px] uppercase tracking-wider text-pf-text hover:border-pf-burgundy focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy">Save</button>
                     </div>
                   ) : null}
                 </div>

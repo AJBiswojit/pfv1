@@ -47,8 +47,8 @@ import { employeeFullName, formatEmployeeDateTime } from "../../utils/employee";
 
 const statusTone = { PUBLISHED: "ink", PENDING_REVIEW: "alert", DRAFT: "quiet", ARCHIVED: "muted" };
 
-const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-taupe";
-const valueClass = "font-ui text-sm text-ink";
+const labelClass = "mb-1 block font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted";
+const valueClass = "font-ui text-sm text-pf-text";
 
 /** WHERE a review flag gets fixed — points at the existing canonical
     surface; the rule itself stays in the validator, never here. */
@@ -76,10 +76,10 @@ const eligibleEmployees = () => {
 };
 
 const Section = ({ title, eyebrow, children }) => (
-  <section className="border border-mist bg-canvas">
-    <header className="border-b border-mist px-4 py-2.5">
-      {eyebrow ? <p className="font-ui text-[9px] uppercase tracking-[.2em] text-accent">{eyebrow}</p> : null}
-      <h3 className="font-ui text-[11px] uppercase tracking-[.18em] text-ink">{title}</h3>
+  <section className="border border-pf-border bg-pf-card">
+    <header className="border-b border-pf-border px-4 py-2.5">
+      {eyebrow ? <p className="font-ui text-[9px] uppercase tracking-[.2em] text-pf-burgundy">{eyebrow}</p> : null}
+      <h3 className="font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">{title}</h3>
     </header>
     <div className="px-4 py-3">{children}</div>
   </section>
@@ -192,7 +192,7 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
   );
 
   if (!product) {
-    return <p className="py-8 text-center font-ui text-sm text-taupe">Product not found in the register.</p>;
+    return <p className="py-8 text-center font-ui text-sm text-pf-muted">Product not found in the register.</p>;
   }
 
   const stage = state.stage;
@@ -208,13 +208,13 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
   return (
     <div className="space-y-4">
       {/* Header ------------------------------------------------------ */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border border-mist bg-canvas px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border border-pf-border bg-pf-card px-4 py-3">
         <div className="min-w-0">
-          <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">Product ID · {product.id}</p>
-          <p className="truncate font-display text-2xl font-light text-ink">
-            {product.name?.trim() || <span className="text-taupe">[Not yet defined]</span>}
+          <p className="font-ui text-[10px] uppercase tracking-[.24em] text-pf-burgundy">Product ID · {product.id}</p>
+          <p className="truncate font-display text-2xl font-light text-pf-text">
+            {product.name?.trim() || <span className="text-pf-muted">[Not yet defined]</span>}
           </p>
-          <p className="mt-1 font-ui text-[11px] text-taupe">
+          <p className="mt-1 font-ui text-[11px] text-pf-muted">
             {categoryLabels[product.category] ?? product.category ?? "Uncategorised"}
             {product.subcategory ? ` · ${product.subcategory}` : ""} · SKU {product.sku || "—"}
           </p>
@@ -222,61 +222,61 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={state.label ?? state.stage ?? "Unknown"} tone={statusTone[product.status] ?? "quiet"} />
           {state.returned ? <StatusBadge label="Returned" tone="danger" /> : null}
-          <Link to={`/admin/products/${product.id}`} className="font-ui text-[11px] text-accent underline-offset-2 hover:underline">
+          <Link to={`/admin/products/${product.id}`} className="font-ui text-[11px] text-pf-burgundy underline-offset-2 hover:underline">
             Open full record →
           </Link>
         </div>
       </div>
 
       {/* ONE canonical action bar ------------------------------------ */}
-      <div className="border border-mist bg-canvas px-4 py-3">
+      <div className="border border-pf-border bg-pf-card px-4 py-3">
         <p className={labelClass}>Review actions — canonical workflow commands</p>
         <div className="flex flex-wrap items-center gap-2">
           {canSubmit ? (
-            <button type="button" disabled={busy !== null} onClick={submit} className={`inline-flex items-center gap-1.5 border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ink transition-colors hover:bg-ink hover:text-ivory ${busy ? "opacity-40" : ""}`}>
+            <button type="button" disabled={busy !== null} onClick={submit} className={`inline-flex items-center gap-1.5 border border-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory ${busy ? "opacity-40" : ""}`}>
               <ArrowRight size={11} aria-hidden="true" /> {busy === "submit" ? "Submitting…" : "Submit for review"}
             </button>
           ) : null}
           {canApprove ? (
-            <button type="button" disabled={busy !== null} onClick={approve} className={`inline-flex items-center gap-1.5 border border-accent px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-accent transition-colors hover:bg-accent hover:text-ivory ${busy ? "opacity-40" : ""}`}>
+            <button type="button" disabled={busy !== null} onClick={approve} className={`inline-flex items-center gap-1.5 border border-pf-gold-deep px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory ${busy ? "opacity-40" : ""}`}>
               <Check size={11} aria-hidden="true" /> {busy === "approve" ? "Approving…" : "Approve"}
             </button>
           ) : null}
           {canPublish ? (
-            <button type="button" disabled={busy !== null} onClick={publish} className={`inline-flex items-center gap-1.5 border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-ivory transition-colors hover:bg-transparent hover:text-ink ${busy ? "opacity-40" : ""}`}>
+            <button type="button" disabled={busy !== null} onClick={publish} className={`inline-flex items-center gap-1.5 border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory transition-colors hover:bg-transparent hover:text-pf-text ${busy ? "opacity-40" : ""}`}>
               <PackageCheck size={11} aria-hidden="true" /> {busy === "publish" ? "Publishing…" : "Publish"}
             </button>
           ) : null}
           {canReturn ? (
-            <button type="button" disabled={busy !== null} onClick={() => setReturnArmed((value) => !value)} className={`inline-flex items-center gap-1.5 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe transition-colors hover:border-accent hover:text-accent ${busy ? "opacity-40" : ""}`}>
+            <button type="button" disabled={busy !== null} onClick={() => setReturnArmed((value) => !value)} className={`inline-flex items-center gap-1.5 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted transition-colors hover:border-pf-gold-deep hover:text-pf-burgundy ${busy ? "opacity-40" : ""}`}>
               <Undo2 size={11} aria-hidden="true" /> {busy === "return" ? "Returning…" : "Return to employee"}
             </button>
           ) : null}
           {canArchive ? (
-            <button type="button" disabled={busy !== null} onClick={archive} className={`inline-flex items-center gap-1.5 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe transition-colors hover:border-accent hover:text-accent ${busy ? "opacity-40" : ""}`}>
+            <button type="button" disabled={busy !== null} onClick={archive} className={`inline-flex items-center gap-1.5 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted transition-colors hover:border-pf-gold-deep hover:text-pf-burgundy ${busy ? "opacity-40" : ""}`}>
               <Archive size={11} aria-hidden="true" /> {busy === "archive" ? "Archiving…" : "Archive"}
             </button>
           ) : null}
           {!canSubmit && !canApprove && !canPublish && !canReturn && !canArchive ? (
-            <p className="font-ui text-[11px] text-taupe">No lifecycle action is available at the {state.label} stage.</p>
+            <p className="font-ui text-[11px] text-pf-muted">No lifecycle action is available at the {state.label} stage.</p>
           ) : null}
         </div>
         {actionNotice ? (
           <p
             role="status"
             aria-live="polite"
-            className={`mt-3 border px-3 py-2 font-ui text-[11px] leading-relaxed ${actionNotice.tone === "warn" ? "border-accent/60 bg-accent/5 text-accent" : "border-mist bg-ivory/60 text-ink"}`}
+            className={`mt-3 border px-3 py-2 font-ui text-[11px] leading-relaxed ${actionNotice.tone === "warn" ? "border-pf-gold-deep/60 bg-pf-burgundy/5 text-pf-burgundy" : "border-pf-border bg-pf-ivory/60 text-pf-text"}`}
           >
             {actionNotice.text}
           </p>
         ) : null}
-        <p className="mt-2 font-ui text-[10px] text-taupe">
+        <p className="mt-2 font-ui text-[10px] text-pf-muted">
           Approve ≠ Publish — approval records the Admin decision only; publishing is a separate
           canonical command that re-runs the full validation.
         </p>
         {returnArmed && canReturn ? (
           <form
-            className="mt-3 space-y-2 border-t border-mist pt-3"
+            className="mt-3 space-y-2 border-t border-pf-border pt-3"
             onSubmit={(event) => { event.preventDefault(); doReturn(); }}
           >
             <label htmlFor={`return-reason-${product.id}`} className={labelClass}>Return reason — required</label>
@@ -286,12 +286,12 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
               value={returnReason}
               onChange={(event) => setReturnReason(event.target.value)}
               placeholder="Missing product details. Incorrect price. Poor product image…"
-              className="w-full border border-mist bg-canvas px-3 py-2 font-ui text-sm outline-none focus:border-accent"
+              className="w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-sm outline-none focus:border-pf-gold-deep"
             />
             <button
               type="submit"
               disabled={!returnReason.trim() || busy !== null}
-              className={`border border-accent px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-accent transition-colors hover:bg-accent hover:text-ivory disabled:opacity-40`}
+              className={`border border-pf-gold-deep px-4 py-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy transition-colors hover:bg-pf-burgundy hover:text-pf-ivory disabled:opacity-40`}
             >
               {busy === "return" ? "Returning…" : "Confirm return"}
             </button>
@@ -316,29 +316,29 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
           <div className="flex flex-wrap items-start gap-3">
             <div className="w-24 shrink-0">
               <p className={labelClass}>Primary</p>
-              <div className="aspect-[4/5] w-full overflow-hidden border border-mist bg-ivory">
+              <div className="aspect-[4/5] w-full overflow-hidden border border-pf-border bg-pf-ivory">
                 {mediaSet?.primary?.src ? (
                   <img src={mediaSet.primary.src} alt="" loading="lazy" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="flex h-full items-center justify-center px-1 text-center font-ui text-[9px] uppercase tracking-[.1em] text-taupe">No primary</span>
+                  <span className="flex h-full items-center justify-center px-1 text-center font-ui text-[9px] uppercase tracking-[.1em] text-pf-muted">No primary</span>
                 )}
               </div>
             </div>
             <div className="min-w-0 flex-1 space-y-2">
-              <p className="font-ui text-[11px] text-taupe">
+              <p className="font-ui text-[11px] text-pf-muted">
                 Gallery: {mediaSet?.gallery?.length ?? 0} asset{(mediaSet?.gallery?.length ?? 0) === 1 ? "" : "s"}
                 {mediaSet?.hover ? ` · hover: ${mediaFileName(mediaSet.hover) || mediaSet.hover.src}` : ""}
               </p>
               {mediaSet?.gallery?.length ? (
                 <ul className="flex flex-wrap gap-1.5">
                   {mediaSet.gallery.slice(0, 6).map((item) => (
-                    <li key={item.id ?? item.src} className="h-12 w-10 overflow-hidden border border-mist bg-ivory">
+                    <li key={item.id ?? item.src} className="h-12 w-10 overflow-hidden border border-pf-border bg-pf-ivory">
                       {item.src ? <img src={item.src} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
                     </li>
                   ))}
                 </ul>
               ) : null}
-              <p className="font-ui text-[11px] text-taupe">
+              <p className="font-ui text-[11px] text-pf-muted">
                 Ownership:{" "}
                 {conflicts.length
                   ? `media owned elsewhere — ${[...new Set(conflicts.map((conflict) => conflict.ownerProductId))].filter(Boolean).join(", ") || "unknown"}`
@@ -347,13 +347,13 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
                     : "no media assigned"}
               </p>
               {blockingIssues.filter((issue) => issue.section === "media").length ? (
-                <ul className="list-disc pl-4 font-ui text-[11px] text-accent">
+                <ul className="list-disc pl-4 font-ui text-[11px] text-pf-burgundy">
                   {blockingIssues.filter((issue) => issue.section === "media").map((issue) => (
                     <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>
                   ))}
                 </ul>
               ) : null}
-              <p className="font-ui text-[10px] text-taupe">
+              <p className="font-ui text-[10px] text-pf-muted">
                 Media assignment and transfer stay in Media Management — they always move through the
                 canonical media ownership service, never from this review desk.
               </p>
@@ -366,10 +366,10 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
           <dl className="grid grid-cols-2 gap-3">
             <div><dt className={labelClass}>Selling price</dt><dd className={valueClass}>{formatINR(pricing.finalPrice || product.price || 0)}</dd></div>
             <div><dt className={labelClass}>Compare-at / MRP</dt><dd className={valueClass}>{(product.compareAtPrice ?? pricing.mrp ?? 0) > 0 ? formatINR(product.compareAtPrice ?? pricing.mrp) : "—"}</dd></div>
-            <div className="col-span-2"><dt className={labelClass}>Description</dt><dd className="font-ui text-[12px] leading-relaxed text-ink/80">{product.description?.trim() || product.shortDescription?.trim() || "—"}</dd></div>
+            <div className="col-span-2"><dt className={labelClass}>Description</dt><dd className="font-ui text-[12px] leading-relaxed text-pf-text/80">{product.description?.trim() || product.shortDescription?.trim() || "—"}</dd></div>
             <div><dt className={labelClass}>Taxonomy</dt><dd className={valueClass}>{validation && !blockingIssues.some((issue) => issue.section === "taxonomy") ? "Valid" : "Review required"}</dd></div>
             <div><dt className={labelClass}>Grouping</dt><dd className={valueClass}>{blockingIssues.some((issue) => issue.section === "grouping") ? "Unresolved group decision" : "No unresolved groups"}</dd></div>
-            <div className="col-span-2"><dt className={labelClass}>Mapping</dt><dd className="font-ui text-[12px] text-ink/80">{(product.mediaIds ?? []).length} claimed media id{(product.mediaIds ?? []).length === 1 ? "" : "s"} · primary {product.primaryMediaId || "—"}</dd></div>
+            <div className="col-span-2"><dt className={labelClass}>Mapping</dt><dd className="font-ui text-[12px] text-pf-text/80">{(product.mediaIds ?? []).length} claimed media id{(product.mediaIds ?? []).length === 1 ? "" : "s"} · primary {product.primaryMediaId || "—"}</dd></div>
           </dl>
         </Section>
 
@@ -378,8 +378,8 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
           <dl className="grid grid-cols-2 gap-3">
             <div><dt className={labelClass}>Canonical stage</dt><dd className={valueClass}>{state.label ?? "—"}</dd></div>
             <div><dt className={labelClass}>Persisted status</dt><dd className={valueClass}>{product.status ?? "—"}</dd></div>
-            <div><dt className={labelClass}>Submitted</dt><dd className="font-ui text-[12px] text-ink/80">{product.review?.submittedAt ? `${product.review?.submittedBy ?? "—"} · ${formatEmployeeDateTime(product.review.submittedAt)}` : "Not submitted"}</dd></div>
-            <div><dt className={labelClass}>Approval</dt><dd className="font-ui text-[12px] text-ink/80">{product.review?.state === "APPROVED" ? `Approved by ${product.review?.reviewedBy ?? "—"}${product.review?.reviewedAt ? ` · ${formatEmployeeDateTime(product.review.reviewedAt)}` : ""}` : product.review?.state === "REJECTED" ? `Returned by ${product.review?.reviewedBy ?? "—"}` : "Pending"}</dd></div>
+            <div><dt className={labelClass}>Submitted</dt><dd className="font-ui text-[12px] text-pf-text/80">{product.review?.submittedAt ? `${product.review?.submittedBy ?? "—"} · ${formatEmployeeDateTime(product.review.submittedAt)}` : "Not submitted"}</dd></div>
+            <div><dt className={labelClass}>Approval</dt><dd className="font-ui text-[12px] text-pf-text/80">{product.review?.state === "APPROVED" ? `Approved by ${product.review?.reviewedBy ?? "—"}${product.review?.reviewedAt ? ` · ${formatEmployeeDateTime(product.review.reviewedAt)}` : ""}` : product.review?.state === "REJECTED" ? `Returned by ${product.review?.reviewedBy ?? "—"}` : "Pending"}</dd></div>
             <div><dt className={labelClass}>Publication</dt><dd className={valueClass}>{product.status === "PUBLISHED" ? "Live on the storefront" : "Not published"}</dd></div>
             <div><dt className={labelClass}>Assigned employee</dt>
               <dd>
@@ -388,7 +388,7 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
                   value={product.assignedEmployeeId ?? ""}
                   onChange={(event) => assign(event.target.value)}
                   disabled={busy !== null}
-                  className="border border-mist bg-canvas px-2 py-1 font-ui text-[11px] outline-none focus:border-accent disabled:opacity-40"
+                  className="border border-pf-border bg-pf-card px-2 py-1 font-ui text-[11px] outline-none focus:border-pf-gold-deep disabled:opacity-40"
                 >
                   <option value="">— Unassigned —</option>
                   {employees.map((employee) => (
@@ -400,7 +400,7 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
               </dd>
             </div>
             {state.returned && state.rejectionReason ? (
-              <div className="col-span-2"><dt className={labelClass}>Return reason</dt><dd className="font-ui text-[12px] text-accent">{state.rejectionReason}</dd></div>
+              <div className="col-span-2"><dt className={labelClass}>Return reason</dt><dd className="font-ui text-[12px] text-pf-burgundy">{state.rejectionReason}</dd></div>
             ) : null}
           </dl>
         </Section>
@@ -409,7 +409,7 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
       {/* REVIEW FLAGS -------------------------------------------------- */}
       <Section title="Review flags & publish blockers" eyebrow="Section 5">
         {reviewFlags.length === 0 && blockingIssues.length === 0 ? (
-          <p className="font-ui text-sm text-taupe">No open review flags and no blocking validation issues.</p>
+          <p className="font-ui text-sm text-pf-muted">No open review flags and no blocking validation issues.</p>
         ) : (
           <div className="space-y-3">
             {reviewFlags.length ? (
@@ -418,12 +418,12 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
                   const blocking = PUBLISH_BLOCKING_FLAGS.has(flag);
                   const matched = flagIssues.find((issue) => issue.message.includes(reviewFlagLabel(flag)) || issue.message.includes(flag));
                   return (
-                    <li key={flag} className="border border-mist bg-ivory/60 px-3 py-2">
+                    <li key={flag} className="border border-pf-border bg-pf-ivory/60 px-3 py-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge label={reviewFlagLabel(flag)} tone={blocking ? "danger" : "quiet"} />
-                        {!blocking ? <span className="font-ui text-[10px] text-taupe">informational — does not block publishing</span> : null}
+                        {!blocking ? <span className="font-ui text-[10px] text-pf-muted">informational — does not block publishing</span> : null}
                       </div>
-                      <dl className="mt-1.5 grid gap-1 font-ui text-[11px] text-ink/80">
+                      <dl className="mt-1.5 grid gap-1 font-ui text-[11px] text-pf-text/80">
                         <div><dt className="inline font-medium">What: </dt><dd className="inline">{reviewFlagLabel(flag)}.</dd></div>
                         <div><dt className="inline font-medium">Why: </dt><dd className="inline">{matched?.message ?? DEFAULT_FLAG_WHY}</dd></div>
                         <div><dt className="inline font-medium">Where: </dt><dd className="inline">{FLAG_FIX_HINTS[flag] ?? "Resolve it on the product record through the canonical surfaces."}</dd></div>
@@ -436,7 +436,7 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
             {blockingIssues.length ? (
               <div>
                 <p className={labelClass}>Publish blockers — canonical validation output</p>
-                <ul className="list-disc pl-4 font-ui text-[11px] text-accent">
+                <ul className="list-disc pl-4 font-ui text-[11px] text-pf-burgundy">
                   {blockingIssues.map((issue) => (
                     <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>
                   ))}
@@ -450,11 +450,11 @@ export default function ProductReviewDetail({ productId, actor, onNotice }) {
       {/* EDITING DESK — conditional, canonical edit surface ------------- */}
       {isEditableStage(stage) ? (
         <div>
-          <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Editing desk — admin edits route through the canonical draft writer</p>
+          <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Editing desk — admin edits route through the canonical draft writer</p>
           <ProductDraftReviewPanel product={product} actor={actor} onNotice={onNotice} hideLifecycleActions />
         </div>
       ) : (
-        <p className="font-ui text-[11px] text-taupe">
+        <p className="font-ui text-[11px] text-pf-muted">
           Editing is available at the draft stages (Draft / Assigned / Employee review). At the
           {` ${state.label} `}stage the record is read-only here — return it to an editable stage to edit.
         </p>

@@ -40,7 +40,7 @@ export default function PortalShell({
       <aside
         ref={drawerRef}
         className={cn(
-          "fixed inset-y-0 left-0 w-72 overflow-hidden border-r border-pf-burgundy/20 bg-pf-burgundy pt-[65px]",
+          "fixed inset-y-0 left-0 w-72 max-w-[88vw] overflow-hidden border-r border-pf-burgundy/20 bg-pf-burgundy pt-[var(--pf-header-h)]",
           "transition-[width,transform] duration-200 ease-out motion-reduce:transition-none",
           "lg:static lg:z-0 lg:translate-x-0 lg:overflow-visible lg:pt-0 lg:shrink-0",
           asideZClass,
@@ -48,14 +48,14 @@ export default function PortalShell({
           collapsed ? collapsedWidthClass : expandedWidthClass
         )}
       >
-        <div className="h-full lg:sticky lg:top-[65px] lg:h-[calc(100vh-65px)]">
+        <div className="h-full lg:sticky lg:top-[var(--pf-header-h)] lg:h-[calc(100vh-var(--pf-header-h))]">
           {sidebar}
         </div>
       </aside>
 
       <main
         className={cn(
-          "relative min-h-[calc(100vh-65px)] min-w-0 w-full max-w-full flex-1 px-4 py-6 sm:px-6 md:px-8 md:py-8",
+          "relative min-h-[calc(100vh-var(--pf-header-h))] min-w-0 w-full max-w-full flex-1 px-4 py-6 sm:px-6 md:px-8 md:py-8 xl:px-10",
           mainClassName
         )}
       >

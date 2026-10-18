@@ -27,14 +27,14 @@ export default function InventoryDashboard() {
         : "Today's stock desk. Receive, adjust and raise transfer requests within your permissions."}
     >
       <div className="mb-6 flex flex-wrap gap-3">
-        <Link to="/employee/inventory" className="border border-ink bg-ink px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-ivory">Open inventory</Link>
-        <Link to="/employee/inventory/low-stock" className="border border-pearl px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-ink hover:border-ink">Low stock · {inventory.metrics.lowStock || 0}</Link>
-        <Link to="/employee/inventory/receive" className="border border-pearl px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-ink hover:border-ink">Receive stock</Link>
+        <Link to="/employee/inventory" className="border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-pf-ivory">Open inventory</Link>
+        <Link to="/employee/inventory/low-stock" className="border border-pf-border px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-pf-text hover:border-pf-burgundy">Low stock · {inventory.metrics.lowStock || 0}</Link>
+        <Link to="/employee/inventory/receive" className="border border-pf-border px-3 py-2 font-ui text-[11px] uppercase tracking-[.14em] text-pf-text hover:border-pf-burgundy">Receive stock</Link>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Recent stock movements</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Recent stock movements</h2>
           <DataTable
             rows={inventory.movements.slice(0, 5)}
             columns={[
@@ -47,7 +47,7 @@ export default function InventoryDashboard() {
           />
         </section>
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Transfer queue</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Transfer queue</h2>
           <DataTable
             rows={inventory.transfers.slice(0, 5)}
             columns={[

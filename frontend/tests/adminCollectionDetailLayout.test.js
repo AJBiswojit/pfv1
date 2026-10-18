@@ -71,7 +71,7 @@ test("Assigned products table may scroll internally but must not impose a page-l
   assert.match(detail, /min-w-0 max-w-full overflow-x-auto/);
   assert.match(detail, /table-fixed/);
   assert.doesNotMatch(detail, /min-w-\[720px\]/);
-  assert.match(detail, /block truncate font-medium text-ink hover:text-accent/);
+  assert.match(detail, /block truncate font-medium text-pf-text hover:text-pf-burgundy/);
 });
 
 test("Collection Detail does not hide overflow to fake a fit, and keeps assignment behaviour", () => {

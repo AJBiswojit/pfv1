@@ -13,12 +13,12 @@ export default function AdminNotFound() {
   const prefix = isSuperAdmin ? "/super-admin" : "/admin";
   return (
     <div className="mx-auto max-w-xl py-16 text-center">
-      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">Error 404</p>
-      <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-ink">
-        No such <span className="italic text-accent">desk.</span>
+      <p className="font-ui text-[10px] uppercase tracking-[.3em] text-pf-burgundy">Error 404</p>
+      <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-pf-text">
+        No such <span className="italic text-pf-burgundy">desk.</span>
       </h1>
       <Rule width="w-12" tone="accent" className="mx-auto my-6" />
-      <p className="font-ui text-sm leading-relaxed text-taupe">
+      <p className="font-ui text-sm leading-relaxed text-pf-muted">
         That administration page doesn't exist. It may have been renamed, or it may
         belong to a module that hasn't opened yet.
       </p>

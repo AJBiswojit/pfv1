@@ -23,13 +23,13 @@ export default function EmployeeCustomers() {
       eyebrow="Customers"
       title={
         <>
-          Who is in the <span className="italic text-accent">house.</span>
+          Who is in the <span className="italic text-pf-burgundy">house.</span>
         </>
       }
       description="Floor walk-ins sit beside atelier accounts. This is the directory sales, support and styling share."
     >
       <div className="mb-6 max-w-md">
-        <label htmlFor="customer-search" className="mb-2 block font-ui text-[11px] uppercase tracking-[.18em] text-ink">
+        <label htmlFor="customer-search" className="mb-2 block font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">
           Customer search
         </label>
         <input

@@ -50,17 +50,17 @@ const LEAVE_TYPE_LABELS = {
 const STATUS_CLASSES = {
   PENDING:  "border border-amber-400/40 bg-amber-50 text-amber-700",
   APPROVED: "border border-emerald-400/30 bg-emerald-50 text-emerald-700",
-  REJECTED: "border border-accent/25 bg-accent/10 text-accent",
-  CANCELLED:"border border-mist bg-surface text-cocoa",
+  REJECTED: "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  CANCELLED:"border border-pf-border bg-pf-ivory text-pf-cocoa",
 };
 
 function DetailRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon size={14} className="mt-0.5 shrink-0 text-brass" />
+      <Icon size={14} className="mt-0.5 shrink-0 text-pf-gold-text" />
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe">{label}</p>
-        <p className="mt-0.5 font-ui text-sm text-ink">{value ?? "—"}</p>
+        <p className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted">{label}</p>
+        <p className="mt-0.5 font-ui text-sm text-pf-text">{value ?? "—"}</p>
       </div>
     </div>
   );
@@ -125,25 +125,25 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/60 p-4"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="leave-decision-title"
     >
-      <div className="w-full max-w-lg border border-mist bg-surface">
+      <div className="w-full max-w-lg border border-pf-border bg-pf-ivory">
         {/* ── Header ── */}
-        <div className="flex items-start justify-between border-b border-mist/60 px-6 py-5">
+        <div className="flex items-start justify-between border-b border-pf-border/60 px-6 py-5">
           <div>
-            <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">
+            <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">
               Leave Request
             </p>
             <h2
               id="leave-decision-title"
-              className="mt-1 font-display text-xl font-light text-ink"
+              className="mt-1 font-display text-xl font-light text-pf-text"
             >
               Review{" "}
-              <span className="italic text-accent">
+              <span className="italic text-pf-burgundy">
                 {leave.employeeName ?? "employee"}
               </span>
               {"'s request."}
@@ -153,7 +153,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center text-taupe hover:text-ink"
+            className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center text-pf-muted hover:text-pf-text"
           >
             <X size={16} />
           </button>
@@ -197,7 +197,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
                 {leave.status}
               </span>
               {leave.reviewNote && (
-                <span className="font-ui text-xs text-taupe">
+                <span className="font-ui text-xs text-pf-muted">
                   "{leave.reviewNote}"
                 </span>
               )}
@@ -213,7 +213,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
             <div className="space-y-5 px-6 py-5">
               {/* Decision radio */}
               <fieldset>
-                <legend className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe">
+                <legend className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted">
                   Decision
                 </legend>
                 <div className="mt-3 flex gap-6">
@@ -223,7 +223,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
                   ].map(({ value, label }) => (
                     <label
                       key={value}
-                      className="flex cursor-pointer items-center gap-2 font-ui text-sm text-ink"
+                      className="flex cursor-pointer items-center gap-2 font-ui text-sm text-pf-text"
                     >
                       <input
                         type="radio"
@@ -246,7 +246,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
               <div>
                 <label
                   htmlFor="leave-review-note"
-                  className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe"
+                  className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted"
                 >
                   Review note{noteRequired ? " *" : " (optional)"}
                 </label>
@@ -260,7 +260,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
                       ? "Required — explain the rejection reason."
                       : "Optional note for the employee."
                   }
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink placeholder:text-taupe/60 focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text placeholder:text-pf-muted/60 focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
 
@@ -268,7 +268,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
               {error ? (
                 <p
                   role="alert"
-                  className="border border-accent/30 bg-accent/5 px-3 py-2 font-ui text-[11px] text-accent"
+                  className="border border-pf-gold-deep/30 bg-pf-burgundy/5 px-3 py-2 font-ui text-[11px] text-pf-burgundy"
                 >
                   {error}
                 </p>
@@ -276,7 +276,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 border-t border-mist/60 px-6 py-4">
+            <div className="flex gap-3 border-t border-pf-border/60 px-6 py-4">
               <AtelierButton
                 type="submit"
                 variant="primary"
@@ -304,10 +304,10 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
           </form>
         ) : isPending && !canDecide ? (
           /* Read-only view for users without people.manage */
-          <div className="border-t border-mist/60 px-6 py-4">
-            <p className="font-ui text-xs text-taupe">
+          <div className="border-t border-pf-border/60 px-6 py-4">
+            <p className="font-ui text-xs text-pf-muted">
               You have view access only. Approving or rejecting leave requires the{" "}
-              <span className="font-medium text-ink">people.manage</span> capability.
+              <span className="font-medium text-pf-text">people.manage</span> capability.
             </p>
             <div className="mt-4">
               <AtelierButton
@@ -323,7 +323,7 @@ export default function AdminLeaveDecisionModal({ leave, canDecide, onDecided, o
           </div>
         ) : (
           /* Already decided — read-only */
-          <div className="border-t border-mist/60 px-6 py-4">
+          <div className="border-t border-pf-border/60 px-6 py-4">
             <AtelierButton
               type="button"
               variant="outline"

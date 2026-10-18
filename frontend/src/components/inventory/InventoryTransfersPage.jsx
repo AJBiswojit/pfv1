@@ -17,8 +17,8 @@ import catalogRepository from "../../services/catalogRepository";
 import { TRANSFER_STATES } from "../../services/inventory/inventoryRepository";
 import { formatEmployeeDateTime } from "../../utils/employee";
 
-const fieldClass = "mt-2 h-11 w-full border border-mist bg-canvas px-3 font-ui text-sm text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 disabled:opacity-50";
-const labelClass = "font-ui text-[10px] uppercase tracking-[.15em] text-taupe";
+const fieldClass = "mt-2 h-11 w-full border border-pf-border bg-pf-card px-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep focus:ring-1 focus:ring-pf-burgundy/20 disabled:opacity-50";
+const labelClass = "font-ui text-[10px] uppercase tracking-[.15em] text-pf-muted";
 
 export default function InventoryTransfersPage({ portal = "admin" }) {
   const inventory = useInventory();
@@ -114,7 +114,7 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
       <InventoryNav portal={portal} />
 
       {feedback ? (
-        <p role={feedback.kind === "error" ? "alert" : "status"} className={`mb-6 border p-4 font-ui text-sm ${feedback.kind === "error" ? "border-accent/40 bg-accent/[0.05] text-accent" : "border-cocoa/25 bg-cocoa/[0.05] text-cocoa"}`}>
+        <p role={feedback.kind === "error" ? "alert" : "status"} className={`mb-6 border p-4 font-ui text-sm ${feedback.kind === "error" ? "border-pf-gold-deep/40 bg-pf-burgundy/[0.05] text-pf-burgundy" : "border-pf-cocoa/25 bg-pf-cocoa/[0.05] text-pf-cocoa"}`}>
           {feedback.message}
         </p>
       ) : null}
@@ -124,21 +124,21 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
           <form onSubmit={(event) => { event.preventDefault(); create(false); }} className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <label className={labelClass}>
-                Source <span className="text-accent">*</span>
+                Source <span className="text-pf-burgundy">*</span>
                 <select required className={fieldClass} value={form.sourceLocationId} onChange={(event) => setForm((current) => ({ ...current, sourceLocationId: event.target.value }))}>
                   <option value="">Select source</option>
                   {inventory.locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.type}</option>)}
                 </select>
               </label>
               <label className={labelClass}>
-                Destination <span className="text-accent">*</span>
+                Destination <span className="text-pf-burgundy">*</span>
                 <select required className={fieldClass} value={form.destinationLocationId} onChange={(event) => setForm((current) => ({ ...current, destinationLocationId: event.target.value }))}>
                   <option value="">Select destination</option>
                   {inventory.locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.type}</option>)}
                 </select>
               </label>
               <label className={`${labelClass} sm:col-span-2 xl:col-span-1 2xl:col-span-2`}>
-                Product <span className="text-accent">*</span>
+                Product <span className="text-pf-burgundy">*</span>
                 <select required className={fieldClass} value={form.productId} onChange={(event) => setForm((current) => ({ ...current, productId: event.target.value, variantId: "" }))}>
                   <option value="">Select catalogue product</option>
                   {products.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.sku}</option>)}
@@ -152,7 +152,7 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
                 </select>
               </label>
               <label className={labelClass}>
-                Quantity <span className="text-accent">*</span>
+                Quantity <span className="text-pf-burgundy">*</span>
                 <input required min="1" step="1" type="number" className={fieldClass} value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} />
               </label>
               <label className={`${labelClass} sm:col-span-2 xl:col-span-1 2xl:col-span-2`}>
@@ -163,11 +163,11 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
               </label>
               <label className={`${labelClass} sm:col-span-2 xl:col-span-1 2xl:col-span-2`}>
                 Notes
-                <textarea className="mt-2 min-h-20 w-full border border-mist bg-canvas p-3 font-ui text-sm text-ink outline-none focus:border-accent" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+                <textarea className="mt-2 min-h-20 w-full border border-pf-border bg-pf-card p-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
               </label>
             </div>
             {warehouseStaff && form.sourceLocationId && form.destinationLocationId && !transferTouchesWarehouse ? (
-              <p role="alert" className="font-ui text-xs text-accent">Warehouse staff transfers must include a warehouse location.</p>
+              <p role="alert" className="font-ui text-xs text-pf-burgundy">Warehouse staff transfers must include a warehouse location.</p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <AtelierButton type="submit" disabled={!ready}><Truck size={13} aria-hidden="true" /> Request transfer</AtelierButton>
@@ -175,11 +175,11 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
             </div>
           </form>
 
-          <div className="mt-6 border-l-2 border-brass bg-canvas p-4">
-            <p className="font-ui text-[10px] uppercase tracking-[.15em] text-taupe">Available for a new request</p>
-            <p className="mt-1 font-display text-3xl text-ink">{requestableAtSource}</p>
-            {pendingOutbound > 0 ? <p className="mt-1 font-ui text-[10px] text-taupe">{pendingOutbound} committed to pending transfers</p> : null}
-            <div className="mt-4 flex items-center gap-3 font-ui text-xs text-taupe">
+          <div className="mt-6 border-l-2 border-pf-gold-deep bg-pf-card p-4">
+            <p className="font-ui text-[10px] uppercase tracking-[.15em] text-pf-muted">Available for a new request</p>
+            <p className="mt-1 font-display text-3xl text-pf-text">{requestableAtSource}</p>
+            {pendingOutbound > 0 ? <p className="mt-1 font-ui text-[10px] text-pf-muted">{pendingOutbound} committed to pending transfers</p> : null}
+            <div className="mt-4 flex items-center gap-3 font-ui text-xs text-pf-muted">
               <span>{sourceRecord ? Math.max(0, sourceRecord.quantity.onHand - quantity) : 0} source after dispatch</span>
               <ArrowRight size={13} aria-hidden="true" />
               <span>{(destinationRecord?.quantity.onHand || 0) + quantity} destination after receipt</span>
@@ -193,11 +193,11 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
             rows={visibleTransfers}
             empty="No transfers have been requested."
             columns={[
-              { id: "id", label: "Reference", render: (row) => <div><p className="font-mono text-xs">{row.id}</p><p className="mt-1 text-[10px] text-taupe">{formatEmployeeDateTime(row.createdAt)}</p></div> },
-              { id: "product", label: "Product", render: (row) => <div className="min-w-40"><p>{row.productName}</p><p className="mt-1 text-[10px] text-taupe">{row.variantLabel} · {row.quantity} units</p></div> },
-              { id: "route", label: "Route", render: (row) => <div className="min-w-32"><p>{row.source?.name || "—"}</p><p className="my-1 text-[10px] text-brass">↓ to</p><p>{row.destination?.name || "—"}</p></div> },
+              { id: "id", label: "Reference", render: (row) => <div><p className="font-mono text-xs">{row.id}</p><p className="mt-1 text-[10px] text-pf-muted">{formatEmployeeDateTime(row.createdAt)}</p></div> },
+              { id: "product", label: "Product", render: (row) => <div className="min-w-40"><p>{row.productName}</p><p className="mt-1 text-[10px] text-pf-muted">{row.variantLabel} · {row.quantity} units</p></div> },
+              { id: "route", label: "Route", render: (row) => <div className="min-w-32"><p>{row.source?.name || "—"}</p><p className="my-1 text-[10px] text-pf-gold-text">↓ to</p><p>{row.destination?.name || "—"}</p></div> },
               { id: "status", label: "Status", render: (row) => <InventoryStatusBadge status={row.status} kind="transfer" /> },
-              { id: "requestedBy", label: "Requested by", render: (row) => <span className="text-[11px] text-taupe">{row.requestedBy}</span> },
+              { id: "requestedBy", label: "Requested by", render: (row) => <span className="text-[11px] text-pf-muted">{row.requestedBy}</span> },
               {
                 id: "actions",
                 label: "Action",
@@ -206,12 +206,12 @@ export default function InventoryTransfersPage({ portal = "admin" }) {
                   const cancellable = [TRANSFER_STATES.DRAFT, TRANSFER_STATES.REQUESTED, TRANSFER_STATES.APPROVED].includes(row.status);
                   return action || cancellable ? (
                     <div className="flex flex-col gap-1.5">
-                      {action ? <AtelierButton size="chip" variant="outline" onClick={() => progress(row, action[0])}>{action[1]}</AtelierButton> : <span className="text-[11px] text-taupe">Awaiting manager</span>}
-                      {cancellable ? <button type="button" onClick={() => progress(row, TRANSFER_STATES.CANCELLED)} className="font-ui text-[10px] text-accent hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">Cancel</button> : null}
+                      {action ? <AtelierButton size="chip" variant="outline" onClick={() => progress(row, action[0])}>{action[1]}</AtelierButton> : <span className="text-[11px] text-pf-muted">Awaiting manager</span>}
+                      {cancellable ? <button type="button" onClick={() => progress(row, TRANSFER_STATES.CANCELLED)} className="font-ui text-[10px] text-pf-burgundy hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy">Cancel</button> : null}
                     </div>
                   ) : row.status === TRANSFER_STATES.RECEIVED ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-cocoa"><CheckCircle2 size={12} aria-hidden="true" /> Complete</span>
-                  ) : <span className="text-[11px] text-taupe">Awaiting next role</span>;
+                    <span className="inline-flex items-center gap-1 text-[11px] text-pf-cocoa"><CheckCircle2 size={12} aria-hidden="true" /> Complete</span>
+                  ) : <span className="text-[11px] text-pf-muted">Awaiting next role</span>;
                 },
               },
             ]}

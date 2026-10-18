@@ -52,8 +52,8 @@ const statusTone = {
 
 const Term = ({ label, value }) => (
   <div>
-    <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-    <dd className="mt-1 font-ui text-sm text-ink font-medium">{value || "—"}</dd>
+    <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+    <dd className="mt-1 font-ui text-sm text-pf-text font-medium">{value || "—"}</dd>
   </div>
 );
 
@@ -123,7 +123,7 @@ export default function AdminProductDetail() {
   if (fetchState.loading && !product) {
     return (
       <AdminPage title="Loading product…">
-        <p className="py-12 text-center font-ui text-sm text-taupe">Fetching this product from the server…</p>
+        <p className="py-12 text-center font-ui text-sm text-pf-muted">Fetching this product from the server…</p>
       </AdminPage>
     );
   }
@@ -131,7 +131,7 @@ export default function AdminProductDetail() {
   if (!product) {
     return (
       <AdminPage title={fetchState.notFound ? "Product not found" : "Product unavailable"}>
-        <p className="font-ui text-sm text-taupe">
+        <p className="font-ui text-sm text-pf-muted">
           {fetchState.notFound
             ? "The server has no product with this id."
             : fetchState.error ?? "That product could not be loaded from the server."}
@@ -224,7 +224,7 @@ export default function AdminProductDetail() {
       }
     >
       {notice ? (
-        <p aria-live="polite" className="mb-6 border border-mist/80 bg-canvas px-4 py-3 font-ui text-sm text-ink">
+        <p aria-live="polite" className="mb-6 border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">
           {notice}
         </p>
       ) : null}
@@ -232,18 +232,18 @@ export default function AdminProductDetail() {
       <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
         {/* Left rail */}
         <div className="space-y-4">
-          <div className="border border-mist/80 bg-surface/40 p-3">
+          <div className="border border-pf-border/80 bg-pf-ivory/40 p-3">
             {cover?.src ? (
-              <img src={cover.src} alt={product.name} className="h-80 w-full object-cover border border-mist/60" />
+              <img src={cover.src} alt={product.name} className="h-80 w-full object-cover border border-pf-border/60" />
             ) : (
-              <div className="flex h-80 w-full items-center justify-center bg-mist/40 font-ui text-[11px] uppercase tracking-[.16em] text-taupe">
+              <div className="flex h-80 w-full items-center justify-center bg-pf-border/40 font-ui text-[11px] uppercase tracking-[.16em] text-pf-muted">
                 No cover yet
               </div>
             )}
           </div>
 
-          <div className="border border-mist/80 bg-surface/30 p-4">
-            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Status &amp; Merchandising</p>
+          <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Status &amp; Merchandising</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <StatusBadge label={getProductStatusLabel(product.status)} tone={statusTone[product.status] ?? "quiet"} />
               {product.review.state === "PENDING" ? <StatusBadge label="Awaiting review" tone="alert" /> : null}
@@ -256,7 +256,7 @@ export default function AdminProductDetail() {
             </div>
 
             {product.review.state === "REJECTED" && product.review.rejectionReason ? (
-              <p className="mt-3 border border-accent/40 bg-accent/[0.05] p-3 font-ui text-sm text-accent">
+              <p className="mt-3 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-3 font-ui text-sm text-pf-burgundy">
                 Rejection reason: {product.review.rejectionReason}
               </p>
             ) : null}
@@ -305,7 +305,7 @@ export default function AdminProductDetail() {
                   setRejection("");
                 }}
               >
-                <label htmlFor="reject-reason" className="font-ui text-[10px] uppercase tracking-[.16em] text-ink">
+                <label htmlFor="reject-reason" className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-text">
                   Return reason
                 </label>
                 <textarea
@@ -314,7 +314,7 @@ export default function AdminProductDetail() {
                   value={rejection}
                   onChange={(event) => setRejection(event.target.value)}
                   placeholder="Missing product details. Incorrect price. Poor product image…"
-                  className="w-full border border-mist bg-canvas px-3 py-2 font-ui text-sm outline-none focus:border-accent"
+                  className="w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-sm outline-none focus:border-pf-gold-deep"
                 />
                 <div className="flex gap-2">
                   <AtelierButton type="submit" size="chip">Return product</AtelierButton>
@@ -326,30 +326,30 @@ export default function AdminProductDetail() {
             ) : null}
 
             {issues === null ? (
-              <p className="mt-4 font-ui text-[11px] text-taupe">Publishing checks are being fetched from the server…</p>
+              <p className="mt-4 font-ui text-[11px] text-pf-muted">Publishing checks are being fetched from the server…</p>
             ) : null}
             {Array.isArray(issues) && issues.length ? (
-              <div className="mt-4 border border-accent/40 bg-accent/[0.05] p-3">
-                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent font-semibold">Publishing blockers</p>
+              <div className="mt-4 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-3">
+                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy font-semibold">Publishing blockers</p>
                 <ul className="mt-2 space-y-1">
                   {issues.map((issue) => (
-                    <li key={issue} className="font-ui text-[12px] text-accent">— {issue}</li>
+                    <li key={issue} className="font-ui text-[12px] text-pf-burgundy">— {issue}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
           </div>
 
-          <div className="border border-mist/80 bg-surface/30 p-4">
-            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Media</p>
-            <p className="mt-2 font-ui text-sm text-ink">
+          <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Media</p>
+            <p className="mt-2 font-ui text-sm text-pf-text">
               {registered.status === "ready"
                 ? `${registered.count} registered on the server`
                 : registered.status === "loading"
                   ? "Checking the media registry…"
                   : "Registry unreadable"}
             </p>
-            <p className="mt-1 font-ui text-[11px] text-taupe">
+            <p className="mt-1 font-ui text-[11px] text-pf-muted">
               Review register: {summary.total} item{summary.total === 1 ? "" : "s"} · {summary.images} image{summary.images === 1 ? "" : "s"} ·{" "}
               {summary.videos} video{summary.videos === 1 ? "" : "s"}
             </p>
@@ -364,14 +364,14 @@ export default function AdminProductDetail() {
             </div>
             <Link
               to={`${prefix}/products/${product.id}/media`}
-              className="mt-3 inline-block font-ui text-[11px] uppercase tracking-wider text-accent underline-offset-4 hover:underline"
+              className="mt-3 inline-block font-ui text-[11px] uppercase tracking-wider text-pf-burgundy underline-offset-4 hover:underline"
             >
               Open Media Manager →
             </Link>
           </div>
 
-          <div className="border border-mist/80 bg-surface/30 p-4">
-            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Record History</p>
+          <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Record History</p>
             <dl className="mt-3 space-y-3 font-ui text-sm">
               <Term label="Created by" value={product.createdBy} />
               <Term label="Created at" value={product.createdAt ? formatEmployeeDateTime(product.createdAt) : null} />
@@ -404,25 +404,25 @@ export default function AdminProductDetail() {
             </dl>
 
             {product.shortDescription || product.description ? (
-              <div className="mt-6 space-y-3 border-t border-mist/60 pt-5">
+              <div className="mt-6 space-y-3 border-t border-pf-border/60 pt-5">
                 {product.shortDescription ? (
                   <div>
-                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-1">Short Description</p>
-                    <p className="font-display text-base italic text-graphite">{product.shortDescription}</p>
+                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-1">Short Description</p>
+                    <p className="font-display text-base italic text-pf-muted">{product.shortDescription}</p>
                   </div>
                 ) : null}
                 {product.description ? (
                   <div>
-                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-1">Full Description</p>
-                    <p className="max-w-2xl font-ui text-sm leading-relaxed text-taupe">{product.description}</p>
+                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-1">Full Description</p>
+                    <p className="max-w-2xl font-ui text-sm leading-relaxed text-pf-muted">{product.description}</p>
                   </div>
                 ) : null}
                 {product.highlights?.length ? (
                   <div className="pt-2">
-                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-2">Highlights</p>
+                    <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-2">Highlights</p>
                     <ul className="grid gap-1.5 sm:grid-cols-2">
                       {product.highlights.map((highlight) => (
-                        <li key={highlight} className="font-ui text-sm text-ink">✓ {highlight}</li>
+                        <li key={highlight} className="font-ui text-sm text-pf-text">✓ {highlight}</li>
                       ))}
                     </ul>
                   </div>
@@ -444,15 +444,15 @@ export default function AdminProductDetail() {
             </dl>
 
             {product.priceHistory?.length ? (
-              <div className="mt-6 border-t border-mist/60 pt-5">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Price history</p>
-                <ul className="mt-3 divide-y divide-mist/60 border border-mist/70 bg-canvas">
+              <div className="mt-6 border-t border-pf-border/60 pt-5">
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Price history</p>
+                <ul className="mt-3 divide-y divide-pf-border/60 border border-pf-border/70 bg-pf-card">
                   {product.priceHistory.map((entry) => (
                     <li key={entry.at} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 font-ui text-sm">
-                      <span className="text-ink">
+                      <span className="text-pf-text">
                         {formatINR(entry.from)} → {formatINR(entry.to)}
                       </span>
-                      <span className="text-[11px] text-taupe">
+                      <span className="text-[11px] text-pf-muted">
                         {entry.by} · {formatEmployeeDateTime(entry.at)}
                       </span>
                     </li>
@@ -467,7 +467,7 @@ export default function AdminProductDetail() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left">
                   <thead>
-                    <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+                    <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                       {["SKU", "Colour", "Size", "Price", "Stock", "Barcode", "Status"].map((heading) => (
                         <th key={heading} className="px-3 py-2.5" scope="col">{heading}</th>
                       ))}
@@ -475,16 +475,16 @@ export default function AdminProductDetail() {
                   </thead>
                   <tbody>
                     {product.variants.map((variant) => (
-                      <tr key={variant.id} className="border-b border-mist/60 font-ui text-sm">
-                        <td className="px-3 py-3 text-taupe font-mono text-xs">{variant.sku || "—"}</td>
+                      <tr key={variant.id} className="border-b border-pf-border/60 font-ui text-sm">
+                        <td className="px-3 py-3 text-pf-muted font-mono text-xs">{variant.sku || "—"}</td>
                         <td className="px-3 py-3">{variant.color || "—"}</td>
                         <td className="px-3 py-3">{variant.size || "—"}</td>
                         <td className="px-3 py-3 font-medium">
                           {formatINR(resolveVariantPrice(variant, product.pricing))}
-                          {variant.priceOverride ? <span className="ml-1 text-[10px] uppercase text-taupe">override</span> : null}
+                          {variant.priceOverride ? <span className="ml-1 text-[10px] uppercase text-pf-muted">override</span> : null}
                         </td>
                         <td className="px-3 py-3">{variant.stock}</td>
-                        <td className="px-3 py-3 text-taupe">{variant.barcode || "—"}</td>
+                        <td className="px-3 py-3 text-pf-muted">{variant.barcode || "—"}</td>
                         <td className="px-3 py-3">
                           <StatusBadge label={variant.status === "ACTIVE" ? "Active" : "Inactive"} tone={variant.status === "ACTIVE" ? "ink" : "muted"} />
                         </td>
@@ -494,7 +494,7 @@ export default function AdminProductDetail() {
                 </table>
               </div>
             ) : (
-              <p className="font-ui text-sm text-taupe">No variants — the product sells in its base colour and size.</p>
+              <p className="font-ui text-sm text-pf-muted">No variants — the product sells in its base colour and size.</p>
             )}
           </AdminPanel>
 
@@ -534,13 +534,13 @@ export default function AdminProductDetail() {
             </dl>
 
             {product.specifications && Object.keys(product.specifications).length > 0 ? (
-              <div className="mt-5 border-t border-mist/60 pt-4">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe mb-2">Specifications</p>
-                <dl className="divide-y divide-mist/60 border border-mist/70 bg-canvas">
+              <div className="mt-5 border-t border-pf-border/60 pt-4">
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted mb-2">Specifications</p>
+                <dl className="divide-y divide-pf-border/60 border border-pf-border/70 bg-pf-card">
                   {Object.entries(product.specifications).map(([key, val]) => (
                     <div key={key} className="flex items-center justify-between px-3 py-2 font-ui text-sm">
-                      <dt className="text-taupe uppercase text-[10px] tracking-wider">{key}</dt>
-                      <dd className="text-ink font-medium">{val}</dd>
+                      <dt className="text-pf-muted uppercase text-[10px] tracking-wider">{key}</dt>
+                      <dd className="text-pf-text font-medium">{val}</dd>
                     </div>
                   ))}
                 </dl>
@@ -548,30 +548,30 @@ export default function AdminProductDetail() {
             ) : null}
 
             {product.careInstructions?.length ? (
-              <div className="mt-5 border-t border-mist/60 pt-4">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Care Instructions</p>
-                <ul className="mt-2 space-y-1 font-ui text-sm text-ink">
+              <div className="mt-5 border-t border-pf-border/60 pt-4">
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Care Instructions</p>
+                <ul className="mt-2 space-y-1 font-ui text-sm text-pf-text">
                   {product.careInstructions.map((line) => <li key={line}>· {line}</li>)}
                 </ul>
               </div>
             ) : null}
 
             {product.deliveryInfo ? (
-              <div className="mt-4 border-t border-mist/60 pt-4">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Delivery Information</p>
-                <p className="mt-2 font-ui text-sm text-ink">{product.deliveryInfo}</p>
+              <div className="mt-4 border-t border-pf-border/60 pt-4">
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Delivery Information</p>
+                <p className="mt-2 font-ui text-sm text-pf-text">{product.deliveryInfo}</p>
               </div>
             ) : null}
 
             {product.returnPolicy?.eligibility || product.returnPolicy?.window || product.returnPolicy?.notes || product.returnInfo ? (
-              <div className="mt-4 border-t border-mist/60 pt-4">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Returns Policy</p>
-                {product.returnInfo ? <p className="mt-2 font-ui text-sm text-ink">{product.returnInfo}</p> : null}
+              <div className="mt-4 border-t border-pf-border/60 pt-4">
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Returns Policy</p>
+                {product.returnInfo ? <p className="mt-2 font-ui text-sm text-pf-text">{product.returnInfo}</p> : null}
                 {product.returnPolicy?.eligibility || product.returnPolicy?.window || product.returnPolicy?.notes ? (
-                  <div className="mt-2 space-y-1 text-xs font-ui text-taupe">
-                    {product.returnPolicy.eligibility ? <p>Eligibility: <span className="text-ink">{product.returnPolicy.eligibility}</span></p> : null}
-                    {product.returnPolicy.window ? <p>Return Window: <span className="text-ink">{product.returnPolicy.window}</span></p> : null}
-                    {product.returnPolicy.notes ? <p>Notes: <span className="text-ink">{product.returnPolicy.notes}</span></p> : null}
+                  <div className="mt-2 space-y-1 text-xs font-ui text-pf-muted">
+                    {product.returnPolicy.eligibility ? <p>Eligibility: <span className="text-pf-text">{product.returnPolicy.eligibility}</span></p> : null}
+                    {product.returnPolicy.window ? <p>Return Window: <span className="text-pf-text">{product.returnPolicy.window}</span></p> : null}
+                    {product.returnPolicy.notes ? <p>Notes: <span className="text-pf-text">{product.returnPolicy.notes}</span></p> : null}
                   </div>
                 ) : null}
               </div>
@@ -584,25 +584,25 @@ export default function AdminProductDetail() {
               <Term label="URL slug" value={product.slug} />
             </dl>
             {product.seo.description ? (
-              <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">{product.seo.description}</p>
+              <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">{product.seo.description}</p>
             ) : null}
           </AdminPanel>
 
           <AdminPanel eyebrow="House diary" title={`Activity (${productActivity.length})`}>
             {productActivity.length ? (
-              <ol className="divide-y divide-mist/70">
+              <ol className="divide-y divide-pf-border/70">
                 {productActivity.slice(0, 20).map((entry) => (
                   <li key={entry.id} className="px-1 py-3">
-                    <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent">{getActivityLabel(entry.action)}</p>
-                    <p className="mt-1 font-ui text-sm text-ink">{entry.summary}</p>
-                    <p className="mt-1 font-ui text-[11px] text-taupe">
+                    <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy">{getActivityLabel(entry.action)}</p>
+                    <p className="mt-1 font-ui text-sm text-pf-text">{entry.summary}</p>
+                    <p className="mt-1 font-ui text-[11px] text-pf-muted">
                       {entry.actorName} · {formatEmployeeDateTime(entry.at)}
                     </p>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="font-ui text-sm text-taupe">No product activity recorded yet.</p>
+              <p className="font-ui text-sm text-pf-muted">No product activity recorded yet.</p>
             )}
           </AdminPanel>
         </div>

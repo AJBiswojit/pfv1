@@ -14,7 +14,7 @@ export default function RegisteredMediaPicker({ admin, value, onChange, disabled
     });
     return () => { cancelled = true; };
   }, [admin, page, attempt]);
-  return <fieldset disabled={disabled} className="space-y-3 border border-mist p-3">
+  return <fieldset disabled={disabled} className="space-y-3 border border-pf-border p-3">
     <legend className="px-1 font-ui text-xs">Registered image library</legend>
     {value && <p className="break-all text-xs" role="status">Selected: {value.objectKey} · not saved yet</p>}
     {state.status === 'loading' ? <p role="status">Loading registered media…</p> : state.status === 'error' ?
@@ -23,7 +23,7 @@ export default function RegisteredMediaPicker({ admin, value, onChange, disabled
         {!state.items.length && <p>No safe registered images on this page. Register media through the existing media library, or try another page.</p>}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           {state.items.map((asset) => <button key={asset.id} type="button" aria-pressed={value?.id === asset.id}
-            onClick={() => onChange(asset)} className={`min-w-0 border p-2 text-left ${value?.id === asset.id ? 'border-accent bg-canvas-deep' : 'border-mist'}`}>
+            onClick={() => onChange(asset)} className={`min-w-0 border p-2 text-left ${value?.id === asset.id ? 'border-pf-gold-deep bg-pf-ivory' : 'border-pf-border'}`}>
             <img src={registeredImageUrl(asset)} alt="" loading="lazy" className="h-24 w-full object-cover" />
             <span className="mt-2 block break-all text-[11px]">{asset.objectKey}</span>
           </button>)}

@@ -5,7 +5,8 @@ import { cn } from "../../utils/cn";
  * line and an optional action cluster. Every admin surface uses it so
  * headings, rhythm and action placement never drift page to page.
  *
- * Updated to use the approved burgundy / ivory / champagne-gold palette.
+ * Phase 2 staff scale: 44px Cormorant (weight 500) page titles, 11px
+ * accessible gold-brown eyebrows, 14px supporting copy.
  */
 export default function AdminPage({
   eyebrow,
@@ -20,9 +21,9 @@ export default function AdminPage({
       <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="max-w-2xl">
           {eyebrow ? (
-            <p className="font-ui text-[10px] uppercase tracking-[.3em] text-pf-gold">{eyebrow}</p>
+            <p className="font-ui text-[11px] font-semibold uppercase tracking-[.28em] text-pf-gold-text">{eyebrow}</p>
           ) : null}
-          <h1 className="mt-2 font-display text-3xl font-light tracking-tight text-pf-text md:text-4xl">
+          <h1 className="mt-2 font-display text-[32px] font-medium leading-[1.05] tracking-tight text-pf-text md:text-[44px]">
             {title}
           </h1>
           {description ? (

@@ -341,7 +341,7 @@ test("an empty or unavailable backend renders an honest page, never a blank one"
      header's own brand mark, which is a bundled asset, not backend data. */
   assert.equal(countOf(html, /<img[^>]+src="\/api\/v1\/media/g), 0, "no catalogue image may render without a backend");
   assert.equal(countOf(html, /<img/g), 1, "only the brand mark");
-  assert.match(html, /<img[^>]+src="\/src\/assets\/pratikshya_logo\.png"[^>]*alt="PRATIKSHYA FASHION"/);
+  assert.match(html, /<img[^>]+src="\/design\/pratikshya-logo\.webp"[^>]*alt="PRATIKSHYA FASHION"/);
 
   /* …and the newsletter section is absent, not empty (no endpoint exists). */
   assert.equal(/newsletter|subscribe/i.test(html), false);

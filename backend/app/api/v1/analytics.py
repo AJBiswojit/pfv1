@@ -234,9 +234,16 @@ async def admin_dashboard_summary(
     # ── 6. Employee head-count ──
     employees = await svc.employee_headcount()
 
+    # ── 7. Whole-book order-status distribution (additive, Phase 2) ──
+    # The dashboard donut reads this complete distribution; it must never
+    # be derived from the recent-orders sample above. Existing response
+    # fields are unchanged.
+    order_status_counts = await svc.order_status_counts()
+
     return {
         "ok": True,
         "metrics": metrics,
+        "orderStatusCounts": order_status_counts,
         "salesSeries": sales_series,
         "salesDays": days,
         "categories": categories_formatted,

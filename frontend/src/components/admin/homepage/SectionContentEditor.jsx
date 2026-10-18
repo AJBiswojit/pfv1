@@ -6,7 +6,7 @@ import PublishedProductPicker from './PublishedProductPicker';
 
 const fields = ['eyebrow', 'title', 'subtitle', 'ctaLabel', 'ctaHref', 'altText'];
 const empty = () => Object.fromEntries(fields.map((k) => [k, '']));
-const button = 'border border-mist px-3 py-2 text-xs disabled:opacity-40';
+const button = 'border border-pf-border px-3 py-2 text-xs disabled:opacity-40';
 
 export default function SectionContentEditor({ actor, sectionKey, contentType, onDirtyChange }) {
   const access = staffHomepageAccess(actor);
@@ -76,7 +76,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
   };
   if (!access.view) return <p>Section persistence requires marketing.view. Existing media-only access is unchanged.</p>;
   if (!section) return <div>{error ? <p role="alert">{error}</p> : <p role="status">Loading section content…</p>}<button type="button" onClick={reload}>Retry section</button></div>;
-  return <div className="space-y-4 border border-mist p-4">
+  return <div className="space-y-4 border border-pf-border p-4">
     <p role="status">{section.configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · existing storefront content remains in use.'}</p>
     <button type="button" className={button} disabled={busy} onClick={reload}>Reload section and public content</button>
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
@@ -86,7 +86,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
     }}>Configure section (initially hidden)</button> : <>
       {access.write && <button type="button" className={button} disabled={busy || dirty || needsReload || (!section.isActive && section.items.some((r) => r.contentType === 'MEDIA' && r.isActive) && !access.mediaAssign)} onClick={() => run('', 'put', { expectedRevision: revision, isActive: !section.isActive }, { configuring: true })}>{section.isActive ? 'Deactivate section' : 'Activate section'}</button>}
       {!allowed.length ? <p>No {contentType} slot is registered for this section.</p> : <>
-        <ul className="space-y-2">{entries.map((row) => <li key={row.id} className="border border-mist p-3">
+        <ul className="space-y-2">{entries.map((row) => <li key={row.id} className="border border-pf-border p-3">
           <p>{row.slotKey} · {row.title || row.product?.name || row.productId || row.mediaAssetId} · {row.isActive ? 'Active' : 'Inactive'}</p>
           {row.warning && <p role="status">Not publicly eligible: {row.warning}</p>}
           {canWrite && <>
@@ -116,7 +116,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
         }}>
           <h3>{editing ? 'Edit saved entry' : 'New inactive entry'}</h3>
           <label>Slot <select value={editing?.slotKey || currentSlot} disabled={busy || Boolean(editing)} onChange={(event) => { setSlot(event.target.value); setDirty(true); }}>{allowed.map((s) => <option key={s.slotKey} value={s.slotKey}>{s.slotKey} (max {s.capacity})</option>)}</select></label>
-          {contentType !== 'PRODUCT' && fields.map((field) => <label key={field} className="block text-xs">{field}<input className="ml-2 border border-mist p-2" value={draft[field]} disabled={busy} onChange={(event) => { setDraft((v) => ({ ...v, [field]: event.target.value })); setDirty(true); }} /></label>)}
+          {contentType !== 'PRODUCT' && fields.map((field) => <label key={field} className="block text-xs">{field}<input className="ml-2 border border-pf-border p-2" value={draft[field]} disabled={busy} onChange={(event) => { setDraft((v) => ({ ...v, [field]: event.target.value })); setDirty(true); }} /></label>)}
           {contentType === 'MEDIA' && <RegisteredMediaPicker admin={actor.employee ? actor : actor.admin} disabled={busy || !access.mediaView} value={asset} onChange={(value) => { setAsset(value); setDirty(true); }} />}
           {contentType === 'PRODUCT' && <PublishedProductPicker actor={actor} selectedId={product?.id} disabled={busy} onSelect={(value) => { setProduct(value); setDirty(true); }} />}
           <button type="submit" className={button} disabled={busy || needsReload || (!dirty && !editing) || (!editing && contentType === 'MEDIA' && !asset) || (!editing && contentType === 'PRODUCT' && !product)}>{busy ? 'Saving…' : 'Save section entry'}</button>

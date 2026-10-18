@@ -18,20 +18,20 @@ export function productCreateTitle(productId, useQuick) {
   if (!productId) {
     return (
       <>
-        New <span className="italic text-accent">product.</span>
+        New <span className="italic text-pf-burgundy">product.</span>
       </>
     );
   }
   if (useQuick) {
     return (
       <>
-        Add a <span className="italic text-accent">product.</span>
+        Add a <span className="italic text-pf-burgundy">product.</span>
       </>
     );
   }
   return (
     <>
-      Edit <span className="italic text-accent">product.</span>
+      Edit <span className="italic text-pf-burgundy">product.</span>
     </>
   );
 }

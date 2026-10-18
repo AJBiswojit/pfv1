@@ -45,10 +45,10 @@ function UnmappedRow({ pin, employees, onLinked }) {
 
   if (linked) {
     return (
-      <tr className="border-b border-mist/50 last:border-0 bg-cocoa/5">
-        <td className="px-4 py-3 font-mono text-xs text-ink">{pin.devicePin}</td>
+      <tr className="border-b border-pf-border/50 last:border-0 bg-pf-cocoa/5">
+        <td className="px-4 py-3 font-mono text-xs text-pf-text">{pin.devicePin}</td>
         <td colSpan={4} className="px-4 py-3">
-          <span className="inline-flex items-center gap-1.5 font-ui text-[11px] text-cocoa">
+          <span className="inline-flex items-center gap-1.5 font-ui text-[11px] text-pf-cocoa">
             <Check size={12} aria-hidden="true" />
             Linked successfully
           </span>
@@ -58,28 +58,28 @@ function UnmappedRow({ pin, employees, onLinked }) {
   }
 
   return (
-    <tr className="border-b border-mist/50 last:border-0 hover:bg-surface/30">
+    <tr className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30">
       {/* Pin */}
-      <td className="px-4 py-3 font-mono text-xs text-ink">{pin.devicePin}</td>
+      <td className="px-4 py-3 font-mono text-xs text-pf-text">{pin.devicePin}</td>
 
       {/* Punch count */}
-      <td className="px-4 py-3 font-ui text-sm text-ink">{pin.punchCount ?? "—"}</td>
+      <td className="px-4 py-3 font-ui text-sm text-pf-text">{pin.punchCount ?? "—"}</td>
 
       {/* First seen */}
-      <td className="px-4 py-3 font-ui text-[11px] text-taupe">
+      <td className="px-4 py-3 font-ui text-[11px] text-pf-muted">
         {pin.firstSeen ? (
           <>
-            <span className="block text-ink">{formatDateShort(pin.firstSeen)}</span>
+            <span className="block text-pf-text">{formatDateShort(pin.firstSeen)}</span>
             <span>{formatTime(pin.firstSeen)}</span>
           </>
         ) : "—"}
       </td>
 
       {/* Last seen */}
-      <td className="px-4 py-3 font-ui text-[11px] text-taupe">
+      <td className="px-4 py-3 font-ui text-[11px] text-pf-muted">
         {pin.lastSeen ? (
           <>
-            <span className="block text-ink">{formatDateShort(pin.lastSeen)}</span>
+            <span className="block text-pf-text">{formatDateShort(pin.lastSeen)}</span>
             <span>{formatTime(pin.lastSeen)}</span>
           </>
         ) : "—"}
@@ -92,7 +92,7 @@ function UnmappedRow({ pin, employees, onLinked }) {
             value={selectedEmployeeId}
             onChange={(e) => { setSelectedEmployeeId(e.target.value); setError(null); }}
             disabled={busy}
-            className="h-9 min-w-[180px] border border-mist bg-canvas px-2 font-ui text-xs text-ink outline-none focus:border-accent disabled:opacity-50"
+            className="h-9 min-w-[180px] border border-pf-border bg-pf-card px-2 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep disabled:opacity-50"
             aria-label={`Select employee for pin ${pin.devicePin}`}
           >
             <option value="">Pick employee…</option>
@@ -107,14 +107,14 @@ function UnmappedRow({ pin, employees, onLinked }) {
             type="button"
             disabled={!selectedEmployeeId || busy}
             onClick={handleLink}
-            className="inline-flex items-center gap-1.5 border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Link2 size={11} aria-hidden="true" />
             {busy ? "Linking…" : "Link"}
           </button>
         </div>
         {error ? (
-          <p role="alert" className="mt-1.5 font-ui text-[11px] text-accent">{error}</p>
+          <p role="alert" className="mt-1.5 font-ui text-[11px] text-pf-burgundy">{error}</p>
         ) : null}
       </td>
     </tr>
@@ -145,8 +145,8 @@ function UnmappedCard({ pin, employees, onLinked }) {
 
   if (linked) {
     return (
-      <div className="border border-cocoa/30 bg-cocoa/5 p-4">
-        <div className="flex items-center gap-2 font-ui text-sm text-cocoa">
+      <div className="border border-pf-cocoa/30 bg-pf-cocoa/5 p-4">
+        <div className="flex items-center gap-2 font-ui text-sm text-pf-cocoa">
           <Check size={14} aria-hidden="true" />
           <span>Pin <span className="font-mono">{pin.devicePin}</span> linked successfully</span>
         </div>
@@ -155,40 +155,40 @@ function UnmappedCard({ pin, employees, onLinked }) {
   }
 
   return (
-    <div className="border border-mist/70 bg-canvas p-4">
+    <div className="border border-pf-border/70 bg-pf-card p-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Device pin</p>
-          <p className="mt-0.5 font-mono text-sm text-ink">{pin.devicePin}</p>
+          <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Device pin</p>
+          <p className="mt-0.5 font-mono text-sm text-pf-text">{pin.devicePin}</p>
         </div>
         <div className="text-right">
-          <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Punches</p>
-          <p className="mt-0.5 font-display text-xl font-light text-ink">{pin.punchCount ?? "—"}</p>
+          <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Punches</p>
+          <p className="mt-0.5 font-display text-xl font-light text-pf-text">{pin.punchCount ?? "—"}</p>
         </div>
       </div>
 
       {/* Timestamps */}
       <div className="mt-3 grid grid-cols-2 gap-3 font-ui text-[11px]">
         <div>
-          <p className="text-taupe">First seen</p>
-          <p className="text-ink">{pin.firstSeen ? `${formatDateShort(pin.firstSeen)} ${formatTime(pin.firstSeen)}` : "—"}</p>
+          <p className="text-pf-muted">First seen</p>
+          <p className="text-pf-text">{pin.firstSeen ? `${formatDateShort(pin.firstSeen)} ${formatTime(pin.firstSeen)}` : "—"}</p>
         </div>
         <div>
-          <p className="text-taupe">Last seen</p>
-          <p className="text-ink">{pin.lastSeen ? `${formatDateShort(pin.lastSeen)} ${formatTime(pin.lastSeen)}` : "—"}</p>
+          <p className="text-pf-muted">Last seen</p>
+          <p className="text-pf-text">{pin.lastSeen ? `${formatDateShort(pin.lastSeen)} ${formatTime(pin.lastSeen)}` : "—"}</p>
         </div>
       </div>
 
       {/* Link control */}
-      <div className="mt-4 border-t border-mist/60 pt-4">
-        <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+      <div className="mt-4 border-t border-pf-border/60 pt-4">
+        <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
           Link to employee
           <select
             value={selectedEmployeeId}
             onChange={(e) => { setSelectedEmployeeId(e.target.value); setError(null); }}
             disabled={busy}
-            className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs text-ink outline-none focus:border-accent disabled:opacity-50"
+            className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep disabled:opacity-50"
           >
             <option value="">Pick employee…</option>
             {employees.map((emp) => (
@@ -202,13 +202,13 @@ function UnmappedCard({ pin, employees, onLinked }) {
           type="button"
           disabled={!selectedEmployeeId || busy}
           onClick={handleLink}
-          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 border border-ink bg-ink py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 border border-pf-burgundy bg-pf-burgundy py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Link2 size={11} aria-hidden="true" />
           {busy ? "Linking…" : "Link pin to employee"}
         </button>
         {error ? (
-          <p role="alert" className="mt-1.5 font-ui text-[11px] text-accent">{error}</p>
+          <p role="alert" className="mt-1.5 font-ui text-[11px] text-pf-burgundy">{error}</p>
         ) : null}
       </div>
     </div>
@@ -259,7 +259,7 @@ export default function AdminAttendanceUnmapped() {
       eyebrow="Workforce / Attendance"
       title={
         <>
-          Unmapped <span className="italic text-accent">pins.</span>
+          Unmapped <span className="italic text-pf-burgundy">pins.</span>
         </>
       }
       description="Machine IDs that have recorded punches but are not yet linked to any employee. Link each pin to resolve it."
@@ -270,7 +270,7 @@ export default function AdminAttendanceUnmapped() {
           role="status"
           aria-live="polite"
           aria-busy="true"
-          className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe"
+          className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted"
         >
           Loading unmapped pins…
         </p>
@@ -279,7 +279,7 @@ export default function AdminAttendanceUnmapped() {
       {error ? (
         <div
           role="alert"
-          className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent"
+          className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy"
         >
           {error}
           <button
@@ -297,14 +297,14 @@ export default function AdminAttendanceUnmapped() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="border border-accent/40 bg-accent/5 p-4"
+          className="border border-pf-gold-deep/40 bg-pf-burgundy/5 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Unresolved</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{activePins.length}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Unresolved</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{activePins.length}</p>
             </div>
-            <AlertTriangle size={16} className="text-accent" />
+            <AlertTriangle size={16} className="text-pf-burgundy" />
           </div>
         </motion.div>
 
@@ -312,14 +312,14 @@ export default function AdminAttendanceUnmapped() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="border border-mist/80 bg-surface/40 p-4"
+          className="border border-pf-border/80 bg-pf-ivory/40 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Linked this session</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{resolvedCount}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Linked this session</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{resolvedCount}</p>
             </div>
-            <Link2 size={16} className="text-brass" />
+            <Link2 size={16} className="text-pf-gold-text" />
           </div>
         </motion.div>
 
@@ -327,14 +327,14 @@ export default function AdminAttendanceUnmapped() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="border border-mist/80 bg-surface/40 p-4"
+          className="border border-pf-border/80 bg-pf-ivory/40 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Employees available</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{employees.length}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Employees available</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{employees.length}</p>
             </div>
-            <Users size={16} className="text-taupe" />
+            <Users size={16} className="text-pf-muted" />
           </div>
         </motion.div>
       </section>
@@ -348,12 +348,12 @@ export default function AdminAttendanceUnmapped() {
         {/* Desktop table */}
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left">
-            <thead className="border-b border-mist/80 bg-canvas/80">
+            <thead className="border-b border-pf-border/80 bg-pf-card/80">
               <tr>
                 {["Device pin", "Punch count", "First seen", "Last seen", "Link to employee"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                   >
                     {h}
                   </th>
@@ -372,10 +372,10 @@ export default function AdminAttendanceUnmapped() {
 
               {/* Linked rows shown as confirmation */}
               {[...linkedPins].map((devicePin) => (
-                <tr key={`linked-${devicePin}`} className="border-b border-mist/50 last:border-0 bg-cocoa/5">
-                  <td className="px-4 py-3 font-mono text-xs text-ink">{devicePin}</td>
+                <tr key={`linked-${devicePin}`} className="border-b border-pf-border/50 last:border-0 bg-pf-cocoa/5">
+                  <td className="px-4 py-3 font-mono text-xs text-pf-text">{devicePin}</td>
                   <td colSpan={4} className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5 font-ui text-[11px] text-cocoa">
+                    <span className="inline-flex items-center gap-1.5 font-ui text-[11px] text-pf-cocoa">
                       <Check size={12} aria-hidden="true" />
                       Linked successfully
                     </span>
@@ -386,13 +386,13 @@ export default function AdminAttendanceUnmapped() {
           </table>
 
           {activePins.length === 0 && resolvedCount === 0 && !loading && !error ? (
-            <p className="p-8 text-center font-ui text-sm text-taupe">
+            <p className="p-8 text-center font-ui text-sm text-pf-muted">
               No unmapped pins — all device IDs are linked to employees.
             </p>
           ) : null}
 
           {activePins.length === 0 && resolvedCount > 0 && !loading ? (
-            <p className="p-8 text-center font-ui text-sm text-cocoa">
+            <p className="p-8 text-center font-ui text-sm text-pf-cocoa">
               All {resolvedCount} pin{resolvedCount !== 1 ? "s" : ""} linked this session.
             </p>
           ) : null}
@@ -410,8 +410,8 @@ export default function AdminAttendanceUnmapped() {
           ))}
 
           {[...linkedPins].map((devicePin) => (
-            <div key={`linked-${devicePin}`} className="border border-cocoa/30 bg-cocoa/5 p-4">
-              <div className="flex items-center gap-2 font-ui text-sm text-cocoa">
+            <div key={`linked-${devicePin}`} className="border border-pf-cocoa/30 bg-pf-cocoa/5 p-4">
+              <div className="flex items-center gap-2 font-ui text-sm text-pf-cocoa">
                 <Check size={14} aria-hidden="true" />
                 <span>Pin <span className="font-mono">{devicePin}</span> linked</span>
               </div>
@@ -419,7 +419,7 @@ export default function AdminAttendanceUnmapped() {
           ))}
 
           {activePins.length === 0 && resolvedCount === 0 && !loading && !error ? (
-            <p className="py-6 text-center font-ui text-sm text-taupe">
+            <p className="py-6 text-center font-ui text-sm text-pf-muted">
               No unmapped pins found.
             </p>
           ) : null}

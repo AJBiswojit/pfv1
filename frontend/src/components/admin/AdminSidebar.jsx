@@ -42,7 +42,7 @@ function rewriteGroupsPrefix(groups, from, to) {
  * redirect back to /super-admin.
  */
 export default function AdminSidebar({ onNavigate, collapsed = false, onToggleCollapsed }) {
-  const { admin, hasPermission, signOut, isSuperAdmin } = useAdminAuth();
+  const { admin, hasPermission, isSuperAdmin } = useAdminAuth();
 
   const workspacePrefix = isSuperAdmin ? "/super-admin" : "/admin";
 
@@ -78,8 +78,6 @@ export default function AdminSidebar({ onNavigate, collapsed = false, onToggleCo
         avatar: admin?.avatar,
         initials: adminInitials(admin),
       }}
-      footerLinks={[]}
-      signOut={signOut}
       onNavigate={onNavigate}
       collapsed={collapsed}
       onToggleCollapsed={onToggleCollapsed}

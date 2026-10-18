@@ -26,13 +26,13 @@ export default function EmployeeMediaUpload() {
           </AtelierButton>
         }
       >
-        <div className="border border-mist bg-canvas p-8 text-center max-w-lg mx-auto space-y-4">
-          <ShieldAlert size={32} className="mx-auto text-accent" />
+        <div className="border border-pf-border bg-pf-card p-8 text-center max-w-lg mx-auto space-y-4">
+          <ShieldAlert size={32} className="mx-auto text-pf-burgundy" />
           <div className="space-y-1">
-            <h3 className="font-display text-lg text-ink font-medium">
+            <h3 className="font-display text-lg text-pf-text font-medium">
               Upload Permission Required
             </h3>
-            <p className="font-ui text-xs text-taupe leading-relaxed">
+            <p className="font-ui text-xs text-pf-muted leading-relaxed">
               Your role allows you to view media assets in the atelier, but does not grant upload privileges. Please contact your Store Manager or Super Administrator if you require media creation access.
             </p>
           </div>
@@ -56,7 +56,7 @@ export default function EmployeeMediaUpload() {
         </AtelierButton>
       }
     >
-      <div className="border border-mist/80 bg-canvas p-4 sm:p-6">
+      <div className="border border-pf-border/80 bg-pf-card p-4 sm:p-6">
         <MediaUploadForm
           portalType="employee"
           onSuccessRedirect="/employee/media"

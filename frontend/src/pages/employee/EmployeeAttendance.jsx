@@ -22,7 +22,7 @@ export default function EmployeeAttendance() {
       eyebrow="Presence"
       title={
         <>
-          Attendance on the <span className="italic text-accent">floor.</span>
+          Attendance on the <span className="italic text-pf-burgundy">floor.</span>
         </>
       }
       description="Check in and out, read the month, and request leave. You see only your own attendance."
@@ -37,7 +37,7 @@ export default function EmployeeAttendance() {
       {syncError ? (
         <p
           role="status"
-          className="mb-4 border border-cocoa/30 bg-surface px-3 py-2 font-ui text-[11px] text-cocoa"
+          className="mb-4 border border-pf-cocoa/30 bg-pf-ivory px-3 py-2 font-ui text-[11px] text-pf-cocoa"
         >
           Server sync failed ({syncError}). Showing the last loaded state —{" "}
           <button
@@ -56,7 +56,7 @@ export default function EmployeeAttendance() {
       </div>
 
       <section className="mt-10">
-        <h2 className="mb-4 font-display text-2xl font-light text-ink">History</h2>
+        <h2 className="mb-4 font-display text-2xl font-light text-pf-text">History</h2>
         <AttendanceHistory employeeId={employee.employeeId} month={month} onMonthChange={setMonth} />
       </section>
     </EmployeePage>

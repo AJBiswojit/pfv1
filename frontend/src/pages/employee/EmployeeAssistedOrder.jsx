@@ -85,22 +85,22 @@ export default function EmployeeAssistedOrder() {
       eyebrow="Assisted shopping"
       title={
         <>
-          Write a floor <span className="italic text-accent">ticket.</span>
+          Write a floor <span className="italic text-pf-burgundy">ticket.</span>
         </>
       }
       description="Create an assisted order against live catalogue availability. This is a floor ticket — not a customer checkout."
     >
       {ticket ? (
-        <div role="status" className="border border-cocoa/30 bg-cocoa/10 p-6 text-cocoa">
+        <div role="status" className="border border-pf-cocoa/30 bg-pf-cocoa/10 p-6 text-pf-cocoa">
           <p className="font-ui text-[10px] uppercase tracking-[.2em]">Ticket written</p>
-          <p className="mt-2 font-display text-2xl font-light text-ink">{ticket.id}</p>
-          <p className="mt-2 font-ui text-sm text-graphite">
+          <p className="mt-2 font-display text-2xl font-light text-pf-text">{ticket.id}</p>
+          <p className="mt-2 font-ui text-sm text-pf-muted">
             {ticket.customer} · {ticket.pieces} · {formatINR(ticket.amount)}
           </p>
         </div>
       ) : (
         <form onSubmit={handleCreate} className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-5 border border-mist/80 bg-surface/40 p-6">
+          <div className="space-y-5 border border-pf-border/80 bg-pf-ivory/40 p-6">
             <EmployeeField label="Customer name" required>
               <input value={customer} onChange={(event) => setCustomer(event.target.value)} className={employeeInputClass()} />
             </EmployeeField>
@@ -116,7 +116,7 @@ export default function EmployeeAssistedOrder() {
               />
             </EmployeeField>
           </div>
-          <div className="space-y-4 border border-mist/80 bg-surface/40 p-6">
+          <div className="space-y-4 border border-pf-border/80 bg-pf-ivory/40 p-6">
             <EmployeeField label="Find a piece">
               <input
                 value={query}
@@ -125,14 +125,14 @@ export default function EmployeeAssistedOrder() {
                 className={employeeInputClass()}
               />
             </EmployeeField>
-            <ul className="divide-y divide-mist/70 border border-mist/70">
+            <ul className="divide-y divide-pf-border/70 border border-pf-border/70">
               {matches.map((product) => (
                 <li key={product.id}>
                   <button
                     type="button"
                     onClick={() => setSelected(product)}
                     className={`flex w-full items-start justify-between gap-3 px-3 py-3 text-left ${
-                      selected?.id === product.id ? "bg-ink text-ivory" : "bg-canvas hover:bg-surface"
+                      selected?.id === product.id ? "bg-pf-burgundy text-pf-ivory" : "bg-pf-card hover:bg-pf-ivory"
                     }`}
                   >
                     <span>

@@ -64,10 +64,10 @@ const AdminProductMedia = () => {
   if (!product) {
     return (
       <AdminPage eyebrow="Business / Media" title="Product unavailable">
-        <p className="font-ui text-sm text-taupe">That product could not be found.</p>
+        <p className="font-ui text-sm text-pf-muted">That product could not be found.</p>
         <Link
           to={`${prefix}/products`}
-          className="mt-5 inline-block border border-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+          className="mt-5 inline-block border border-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
         >
           Back to the catalog
         </Link>
@@ -91,7 +91,7 @@ const AdminProductMedia = () => {
       actions={
         <Link
           to={`${prefix}/products/${productId}`}
-          className="border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:border-ink"
+          className="border border-pf-border px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:border-pf-burgundy"
         >
           Product record
         </Link>
@@ -115,7 +115,7 @@ const AdminProductMedia = () => {
       </div>
 
       {serverMediaError ? (
-        <p className="mb-6 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-[12px] text-accent" role="alert">
+        <p className="mb-6 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3 font-ui text-[12px] text-pf-burgundy" role="alert">
           The server's registered-media read model could not be loaded: {serverMediaError}
         </p>
       ) : null}
@@ -138,7 +138,7 @@ const AdminProductMedia = () => {
           title="Product's own image columns"
           className="mb-6"
         >
-          <p className="mb-4 font-ui text-[12px] leading-relaxed text-taupe">
+          <p className="mb-4 font-ui text-[12px] leading-relaxed text-pf-muted">
             These are the authored references stored on the product record itself (the
             compatibility surface the pre-Phase-7 catalogue uses). They are shown read-only;
             new imagery should be registered above. When a product has registered associations,
@@ -146,14 +146,14 @@ const AdminProductMedia = () => {
           </p>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {legacyImages.map((reference, index) => (
-              <li key={`${reference}-${index}`} className="border border-mist/80 bg-canvas">
+              <li key={`${reference}-${index}`} className="border border-pf-border/80 bg-pf-card">
                 <img
                   src={resolveMediaUrl(reference)}
                   alt={`${product.name} reference ${index + 1}`}
                   className="h-32 w-full object-cover"
                   loading="lazy"
                 />
-                <p className="truncate px-2 py-1.5 font-ui text-[10px] text-taupe" title={reference}>
+                <p className="truncate px-2 py-1.5 font-ui text-[10px] text-pf-muted" title={reference}>
                   {reference}
                 </p>
               </li>

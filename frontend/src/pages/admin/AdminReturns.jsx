@@ -62,22 +62,22 @@ const statusToneClass = (status) => {
   switch (status) {
     case RETURN_STATUS.RETURN_REQUESTED:
     case RETURN_STATUS.UNDER_REVIEW:
-      return "border-accent/40 bg-accent/5 text-accent";
+      return "border-pf-gold-deep/40 bg-pf-burgundy/5 text-pf-burgundy";
     case RETURN_STATUS.APPROVED:
     case RETURN_STATUS.PICKUP_SCHEDULED:
-      return "border-ink/30 bg-ink/5 text-ink";
+      return "border-pf-burgundy/30 bg-pf-burgundy/5 text-pf-text";
     case RETURN_STATUS.RECEIVED:
     case RETURN_STATUS.ITEM_RECEIVED:
     case RETURN_STATUS.INSPECTED:
-      return "border-brass/40 bg-brass/5 text-brass";
+      return "border-pf-gold-deep/40 bg-pf-gold/5 text-pf-gold-text";
     case RETURN_STATUS.REFUND_INITIATED:
-      return "border-accent/40 bg-accent/5 text-accent";
+      return "border-pf-gold-deep/40 bg-pf-burgundy/5 text-pf-burgundy";
     case RETURN_STATUS.REFUNDED:
       return "border-emerald-600/40 bg-emerald-50 text-emerald-700";
     case RETURN_STATUS.REJECTED:
       return "border-red-400/40 bg-red-50 text-red-700";
     default:
-      return "border-mist bg-surface text-taupe";
+      return "border-pf-border bg-pf-ivory text-pf-muted";
   }
 };
 
@@ -164,12 +164,12 @@ export default function AdminReturns() {
     >
       {/* Loading / error — never presented as "no returns exist". */}
       {state.status === "loading" && allReturns.length === 0 ? (
-        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted">
           Loading returns…
         </p>
       ) : null}
       {state.error ? (
-        <div role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           <p>{state.error}</p>
           <button type="button" onClick={onRetry} className="mt-2 font-ui text-[11px] underline">
             Try again
@@ -191,15 +191,15 @@ export default function AdminReturns() {
                 "border p-4 text-left",
                 transition.all,
                 active
-                  ? "border-accent bg-accent/5"
-                  : "border-mist/80 bg-surface/40 hover:border-accent/60"
+                  ? "border-pf-gold-deep bg-pf-burgundy/5"
+                  : "border-pf-border/80 bg-pf-ivory/40 hover:border-pf-gold-deep/60"
               )}
             >
               <div className="flex items-center justify-between">
-                <Icon size={16} className="text-accent" aria-hidden="true" />
-                <span className="font-display text-2xl font-light text-ink">{card.value}</span>
+                <Icon size={16} className="text-pf-burgundy" aria-hidden="true" />
+                <span className="font-display text-2xl font-light text-pf-text">{card.value}</span>
               </div>
-              <p className="mt-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+              <p className="mt-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
                 {card.label}
               </p>
             </button>
@@ -210,7 +210,7 @@ export default function AdminReturns() {
       <AdminPanel
         title="Return Register"
         action={
-          <span className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+          <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
             {filtered.length} return{filtered.length === 1 ? "" : "s"}
           </span>
         }
@@ -219,7 +219,7 @@ export default function AdminReturns() {
         <div className="relative mb-5">
           <SearchIcon
             size={14}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-taupe"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-pf-muted"
             aria-hidden="true"
           />
           <input
@@ -227,7 +227,7 @@ export default function AdminReturns() {
             placeholder="Search return, order, customer or product"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full border border-mist bg-canvas py-3 pl-10 pr-4 font-ui text-xs text-ink placeholder:text-taupe focus:border-accent focus:outline-none"
+            className="w-full border border-pf-border bg-pf-card py-3 pl-10 pr-4 font-ui text-xs text-pf-text placeholder:text-pf-muted focus:border-pf-gold-deep focus:outline-none"
             aria-label="Search returns"
           />
         </div>
@@ -235,13 +235,13 @@ export default function AdminReturns() {
         {/* Active filter indicator */}
         {filterStatus !== "all" ? (
           <div className="mb-5 flex items-center gap-2">
-            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
               Filtered:
             </span>
             <button
               type="button"
               onClick={() => setFilterStatus("all")}
-              className="inline-flex items-center gap-1.5 border border-accent/40 bg-accent/5 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-accent"
+              className="inline-flex items-center gap-1.5 border border-pf-gold-deep/40 bg-pf-burgundy/5 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-burgundy"
             >
               {RETURN_STATUSES[filterStatus]?.label || filterStatus}
               <XCircle size={12} aria-hidden="true" />
@@ -252,7 +252,7 @@ export default function AdminReturns() {
 
         {/* Table — desktop */}
         <div className="hidden md:block">
-          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-mist/70 pb-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-pf-border/70 pb-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
             <span>Return</span>
             <span>Order</span>
             <span>Customer</span>
@@ -260,7 +260,7 @@ export default function AdminReturns() {
             <span>Status</span>
             <span className="text-right">Action</span>
           </div>
-          <div className="divide-y divide-mist/60">
+          <div className="divide-y divide-pf-border/60">
             {filtered.length ? (
               filtered.map((record) => {
                 const action = statusAction(record.status);
@@ -271,20 +271,20 @@ export default function AdminReturns() {
                   >
                     <Link
                       to={`${prefix}/returns/${record.id}`}
-                      className="truncate font-ui text-xs font-medium text-ink underline hover:text-accent"
+                      className="truncate font-ui text-xs font-medium text-pf-text underline hover:text-pf-burgundy"
                     >
                       {record.id}
                     </Link>
                     <Link
                       to={`${prefix}/orders/${record.orderId}`}
-                      className="truncate font-ui text-xs text-ink hover:text-accent"
+                      className="truncate font-ui text-xs text-pf-text hover:text-pf-burgundy"
                     >
                       {record.orderNumber}
                     </Link>
-                    <span className="truncate font-ui text-xs text-ink">
+                    <span className="truncate font-ui text-xs text-pf-text">
                       {record.customerName}
                     </span>
-                    <span className="truncate font-ui text-xs text-taupe">
+                    <span className="truncate font-ui text-xs text-pf-muted">
                       {record.reason}
                     </span>
                     <span
@@ -299,7 +299,7 @@ export default function AdminReturns() {
                       {action ? (
                         <Link
                           to={`${prefix}/returns/${record.id}`}
-                          className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-accent hover:underline"
+                          className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-burgundy hover:underline"
                         >
                           {action.label}
                           <ArrowRight size={12} aria-hidden="true" />
@@ -307,7 +307,7 @@ export default function AdminReturns() {
                       ) : (
                         <Link
                           to={`${prefix}/returns/${record.id}`}
-                          className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:underline"
+                          className="inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold-text hover:underline"
                         >
                           View
                           <ArrowRight size={12} aria-hidden="true" />
@@ -336,12 +336,12 @@ export default function AdminReturns() {
                 <Link
                   key={record.id}
                   to={`${prefix}/returns/${record.id}`}
-                  className="block border border-mist/80 bg-surface/40 p-4"
+                  className="block border border-pf-border/80 bg-pf-ivory/40 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-ui text-xs font-medium text-ink">{record.id}</p>
-                      <p className="mt-0.5 truncate font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                      <p className="truncate font-ui text-xs font-medium text-pf-text">{record.id}</p>
+                      <p className="mt-0.5 truncate font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                         {record.orderNumber} · {record.customerName}
                       </p>
                     </div>
@@ -354,14 +354,14 @@ export default function AdminReturns() {
                       {RETURN_STATUSES[record.status]?.label || record.status}
                     </span>
                   </div>
-                  <p className="mt-3 font-ui text-xs text-taupe">
+                  <p className="mt-3 font-ui text-xs text-pf-muted">
                     {record.reason}
                   </p>
                   <p className="mt-2 font-ui text-[10px] uppercase tracking-[.14em] text-slate">
                     {formatOrderDate(record.createdAt)}
                   </p>
                   {action ? (
-                    <p className="mt-3 inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-accent">
+                    <p className="mt-3 inline-flex items-center gap-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-burgundy">
                       {action.label}
                       <ArrowRight size={12} aria-hidden="true" />
                     </p>
@@ -376,7 +376,7 @@ export default function AdminReturns() {
           )}
         </div>
 
-        <p className="mt-4 px-1 font-ui text-[11px] text-taupe">
+        <p className="mt-4 px-1 font-ui text-[11px] text-pf-muted">
           Reader: the backend returns register through GET /admin/returns (database-paginated).
         </p>
       </AdminPanel>

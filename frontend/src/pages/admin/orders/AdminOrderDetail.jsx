@@ -117,7 +117,7 @@ export default function AdminOrderDetail() {
   if (loading) {
     return (
       <AdminPage eyebrow="Orders" title="Loading order…">
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading order…
         </p>
       </AdminPage>
@@ -140,14 +140,14 @@ export default function AdminOrderDetail() {
         : loadError?.message ?? "Something went wrong on our side. Please try again.";
     return (
       <AdminPage eyebrow="Orders" title={title}>
-        <p role="alert" className="font-ui text-sm text-graphite">{detail}</p>
+        <p role="alert" className="font-ui text-sm text-pf-muted">{detail}</p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {status >= 500 || status === 0 ? (
             <AtelierButton type="button" variant="outline" size="chip" onClick={reload}>
               Try again
             </AtelierButton>
           ) : null}
-          <Link to={`${prefix}/orders`} className="font-ui text-sm text-brass hover:text-accent">Back to orders</Link>
+          <Link to={`${prefix}/orders`} className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">Back to orders</Link>
         </div>
       </AdminPage>
     );
@@ -175,7 +175,7 @@ export default function AdminOrderDetail() {
       eyebrow={`Sales / Orders / ${orderRef}`}
       title={
         <>
-          Order <span className="italic text-accent">{orderRef}</span>
+          Order <span className="italic text-pf-burgundy">{orderRef}</span>
         </>
       }
       description={`${order.customer?.fullName || "Customer unavailable"} · ${order.items.length} items · ${formatINR(order.pricing.total)}`}
@@ -191,30 +191,30 @@ export default function AdminOrderDetail() {
       }
     >
       {notice && (
-        <div className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">{notice}</div>
+        <div className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">{notice}</div>
       )}
 
       {/* Header metrics */}
       <div className="mb-6 grid gap-3 md:grid-cols-4">
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Order Value</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Order Value</p>
           <p className="mt-1 font-display text-xl">{formatINR(order.pricing.total)}</p>
-          <p className="mt-1 font-ui text-[10px] text-taupe">{order.items.length} items</p>
+          <p className="mt-1 font-ui text-[10px] text-pf-muted">{order.items.length} items</p>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Payment</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Payment</p>
           <div className="mt-2"><OrderStatusBadge status={order.paymentStatus} kind="payment" /></div>
           <p className="mt-2 font-ui text-xs">{order.paymentMethod.label}</p>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Order Status</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Order Status</p>
           <div className="mt-2"><OrderStatusBadge status={order.status} /></div>
-          <p className="mt-2 font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</p>
+          <p className="mt-2 font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</p>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Fulfillment</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Fulfillment</p>
           <div className="mt-2 font-ui text-xs">{order.fulfillment?.status || "PENDING"} · {order.fulfillment?.fulfillmentType || "—"}</div>
-          <p className="mt-1 font-ui text-[11px] text-taupe">{order.fulfillment?.assignedEmployeeName || "Unassigned"} @ {inventory.locations.find((l) => l.id === order.fulfillment?.sourceLocationId)?.name || "—"}</p>
+          <p className="mt-1 font-ui text-[11px] text-pf-muted">{order.fulfillment?.assignedEmployeeName || "Unassigned"} @ {inventory.locations.find((l) => l.id === order.fulfillment?.sourceLocationId)?.name || "—"}</p>
         </div>
       </div>
 
@@ -225,32 +225,32 @@ export default function AdminOrderDetail() {
             <div className="space-y-2 font-ui text-sm">
               <p className="flex items-center gap-2"><User size={12} /> {order.customer.email} · {order.customer.phone}</p>
               <p className="flex items-start gap-2"><MapPin size={12} className="mt-1" /> {order.address?.addressLine}, {order.address?.city}, {order.address?.state} - {order.address?.pincode}</p>
-              {order.customerNote && <p className="mt-3 border-l-2 border-brass bg-surface/30 px-3 py-2 text-xs">Customer note: "{order.customerNote}"</p>}
+              {order.customerNote && <p className="mt-3 border-l-2 border-pf-gold-deep bg-pf-ivory/30 px-3 py-2 text-xs">Customer note: "{order.customerNote}"</p>}
             </div>
           </AdminPanel>
 
           <AdminPanel eyebrow="Items" title={`${order.items.length} pieces`}>
-            <div className="divide-y divide-mist/60">
+            <div className="divide-y divide-pf-border/60">
               {inventoryMap.map((item) => (
                 <div key={item.lineId} className="flex gap-4 py-4">
-                  <div className="h-16 w-16 shrink-0 bg-mist/30 overflow-hidden">
-                    {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover" /> : <div className="h-full w-full grid place-items-center text-taupe"><Package size={16} /></div>}
+                  <div className="h-16 w-16 shrink-0 bg-pf-border/30 overflow-hidden">
+                    {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover" /> : <div className="h-full w-full grid place-items-center text-pf-muted"><Package size={16} /></div>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-base">{item.name}</p>
-                    <p className="font-ui text-[11px] text-taupe">{[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"} · SKU {item.productId}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">{[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"} · SKU {item.productId}</p>
                     <p className="mt-1 font-ui text-xs">Qty {item.quantity} × {formatINR(item.price)} = {formatINR(item.lineTotal)}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="border border-mist px-2 py-0.5 font-ui text-[10px]">Ordered: {item.quantity}</span>
-                      <span className="border border-mist px-2 py-0.5 font-ui text-[10px]">Reserved: {item.quantity}</span>
-                      <span className="border border-mist px-2 py-0.5 font-ui text-[10px]">Available in network: {item.available}</span>
+                      <span className="border border-pf-border px-2 py-0.5 font-ui text-[10px]">Ordered: {item.quantity}</span>
+                      <span className="border border-pf-border px-2 py-0.5 font-ui text-[10px]">Reserved: {item.quantity}</span>
+                      <span className="border border-pf-border px-2 py-0.5 font-ui text-[10px]">Available in network: {item.available}</span>
                     </div>
                   </div>
                   <div className="text-right">
                     {order.fulfillment?.picking?.[item.lineId]?.picked ? (
-                      <span className="inline-flex items-center gap-1 border border-accent/30 bg-accent/5 px-2 py-1 font-ui text-[10px] text-accent"><Check size={10} /> PICKED</span>
+                      <span className="inline-flex items-center gap-1 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-2 py-1 font-ui text-[10px] text-pf-burgundy"><Check size={10} /> PICKED</span>
                     ) : (
-                      <span className="inline-flex border border-mist px-2 py-1 font-ui text-[10px] text-taupe">PENDING</span>
+                      <span className="inline-flex border border-pf-border px-2 py-1 font-ui text-[10px] text-pf-muted">PENDING</span>
                     )}
                   </div>
                 </div>
@@ -260,33 +260,33 @@ export default function AdminOrderDetail() {
 
           <AdminPanel eyebrow="Pricing" title="Breakdown">
             <dl className="space-y-2 font-ui text-sm">
-              <div className="flex justify-between"><dt className="text-taupe">Subtotal</dt><dd>{formatINR(order.pricing.subtotal)}</dd></div>
-              {order.pricing.productDiscount > 0 && <div className="flex justify-between"><dt className="text-taupe">Product Discount</dt><dd>− {formatINR(order.pricing.productDiscount)}</dd></div>}
+              <div className="flex justify-between"><dt className="text-pf-muted">Subtotal</dt><dd>{formatINR(order.pricing.subtotal)}</dd></div>
+              {order.pricing.productDiscount > 0 && <div className="flex justify-between"><dt className="text-pf-muted">Product Discount</dt><dd>− {formatINR(order.pricing.productDiscount)}</dd></div>}
               {order.pricing.couponDiscount > 0 || order.pricing.couponCode ? (
                 <div className="flex justify-between">
-                  <dt className="text-taupe">Offer{order.pricing.couponCode ? ` · ${order.pricing.couponCode}` : ""}</dt>
+                  <dt className="text-pf-muted">Offer{order.pricing.couponCode ? ` · ${order.pricing.couponCode}` : ""}</dt>
                   <dd>{order.pricing.couponDiscount > 0 ? `− ${formatINR(order.pricing.couponDiscount)}` : "—"}</dd>
                 </div>
               ) : null}
-              <div className="flex justify-between"><dt className="text-taupe">Shipping</dt><dd>{order.pricing.shipping === 0 ? "Complimentary" : formatINR(order.pricing.shipping)}</dd></div>
-              {order.pricing.codFee > 0 && <div className="flex justify-between"><dt className="text-taupe">COD Fee</dt><dd>{formatINR(order.pricing.codFee)}</dd></div>}
-              <div className="flex justify-between border-t border-mist/60 pt-2 font-medium"><dt>Grand Total</dt><dd>{formatINR(order.pricing.total)}</dd></div>
+              <div className="flex justify-between"><dt className="text-pf-muted">Shipping</dt><dd>{order.pricing.shipping === 0 ? "Complimentary" : formatINR(order.pricing.shipping)}</dd></div>
+              {order.pricing.codFee > 0 && <div className="flex justify-between"><dt className="text-pf-muted">COD Fee</dt><dd>{formatINR(order.pricing.codFee)}</dd></div>}
+              <div className="flex justify-between border-t border-pf-border/60 pt-2 font-medium"><dt>Grand Total</dt><dd>{formatINR(order.pricing.total)}</dd></div>
             </dl>
           </AdminPanel>
 
           <AdminPanel eyebrow="Inventory" title="Reservation & Stock">
             <div className="space-y-3">
-              <p className="font-ui text-[11px] text-taupe">Reservation ID: <span className="font-mono text-ink">{order.inventoryReservationId || "—"}</span></p>
+              <p className="font-ui text-[11px] text-pf-muted">Reservation ID: <span className="font-mono text-pf-text">{order.inventoryReservationId || "—"}</span></p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {inventoryMap.map((it) => (
-                  <div key={it.lineId} className="border border-mist/60 bg-canvas/40 p-3">
+                  <div key={it.lineId} className="border border-pf-border/60 bg-pf-card/40 p-3">
                     <p className="font-display text-sm">{it.name}</p>
-                    <p className="font-ui text-[11px] text-taupe">Location: {it.locationName} · {it.placement}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">Location: {it.locationName} · {it.placement}</p>
                     <p className="mt-1 font-ui text-[11px]">Ordered {it.quantity} · Available {it.available} · Reserved {it.reserved}</p>
                   </div>
                 ))}
               </div>
-              {order.fulfillment?.status === "PENDING" && <p className="flex gap-2 font-ui text-[11px] text-accent"><AlertTriangle size={12} /> Allocation pending — assign location to move to picking.</p>}
+              {order.fulfillment?.status === "PENDING" && <p className="flex gap-2 font-ui text-[11px] text-pf-burgundy"><AlertTriangle size={12} /> Allocation pending — assign location to move to picking.</p>}
             </div>
           </AdminPanel>
 
@@ -299,12 +299,12 @@ export default function AdminOrderDetail() {
                 <p>Dispatched: {order.tracking.dispatchedAt ? formatEventTime(order.tracking.dispatchedAt) : "—"}</p>
                 <p>Estimated Delivery: {order.tracking.estimatedDelivery ? formatOrderDate(order.tracking.estimatedDelivery) : "Not set"}</p>
                 <p>Delivered: {order.tracking.deliveredAt ? formatEventTime(order.tracking.deliveredAt) : "—"}</p>
-                <p className="pt-1 text-[11px] text-taupe">
+                <p className="pt-1 text-[11px] text-pf-muted">
                   No courier API is integrated — no live shipment scans are available.
                 </p>
               </div>
             ) : (
-              <p className="font-ui text-sm text-taupe">No shipment yet — dispatch after packing.</p>
+              <p className="font-ui text-sm text-pf-muted">No shipment yet — dispatch after packing.</p>
             )}
           </AdminPanel>
         </div>
@@ -314,34 +314,34 @@ export default function AdminOrderDetail() {
           <AdminPanel eyebrow="Fulfillment" title="Operations">
             <div className="space-y-4">
               {/* Assign */}
-              <div className="border border-mist/60 bg-canvas/30 p-3">
-                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe mb-2">Assignment</p>
+              <div className="border border-pf-border/60 bg-pf-card/30 p-3">
+                <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted mb-2">Assignment</p>
                 <div className="grid gap-2">
-                  <select value={assignLocation} onChange={(e) => setAssignLocation(e.target.value)} className="h-9 border border-mist bg-canvas px-2 font-ui text-xs">
+                  <select value={assignLocation} onChange={(e) => setAssignLocation(e.target.value)} className="h-9 border border-pf-border bg-pf-card px-2 font-ui text-xs">
                     <option value="">Select a location…</option>
                     {inventory.locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name} · {loc.type}</option>)}
                   </select>
-                  <select value={assignEmployee} onChange={(e) => setAssignEmployee(e.target.value)} className="h-9 border border-mist bg-canvas px-2 font-ui text-xs">
+                  <select value={assignEmployee} onChange={(e) => setAssignEmployee(e.target.value)} className="h-9 border border-pf-border bg-pf-card px-2 font-ui text-xs">
                     <option value="">Select a handler…</option>
                     {employees.map((emp) => <option key={emp.employeeId} value={emp.employeeId}>{emp.name} · {emp.employeeId}</option>)}
                   </select>
-                  <button onClick={() => handleAction(assignFulfillment, { locationId: assignLocation, employeeId: assignEmployee, employeeName: employees.find((e) => e.employeeId === assignEmployee)?.name, actor: { name: "Admin" } }, "Fulfillment assigned")} className="h-9 bg-ink text-ivory font-ui text-[11px] uppercase tracking-[.12em]">Assign fulfillment</button>
+                  <button onClick={() => handleAction(assignFulfillment, { locationId: assignLocation, employeeId: assignEmployee, employeeName: employees.find((e) => e.employeeId === assignEmployee)?.name, actor: { name: "Admin" } }, "Fulfillment assigned")} className="h-9 bg-pf-burgundy text-pf-ivory font-ui text-[11px] uppercase tracking-[.12em]">Assign fulfillment</button>
                 </div>
               </div>
 
               {/* Allocation */}
               {[ORDER_STATUS.PROCESSING, ORDER_STATUS.ORDER_CONFIRMED, ORDER_STATUS.CONFIRMED].includes(order.status) && (
-                <button onClick={() => handleAction(allocateOrder, { locationId: assignLocation, employeeId: assignEmployee, employeeName: employees.find((e) => e.employeeId === assignEmployee)?.name || "Staff", actor: { name: "Admin" } }, "Allocated")} className="w-full border border-accent bg-accent text-white py-2 font-ui text-[11px] uppercase">Allocate order</button>
+                <button onClick={() => handleAction(allocateOrder, { locationId: assignLocation, employeeId: assignEmployee, employeeName: employees.find((e) => e.employeeId === assignEmployee)?.name || "Staff", actor: { name: "Admin" } }, "Allocated")} className="w-full border border-pf-gold-deep bg-pf-burgundy text-white py-2 font-ui text-[11px] uppercase">Allocate order</button>
               )}
 
               {/* Picking */}
               {order.status === ORDER_STATUS.ALLOCATED && (
                 <div className="space-y-2">
-                  <p className="font-ui text-[11px] text-taupe">Pick items individually:</p>
+                  <p className="font-ui text-[11px] text-pf-muted">Pick items individually:</p>
                   {order.items.map((item) => (
-                    <div key={item.lineId} className="flex items-center justify-between border border-mist/60 px-3 py-2">
+                    <div key={item.lineId} className="flex items-center justify-between border border-pf-border/60 px-3 py-2">
                       <span className="font-ui text-xs">{item.name} ×{item.quantity}</span>
-                      <button onClick={() => handleAction(markItemPicked, { lineId: item.lineId, actor: { name: "Warehouse" } }, "Picked")} className="text-[11px] text-accent border border-accent/30 px-2 py-1">Mark picked</button>
+                      <button onClick={() => handleAction(markItemPicked, { lineId: item.lineId, actor: { name: "Warehouse" } }, "Picked")} className="text-[11px] text-pf-burgundy border border-pf-gold-deep/30 px-2 py-1">Mark picked</button>
                     </div>
                   ))}
                 </div>
@@ -349,35 +349,35 @@ export default function AdminOrderDetail() {
 
               {order.status === ORDER_STATUS.PICKING && (
                 <div className="space-y-2">
-                  <p className="font-ui text-[11px] text-taupe">Complete picking:</p>
+                  <p className="font-ui text-[11px] text-pf-muted">Complete picking:</p>
                   {order.items.map((item) => (
-                    <div key={item.lineId} className="flex items-center justify-between border border-mist/60 px-3 py-2">
+                    <div key={item.lineId} className="flex items-center justify-between border border-pf-border/60 px-3 py-2">
                       <span className="font-ui text-xs">{item.name}</span>
                       <span className="font-ui text-[10px]">{order.fulfillment?.picking?.[item.lineId]?.picked ? "Picked" : "Pending"}</span>
                     </div>
                   ))}
-                  <button onClick={() => handleAction(markPacked, { packageCount: packCount, notes: packNotes, actor: { name: "Warehouse" } }, "Marked packed")} className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Mark as packed</button>
-                  <input value={packNotes} onChange={(e) => setPackNotes(e.target.value)} placeholder="Packaging notes" className="w-full h-9 border border-mist bg-canvas px-2 font-ui text-xs" />
+                  <button onClick={() => handleAction(markPacked, { packageCount: packCount, notes: packNotes, actor: { name: "Warehouse" } }, "Marked packed")} className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Mark as packed</button>
+                  <input value={packNotes} onChange={(e) => setPackNotes(e.target.value)} placeholder="Packaging notes" className="w-full h-9 border border-pf-border bg-pf-card px-2 font-ui text-xs" />
                 </div>
               )}
 
               {order.status === ORDER_STATUS.PACKED && (
-                <button onClick={() => handleAction(markReadyToDispatch, { actor: { name: "Warehouse" } }, "Ready to dispatch")} className="w-full border border-ink bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Mark Ready to Dispatch</button>
+                <button onClick={() => handleAction(markReadyToDispatch, { actor: { name: "Warehouse" } }, "Ready to dispatch")} className="w-full border border-pf-burgundy bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Mark Ready to Dispatch</button>
               )}
 
               {order.status === ORDER_STATUS.READY_TO_DISPATCH && (
-                <div className="border border-mist/60 p-3 space-y-2">
+                <div className="border border-pf-border/60 p-3 space-y-2">
                   <p className="font-ui text-[10px] uppercase tracking-[.14em]">Dispatch</p>
-                  <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                  <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                     {CARRIERS.map((c) => <option key={c.id} value={c.label}>{c.label}</option>)}
                   </select>
                   {/* A tracking number is REQUIRED — one is never
                       generated on the customer's behalf. The estimated
                       delivery date is optional and only stored when the
                       dispatcher actually knows it. */}
-                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number from the carrier" className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
-                  <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe" htmlFor="dispatch-eta">Estimated delivery (optional)</label>
-                  <input id="dispatch-eta" type="date" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
+                  <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number from the carrier" className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs" />
+                  <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted" htmlFor="dispatch-eta">Estimated delivery (optional)</label>
+                  <input id="dispatch-eta" type="date" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs" />
                   <button
                     disabled={!tracking.trim()}
                     onClick={() => handleAction(dispatchOrder, {
@@ -385,38 +385,38 @@ export default function AdminOrderDetail() {
                       trackingNumber: tracking.trim(),
                       estimatedDelivery: estimatedDelivery || null,
                     }, "Dispatched")}
-                    className="w-full bg-ink text-ivory py-2 font-ui text-[11px] uppercase disabled:opacity-50"
+                    className="w-full bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase disabled:opacity-50"
                   >
                     Dispatch order
                   </button>
                   {!tracking.trim() ? (
-                    <p className="font-ui text-[10px] text-taupe">Enter the carrier&apos;s tracking number to dispatch.</p>
+                    <p className="font-ui text-[10px] text-pf-muted">Enter the carrier&apos;s tracking number to dispatch.</p>
                   ) : null}
                 </div>
               )}
 
               {order.status === ORDER_STATUS.SHIPPED && (
-                <button onClick={() => handleAction(markOutForDelivery, { actor: { name: "Courier" } }, "Out for delivery")} className="w-full border border-ink bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Mark Out for Delivery</button>
+                <button onClick={() => handleAction(markOutForDelivery, { actor: { name: "Courier" } }, "Out for delivery")} className="w-full border border-pf-burgundy bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Mark Out for Delivery</button>
               )}
 
               {order.status === ORDER_STATUS.OUT_FOR_DELIVERY && (
-                <button onClick={() => handleAction(markDelivered, { actor: { name: "Courier" } }, "Delivered")} className="w-full border border-ink bg-ink text-ivory py-2 font-ui text-[11px] uppercase">Mark Delivered</button>
+                <button onClick={() => handleAction(markDelivered, { actor: { name: "Courier" } }, "Delivered")} className="w-full border border-pf-burgundy bg-pf-burgundy text-pf-ivory py-2 font-ui text-[11px] uppercase">Mark Delivered</button>
               )}
 
               {/* Cancellation */}
               {![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUNDED].includes(order.status) && (
-                <div className="pt-4 border-t border-mist/60">
+                <div className="pt-4 border-t border-pf-border/60">
                   {!showCancel ? (
-                    <button onClick={() => setShowCancel(true)} className="w-full border border-mist text-taupe py-2 font-ui text-[11px] uppercase">Cancel order</button>
+                    <button onClick={() => setShowCancel(true)} className="w-full border border-pf-border text-pf-muted py-2 font-ui text-[11px] uppercase">Cancel order</button>
                   ) : (
                     <div className="space-y-2">
-                      <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+                      <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                         {CANCELLATION_REASONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                       </select>
-                      <input value={cancelNote} onChange={(e) => setCancelNote(e.target.value)} placeholder="Cancellation note" className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs" />
+                      <input value={cancelNote} onChange={(e) => setCancelNote(e.target.value)} placeholder="Cancellation note" className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs" />
                       <div className="flex gap-2">
-                        <button onClick={() => { setShowCancel(false); handleAction(cancelOrderAdmin, { reason: cancelReason, note: cancelNote || "Cancelled by admin", actor: { name: "Admin" } }, "Order cancelled"); }} className="flex-1 bg-accent text-white py-2 font-ui text-[11px] uppercase">Confirm cancel</button>
-                        <button onClick={() => setShowCancel(false)} className="flex-1 border border-mist py-2 font-ui text-[11px] uppercase">Abort</button>
+                        <button onClick={() => { setShowCancel(false); handleAction(cancelOrderAdmin, { reason: cancelReason, note: cancelNote || "Cancelled by admin", actor: { name: "Admin" } }, "Order cancelled"); }} className="flex-1 bg-pf-burgundy text-white py-2 font-ui text-[11px] uppercase">Confirm cancel</button>
+                        <button onClick={() => setShowCancel(false)} className="flex-1 border border-pf-border py-2 font-ui text-[11px] uppercase">Abort</button>
                       </div>
                     </div>
                   )}
@@ -441,7 +441,7 @@ export default function AdminOrderDetail() {
                 }))}
               />
             ) : (
-              <p className="font-ui text-sm text-taupe">No transitions have been recorded for this order yet.</p>
+              <p className="font-ui text-sm text-pf-muted">No transitions have been recorded for this order yet.</p>
             )}
           </AdminPanel>
 
@@ -449,19 +449,19 @@ export default function AdminOrderDetail() {
             <div className="space-y-3">
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {(order.internalNotes || []).map((n, i) => (
-                  <div key={i} className="border-l-2 border-brass bg-surface/30 px-3 py-2">
+                  <div key={i} className="border-l-2 border-pf-gold-deep bg-pf-ivory/30 px-3 py-2">
                     {/* Backend note shape: { id, authorId, authorName, note, createdAt } */}
                     <p className="font-ui text-xs">{n.note ?? n.text}</p>
-                    <p className="font-ui text-[10px] text-taupe mt-1">
+                    <p className="font-ui text-[10px] text-pf-muted mt-1">
                       {n.authorName ?? n.by ?? "Staff"} · {formatEventTime(n.createdAt ?? n.at)}
                     </p>
                   </div>
                 ))}
-                {!(order.internalNotes?.length) && <p className="font-ui text-xs text-taupe">No internal notes.</p>}
+                {!(order.internalNotes?.length) && <p className="font-ui text-xs text-pf-muted">No internal notes.</p>}
               </div>
               <div className="flex gap-2">
-                <input value={internalNote} onChange={(e) => setInternalNote(e.target.value)} placeholder="Add internal note" className="flex-1 h-9 border border-mist bg-canvas px-2 font-ui text-xs" />
-                <button onClick={() => { if (!internalNote.trim()) return; handleAction(addInternalNote, { text: internalNote, actor: { name: "Admin" } }, "Note added"); setInternalNote(""); }} className="px-3 bg-ink text-ivory font-ui text-[11px] uppercase">Add</button>
+                <input value={internalNote} onChange={(e) => setInternalNote(e.target.value)} placeholder="Add internal note" className="flex-1 h-9 border border-pf-border bg-pf-card px-2 font-ui text-xs" />
+                <button onClick={() => { if (!internalNote.trim()) return; handleAction(addInternalNote, { text: internalNote, actor: { name: "Admin" } }, "Note added"); setInternalNote(""); }} className="px-3 bg-pf-burgundy text-pf-ivory font-ui text-[11px] uppercase">Add</button>
               </div>
             </div>
           </AdminPanel>
@@ -471,7 +471,7 @@ export default function AdminOrderDetail() {
               <p>Method: {order.paymentMethod.label}</p>
               <p>Status: {order.paymentStatus}</p>
               <p>Paid: {formatINR(order.pricing.total)}</p>
-              {order.refund && <p className="text-accent">Refund: {formatINR(order.refund.amount)} · {order.refund.status}</p>}
+              {order.refund && <p className="text-pf-burgundy">Refund: {formatINR(order.refund.amount)} · {order.refund.status}</p>}
             </div>
           </AdminPanel>
         </div>

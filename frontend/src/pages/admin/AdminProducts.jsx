@@ -88,7 +88,7 @@ const ProductRow = memo(function ProductRow({
   const canQuickPublish = getProductWorkflowState(product).stage === WORKFLOW_STAGES.APPROVED;
   const isBusy = busyId === product.id;
   return (
-    <tr className="border-b border-mist/60 font-ui text-sm">
+    <tr className="border-b border-pf-border/60 font-ui text-sm">
       <td className="px-3 py-4 align-top">
         <input
           type="checkbox"
@@ -100,50 +100,50 @@ const ProductRow = memo(function ProductRow({
       <td className="px-3 py-4">
         <div className="flex items-center gap-3">
           {cover?.src ? (
-            <img src={cover.src} alt="" loading="lazy" className="h-12 w-10 shrink-0 object-cover border border-mist/60" />
+            <img src={cover.src} alt="" loading="lazy" className="h-12 w-10 shrink-0 object-cover border border-pf-border/60" />
           ) : (
-            <span className="h-12 w-10 shrink-0 bg-mist/60 flex items-center justify-center font-ui text-[9px] text-taupe">No img</span>
+            <span className="h-12 w-10 shrink-0 bg-pf-border/60 flex items-center justify-center font-ui text-[9px] text-pf-muted">No img</span>
           )}
           <div className="min-w-0">
             <Link
               to={`${prefix}/products/${product.id}`}
-              className="block max-w-56 truncate font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
+              className="block max-w-56 truncate font-medium text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline"
             >
               {product.name}
             </Link>
-            <p className="text-[11px] text-taupe">{product.brand}</p>
+            <p className="text-[11px] text-pf-muted">{product.brand}</p>
           </div>
         </div>
       </td>
-      <td className="px-3 py-4 align-top text-taupe font-mono text-xs">{product.sku}</td>
+      <td className="px-3 py-4 align-top text-pf-muted font-mono text-xs">{product.sku}</td>
       <td className="px-3 py-4 align-top">
-        <span className="font-medium text-ink">{categoryLabels[product.category] ?? product.category}</span>
-        {product.subcategory ? <span className="block text-[11px] text-taupe">{product.subcategory}</span> : null}
+        <span className="font-medium text-pf-text">{categoryLabels[product.category] ?? product.category}</span>
+        {product.subcategory ? <span className="block text-[11px] text-pf-muted">{product.subcategory}</span> : null}
       </td>
       <td className="px-3 py-4 align-top">
-        <span className="font-medium text-ink">{formatINR(product.price)}</span>
+        <span className="font-medium text-pf-text">{formatINR(product.price)}</span>
         {product.originalPrice > product.price ? (
-          <span className="block text-[11px] text-taupe line-through">{formatINR(product.originalPrice)}</span>
+          <span className="block text-[11px] text-pf-muted line-through">{formatINR(product.originalPrice)}</span>
         ) : null}
       </td>
-      <td className="px-3 py-4 align-top text-taupe">{discountLabel(product)}</td>
+      <td className="px-3 py-4 align-top text-pf-muted">{discountLabel(product)}</td>
       <td className="px-3 py-4 align-top">{product.variants?.length || "—"}</td>
       <td className="px-3 py-4 align-top">
         {!summary || summary.isEmpty ? (
           <Link
             to={`${prefix}/products/${product.id}/media`}
-            className="font-ui text-[11px] uppercase tracking-widest text-taupe underline-offset-4 hover:text-accent hover:underline"
+            className="font-ui text-[11px] uppercase tracking-widest text-pf-muted underline-offset-4 hover:text-pf-burgundy hover:underline"
           >
             Add media
           </Link>
         ) : (
           <Link
             to={`${prefix}/products/${product.id}/media`}
-            className="flex flex-col gap-0.5 underline-offset-4 hover:text-accent hover:underline"
+            className="flex flex-col gap-0.5 underline-offset-4 hover:text-pf-burgundy hover:underline"
           >
-            <span className="font-ui text-[11px] text-ink">{summary.images} img · {summary.videos} vid</span>
+            <span className="font-ui text-[11px] text-pf-text">{summary.images} img · {summary.videos} vid</span>
             {summary.needsCover && !product.image ? (
-              <span className="font-ui text-[10px] uppercase tracking-widest text-accent font-semibold">Needs cover</span>
+              <span className="font-ui text-[10px] uppercase tracking-widest text-pf-burgundy font-semibold">Needs cover</span>
             ) : null}
           </Link>
         )}
@@ -151,15 +151,15 @@ const ProductRow = memo(function ProductRow({
       <td className="px-3 py-4 align-top">
         <StatusBadge label={getProductStatusLabel(product.status)} tone={statusTone[product.status] ?? "quiet"} />
       </td>
-      <td className="px-3 py-4 align-top text-[11px] text-taupe">
+      <td className="px-3 py-4 align-top text-[11px] text-pf-muted">
         {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString("en-IN") : "—"}
         {product.updatedBy ? <span className="block text-[10px]">{product.updatedBy}</span> : null}
       </td>
       <td className="px-3 py-4 align-top">
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link to={`${prefix}/products/${product.id}`} aria-label={`View ${product.name}`} title="View record" className="text-taupe hover:text-ink"><Eye size={15} aria-hidden="true" /></Link>
-          <Link to={`${prefix}/products/${product.id}/edit`} aria-label={`Edit ${product.name}`} title="Edit product" className="text-taupe hover:text-ink"><Pencil size={15} aria-hidden="true" /></Link>
-          <Link to={`${prefix}/products/${product.id}/media`} aria-label={`Manage media for ${product.name}`} title="Manage Media" className="text-taupe hover:text-ink"><Images size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}`} aria-label={`View ${product.name}`} title="View record" className="text-pf-muted hover:text-pf-text"><Eye size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}/edit`} aria-label={`Edit ${product.name}`} title="Edit product" className="text-pf-muted hover:text-pf-text"><Pencil size={15} aria-hidden="true" /></Link>
+          <Link to={`${prefix}/products/${product.id}/media`} aria-label={`Manage media for ${product.name}`} title="Manage Media" className="text-pf-muted hover:text-pf-text"><Images size={15} aria-hidden="true" /></Link>
           {canQuickPublish ? (
             <button
               type="button"
@@ -167,7 +167,7 @@ const ProductRow = memo(function ProductRow({
               title="Publish approved product"
               disabled={isBusy}
               onClick={() => onPublishQuick(product)}
-              className={`text-taupe hover:text-accent ${isBusy ? "opacity-40" : ""}`}
+              className={`text-pf-muted hover:text-pf-burgundy ${isBusy ? "opacity-40" : ""}`}
             >
               <Check size={15} aria-hidden="true" />
             </button>
@@ -178,14 +178,14 @@ const ProductRow = memo(function ProductRow({
             title="Duplicate"
             disabled={isBusy}
             onClick={() => onDuplicate(product)}
-            className={`text-taupe hover:text-ink ${isBusy ? "opacity-40" : ""}`}
+            className={`text-pf-muted hover:text-pf-text ${isBusy ? "opacity-40" : ""}`}
           >
             <Copy size={15} aria-hidden="true" />
           </button>
           {product.status === "ARCHIVED" ? (
-            <button type="button" aria-label={`Restore ${product.name}`} title="Restore" disabled={isBusy} onClick={() => onRestore(product)} className={`text-taupe hover:text-ink ${isBusy ? "opacity-40" : ""}`}><RotateCcw size={15} aria-hidden="true" /></button>
+            <button type="button" aria-label={`Restore ${product.name}`} title="Restore" disabled={isBusy} onClick={() => onRestore(product)} className={`text-pf-muted hover:text-pf-text ${isBusy ? "opacity-40" : ""}`}><RotateCcw size={15} aria-hidden="true" /></button>
           ) : (
-            <button type="button" aria-label={`Archive ${product.name}`} title="Archive" disabled={isBusy} onClick={() => onArchive(product)} className={`text-taupe hover:text-accent ${isBusy ? "opacity-40" : ""}`}><Archive size={15} aria-hidden="true" /></button>
+            <button type="button" aria-label={`Archive ${product.name}`} title="Archive" disabled={isBusy} onClick={() => onArchive(product)} className={`text-pf-muted hover:text-pf-burgundy ${isBusy ? "opacity-40" : ""}`}><Archive size={15} aria-hidden="true" /></button>
           )}
         </div>
       </td>
@@ -356,7 +356,7 @@ export default function AdminProducts() {
           {blocked.length ? `, ${blocked.length} refused.` : "."}
         </p>
         {blocked.length ? (
-          <ul className="mt-2 max-h-56 list-disc space-y-1 overflow-y-auto pl-5 text-accent">
+          <ul className="mt-2 max-h-56 list-disc space-y-1 overflow-y-auto pl-5 text-pf-burgundy">
             {blocked.map((result) => (
               <li key={result.id}>
                 <span className="font-medium">{result.id}</span>{" — "}
@@ -435,7 +435,7 @@ export default function AdminProducts() {
   return (
     <AdminPage
       eyebrow="Business / Products"
-      title={<>Product <span className="italic text-accent">catalog.</span></>}
+      title={<>Product <span className="italic text-pf-burgundy">catalog.</span></>}
       description="One catalogue serves the storefront, the portals and every future surface. This desk is fully server-backed: filters, sort, pagination and every action run against the catalogue API."
       actions={
         <>
@@ -450,11 +450,11 @@ export default function AdminProducts() {
     >
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
         {metricsError ? (
-          <div className="col-span-full border border-accent/40 bg-canvas px-4 py-3 font-ui text-xs text-accent" role="alert">
+          <div className="col-span-full border border-pf-gold-deep/40 bg-pf-card px-4 py-3 font-ui text-xs text-pf-burgundy" role="alert">
             Metrics unavailable — {metricsError}
           </div>
         ) : !metrics ? (
-          <div className="col-span-full font-ui text-xs text-taupe">Loading catalogue metrics from the server…</div>
+          <div className="col-span-full font-ui text-xs text-pf-muted">Loading catalogue metrics from the server…</div>
         ) : (
           [
             { label: "Total", value: metrics.total, hint: "Every product record" },
@@ -477,7 +477,7 @@ export default function AdminProducts() {
       </div>
 
       {notice ? (
-        <div aria-live="polite" className="mb-5 border border-mist/80 bg-canvas px-4 py-3 font-ui text-sm text-ink">
+        <div aria-live="polite" className="mb-5 border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">
           {notice}
         </div>
       ) : null}
@@ -501,10 +501,10 @@ export default function AdminProducts() {
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
           <label className="relative flex-1">
             <span className="sr-only">Search products</span>
-            <Search className="absolute left-3 top-3 text-taupe" size={15} aria-hidden="true" />
+            <Search className="absolute left-3 top-3 text-pf-muted" size={15} aria-hidden="true" />
             <input
               aria-label="Search products"
-              className="w-full border border-mist py-2.5 pl-9 pr-3 font-ui text-sm outline-none focus:border-accent"
+              className="w-full border border-pf-border py-2.5 pl-9 pr-3 font-ui text-sm outline-none focus:border-pf-gold-deep"
               placeholder="Search name, SKU, ID, category, fabric…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -518,7 +518,7 @@ export default function AdminProducts() {
               aria-label="Filter by category"
               value={category}
               onChange={(event) => { setCategory(event.target.value); setPage(1); }}
-              className="border border-mist bg-canvas px-3 py-2.5 font-ui text-xs text-ink outline-none focus:border-accent"
+              className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
             >
               <option value="ALL">All categories</option>
               {CATEGORY_OPTIONS.map((cat) => (
@@ -531,7 +531,7 @@ export default function AdminProducts() {
               aria-label="Sort products"
               value={sort}
               onChange={(event) => { setSort(event.target.value); setPage(1); }}
-              className="border border-mist bg-canvas px-3 py-2.5 font-ui text-xs text-ink outline-none focus:border-accent"
+              className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
             >
               {[
                 ["newest", "Newest"],
@@ -557,8 +557,8 @@ export default function AdminProducts() {
                 onClick={() => { setStatus(option.id); setPage(1); }}
                 className={
                   status === option.id
-                    ? "border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory"
-                    : "border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink"
+                    ? "border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory"
+                    : "border border-pf-border px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"
                 }
               >
                 {option.label}
@@ -568,31 +568,31 @@ export default function AdminProducts() {
         </div>
 
         {selected.length ? (
-          <div className="mb-5 flex flex-wrap items-center gap-2 border border-mist/80 bg-canvas p-3">
-            <p className="mr-2 font-ui text-[11px] uppercase tracking-[.16em] text-ink font-medium">{selected.length} selected{bulkBusy ? " · processing…" : ""}</p>
-            <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction({ id: "publish", label: "Publish" })} className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40"><UploadCloud size={11} className="mr-1 inline" aria-hidden="true" /> Publish</button>
-            <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction({ id: "archive", label: "Archive" })} className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40"><Archive size={11} className="mr-1 inline" aria-hidden="true" /> Archive</button>
-            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isFeatured: true }, "Mark featured")} className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40">Mark featured</button>
-            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isBestseller: true }, "Mark bestseller")} className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40">Mark bestseller</button>
-            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isNew: true }, "Mark new arrival")} className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:opacity-40">Mark new arrival</button>
-            <button type="button" onClick={() => setSelected([])} className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-taupe underline-offset-4 hover:text-accent hover:underline">Clear</button>
+          <div className="mb-5 flex flex-wrap items-center gap-2 border border-pf-border/80 bg-pf-card p-3">
+            <p className="mr-2 font-ui text-[11px] uppercase tracking-[.16em] text-pf-text font-medium">{selected.length} selected{bulkBusy ? " · processing…" : ""}</p>
+            <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction({ id: "publish", label: "Publish" })} className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"><UploadCloud size={11} className="mr-1 inline" aria-hidden="true" /> Publish</button>
+            <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction({ id: "archive", label: "Archive" })} className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"><Archive size={11} className="mr-1 inline" aria-hidden="true" /> Archive</button>
+            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isFeatured: true }, "Mark featured")} className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40">Mark featured</button>
+            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isBestseller: true }, "Mark bestseller")} className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40">Mark bestseller</button>
+            <button type="button" disabled={bulkBusy} onClick={() => runMerchandisingBulk({ isNew: true }, "Mark new arrival")} className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40">Mark new arrival</button>
+            <button type="button" onClick={() => setSelected([])} className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted underline-offset-4 hover:text-pf-burgundy hover:underline">Clear</button>
           </div>
         ) : null}
 
         {listError ? (
-          <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-accent/50 bg-canvas px-4 py-4">
+          <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-pf-gold-deep/50 bg-pf-card px-4 py-4">
             <div>
-              <p className="font-display text-lg text-ink">The product list could not be loaded</p>
-              <p className="mt-1 font-ui text-sm text-accent">{listError}</p>
+              <p className="font-display text-lg text-pf-text">The product list could not be loaded</p>
+              <p className="mt-1 font-ui text-sm text-pf-burgundy">{listError}</p>
             </div>
-            <button type="button" onClick={reload} className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink hover:bg-ink hover:text-ivory">Retry</button>
+            <button type="button" onClick={reload} className="border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text hover:bg-pf-burgundy hover:text-pf-ivory">Retry</button>
           </div>
         ) : null}
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left">
             <thead>
-              <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+              <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                 <th className="px-3 py-3"><input type="checkbox" aria-label="Select all visible products" checked={allVisibleSelected} onChange={toggleSelectAll} /></th>
                 {["Product", "SKU", "Category", "Price", "Discount", "Variants", "Media", "Status", "Updated", "Actions"].map((heading) => (
                   <th className="px-3 py-3" key={heading} scope="col">{heading}</th>
@@ -601,7 +601,7 @@ export default function AdminProducts() {
             </thead>
             <tbody>
               {isListLoading ? (
-                <tr><td colSpan={11} className="py-12 text-center font-ui text-sm text-taupe">Loading products from the server…</td></tr>
+                <tr><td colSpan={11} className="py-12 text-center font-ui text-sm text-pf-muted">Loading products from the server…</td></tr>
               ) : items.map((product) => (
                 <ProductRow
                   key={product.id}
@@ -625,26 +625,26 @@ export default function AdminProducts() {
         {!isListLoading && !listError && !items.length ? (
           total === 0 && !debouncedQuery && status === "ALL" && category === "ALL" ? (
             <div className="py-16 text-center">
-              <p className="font-display text-2xl font-light text-ink">No products on the server yet</p>
-              <p className="mt-2 font-ui text-sm text-taupe">
+              <p className="font-display text-2xl font-light text-pf-text">No products on the server yet</p>
+              <p className="mt-2 font-ui text-sm text-pf-muted">
                 The catalogue is empty server-side. Create the first product to seed the register.
               </p>
               <Link
                 to={`${prefix}/products/new`}
-                className="mt-5 inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.14em] text-ivory transition-colors hover:bg-ink/90"
+                className="mt-5 inline-flex items-center gap-2 border border-pf-burgundy bg-pf-burgundy px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory transition-colors hover:bg-pf-burgundy/90"
               >
                 <Plus size={13} aria-hidden="true" /> Create product
               </Link>
             </div>
           ) : (
-            <p className="py-12 text-center font-ui text-sm text-taupe">
+            <p className="py-12 text-center font-ui text-sm text-pf-muted">
               No products match the current search/filters{debouncedQuery ? ` for “${debouncedQuery}”` : ""}.
             </p>
           )
         ) : null}
 
         {!isListLoading && !listError && total > pageSize ? (
-          <div className="mt-5 flex items-center justify-between font-ui text-[11px] text-taupe">
+          <div className="mt-5 flex items-center justify-between font-ui text-[11px] text-pf-muted">
             <p>
               Page {page} of {totalPages} · {total} product{total === 1 ? "" : "s"} matching
             </p>
@@ -653,7 +653,7 @@ export default function AdminProducts() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
-                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+                className="border border-pf-border px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
               >
                 Previous
               </button>
@@ -661,7 +661,7 @@ export default function AdminProducts() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                className="border border-mist px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+                className="border border-pf-border px-3 py-1.5 uppercase tracking-[.14em] transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
               >
                 Next
               </button>

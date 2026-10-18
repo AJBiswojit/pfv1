@@ -71,41 +71,41 @@ function CatalogRow({ product, selected, onToggle }) {
         onClick={onToggle}
         aria-pressed={selected}
         className={cn(
-          "group flex w-full items-center gap-4 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+          "group flex w-full items-center gap-4 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pf-burgundy",
           selected
-            ? "border-ink/60 bg-surface"
-            : "border-mist/80 bg-canvas hover:border-ink/40"
+            ? "border-pf-burgundy/60 bg-pf-ivory"
+            : "border-pf-border/80 bg-pf-card hover:border-pf-burgundy/40"
         )}
       >
         <span
           aria-hidden="true"
           className={cn(
             "flex h-5 w-5 shrink-0 items-center justify-center border transition-colors",
-            selected ? "border-ink bg-ink text-ivory" : "border-pearl bg-surface text-transparent"
+            selected ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory" : "border-pf-border bg-pf-ivory text-transparent"
           )}
         >
           <Check size={12} strokeWidth={2.5} />
         </span>
 
-        <span className="relative h-16 w-12 shrink-0 overflow-hidden border border-mist/80 bg-surface">
+        <span className="relative h-16 w-12 shrink-0 overflow-hidden border border-pf-border/80 bg-pf-ivory">
           {cover?.src ? (
             <PratikshyaImage image={cover} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
           ) : (
-            <span className="flex h-full w-full items-center justify-center bg-canvas-deep">
-              <Package size={14} strokeWidth={1.3} className="text-taupe" aria-hidden="true" />
+            <span className="flex h-full w-full items-center justify-center bg-pf-ivory">
+              <Package size={14} strokeWidth={1.3} className="text-pf-muted" aria-hidden="true" />
             </span>
           )}
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-sm font-medium text-ink">{product.name}</span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-ui text-[11px] text-taupe">
-            <span className="font-mono text-[10px] uppercase text-cocoa">{product.id}</span>
+          <span className="block truncate font-display text-sm font-medium text-pf-text">{product.name}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-ui text-[11px] text-pf-muted">
+            <span className="font-mono text-[10px] uppercase text-pf-cocoa">{product.id}</span>
             {product.sku && product.sku !== product.id ? (
-              <span className="font-mono text-[10px] text-taupe/80">{product.sku}</span>
+              <span className="font-mono text-[10px] text-pf-muted/80">{product.sku}</span>
             ) : null}
           </span>
-          <span className="mt-1 block font-ui text-[11px] text-taupe">
+          <span className="mt-1 block font-ui text-[11px] text-pf-muted">
             {product.department
               ? `${titleCase(product.department)} / ${categoryLabels[product.category] ?? titleCase(product.category)}`
               : categoryLabels[product.category] ?? titleCase(product.category)}
@@ -211,22 +211,22 @@ export default function ProductCatalogSelector({
     department !== "ALL" || category !== "ALL" || subcategory !== "ALL" || Boolean(query.trim());
 
   return (
-    <div className="border border-mist/80 bg-surface/40">
-      <header className="border-b border-mist/70 px-5 py-4 sm:px-6">
+    <div className="border border-pf-border/80 bg-pf-ivory/40">
+      <header className="border-b border-pf-border/70 px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-ui text-[10px] uppercase tracking-[.24em] text-accent">Select from product catalog</p>
-            <h3 className="mt-1 font-display text-xl font-light tracking-tight text-ink">
+            <p className="font-ui text-[10px] uppercase tracking-[.24em] text-pf-burgundy">Select from product catalog</p>
+            <h3 className="mt-1 font-display text-xl font-light tracking-tight text-pf-text">
               Product Catalog Selector
             </h3>
-            <p className="mt-1 font-ui text-[11px] text-taupe">
+            <p className="mt-1 font-ui text-[11px] text-pf-muted">
               Choose existing catalogue products — the section stores product IDs only, and the
               catalogue keeps supplying the name, taxonomy and imagery. A photo cannot create a product
               here; use the product workspace to save a backend draft and register its media first.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <span className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               {filtered.length} {filtered.length === 1 ? "product" : "products"}
             </span>
           </div>
@@ -234,26 +234,26 @@ export default function ProductCatalogSelector({
       </header>
 
       {/* Search */}
-      <div className="border-b border-mist/70 px-5 py-4 sm:px-6">
+      <div className="border-b border-pf-border/70 px-5 py-4 sm:px-6">
         <label htmlFor="catalog-selector-search" className="sr-only">
           Search products
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3 border border-mist/80 bg-canvas px-3 py-2.5 focus-within:border-ink/50">
-            <Search size={15} className="shrink-0 text-taupe" aria-hidden="true" />
+          <div className="flex min-w-0 flex-1 items-center gap-3 border border-pf-border/80 bg-pf-card px-3 py-2.5 focus-within:border-pf-burgundy/50">
+            <Search size={15} className="shrink-0 text-pf-muted" aria-hidden="true" />
             <input
               id="catalog-selector-search"
               value={query}
               onChange={(event) => resetToPageZero(() => setQuery(event.target.value))}
               placeholder="Search products…"
-              className="min-w-0 flex-1 bg-transparent font-ui text-sm text-ink outline-none placeholder:text-taupe/80"
+              className="min-w-0 flex-1 bg-transparent font-ui text-sm text-pf-text outline-none placeholder:text-pf-muted/80"
             />
             {query ? (
               <button
                 type="button"
                 onClick={() => resetToPageZero(() => setQuery(""))}
                 aria-label="Clear search"
-                className="text-taupe transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                className="text-pf-muted transition-colors hover:text-pf-text focus-visible:outline-2 focus-visible:outline-pf-burgundy"
               >
                 <X size={14} aria-hidden="true" />
               </button>
@@ -264,7 +264,7 @@ export default function ProductCatalogSelector({
         {/* Filters */}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="block">
-            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Department</span>
+            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Department</span>
             <select
               value={department}
               onChange={(event) =>
@@ -274,7 +274,7 @@ export default function ProductCatalogSelector({
                   setSubcategory("ALL");
                 })
               }
-              className="w-full border border-mist/80 bg-canvas px-3 py-2 font-ui text-xs text-ink outline-none focus:border-ink/50"
+              className="w-full border border-pf-border/80 bg-pf-card px-3 py-2 font-ui text-xs text-pf-text outline-none focus:border-pf-burgundy/50"
             >
               <option value="ALL">All Departments</option>
               {departmentFilterOptions.map((entry) => (
@@ -286,7 +286,7 @@ export default function ProductCatalogSelector({
           </label>
 
           <label className="block">
-            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Category</span>
+            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Category</span>
             <select
               value={category}
               onChange={(event) =>
@@ -295,7 +295,7 @@ export default function ProductCatalogSelector({
                   setSubcategory("ALL");
                 })
               }
-              className="w-full border border-mist/80 bg-canvas px-3 py-2 font-ui text-xs text-ink outline-none focus:border-ink/50"
+              className="w-full border border-pf-border/80 bg-pf-card px-3 py-2 font-ui text-xs text-pf-text outline-none focus:border-pf-burgundy/50"
             >
               <option value="ALL">All Categories</option>
               {categoryFilterOptions.map((entry) => (
@@ -307,11 +307,11 @@ export default function ProductCatalogSelector({
           </label>
 
           <label className="block">
-            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Subcategory</span>
+            <span className="mb-1 block font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Subcategory</span>
             <select
               value={subcategory}
               onChange={(event) => resetToPageZero(() => setSubcategory(event.target.value))}
-              className="w-full border border-mist/80 bg-canvas px-3 py-2 font-ui text-xs text-ink outline-none focus:border-ink/50"
+              className="w-full border border-pf-border/80 bg-pf-card px-3 py-2 font-ui text-xs text-pf-text outline-none focus:border-pf-burgundy/50"
             >
               <option value="ALL">All Subcategories</option>
               {subcategoryFilterOptions.map((entry) => (
@@ -324,8 +324,8 @@ export default function ProductCatalogSelector({
         </div>
 
         {placement?.recommendedDepartment && hasActiveFilter ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border border-brass/25 bg-brass/10 px-3 py-2">
-            <p className="font-ui text-[10px] uppercase tracking-[.14em] text-brass-deep">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border border-pf-gold-deep/25 bg-pf-gold/10 px-3 py-2">
+            <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold-text-deep">
               {isSuggested
                 ? `Suggested for ${placement.label} — you can still browse the full catalogue.`
                 : `Filtered — ${placement.label} recommends ${departmentFilterOptions.find((entry) => entry.id === placement.recommendedDepartment)?.label ?? ""}${placement.recommendedCategory ? ` / ${categoryLabels[placement.recommendedCategory] ?? placement.recommendedCategory}` : ""}.`}
@@ -333,7 +333,7 @@ export default function ProductCatalogSelector({
             <button
               type="button"
               onClick={resetSuggestions}
-              className="ml-auto font-ui text-[9px] uppercase tracking-[.16em] text-ink underline-offset-4 hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+              className="ml-auto font-ui text-[9px] uppercase tracking-[.16em] text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline focus-visible:outline-2 focus-visible:outline-pf-burgundy"
             >
               Show all products
             </button>
@@ -349,13 +349,13 @@ export default function ProductCatalogSelector({
               <button
                 type="button"
                 onClick={togglePage}
-                className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe underline-offset-4 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted underline-offset-4 hover:text-pf-text hover:underline focus-visible:outline-2 focus-visible:outline-pf-burgundy"
               >
                 {pageRows.every((product) => selected.has(String(product.id)))
                   ? "Clear page selection"
                   : "Select this page"}
               </button>
-              <span className="font-ui text-[10px] text-taupe">
+              <span className="font-ui text-[10px] text-pf-muted">
                 Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of{" "}
                 {filtered.length}
               </span>
@@ -373,23 +373,23 @@ export default function ProductCatalogSelector({
             </ul>
 
             {pageCount > 1 ? (
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-mist/70 pt-4">
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-pf-border/70 pt-4">
                 <button
                   type="button"
                   onClick={() => setPage((current) => Math.max(0, current - 1))}
                   disabled={safePage === 0}
-                  className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-ink transition-colors hover:text-accent disabled:cursor-not-allowed disabled:text-taupe/50 focus-visible:outline-2 focus-visible:outline-accent"
+                  className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text transition-colors hover:text-pf-burgundy disabled:cursor-not-allowed disabled:text-pf-muted/50 focus-visible:outline-2 focus-visible:outline-pf-burgundy"
                 >
                   <ChevronLeft size={13} aria-hidden="true" /> Previous
                 </button>
-                <span className="font-ui text-[10px] tabular-nums text-taupe">
+                <span className="font-ui text-[10px] tabular-nums text-pf-muted">
                   Page {safePage + 1} of {pageCount}
                 </span>
                 <button
                   type="button"
                   onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
                   disabled={safePage >= pageCount - 1}
-                  className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-ink transition-colors hover:text-accent disabled:cursor-not-allowed disabled:text-taupe/50 focus-visible:outline-2 focus-visible:outline-accent"
+                  className="inline-flex items-center gap-1.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text transition-colors hover:text-pf-burgundy disabled:cursor-not-allowed disabled:text-pf-muted/50 focus-visible:outline-2 focus-visible:outline-pf-burgundy"
                 >
                   Next <ChevronRight size={13} aria-hidden="true" />
                 </button>
@@ -397,8 +397,8 @@ export default function ProductCatalogSelector({
             ) : null}
           </>
         ) : (
-          <div className="border border-mist/80 bg-surface/30 px-5 py-10 text-center">
-            <p className="font-ui text-sm text-taupe">
+          <div className="border border-pf-border/80 bg-pf-ivory/30 px-5 py-10 text-center">
+            <p className="font-ui text-sm text-pf-muted">
               No products match {hasActiveFilter ? "these filters." : "the catalogue yet."}
             </p>
             {hasActiveFilter ? (
@@ -411,7 +411,7 @@ export default function ProductCatalogSelector({
                   setSubcategory("ALL");
                   setPage(0);
                 }}
-                className="mt-2 font-ui text-[10px] uppercase tracking-[.16em] text-ink underline-offset-4 hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                className="mt-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline focus-visible:outline-2 focus-visible:outline-pf-burgundy"
               >
                 Clear filters
               </button>
@@ -421,9 +421,9 @@ export default function ProductCatalogSelector({
       </div>
 
       {/* Footer */}
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-mist/70 bg-surface/50 px-5 py-4 sm:px-6">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-pf-border/70 bg-pf-ivory/50 px-5 py-4 sm:px-6">
         <div className="flex items-center gap-3">
-          <p className="font-ui text-[11px] text-ink">
+          <p className="font-ui text-[11px] text-pf-text">
             <span className="font-medium">{selectedCount}</span>{" "}
             {selectedCount === 1 ? "product selected" : "products selected"}
           </p>
@@ -431,7 +431,7 @@ export default function ProductCatalogSelector({
             <button
               type="button"
               onClick={clearSelection}
-              className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe underline-offset-4 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+              className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted underline-offset-4 hover:text-pf-text hover:underline focus-visible:outline-2 focus-visible:outline-pf-burgundy"
             >
               Clear
             </button>
