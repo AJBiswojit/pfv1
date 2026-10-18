@@ -316,6 +316,19 @@ export default function AdminDashboard() {
     return ((second - first) / first) * 100;
   }, [series]);
 
+  /* Order status distribution.
+   * HOOK ORDER MATTERS: this memo must stay ABOVE the loading early-return
+   * below. It used to sit after it, so the first render (status="loading")
+   * ran one hook fewer than the second render (status="ready") — React threw
+   * "Rendered more hooks than during the previous render", unmounted the
+   * whole React tree and left the Super Admin / Admin dashboard blank the
+   * moment the summary request resolved. */
+  const orderStatusCounts = useMemo(() => {
+    const counts = {};
+    orders.forEach((o) => { counts[o.status] = (counts[o.status] || 0) + 1; });
+    return counts;
+  }, [orders]);
+
   if (status === "loading") {
     return (
       <AdminPage
@@ -333,13 +346,6 @@ export default function AdminDashboard() {
   const lowStock = metrics.lowStockCount ?? 0;
   const outOfStock = metrics.outOfStockCount ?? 0;
   const totalStock = inStock + lowStock + outOfStock;
-
-  /* Order status distribution */
-  const orderStatusCounts = useMemo(() => {
-    const counts = {};
-    orders.forEach((o) => { counts[o.status] = (counts[o.status] || 0) + 1; });
-    return counts;
-  }, [orders]);
 
   const statusSegments = [
     { label: "Delivered", value: orderStatusCounts["delivered"] || 0, color: "#4A7C59" },

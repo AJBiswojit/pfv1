@@ -47,9 +47,13 @@ const statusTone = { PUBLISHED: "ink", PENDING_REVIEW: "alert", DRAFT: "quiet", 
 export default function EmployeeProductReview() {
   const { employee, hasPermission } = useEmployeeAuth();
 
-  if (!hasPermission(PERMISSIONS.PRODUCTS_VIEW)) {
-    return <Navigate to="/employee/access-denied" replace />;
-  }
+  /* Permission gate.
+   * The decision is captured here but the early return happens AFTER the
+   * hooks below: returning above them changed the hook count between the
+   * "not permitted" render and the "permitted" render, and React threw
+   * "Rendered more hooks than during the previous render" and blanked the
+   * page. */
+  const isReviewDenied = !hasPermission(PERMISSIONS.PRODUCTS_VIEW);
 
   const actor = employee
     ? {
@@ -148,6 +152,12 @@ export default function EmployeeProductReview() {
   const view = useMemo(() => selected ? getProductWorkflowView(selected) : null, [selected]);
   /* Generic publish validation for all products — same rules for every department. */
   const issues = useMemo(() => selected ? getPublishIssues(selected) : [], [selected]);
+
+  /* Every hook above has run — only now may the component bail out. */
+  if (isReviewDenied) {
+    return <Navigate to="/employee/access-denied" replace />;
+  }
+
   const primaryFileName = mediaFileName(view?.mediaSet?.primary) || null;
   const nameNeedsReview = false;
 
