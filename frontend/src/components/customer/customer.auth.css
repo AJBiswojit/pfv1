@@ -829,7 +829,9 @@
    one stacked page rather than two cramped columns. */
 @media (max-width: 1119px) {
   .pf-root .pf-auth-experience__media img {
-    object-position: 22% top;
+    /* The stacked tablet layout uses the source photo's dark left negative
+       space so the model stays clear of the editorial column. */
+    object-position: 0% top;
   }
   .pf-root .pf-auth-experience__scrim {
     background:
@@ -870,22 +872,22 @@
 
 @media (max-width: 767px) {
   .pf-root .pf-auth-experience__media img {
-    /* the portrait is framed on the model: keep her face clear of the copy by
-       holding the crop to the right of the editorial column */
+    /* The portrait is a crop of the approved desktop photograph. Shift it just
+       left of center so her face and hair sit to the right of the editorial copy. */
     object-position: 30% top;
   }
   .pf-root .pf-auth-experience__scrim {
     background:
       linear-gradient(102deg,
-        rgba(17, 3, 8, 0.58) 0%,
-        rgba(17, 3, 8, 0.42) 38%,
-        rgba(17, 3, 8, 0.08) 64%,
-        rgba(17, 3, 8, 0.16) 100%),
+        rgba(17, 3, 8, 0.48) 0%,
+        rgba(17, 3, 8, 0.34) 38%,
+        rgba(17, 3, 8, 0.06) 64%,
+        rgba(17, 3, 8, 0.12) 100%),
       linear-gradient(180deg,
-        rgba(17, 3, 8, 0.14) 0%,
-        rgba(17, 3, 8, 0.04) 22%,
-        rgba(20, 4, 10, 0.42) 62%,
-        rgba(17, 3, 8, 0.62) 100%);
+        rgba(17, 3, 8, 0.08) 0%,
+        rgba(17, 3, 8, 0.02) 22%,
+        rgba(20, 4, 10, 0.28) 62%,
+        rgba(17, 3, 8, 0.42) 100%);
   }
   .pf-root .pf-auth-experience__inner {
     padding-block: 30px 40px;

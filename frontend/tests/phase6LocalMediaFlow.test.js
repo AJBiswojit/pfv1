@@ -153,14 +153,16 @@ test("the backend store copy of the real asset is byte-identical to the protecte
 // ===========================================================================
 
 /**
- * The ONLY files allowed to contain the literal `/images/`:
+ * The ONLY source files allowed to contain the literal `/images/`:
  *
  *   · src/services/media/mediaPaths.js   KEEP — the compatibility seam
  *     (LEGACY_PUBLIC_IMAGE_PREFIX / CANONICAL_MEDIA_ROOT / isLegacyPublicImageUrl)
- *     that lets unresolved references keep rendering during the migration.
+ *     that lets unresolved product references keep rendering during migration.
  *   · src/components/PratikshyaImage.jsx DOCUMENTATION ONLY — a doc comment.
+ *   · src/components/customer/auth/AuthExperience.jsx — the approved static
+ *     authentication backgrounds under `/images/auth/` (not product media).
  *
- * Any other occurrence — in particular any CONCRETE asset path
+ * Any other occurrence — in particular any CONCRETE product path
  * (`/images/products/…`, `/images/collections/…`, `/images/hero/…`) — is a
  * direct runtime dependency on the frontend public folder and fails here.
  */
@@ -173,9 +175,17 @@ const APPROVED_IMAGE_LITERALS = new Map([
     "src/components/PratikshyaImage.jsx",
     "DOCUMENTATION ONLY — comment explaining the legacy reference shape",
   ],
+  [
+    "src/components/customer/auth/AuthExperience.jsx",
+    "APPROVED — static desktop/mobile authentication backgrounds",
+  ],
+  [
+    "src/components/customer/__tests__/customerSignInPage.test.js",
+    "TEST CONTRACT — asserts the approved responsive authentication asset paths",
+  ],
 ]);
 
-test("no module takes a runtime dependency on public/images for product media", () => {
+test("no unclassified module takes a runtime dependency on public/images for product media", () => {
   const srcDir = join(process.cwd(), "src");
   const offenders = [];
 
@@ -192,7 +202,7 @@ test("no module takes a runtime dependency on public/images for product media", 
   );
 });
 
-test("the approved /images/ literals are still only the compatibility seam and a comment", () => {
+test("the approved /images/ literals are limited to the compatibility seam, auth backgrounds and a comment", () => {
   const seam = readFileSync(join(process.cwd(), "src/services/media/mediaPaths.js"), "utf8");
   // The seam must stay logic, not asset knowledge: constants and predicates.
   assert.match(seam, /LEGACY_PUBLIC_IMAGE_PREFIX\s*=\s*"\/images\/"/);
@@ -204,6 +214,11 @@ test("the approved /images/ literals are still only the compatibility seam and a
   // Strip comments; the renderer must have no /images/ literal in code.
   const codeOnly = renderer.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   assert.ok(!codeOnly.includes("/images/"), "PratikshyaImage.jsx uses /images/ outside comments");
+
+  const authExperience = readFileSync(join(process.cwd(), "src/components/customer/auth/AuthExperience.jsx"), "utf8");
+  assert.match(authExperience, /\/images\/auth\/pratikshya-auth-desktop\.webp/);
+  assert.match(authExperience, /\/images\/auth\/pratikshya-auth-mobile\.webp/);
+  assert.ok(!/\/images\/(products|collections|hero|marketing)\//.test(authExperience));
 });
 
 test("no concrete migrated asset path is hardcoded anywhere in src", () => {

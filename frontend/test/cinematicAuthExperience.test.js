@@ -9,9 +9,9 @@
  *      registration / recovery / reset states are local state, not routes. None
  *      of the in-panel actions is an anchor to another auth page and none of
  *      them calls the router.
- *   2. THE PHOTOGRAPH — the generated campaign asset exists at the documented
- *      path (with its mobile crop), is mounted outside the animated slot, and is
- *      a real `<picture>` with intrinsic dimensions.
+ *   2. THE PHOTOGRAPH — the supplied desktop photograph and its mobile crop
+ *      exist at their documented paths, are selected responsively, and are
+ *      mounted outside the animated slot in a real `<picture>`.
  *   3. THE GLASS — the panel's tint is translucent (≤ 0.5 alpha), the inputs are
  *      translucent rather than white, and no rule in the auth stylesheet reaches
  *      the shared navbar.
@@ -80,22 +80,26 @@ test("mode switching is local state and never a navigation", () => {
   }
 });
 
-test("the campaign photograph is generated, delivered and mounted outside the switching slot", () => {
-  assert.ok(existsSync(join(ROOT, "public/design/pratikshya-auth-campaign.webp")), "the desktop campaign asset is missing");
-  assert.ok(existsSync(join(ROOT, "public/design/pratikshya-auth-campaign-mobile.webp")), "the mobile campaign asset is missing");
-  const desktop = readFileSync(join(ROOT, "public/design/pratikshya-auth-campaign.webp"));
-  const mobile = readFileSync(join(ROOT, "public/design/pratikshya-auth-campaign-mobile.webp"));
+test("the supplied desktop photograph and its mobile crop are delivered responsively", () => {
+  const desktopPath = "public/images/auth/pratikshya-auth-desktop.webp";
+  const mobilePath = "public/images/auth/pratikshya-auth-mobile.webp";
+  assert.ok(existsSync(join(ROOT, desktopPath)), "the supplied desktop photograph is missing");
+  assert.ok(existsSync(join(ROOT, mobilePath)), "the mobile crop is missing");
+  const desktop = readFileSync(join(ROOT, desktopPath));
+  const mobile = readFileSync(join(ROOT, mobilePath));
   /* WebP: the RIFF container with a WEBP brand. */
-  assert.equal(desktop.subarray(0, 4).toString(), "RIFF");
-  assert.equal(desktop.subarray(8, 12).toString(), "WEBP");
-  assert.equal(mobile.subarray(8, 12).toString(), "WEBP");
-  /* Large enough for a desktop hero, small enough not to stall it. */
-  assert.ok(desktop.length > 40_000 && desktop.length < 400_000, "the desktop campaign asset is not a sensible size");
+  for (const [label, image] of [["desktop", desktop], ["mobile", mobile]]) {
+    assert.equal(image.subarray(0, 4).toString(), "RIFF", `${label} image is not a RIFF file`);
+    assert.equal(image.subarray(8, 12).toString(), "WEBP", `${label} image is not WebP`);
+    assert.ok(image.length > 40_000 && image.length < 400_000, `${label} image is not a sensible size`);
+  }
+
   const text = read(EXPERIENCE);
-  assert.match(text, /src="\/design\/pratikshya-auth-campaign\.webp"/);
-  assert.match(text, /srcSet="\/design\/pratikshya-auth-campaign-mobile\.webp"/);
-  assert.match(text, /width="1672"/);
-  assert.match(text, /height="941"/);
+  assert.match(text, /media="\(max-width: 767px\)"/);
+  assert.match(text, /srcSet="\/images\/auth\/pratikshya-auth-mobile\.webp"/);
+  assert.match(text, /src="\/images\/auth\/pratikshya-auth-desktop\.webp"/);
+  assert.match(text, /width="819"[\s\S]*height="1024"/);
+  assert.match(text, /width="1536"[\s\S]*height="1024"/);
   assert.match(text, /fetchPriority="high"/);
   assert.match(text, /alt=""/);
 });
@@ -121,6 +125,12 @@ test("the authentication panel is genuinely transparent and its inputs are trans
   /* A soft scrim carries readability; the panel keeps the photo visible. */
   assert.match(css, /\.pf-root \.pf-auth-experience__scrim/);
   assert.match(css, /linear-gradient\(90deg,/);
+  const mobileStyles = css.split("@media (max-width: 767px)")[1];
+  const mobileScrim = mobileStyles.match(/\.pf-root \.pf-auth-experience__scrim \{([\s\S]*?)\n  \}/)?.[1];
+  assert.ok(mobileScrim, "the mobile scrim rule is missing");
+  const mobileScrimAlphas = [...mobileScrim.matchAll(/rgba\([^)]*?,\s*(0?\.\d+|1)\)/g)].map((match) => Number(match[1]));
+  assert.ok(mobileScrimAlphas.length > 0 && Math.max(...mobileScrimAlphas) <= 0.5,
+    "the mobile overlay is too dark for the supplied photograph");
   /* The storefront footer is not painted beneath the campaign. */
   assert.match(css, /\.pf-root:has\(\.pf-auth-experience\) \.footer \{ display: none; \}/);
 });
