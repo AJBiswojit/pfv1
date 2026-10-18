@@ -83,12 +83,19 @@ export default function AdminInstagramRewards() {
   const [generatedCoupon, setGeneratedCoupon] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  if (!isAuthLoading && !hasPermission("instagram_reward.manage")) {
-    return <AdminAccessDenied />;
-  }
+  /* Permission gate.
+   * The decision is captured here but the early return happens AFTER the
+   * hooks below: returning above them changed the hook count between the
+   * "still loading" render and the "denied" render, and React threw
+   * "Rendered fewer hooks than expected" and blanked the page. */
+  const isRewardsDenied = !isAuthLoading && !hasPermission("instagram_reward.manage");
 
   useEffect(() => {
     let cancelled = false;
+    if (isRewardsDenied) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     apiAdminListInstagramRewards({
       status: statusFilter,
@@ -111,7 +118,7 @@ export default function AdminInstagramRewards() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter, searchQuery, currentPage, attempt]);
+  }, [statusFilter, searchQuery, currentPage, attempt, isRewardsDenied]);
 
   // Reset to page 1 when filter or search changes
   useEffect(() => {
@@ -131,6 +138,11 @@ export default function AdminInstagramRewards() {
     () => rewards.filter((r) => r.status === "REJECTED").length,
     [rewards]
   );
+
+  /* Every hook above has run — only now may the component bail out. */
+  if (isRewardsDenied) {
+    return <AdminAccessDenied />;
+  }
 
   const handleOpenDetail = async (reward) => {
     setSelectedReward(reward);

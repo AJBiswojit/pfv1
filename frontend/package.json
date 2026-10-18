@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "node --import ./scripts/node-loader/register.mjs --test \"tests/*.test.js\" \"test/*.test.js\"",
     "qa:marketing-assignment": "node --import ./scripts/node-loader/register-jsx.mjs scripts/qa-marketing-assignment.mjs",
+    "qa:super-admin-dashboard": "node scripts/qa-super-admin-dashboard.mjs",
     "audit:explore": "node --import ./scripts/node-loader/register.mjs scripts/audit-explore.mjs",
     "audit:homepage": "node --import ./scripts/node-loader/register.mjs scripts/audit-homepage.mjs",
     "audit:product-media": "node --import ./scripts/node-loader/register.mjs scripts/audit-product-media.mjs",
