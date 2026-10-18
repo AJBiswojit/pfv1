@@ -30,7 +30,7 @@ export default function AdminLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-canvas font-display text-ink selection:bg-accent selection:text-white">
+    <div className="min-h-screen bg-pf-ivory font-display text-pf-text selection:bg-pf-gold/30">
       <AdminHeader navOpen={navOpen} onToggleNav={toggleNav} menuButtonRef={triggerRef} />
 
       <PortalShell

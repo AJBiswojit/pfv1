@@ -78,7 +78,7 @@ export default function AdminSidebar({ onNavigate, collapsed = false, onToggleCo
         avatar: admin?.avatar,
         initials: adminInitials(admin),
       }}
-      footerLinks={[{ id: "profile", label: "Profile", to: `${workspacePrefix}/profile`, icon: "user" }]}
+      footerLinks={[]}
       signOut={signOut}
       onNavigate={onNavigate}
       collapsed={collapsed}

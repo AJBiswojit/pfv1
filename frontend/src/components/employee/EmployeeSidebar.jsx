@@ -36,7 +36,7 @@ export default function EmployeeSidebar({ onNavigate, collapsed = false, onToggl
         avatar: employee?.avatar,
         initials: employeeInitials(employee),
       }}
-      footerLinks={[{ id: "profile", label: "Profile", to: "/employee/profile", icon: "user" }]}
+      footerLinks={[]}
       signOut={signOut}
       onNavigate={onNavigate}
       collapsed={collapsed}

@@ -88,6 +88,39 @@
   --color-blush-line: rgb(247 238 237 / 0.2); /* hairline on dark */
 
   /* ------------------------------------------------------------------
+     Staff Portal — PRATIKSHYA FASHION design tokens (ADDITIVE).
+
+     These tokens define the deep-burgundy / warm-ivory / champagne-gold
+     visual language approved for the Admin, Super Admin and Employee
+     workspaces. They are ADDITIVE — no existing token above this comment
+     is redefined, so the customer storefront keeps its current palette.
+
+     Key values:
+       Primary burgundy   #4A0718   sidebar / header deep surfaces
+       Deep wine          #2A0610   darker inset surfaces
+       Warm ivory         #FBF4EB   page canvas (replaces white in portal)
+       Card surface       #FFF9F2   card and panel backgrounds
+       Champagne gold     #D6AE70   accents, icons, active states
+       Antique gold       #B98948   secondary accents
+       Primary text       #351A1B   body text on ivory
+       Secondary text     #88786E   captions, metadata
+       ------------------------------------------------------------------ */
+  --color-pf-burgundy: #4A0718;
+  --color-pf-wine: #2A0610;
+  --color-pf-ivory: #FBF4EB;
+  --color-pf-card: #FFF9F2;
+  --color-pf-gold: #D6AE70;
+  --color-pf-gold-deep: #B98948;
+  --color-pf-text: #351A1B;
+  --color-pf-muted: #88786E;
+  --color-pf-border: #EDE4D8;
+  --color-pf-border-light: #F5EDE3;
+  --color-pf-success: #4A7C59;
+  --color-pf-warning: #C4922A;
+  --color-pf-error: #A84448;
+  --color-pf-info: #5B8FA8;
+
+  /* ------------------------------------------------------------------
      Campaign motion curves — Phase 1, ADDITIVE.
 
      Mirrors `campaign.ease` in `src/design-system/motion.js`. New

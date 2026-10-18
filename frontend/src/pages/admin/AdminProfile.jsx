@@ -15,6 +15,8 @@ import { adminDisplayName, formatAdminDate, formatAdminDateTime } from "../../ut
  * Name, email, phone and title are editable. Admin ID, role and status are
  * shown read-only by design — an administrator cannot promote themselves or
  * rewrite their own identity through the profile surface.
+ *
+ * Updated to use the approved warm-ivory / champagne-gold palette.
  */
 export default function AdminProfile() {
   const { admin, updateProfile } = useAdminAuth();
@@ -68,27 +70,27 @@ export default function AdminProfile() {
       eyebrow="System"
       title={
         <>
-          Admin <span className="italic text-accent">profile.</span>
+          Admin <span className="italic text-pf-burgundy">profile.</span>
         </>
       }
       description="Your administration identity. Admin ID, role and status are set by the account owner and cannot be changed here."
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <AdminPanel eyebrow="Identity" title="Account" bodyClassName="px-0 py-0 sm:px-0">
-          <div className="flex items-center gap-4 border-b border-mist/70 px-5 py-5 sm:px-6">
-            <span className="flex h-14 w-14 items-center justify-center bg-ink font-display text-xl font-light text-gold">
+          <div className="flex items-center gap-4 border-b border-pf-border px-5 py-5 sm:px-6">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-pf-burgundy font-display text-xl font-light text-pf-gold">
               {displayName?.[0]?.toUpperCase() ?? "A"}
             </span>
             <div className="min-w-0">
-              <p className="truncate font-display text-2xl font-light text-ink">{displayName || "Administrator"}</p>
-              <p className="font-ui text-[11px] text-taupe">{admin.email}</p>
+              <p className="truncate font-display text-2xl font-light text-pf-text">{displayName || "Administrator"}</p>
+              <p className="font-ui text-[11px] text-pf-muted">{admin.email}</p>
             </div>
           </div>
-          <dl className="divide-y divide-mist/70">
+          <dl className="divide-y divide-pf-border">
             {readOnly.map(([label, value]) => (
               <div key={label} className="grid gap-1 px-5 py-3.5 sm:grid-cols-[170px_minmax(0,1fr)] sm:px-6">
-                <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-                <dd className="font-ui text-sm text-ink">
+                <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+                <dd className="font-ui text-sm text-pf-text">
                   {label === "Status" ? (
                     <StatusBadge status={admin.status} label={value} tone="ink" />
                   ) : (
@@ -102,14 +104,14 @@ export default function AdminProfile() {
 
         <AdminPanel eyebrow="Edit" title="Contact details">
           {error ? (
-            <p role="alert" className="mb-4 border border-accent/40 bg-accent/5 p-3 font-ui text-xs text-accent">
+            <p role="alert" className="mb-4 border border-pf-error/40 bg-pf-error/5 p-3 font-ui text-xs text-pf-error">
               {error}
             </p>
           ) : null}
           {saved ? (
             <p
               role="status"
-              className="mb-4 inline-flex items-center gap-2 border border-mist bg-canvas px-3 py-2 font-ui text-xs text-cocoa"
+              className="mb-4 inline-flex items-center gap-2 border border-pf-success/30 bg-pf-success/5 px-3 py-2 font-ui text-xs text-pf-success"
             >
               <Check size={13} aria-hidden="true" /> Profile saved.
             </p>
