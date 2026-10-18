@@ -116,12 +116,18 @@ export default function AuthExperience({ initialMode = 'login' }) {
   return (
     <section className="pf-auth-experience" aria-label="PRATIKSHYA FASHION account access">
       <picture className="pf-auth-experience__media">
-        <source media="(max-width: 767px)" srcSet="/design/pratikshya-auth-campaign-mobile.webp" />
+        <source
+          media="(max-width: 767px)"
+          srcSet="/images/auth/pratikshya-auth-mobile.webp"
+          type="image/webp"
+          width="819"
+          height="1024"
+        />
         <img
-          src="/design/pratikshya-auth-campaign.webp"
+          src="/images/auth/pratikshya-auth-desktop.webp"
           alt=""
-          width="1672"
-          height="941"
+          width="1536"
+          height="1024"
           fetchPriority="high"
           decoding="async"
         />

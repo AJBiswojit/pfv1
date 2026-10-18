@@ -370,15 +370,16 @@ test("the stylesheet stays inside the port and never touches the shared navbar",
   assert.match(read("src/components/customer/components/layout/Header.jsx"), /<header className=\{cx\('header'/);
 });
 
-test("the campaign asset exists, is mounted outside the switching slot, and has a mobile crop", () => {
-  assert.ok(existsSync(join(ROOT, "public/design/pratikshya-auth-campaign.webp")), "the desktop campaign image is missing");
-  assert.ok(existsSync(join(ROOT, "public/design/pratikshya-auth-campaign-mobile.webp")), "the mobile campaign crop is missing");
+test("the approved desktop photograph and its matching mobile crop are selected responsively", () => {
+  assert.ok(existsSync(join(ROOT, "public/images/auth/pratikshya-auth-desktop.webp")), "the desktop photograph is missing");
+  assert.ok(existsSync(join(ROOT, "public/images/auth/pratikshya-auth-mobile.webp")), "the mobile crop is missing");
   const text = experience();
-  assert.match(text, /src="\/design\/pratikshya-auth-campaign\.webp"/);
-  assert.match(text, /srcSet="\/design\/pratikshya-auth-campaign-mobile\.webp"/);
+  assert.match(text, /media="\(max-width: 767px\)"/);
+  assert.match(text, /src="\/images\/auth\/pratikshya-auth-desktop\.webp"/);
+  assert.match(text, /srcSet="\/images\/auth\/pratikshya-auth-mobile\.webp"/);
   assert.match(text, /fetchPriority="high"/);
-  assert.match(text, /width="1672"/);
-  assert.match(text, /height="941"/);
+  assert.match(text, /width="1536"/);
+  assert.match(text, /height="1024"/);
 });
 
 test("the hero text animations are staggered, one-shot, and honour reduced motion", () => {

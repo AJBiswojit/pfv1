@@ -259,6 +259,6 @@ test("the rendered registration page carries every production field and no inven
   assert.equal(/pf-auth-status/.test(markup), false, "a pristine page showed a success state");
   assert.equal(/pf-auth-alert/.test(markup), false, "a pristine page showed an error");
   /* The campaign photograph and the editorial stay on the page in this mode. */
-  assert.match(markup, /pratikshya-auth-campaign\.webp/);
+  assert.match(markup, /pratikshya-auth-desktop\.webp/);
   assert.match(markup, /TIMELESS IN EVERY DETAIL/);
 });

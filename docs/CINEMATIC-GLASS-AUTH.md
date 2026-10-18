@@ -1,10 +1,9 @@
 # CINEMATIC GLASS AUTH — the PRATIKSHYA FASHION authentication hero
 
-> **STATUS: implemented; corrected against the approved reference; build, unit/source
-> suites, browser flows and rendered screenshots verified.**
-> This document is the implementation report for the cinematic glass authentication
-> experience: one campaign photograph, one editorial column, one transparent panel,
-> and **one page** for sign-in, registration, password recovery and password reset.
+> **STATUS: the existing cinematic glass authentication design is retained; the exact
+> supplied desktop photograph and a matching mobile crop are now the active background.**
+> The single page remains one campaign photograph, one editorial column, one transparent
+> panel, and one experience for sign-in, registration, password recovery and password reset.
 > It records what changed, what was deliberately left alone, what was actually
 > executed, and what remains different from the approved reference.
 
@@ -18,7 +17,7 @@
 | Auth modes | Four separate routes, each its own page (`/signin`, `/signup`, `/forgot-password`, `/reset-password`) | The same four routes still exist, but each opens the **one** `AuthExperience`; every in-panel action swaps a local `mode` state in place |
 | Navbar | Storefront header | **Unchanged** — same component, same CSS, same markup |
 | Footer | Rendered under the auth card | Not painted beneath the hero (`:has()` rule; still in the shell's markup, still on every other page) |
-| Background | none | `public/design/pratikshya-auth-campaign.webp` (1672×941) + a portrait crop `…-mobile.webp` (941×1672) |
+| Background | none | Supplied source photograph at `public/images/auth/pratikshya-auth-desktop.webp` (1536×1024) + a 4:5 crop at `public/images/auth/pratikshya-auth-mobile.webp` (819×1024) |
 
 The routes and their existing contracts are intact:
 
@@ -49,8 +48,8 @@ logged.
 | `frontend/src/components/customer/auth/AuthPanelForgotPassword.jsx` | Recovery panel (request + honest confirmation) |
 | `frontend/src/components/customer/auth/AuthPanelResetPassword.jsx` | Reset panel (incomplete / form / success) |
 | `frontend/src/components/customer/auth/AuthPanelParts.jsx` | Shared panel parts: heading, alert, status, field, password field, divider, text action |
-| `frontend/public/design/pratikshya-auth-campaign.webp` | **Generated** campaign photograph, desktop 1672×941, 220 KB (regenerated in the correction pass) |
-| `frontend/public/design/pratikshya-auth-campaign-mobile.webp` | **Generated** portrait composition, 941×1672, 244 KB (regenerated in the correction pass) |
+| `frontend/public/images/auth/pratikshya-auth-desktop.webp` | Supplied desktop photograph converted to high-quality WebP, 1536×1024, 220 KB |
+| `frontend/public/images/auth/pratikshya-auth-mobile.webp` | Non-generative 4:5 crop of the same photograph, 819×1024, 158 KB |
 | `frontend/test/cinematicAuthExperience.test.js` | Contract suite for the experience (one page, glass, asset, copy, wiring) |
 | `docs/CINEMATIC-GLASS-AUTH.md` | This report |
 
@@ -75,26 +74,28 @@ stylesheets), `CustomerStorefront.jsx`'s route table, `AuthContext.jsx`,
 
 ---
 
-## 3 · The background image (actually generated)
+## 3 · The approved background image
 
-Both assets were **regenerated from scratch** in the fidelity-correction pass rather
-than brightened with CSS. The first pair was underexposed against the approved
-reference; the second generation asks for a warm, richly lit frame instead: the model
-seated centre-left in a burgundy zari saree whose gold embroidery is legible, sandstone
-arches and a candlelit jali behind her, amber highlights on skin and jewellery, visible
-fabric texture, warm — not crushed — shadows, and a recess of darker warm stone on the
-left where the editorial sits. The portrait is a separate composition, not an outpainted
-desktop frame (outpainting left a visible rectangular seam and was discarded).
+The desktop asset is the exact photograph supplied for this replacement task. It is
+converted from the attached 1536×1024 PNG to high-quality WebP (quality 92, method 6,
+metadata stripped); its subject, pose, scene, lighting, composition and color are not
+regenerated or retouched.
 
-- Desktop: `frontend/public/design/pratikshya-auth-campaign.webp` — 1672×941, 220 KB
-- Mobile: `frontend/public/design/pratikshya-auth-campaign-mobile.webp` — 941×1672, 244 KB
+- Desktop: `frontend/public/images/auth/pratikshya-auth-desktop.webp` — 1536×1024, 220 KB
+- Mobile: `frontend/public/images/auth/pratikshya-auth-mobile.webp` — 819×1024, 158 KB
 
-Both are WebP quality 84, method 6, metadata stripped.
+The mobile asset is a carefully framed 4:5 crop of the **same source photograph**
+(x=250–1069 px across the full 1024 px height), re-encoded as WebP with the same
+high-quality settings. It is not a separately generated image.
 
-The `<picture>` swaps to the portrait crop at ≤767 px, so a phone never downloads the
-wrong aspect. `width`/`height` are declared (no layout shift), the image is
-`fetchPriority="high"`, `decoding="async"`, `alt=""` (decorative; the editorial carries
-the meaning).
+The previous auth-only image pair was removed after confirming it had no other
+consumers. No stale auth preload or CSS `background-image` reference remains.
+
+The `<picture>` selects the portrait crop at ≤767 px and the desktop image otherwise,
+so phones download only the mobile asset. The selected image uses `fetchPriority="high"`,
+`decoding="async"` and `alt=""` (decorative; the editorial carries the meaning).
+The CSS pins the hero image to its container with `object-fit: cover`; desktop, tablet
+and mobile each use a tuned focal position.
 
 ---
 
@@ -111,8 +112,8 @@ second rectangle anywhere in the panel.
 | Blur | `backdrop-filter: blur(5px) saturate(1.05)` |
 | Shadow | one soft drop shadow + `inset 0 1px 0 rgba(255,236,208,.18)` highlight |
 
-Readability is bought in the order the directive prescribes: source exposure first
-(the regenerated photograph), local text contrast second, text shadow third, blur last.
+Readability is bought in the order the directive prescribes: the supplied photograph
+first, local text contrast second, text shadow third, blur last.
 The hero scrim is now **one directional gradient** — `linear-gradient(90deg, …)` from
 `.58` at the left edge to zero at 62 % — plus a very light top/bottom vignette
 (`.12`/`.14`). The previous four-stop, near-opaque overlay stack is gone, so the
