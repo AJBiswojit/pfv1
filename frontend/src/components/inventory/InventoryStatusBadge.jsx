@@ -18,17 +18,17 @@ export const TRANSFER_STATUS_LABELS = {
 };
 
 const tones = {
-  IN_STOCK: "border-cocoa/25 bg-cocoa/[0.06] text-cocoa",
-  LOW_STOCK: "border-gold/50 bg-gold/10 text-cocoa",
-  OUT_OF_STOCK: "border-accent/35 bg-accent/[0.07] text-accent",
-  OVERSTOCKED: "border-brass/30 bg-brass/[0.07] text-brass",
-  UNAVAILABLE: "border-mist bg-mist/25 text-taupe",
-  DRAFT: "border-mist bg-mist/25 text-taupe",
-  REQUESTED: "border-gold/50 bg-gold/10 text-cocoa",
-  APPROVED: "border-brass/35 bg-brass/[0.08] text-brass",
-  IN_TRANSIT: "border-ink/25 bg-ink/[0.05] text-ink",
-  RECEIVED: "border-cocoa/25 bg-cocoa/[0.06] text-cocoa",
-  CANCELLED: "border-accent/25 bg-accent/[0.05] text-accent",
+  IN_STOCK: "border-pf-cocoa/25 bg-pf-cocoa/[0.06] text-pf-cocoa",
+  LOW_STOCK: "border-pf-gold-deep/50 bg-pf-gold/10 text-pf-cocoa",
+  OUT_OF_STOCK: "border-pf-gold-deep/35 bg-pf-burgundy/[0.07] text-pf-burgundy",
+  OVERSTOCKED: "border-pf-gold-deep/30 bg-pf-gold/[0.07] text-pf-gold-text",
+  UNAVAILABLE: "border-pf-border bg-pf-border/25 text-pf-muted",
+  DRAFT: "border-pf-border bg-pf-border/25 text-pf-muted",
+  REQUESTED: "border-pf-gold-deep/50 bg-pf-gold/10 text-pf-cocoa",
+  APPROVED: "border-pf-gold-deep/35 bg-pf-gold/[0.08] text-pf-gold-text",
+  IN_TRANSIT: "border-pf-burgundy/25 bg-pf-burgundy/[0.05] text-pf-text",
+  RECEIVED: "border-pf-cocoa/25 bg-pf-cocoa/[0.06] text-pf-cocoa",
+  CANCELLED: "border-pf-gold-deep/25 bg-pf-burgundy/[0.05] text-pf-burgundy",
 };
 
 export default function InventoryStatusBadge({ status, kind = "stock" }) {
@@ -36,7 +36,7 @@ export default function InventoryStatusBadge({ status, kind = "stock" }) {
   return (
     <span
       className={cn(
-        "inline-flex whitespace-nowrap border px-2 py-1 font-ui text-[9px] font-medium uppercase tracking-[.14em]",
+        "inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 font-ui text-[11px] font-semibold uppercase tracking-[0.08em]",
         tones[status] || tones.UNAVAILABLE
       )}
     >

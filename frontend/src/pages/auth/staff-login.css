@@ -56,15 +56,15 @@
 }
 
 .staff-login {
-  --staff-burgundy: #480817;
-  --staff-burgundy-button: #650b22;
-  --staff-burgundy-hover: #54091d;
-  --staff-ivory: #f8f0e8;
-  --staff-paper: #fcf6f0;
-  --staff-gold: #c49a64;
-  --staff-gold-deep: #98744e;
-  --staff-copy: #75685f;
-  --staff-ink: #4a0b1b;
+  --staff-burgundy: #4a0718;
+  --staff-burgundy-button: #5e0b20;
+  --staff-burgundy-hover: #2a0610;
+  --staff-ivory: #fbf4eb;
+  --staff-paper: #fff9f2;
+  --staff-gold: #d6ae70;
+  --staff-gold-deep: #865e20;
+  --staff-copy: #6f5d52;
+  --staff-ink: #351a1b;
   min-height: 100vh;
   overflow: hidden;
   color: var(--staff-ink);

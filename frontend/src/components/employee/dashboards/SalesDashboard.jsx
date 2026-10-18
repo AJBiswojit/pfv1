@@ -24,8 +24,8 @@ export default function SalesDashboard() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <section>
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="font-display text-2xl font-light text-ink">Orders assisted</h2>
-            <Link to="/employee/orders" className="font-ui text-[11px] uppercase tracking-[.14em] text-brass hover:text-accent">
+            <h2 className="font-display text-2xl font-light text-pf-text">Orders assisted</h2>
+            <Link to="/employee/orders" className="font-ui text-[11px] uppercase tracking-[.14em] text-pf-gold-text hover:text-pf-burgundy">
               All orders
             </Link>
           </div>
@@ -49,24 +49,24 @@ export default function SalesDashboard() {
 
         <div className="space-y-6">
           <section>
-            <h2 className="mb-3 font-display text-2xl font-light text-ink">Pending follow-ups</h2>
-            <ul className="divide-y divide-mist/70 border border-mist/80 bg-surface/30">
+            <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Pending follow-ups</h2>
+            <ul className="divide-y divide-pf-border/70 border border-pf-border/80 bg-pf-ivory/30">
               {followUps.map((item) => (
                 <li key={item.id} className="px-4 py-3">
-                  <p className="font-ui text-sm text-ink">{item.customer}</p>
-                  <p className="mt-0.5 font-ui text-xs text-taupe">{item.note}</p>
-                  <p className="mt-1 font-ui text-[11px] text-brass">{item.when}</p>
+                  <p className="font-ui text-sm text-pf-text">{item.customer}</p>
+                  <p className="mt-0.5 font-ui text-xs text-pf-muted">{item.note}</p>
+                  <p className="mt-1 font-ui text-[11px] text-pf-gold-text">{item.when}</p>
                 </li>
               ))}
             </ul>
           </section>
           <section>
-            <h2 className="mb-3 font-display text-2xl font-light text-ink">Live offers</h2>
+            <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Live offers</h2>
             <ul className="space-y-2">
               {offers.map((offer) => (
-                <li key={offer.id} className="border border-mist/80 bg-canvas px-4 py-3">
-                  <p className="font-ui text-sm text-ink">{offer.name}</p>
-                  <p className="font-ui text-xs text-taupe">{offer.value} · {offer.applies}</p>
+                <li key={offer.id} className="border border-pf-border/80 bg-pf-card px-4 py-3">
+                  <p className="font-ui text-sm text-pf-text">{offer.name}</p>
+                  <p className="font-ui text-xs text-pf-muted">{offer.value} · {offer.applies}</p>
                 </li>
               ))}
             </ul>

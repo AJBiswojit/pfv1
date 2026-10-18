@@ -29,7 +29,7 @@ export default function EmployeeOfferDetail() {
   if (!offer) {
     return (
       <EmployeePage eyebrow="Offers" title="Offer not found">
-        <Link to="/employee/offers" className="font-ui text-sm text-brass hover:text-accent">
+        <Link to="/employee/offers" className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
           Back to offers
         </Link>
       </EmployeePage>
@@ -56,7 +56,7 @@ export default function EmployeeOfferDetail() {
       eyebrow={`Offers / ${offer.code}`}
       title={
         <>
-          {offer.name} <span className="italic text-accent">{offer.code}</span>
+          {offer.name} <span className="italic text-pf-burgundy">{offer.code}</span>
         </>
       }
       description={offer.description || "House promotion."}
@@ -81,28 +81,28 @@ export default function EmployeeOfferDetail() {
       }
     >
       {notice ? (
-        <p className="mb-5 border border-mist/80 bg-surface/30 px-4 py-3 font-ui text-sm">{notice}</p>
+        <p className="mb-5 border border-pf-border/80 bg-pf-ivory/30 px-4 py-3 font-ui text-sm">{notice}</p>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="border border-mist/80 bg-surface/30 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Status</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Status</p>
           <div className="mt-2">
             <OfferStatusBadge status={offer.displayStatus} />
           </div>
         </div>
-        <div className="border border-mist/80 bg-surface/30 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Discount</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Discount</p>
           <p className="mt-1 font-display text-2xl">{formatOfferDiscount(offer)}</p>
         </div>
-        <div className="border border-mist/80 bg-surface/30 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Minimum</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Minimum</p>
           <p className="mt-1 font-display text-2xl">
             {offer.minimumOrderValue ? formatINR(offer.minimumOrderValue) : "None"}
           </p>
         </div>
-        <div className="border border-mist/80 bg-surface/30 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Until</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/30 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Until</p>
           <p className="mt-1 font-display text-2xl">
             {offer.endDate
               ? new Date(`${offer.endDate}T00:00:00`).toLocaleDateString("en-IN", {
@@ -115,12 +115,12 @@ export default function EmployeeOfferDetail() {
       </div>
 
       <dl className="mt-8 grid gap-4 sm:grid-cols-2 font-ui text-sm">
-        <div className="border border-mist/70 p-4">
-          <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Eligibility</dt>
+        <div className="border border-pf-border/70 p-4">
+          <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Eligibility</dt>
           <dd className="mt-2">{describeEligibility(offer)}</dd>
         </div>
-        <div className="border border-mist/70 p-4">
-          <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Customers</dt>
+        <div className="border border-pf-border/70 p-4">
+          <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Customers</dt>
           <dd className="mt-2">{describeCustomerEligibility(offer)}</dd>
         </div>
       </dl>

@@ -22,7 +22,7 @@ export default function SuperAdminProtectedRoute() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <div className="flex min-h-screen items-center justify-center bg-pf-card">
         <LoadingState label="Verifying super admin access" />
       </div>
     );

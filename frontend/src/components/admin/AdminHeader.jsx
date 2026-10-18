@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut, Menu, Search, Store, User, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Store, User, X } from "lucide-react";
 import { ADMIN_BRAND } from "../../config/adminNavigation";
 import { getAdminRoleLabel } from "../../config/adminAccess";
 import { useAdminAuth } from "../../context/AdminAuthContext";
@@ -9,15 +9,16 @@ import { cn } from "../../utils/cn";
 import { Brand, transition } from "../../design-system";
 
 /**
- * The Admin Portal header — deep burgundy surface with warm ivory text.
+ * The Admin Portal masthead — deep burgundy, canonical homepage logo.
  *
- * Matches the approved reference:
- *   - Official PRATIKSHYA FASHION logo and wordmark (left)
- *   - Global search field (centre)
- *   - Store shortcut, notification control, user identity + account dropdown (right)
+ * Every rendered control works: Store (storefront link) and the account
+ * dropdown (Profile + Sign Out). There is deliberately NO global search
+ * field (no staff search endpoint exists to wire it to) and NO
+ * notification bell/count (no live notification count is available to
+ * this header) — honest absence over decorative, inert controls.
  *
- * Profile and Sign Out remain accessible here via the account dropdown,
- * while the sidebar no longer carries those items per the design lock.
+ * Height is governed by `--pf-header-h` (index.css), the same variable
+ * the portal shell consumes — never hard-code it here.
  */
 export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
   const { admin, signOut, isSuperAdmin } = useAdminAuth();
@@ -25,7 +26,6 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
   const displayName = adminDisplayName(admin);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -52,80 +52,51 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
   const workspacePrefix = isSuperAdmin ? "/super-admin" : "/admin";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-pf-gold/10 bg-pf-burgundy text-pf-ivory">
-      <div className="flex items-center justify-between gap-4 px-4 py-2.5 md:px-6">
+    <header className="sticky top-0 z-40 h-[var(--pf-header-h)] border-b border-pf-gold/25 bg-gradient-to-r from-pf-wine via-pf-burgundy to-pf-burgundy text-pf-ivory shadow-[0_2px_24px_rgb(42_6_16/0.35)]">
+      <div className="flex h-full items-center justify-between gap-4 px-4 md:px-6">
         {/* ---- Brand + nav toggle ---- */}
         <div className="flex min-w-0 items-center gap-3">
           <button
             ref={menuButtonRef}
             type="button"
-            className="border border-pf-ivory/20 p-2 text-pf-ivory/70 transition-colors hover:border-pf-gold/40 hover:text-pf-ivory lg:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-pf-ivory/25 text-pf-ivory/85 transition-colors hover:border-pf-gold/60 hover:text-pf-ivory lg:hidden"
             onClick={onToggleNav}
             aria-expanded={navOpen}
             aria-controls="admin-navigation"
             aria-label={navOpen ? "Close navigation" : "Open navigation"}
           >
-            {navOpen ? <X size={16} /> : <Menu size={16} />}
+            {navOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <Brand
-            to={ADMIN_BRAND.home}
+            to={workspacePrefix}
             size="default"
             variant="lockup"
             theme="dark"
             wordmark={ADMIN_BRAND.name}
-            subtitle={isSuperAdmin ? undefined : `${ADMIN_BRAND.portal} · ${ADMIN_BRAND.subtitle}`}
             className="min-w-0"
           />
-        </div>
-
-        {/* ---- Global search ---- */}
-        <div className="hidden min-w-0 flex-1 max-w-xl px-6 md:block">
-          <div
-            className={cn(
-              "flex items-center gap-2 border bg-pf-wine/50 px-3 py-2 transition-colors duration-200",
-              searchFocused
-                ? "border-pf-gold/40 bg-pf-wine/70"
-                : "border-pf-ivory/10 hover:border-pf-ivory/20"
-            )}
-          >
-            <Search size={14} className="shrink-0 text-pf-ivory/40" aria-hidden="true" />
-            <input
-              type="text"
-              placeholder="Search products, orders, customers or employees…"
-              className="min-w-0 flex-1 bg-transparent font-ui text-xs text-pf-ivory placeholder-pf-ivory/30 outline-none"
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-            <kbd className="hidden shrink-0 border border-pf-ivory/15 px-1.5 py-0.5 font-ui text-[9px] text-pf-ivory/40 sm:block">
-              Ctrl K
-            </kbd>
-          </div>
+          <span className="ml-2 hidden border-l border-pf-ivory/20 pl-4 xl:block">
+            <span className="block font-ui text-[11px] font-semibold uppercase tracking-[0.2em] text-pf-gold">
+              {isSuperAdmin ? "Super Admin" : ADMIN_BRAND.portal}
+            </span>
+            <span className="mt-0.5 block font-ui text-[12px] text-pf-ivory/70">
+              {ADMIN_BRAND.subtitle}
+            </span>
+          </span>
         </div>
 
         {/* ---- Right actions ---- */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
             to="/"
             className={cn(
-              "hidden items-center gap-2 border border-pf-ivory/15 px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory/70 transition-colors hover:border-pf-gold/40 hover:text-pf-ivory sm:inline-flex",
+              "hidden min-h-10 items-center gap-2 rounded-lg border border-pf-ivory/25 px-4 py-2 font-ui text-[12px] font-semibold uppercase tracking-[.14em] text-pf-ivory/85 transition-colors hover:border-pf-gold/60 hover:text-pf-ivory sm:inline-flex",
               transition.colors
             )}
           >
-            <Store size={13} aria-hidden="true" />
+            <Store size={15} aria-hidden="true" />
             Store
           </Link>
-
-          <button
-            type="button"
-            className="relative hidden items-center border border-pf-ivory/15 p-2 text-pf-ivory/60 transition-colors hover:border-pf-gold/40 hover:text-pf-ivory sm:inline-flex"
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <Bell size={14} aria-hidden="true" />
-            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-pf-gold text-[8px] font-bold text-pf-burgundy">
-              3
-            </span>
-          </button>
 
           {/* ---- Account dropdown ---- */}
           <div className="relative" ref={menuRef}>
@@ -134,32 +105,33 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
               onClick={() => setMenuOpen((open) => !open)}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
-              className="flex items-center gap-2 border border-transparent p-1 pr-2 transition-colors hover:border-pf-ivory/20"
+              className="flex min-h-11 items-center gap-2.5 rounded-lg border border-transparent py-1 pl-1 pr-2 transition-colors hover:border-pf-ivory/25"
             >
               {admin?.avatar ? (
-                <img src={admin.avatar} alt="" className="h-8 w-8 rounded-full object-cover ring-1 ring-pf-gold/30" />
+                <img src={admin.avatar} alt="" className="h-10 w-10 rounded-lg object-cover ring-1 ring-pf-gold/50" />
               ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pf-gold/15 font-display text-sm font-light text-pf-gold ring-1 ring-pf-gold/25">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-gold font-display text-[18px] font-medium text-pf-wine">
                   {adminInitials(admin)}
                 </span>
               )}
               <span className="hidden text-left sm:block">
-                <span className="block font-ui text-xs font-medium text-pf-ivory">{displayName}</span>
-                <span className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold/60">
+                <span className="block font-ui text-[13.5px] font-semibold leading-tight text-pf-ivory">{displayName}</span>
+                <span className="mt-0.5 block font-ui text-[11px] font-semibold uppercase tracking-[.16em] text-pf-gold">
                   {admin?.title || getAdminRoleLabel(admin?.role)}
                 </span>
               </span>
+              <ChevronDown size={15} className="hidden text-pf-ivory/60 sm:block" aria-hidden="true" />
             </button>
 
             {menuOpen ? (
               <div
                 role="menu"
                 aria-label="Account menu"
-                className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 border border-pf-border bg-pf-card text-pf-text shadow-xl"
+                className="absolute right-0 top-[calc(100%+10px)] z-50 w-72 overflow-hidden rounded-xl border border-pf-border bg-pf-card text-pf-text shadow-[0_24px_60px_rgb(42_6_16/0.28)]"
               >
-                <div className="border-b border-pf-border px-4 py-3">
-                  <p className="font-display text-lg font-light text-pf-text">{displayName}</p>
-                  <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
+                <div className="border-b border-pf-border px-5 py-4">
+                  <p className="font-display text-[22px] font-medium leading-tight text-pf-text">{displayName}</p>
+                  <p className="mt-1 font-ui text-[11px] font-semibold uppercase tracking-[.16em] text-pf-gold-text">
                     {admin?.adminId} · {getAdminRoleLabel(admin?.role)}
                   </p>
                 </div>
@@ -167,17 +139,17 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
                   to={`${workspacePrefix}/profile`}
                   role="menuitem"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-4 py-3 font-ui text-[11px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy/5"
+                  className="flex min-h-11 items-center gap-3 px-5 py-3 font-ui text-[12px] font-semibold uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-ivory"
                 >
-                  <User size={13} className="text-pf-gold-deep" aria-hidden="true" /> Profile
+                  <User size={16} className="text-pf-gold-text" aria-hidden="true" /> Profile
                 </Link>
                 <button
                   type="button"
                   role="menuitem"
                   onClick={handleSignOut}
-                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-error transition-colors hover:bg-pf-error/5"
+                  className="flex min-h-11 w-full items-center gap-3 px-5 py-3 text-left font-ui text-[12px] font-semibold uppercase tracking-[.14em] text-pf-error transition-colors hover:bg-pf-error/5"
                 >
-                  <LogOut size={13} aria-hidden="true" /> Sign out
+                  <LogOut size={16} aria-hidden="true" /> Sign out
                 </button>
               </div>
             ) : null}

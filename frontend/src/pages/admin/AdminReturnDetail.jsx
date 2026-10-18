@@ -103,7 +103,7 @@ export default function AdminReturnDetail() {
   if (loadState.status === "loading" && !returnRecord) {
     return (
       <AdminPage eyebrow="Returns" title="Loading return…">
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading return…
         </p>
       </AdminPage>
@@ -113,17 +113,17 @@ export default function AdminReturnDetail() {
   if (loadState.status === "error") {
     return (
       <AdminPage eyebrow="Returns" title="Return unavailable">
-        <div role="alert" className="font-ui text-sm text-graphite">
+        <div role="alert" className="font-ui text-sm text-pf-muted">
           <p>{loadState.error}</p>
           <button
             type="button"
             onClick={retryLoad}
-            className="mt-4 inline-block font-ui text-sm text-brass underline hover:text-accent"
+            className="mt-4 inline-block font-ui text-sm text-pf-gold-text underline hover:text-pf-burgundy"
           >
             Try again
           </button>
         </div>
-        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
           Back to returns
         </Link>
       </AdminPage>
@@ -133,10 +133,10 @@ export default function AdminReturnDetail() {
   if (!returnRecord) {
     return (
       <AdminPage eyebrow="Returns" title="Return not found">
-        <p className="font-ui text-sm text-graphite">
+        <p className="font-ui text-sm text-pf-muted">
           No return exists with this reference, or it is not visible to your role.
         </p>
-        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/returns`} className="mt-4 inline-block font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
           Back to returns
         </Link>
       </AdminPage>
@@ -322,7 +322,7 @@ export default function AdminReturnDetail() {
       description={`Order ${orderNumber} · ${returnRecord.reasonLabel || returnRecord.reason}`}
     >
       {notice ? (
-        <div className="mb-6 border border-accent/40 bg-accent/5 px-5 py-4 font-ui text-xs text-accent">
+        <div className="mb-6 border border-pf-gold-deep/40 bg-pf-burgundy/5 px-5 py-4 font-ui text-xs text-pf-burgundy">
           {notice}
         </div>
       ) : null}
@@ -330,7 +330,7 @@ export default function AdminReturnDetail() {
       {/* Back button */}
       <button
         onClick={() => navigate(`${prefix}/returns`)}
-        className="mb-6 flex items-center gap-2 font-ui text-xs uppercase tracking-widest text-brass hover:text-accent"
+        className="mb-6 flex items-center gap-2 font-ui text-xs uppercase tracking-widest text-pf-gold-text hover:text-pf-burgundy"
       >
         <ArrowLeft size={14} />
         Back to Returns
@@ -344,19 +344,19 @@ export default function AdminReturnDetail() {
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Status
                   </p>
-                  <p className="mt-1 font-display text-2xl font-light text-ink">
+                  <p className="mt-1 font-display text-2xl font-light text-pf-text">
                     {statusDef?.label || returnRecord.status}
                   </p>
                 </div>
                 {isRejected ? (
-                  <div className="border border-accent/40 bg-accent/5 px-4 py-2">
-                    <p className="font-ui text-[10px] uppercase tracking-widest text-accent">
+                  <div className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-4 py-2">
+                    <p className="font-ui text-[10px] uppercase tracking-widest text-pf-burgundy">
                       Rejected
                     </p>
-                    <p className="mt-1 font-ui text-xs text-accent">
+                    <p className="mt-1 font-ui text-xs text-pf-burgundy">
                       {returnRecord.rejectionReason}
                     </p>
                   </div>
@@ -367,64 +367,64 @@ export default function AdminReturnDetail() {
 
               <dl className="grid gap-4 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Return ID
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">{returnRecord.id}</dd>
+                  <dd className="mt-1 font-ui text-pf-text">{returnRecord.id}</dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Order ID
                   </dt>
                   <dd className="mt-1">
                     <Link
                       to={`${prefix}/orders/${orderId}`}
-                      className="font-ui text-ink underline hover:text-accent"
+                      className="font-ui text-pf-text underline hover:text-pf-burgundy"
                     >
                       {orderNumber}
                     </Link>
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Customer
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {customerName}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Requested
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {formatOrderDate(returnRecord.createdAt)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Reason
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {returnRecord.reasonLabel || returnRecord.reason}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Resolution
                   </dt>
-                  <dd className="mt-1 font-ui text-ink capitalize">
+                  <dd className="mt-1 font-ui text-pf-text capitalize">
                     {returnRecord.resolution || "—"}
                   </dd>
                 </div>
               </dl>
 
               {returnRecord.note ? (
-                <div className="border-t border-mist/70 pt-4">
-                  <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <div className="border-t border-pf-border/70 pt-4">
+                  <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Customer Note
                   </p>
-                  <p className="mt-2 font-ui text-sm text-ink">{returnRecord.note}</p>
+                  <p className="mt-2 font-ui text-sm text-pf-text">{returnRecord.note}</p>
                 </div>
               ) : null}
             </div>
@@ -436,33 +436,33 @@ export default function AdminReturnDetail() {
               {(returnRecord.items || []).map((item) => (
                 <div
                   key={lineKey(item)}
-                  className="flex gap-4 border-b border-mist/70 pb-4 last:border-0 last:pb-0"
+                  className="flex gap-4 border-b border-pf-border/70 pb-4 last:border-0 last:pb-0"
                 >
                   {itemImage(item) ? (
                     <img
                       src={itemImage(item)}
                       alt={item.name}
-                      className="h-20 w-20 shrink-0 bg-surface object-cover"
+                      className="h-20 w-20 shrink-0 bg-pf-ivory object-cover"
                     />
                   ) : (
                     <div
-                      className="h-20 w-20 shrink-0 border border-mist/70 bg-surface"
+                      className="h-20 w-20 shrink-0 border border-pf-border/70 bg-pf-ivory"
                       aria-hidden="true"
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-display text-base font-light text-ink">
+                    <p className="font-display text-base font-light text-pf-text">
                       {item.name}
                     </p>
-                    <p className="mt-1 font-ui text-[10px] uppercase tracking-widest text-taupe">
+                    <p className="mt-1 font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                       {[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"}
                     </p>
-                    <p className="mt-1 font-ui text-xs text-ink">
+                    <p className="mt-1 font-ui text-xs text-pf-text">
                       Qty: {item.quantity}
                       {itemMoney(item) ? ` · ${itemMoney(item)}` : ""}
                     </p>
                     {item.inspectionCondition || item.inspection_condition ? (
-                      <p className="mt-2 inline-block border border-accent/40 bg-accent/5 px-3 py-1 font-ui text-[10px] uppercase tracking-widest text-accent">
+                      <p className="mt-2 inline-block border border-pf-gold-deep/40 bg-pf-burgundy/5 px-3 py-1 font-ui text-[10px] uppercase tracking-widest text-pf-burgundy">
                         {item.inspectionCondition || item.inspection_condition}
                       </p>
                     ) : null}
@@ -483,20 +483,20 @@ export default function AdminReturnDetail() {
                     key={entry.status}
                     className={cn(
                       "border-l-2 pl-4",
-                      isDone ? "border-accent" : isCurrent ? "border-accent" : "border-mist"
+                      isDone ? "border-pf-gold-deep" : isCurrent ? "border-pf-gold-deep" : "border-pf-border"
                     )}
                   >
                     <div className="flex items-start gap-2">
                       {isDone ? (
-                        <Check size={16} className="mt-0.5 shrink-0 text-accent" />
+                        <Check size={16} className="mt-0.5 shrink-0 text-pf-burgundy" />
                       ) : isCurrent ? (
-                        <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-accent" />
+                        <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-pf-burgundy" />
                       ) : null}
                       <div className="min-w-0 flex-1">
                         <p
                           className={cn(
                             "font-display text-base font-light",
-                            isDone || isCurrent ? "text-ink" : "text-taupe"
+                            isDone || isCurrent ? "text-pf-text" : "text-pf-muted"
                           )}
                         >
                           {entry.title}
@@ -611,7 +611,7 @@ export default function AdminReturnDetail() {
               !canInitiateRefund(returnRecord) &&
               !canCompleteRefund(returnRecord) &&
               !isRejected ? (
-                <p className="font-ui text-[11px] text-taupe">
+                <p className="font-ui text-[11px] text-pf-muted">
                   No actions available for this status.
                 </p>
               ) : null}
@@ -623,26 +623,26 @@ export default function AdminReturnDetail() {
             <AdminPanel title="Refund">
               <div className="space-y-3">
                 <div>
-                  <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Amount
                   </p>
-                  <p className="mt-1 font-display text-2xl font-light text-ink">
+                  <p className="mt-1 font-display text-2xl font-light text-pf-text">
                     {formatINR(returnRecord.refundAmount || 0)}
                   </p>
                 </div>
                 <div>
-                  <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Status
                   </p>
-                  <p className="mt-1 font-ui text-xs text-ink">
+                  <p className="mt-1 font-ui text-xs text-pf-text">
                     {returnRecord.refundStatus}
                   </p>
                 </div>
                 <div>
-                  <p className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <p className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Method
                   </p>
-                  <p className="mt-1 font-ui text-xs text-ink">
+                  <p className="mt-1 font-ui text-xs text-pf-text">
                     {returnRecord.refundMethod || "Original payment method"}
                   </p>
                 </div>
@@ -655,20 +655,20 @@ export default function AdminReturnDetail() {
             <AdminPanel title="Pickup">
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Scheduled
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {formatOrderDate(
                       returnRecord.pickupScheduledAt || returnRecord.pickup_scheduled_at
                     ) || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Method
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {returnRecord.pickupMethod || returnRecord.pickup_method || "—"}
                   </dd>
                 </div>
@@ -681,10 +681,10 @@ export default function AdminReturnDetail() {
             <AdminPanel title="Receiving">
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Package Condition
                   </dt>
-                  <dd className="mt-1 font-ui text-ink capitalize">
+                  <dd className="mt-1 font-ui text-pf-text capitalize">
                     {returnRecord.packageCondition || returnRecord.package_condition || "—"}
                   </dd>
                 </div>
@@ -697,19 +697,19 @@ export default function AdminReturnDetail() {
             <AdminPanel title="Inspection">
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                  <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                     Result
                   </dt>
-                  <dd className="mt-1 font-ui text-ink">
+                  <dd className="mt-1 font-ui text-pf-text">
                     {returnRecord.inspectionCondition || returnRecord.inspection_condition}
                   </dd>
                 </div>
                 {returnRecord.inspectionNotes || returnRecord.inspection_notes ? (
                   <div>
-                    <dt className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                    <dt className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                       Notes
                     </dt>
-                    <dd className="mt-1 font-ui text-ink">
+                    <dd className="mt-1 font-ui text-pf-text">
                       {returnRecord.inspectionNotes || returnRecord.inspection_notes}
                     </dd>
                   </div>
@@ -722,20 +722,20 @@ export default function AdminReturnDetail() {
 
       {/* Reject dialog */}
       {showReject ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4">
-          <div className="w-full max-w-md border border-mist bg-surface p-6">
-            <h3 className="font-display text-xl font-light text-ink">Reject Return</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/60 p-4">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-6">
+            <h3 className="font-display text-xl font-light text-pf-text">Reject Return</h3>
             <Rule width="w-8" tone="accent" className="my-4" />
 
             <div className="space-y-4">
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Rejection Reason *
                 </label>
                 <select
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 >
                   <option value="">Select a reason</option>
                   {REJECTION_REASONS.map((reason) => (
@@ -747,14 +747,14 @@ export default function AdminReturnDetail() {
               </div>
 
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Note (optional)
                 </label>
                 <textarea
                   value={rejectNote}
                   onChange={(e) => setRejectNote(e.target.value)}
                   rows={3}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
             </div>
@@ -788,32 +788,32 @@ export default function AdminReturnDetail() {
 
       {/* Pickup dialog */}
       {showPickup ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4">
-          <div className="w-full max-w-md border border-mist bg-surface p-6">
-            <h3 className="font-display text-xl font-light text-ink">Schedule Pickup</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/60 p-4">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-6">
+            <h3 className="font-display text-xl font-light text-pf-text">Schedule Pickup</h3>
             <Rule width="w-8" tone="accent" className="my-4" />
 
             <div className="space-y-4">
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Pickup Date
                 </label>
                 <input
                   type="date"
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Pickup Method
                 </label>
                 <select
                   value={pickupMethod}
                   onChange={(e) => setPickupMethod(e.target.value)}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 >
                   {PICKUP_METHODS.map((method) => (
                     <option key={method.id} value={method.id}>
@@ -824,26 +824,26 @@ export default function AdminReturnDetail() {
               </div>
 
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Reference Number
                 </label>
                 <input
                   type="text"
                   value={pickupReference}
                   onChange={(e) => setPickupReference(e.target.value)}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Notes (optional)
                 </label>
                 <textarea
                   value={pickupNote}
                   onChange={(e) => setPickupNote(e.target.value)}
                   rows={3}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
             </div>
@@ -873,20 +873,20 @@ export default function AdminReturnDetail() {
 
       {/* Receive dialog */}
       {showReceive ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4">
-          <div className="w-full max-w-md border border-mist bg-surface p-6">
-            <h3 className="font-display text-xl font-light text-ink">Mark as Received</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/60 p-4">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-6">
+            <h3 className="font-display text-xl font-light text-pf-text">Mark as Received</h3>
             <Rule width="w-8" tone="accent" className="my-4" />
 
             <div className="space-y-4">
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Package Condition
                 </label>
                 <select
                   value={packageCondition}
                   onChange={(e) => setPackageCondition(e.target.value)}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 >
                   {PACKAGE_CONDITIONS.map((condition) => (
                     <option key={condition.id} value={condition.id}>
@@ -897,14 +897,14 @@ export default function AdminReturnDetail() {
               </div>
 
               <div>
-                <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                   Notes (optional)
                 </label>
                 <textarea
                   value={receiveNote}
                   onChange={(e) => setReceiveNote(e.target.value)}
                   rows={3}
-                  className="mt-2 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                  className="mt-2 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                 />
               </div>
             </div>
@@ -934,35 +934,35 @@ export default function AdminReturnDetail() {
 
       {/* Inspect dialog */}
       {showInspect ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-mist bg-surface p-6">
-            <h3 className="font-display text-xl font-light text-ink">Inspect Return</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-pf-border bg-pf-ivory p-6">
+            <h3 className="font-display text-xl font-light text-pf-text">Inspect Return</h3>
             <Rule width="w-8" tone="accent" className="my-4" />
 
-            <p className="mb-4 font-ui text-[11px] text-taupe">
+            <p className="mb-4 font-ui text-[11px] text-pf-muted">
               Inspect each item and assign a condition. Items marked as sellable will be
               returned to inventory; damaged items will be quarantined.
             </p>
 
             <div className="space-y-6">
               {(returnRecord.items || []).map((item) => (
-                <div key={lineKey(item)} className="border border-mist/70 p-4">
+                <div key={lineKey(item)} className="border border-pf-border/70 p-4">
                   <div className="flex gap-3">
                     {itemImage(item) ? (
                       <img
                         src={itemImage(item)}
                         alt={item.name}
-                        className="h-16 w-16 shrink-0 bg-surface object-cover"
+                        className="h-16 w-16 shrink-0 bg-pf-ivory object-cover"
                       />
                     ) : (
                       <div
-                        className="h-16 w-16 shrink-0 border border-mist/70 bg-surface"
+                        className="h-16 w-16 shrink-0 border border-pf-border/70 bg-pf-ivory"
                         aria-hidden="true"
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="font-display text-sm font-light text-ink">{item.name}</p>
-                      <p className="mt-0.5 font-ui text-[10px] uppercase tracking-widest text-taupe">
+                      <p className="font-display text-sm font-light text-pf-text">{item.name}</p>
+                      <p className="mt-0.5 font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                         {[item.color, item.size].filter(Boolean).join(" · ") || "Free Size"} · Qty{" "}
                         {item.quantity}
                       </p>
@@ -970,7 +970,7 @@ export default function AdminReturnDetail() {
                   </div>
 
                   <div className="mt-4">
-                    <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                    <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                       Condition
                     </label>
                     <p className="mt-1 font-ui text-[10px] text-slate">
@@ -989,8 +989,8 @@ export default function AdminReturnDetail() {
                             className={cn(
                               "border px-3 py-1.5 font-ui text-[10px] uppercase tracking-widest",
                               selected
-                                ? "border-accent bg-accent/10 text-accent"
-                                : "border-mist bg-canvas text-taupe hover:border-accent/60"
+                                ? "border-pf-gold-deep bg-pf-burgundy/10 text-pf-burgundy"
+                                : "border-pf-border bg-pf-card text-pf-muted hover:border-pf-gold-deep/60"
                             )}
                           >
                             {condition.label}
@@ -1001,7 +1001,7 @@ export default function AdminReturnDetail() {
                   </div>
 
                   <div className="mt-3">
-                    <label className="font-ui text-[10px] uppercase tracking-widest text-taupe">
+                    <label className="font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                       Notes (optional)
                     </label>
                     <input
@@ -1009,7 +1009,7 @@ export default function AdminReturnDetail() {
                       value={inspections[lineKey(item)]?.notes || ""}
                       onChange={(e) => updateInspection(lineKey(item), "notes", e.target.value)}
                       placeholder="Inspection notes"
-                      className="mt-1 w-full border border-mist bg-canvas px-3 py-1.5 font-ui text-xs text-ink focus:border-accent focus:outline-none"
+                      className="mt-1 w-full border border-pf-border bg-pf-card px-3 py-1.5 font-ui text-xs text-pf-text focus:border-pf-gold-deep focus:outline-none"
                     />
                   </div>
                 </div>

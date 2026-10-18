@@ -45,8 +45,8 @@ export function LeaveRequestForm({ actor, onCreated }) {
   };
 
   return (
-    <form onSubmit={submit} className="border border-mist/80 bg-surface/40 p-6">
-      <h2 className="font-display text-2xl font-light text-ink">Request leave</h2>
+    <form onSubmit={submit} className="border border-pf-border/80 bg-pf-ivory/40 p-6">
+      <h2 className="font-display text-2xl font-light text-pf-text">Request leave</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <EmployeeField label="Leave type" id="leave-type">
           <select id="leave-type" value={leaveType} onChange={(event) => setLeaveType(event.target.value)} className={employeeInputClass()}>
@@ -71,7 +71,7 @@ export function LeaveRequestForm({ actor, onCreated }) {
         <textarea id="leave-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={3} className={employeeInputClass(Boolean(error))} required />
       </EmployeeField>
       {message ? (
-        <p className="mt-3 font-ui text-xs text-cocoa" role="status" aria-live="polite">
+        <p className="mt-3 font-ui text-xs text-pf-cocoa" role="status" aria-live="polite">
           {message}
         </p>
       ) : null}
@@ -137,7 +137,7 @@ export function LeaveTable({ rows, actor, showEmployee = false, onChanged }) {
             label: "Review",
             render: (row) =>
               row.reviewNote ? (
-                <span className="font-ui text-xs text-taupe">{row.reviewNote}</span>
+                <span className="font-ui text-xs text-pf-muted">{row.reviewNote}</span>
               ) : (
                 "—"
               ),
@@ -149,16 +149,16 @@ export function LeaveTable({ rows, actor, showEmployee = false, onChanged }) {
               <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 md:justify-start">
                 {row.status === LEAVE_STATUS.PENDING && canReview ? (
                   <>
-                    <button type="button" className="font-ui text-[12px] text-brass hover:text-accent" onClick={() => setPending({ action: "approve", leaveId: row.leaveId })}>
+                    <button type="button" className="font-ui text-[12px] text-pf-gold-text hover:text-pf-burgundy" onClick={() => setPending({ action: "approve", leaveId: row.leaveId })}>
                       Approve
                     </button>
-                    <button type="button" className="font-ui text-[12px] text-brass hover:text-accent" onClick={() => setPending({ action: "reject", leaveId: row.leaveId })}>
+                    <button type="button" className="font-ui text-[12px] text-pf-gold-text hover:text-pf-burgundy" onClick={() => setPending({ action: "reject", leaveId: row.leaveId })}>
                       Reject
                     </button>
                   </>
                 ) : null}
                 {row.status === LEAVE_STATUS.PENDING && actor?.employeeId === row.employeeId ? (
-                  <button type="button" className="font-ui text-[12px] text-brass hover:text-accent" onClick={() => setPending({ action: "cancel", leaveId: row.leaveId })}>
+                  <button type="button" className="font-ui text-[12px] text-pf-gold-text hover:text-pf-burgundy" onClick={() => setPending({ action: "cancel", leaveId: row.leaveId })}>
                     Cancel
                   </button>
                 ) : null}
@@ -205,7 +205,7 @@ export function LeaveTable({ rows, actor, showEmployee = false, onChanged }) {
           </EmployeeField>
         </div>
       ) : reviewError ? (
-        <p className="mt-3 font-ui text-xs text-accent" role="alert">{reviewError}</p>
+        <p className="mt-3 font-ui text-xs text-pf-burgundy" role="alert">{reviewError}</p>
       ) : null}
     </>
   );
@@ -221,12 +221,12 @@ export default function LeavePanel({ employeeId, actor, team = false }) {
     <div className="space-y-8">
       {team && queue.length ? (
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Pending approvals</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Pending approvals</h2>
           <LeaveTable rows={queue} actor={actor} showEmployee onChanged={() => {}} />
         </section>
       ) : null}
       <section>
-        <h2 className="mb-3 font-display text-2xl font-light text-ink">Your requests</h2>
+        <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Your requests</h2>
         <LeaveTable rows={own} actor={actor} />
       </section>
     </div>

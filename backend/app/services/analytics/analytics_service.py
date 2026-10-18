@@ -55,6 +55,23 @@ class AnalyticsService:
         cancelled = int((await self.db.execute(cancelled_stmt)).scalar() or 0)
         return {"total": total, "cancelled": cancelled}
 
+    async def order_status_counts(self) -> Dict[str, int]:
+        """Whole-book order counts grouped by stored status value.
+
+        Additive dashboard aggregate (Phase 2): the staff dashboard's
+        order-status distribution must describe the complete order book,
+        never a recent-orders sample. Keys are the stored status strings
+        exactly as persisted; presentation bucketing stays a frontend
+        concern. Read-only and bounded by the distinct status set.
+        """
+        stmt = (
+            select(OrderModel.status, func.count())
+            .select_from(OrderModel)
+            .group_by(OrderModel.status)
+        )
+        rows = (await self.db.execute(stmt)).all()
+        return {str(status): int(count or 0) for status, count in rows if status}
+
     async def customer_count(self) -> int:
         """Total registered customer profiles."""
         return int(

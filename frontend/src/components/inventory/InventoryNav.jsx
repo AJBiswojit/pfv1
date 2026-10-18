@@ -18,7 +18,7 @@ export default function InventoryNav({ portal = "admin" }) {
   ].filter((item) => (portal !== "employee" || hasPermission(item.permission)) && !(availabilityOnly && item.label === "Low stock"));
 
   return (
-    <nav aria-label="Inventory sections" className="mb-7 overflow-x-auto border-b border-mist/80">
+    <nav aria-label="Inventory sections" className="mb-7 overflow-x-auto border-b border-pf-border/80">
       <div className="flex min-w-max gap-1">
         {items.map((item) => (
           <NavLink
@@ -26,10 +26,10 @@ export default function InventoryNav({ portal = "admin" }) {
             to={item.to}
             end={item.end}
             className={({ isActive }) => cn(
-              "border-b-2 px-3 py-3 font-ui text-[10px] uppercase tracking-[.16em] transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent focus-visible:outline-offset-[-2px]",
+              "border-b-2 px-3 py-3 font-ui text-[10px] uppercase tracking-[.16em] transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy focus-visible:outline-offset-[-2px]",
               isActive
-                ? "border-accent font-medium text-ink"
-                : "border-transparent text-taupe hover:text-ink"
+                ? "border-pf-gold-deep font-medium text-pf-text"
+                : "border-transparent text-pf-muted hover:text-pf-text"
             )}
           >
             {item.label}

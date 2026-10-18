@@ -29,7 +29,7 @@ export default function AnalyticsNav({ portal = "admin", tabs = ANALYTICS_TABS }
 
   return (
     <nav aria-label="Analytics sections" className="-mx-1 mb-6 overflow-x-auto">
-      <ul className="flex min-w-max gap-1 border-b border-mist/80 px-1">
+      <ul className="flex min-w-max gap-1 border-b border-pf-border/80 px-1">
         {tabs.map((tab) => {
           const tabPath = portal === "employee" ? tab.employeePath : tab.path;
           const to = `${base}${tabPath}`;
@@ -42,8 +42,8 @@ export default function AnalyticsNav({ portal = "admin", tabs = ANALYTICS_TABS }
                   cn(
                     "inline-flex px-3 py-2.5 font-ui text-[11px] uppercase tracking-[.14em] transition-colors",
                     isActive
-                      ? "border-b-2 border-ink text-ink"
-                      : "border-b-2 border-transparent text-taupe hover:text-ink"
+                      ? "border-b-2 border-pf-burgundy text-pf-text"
+                      : "border-b-2 border-transparent text-pf-muted hover:text-pf-text"
                   )
                 }
               >

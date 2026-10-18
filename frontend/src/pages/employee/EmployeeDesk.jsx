@@ -25,7 +25,7 @@ const desks = {
     eyebrow: "Warehouse",
     title: (
       <>
-        The <span className="italic text-accent">back house.</span>
+        The <span className="italic text-pf-burgundy">back house.</span>
       </>
     ),
     description: "Incoming, outgoing, picks and holds — the warehouse working list.",
@@ -42,7 +42,7 @@ const desks = {
     eyebrow: "Incoming",
     title: (
       <>
-        Incoming <span className="italic text-accent">stock.</span>
+        Incoming <span className="italic text-pf-burgundy">stock.</span>
       </>
     ),
     rows: getWarehouseTasks("Incoming"),
@@ -57,7 +57,7 @@ const desks = {
     eyebrow: "Outgoing",
     title: (
       <>
-        Outgoing <span className="italic text-accent">stock.</span>
+        Outgoing <span className="italic text-pf-burgundy">stock.</span>
       </>
     ),
     rows: getWarehouseTasks("Outgoing"),
@@ -72,7 +72,7 @@ const desks = {
     eyebrow: "Pick & pack",
     title: (
       <>
-        Pick and <span className="italic text-accent">pack.</span>
+        Pick and <span className="italic text-pf-burgundy">pack.</span>
       </>
     ),
     rows: getWarehouseTasks("Pick"),
@@ -87,7 +87,7 @@ const desks = {
     eyebrow: "Warehouse transfers",
     title: (
       <>
-        Warehouse <span className="italic text-accent">transfers.</span>
+        Warehouse <span className="italic text-pf-burgundy">transfers.</span>
       </>
     ),
     rows: getTransfers().filter((item) =>
@@ -105,7 +105,7 @@ const desks = {
     eyebrow: "Damaged",
     title: (
       <>
-        Damaged <span className="italic text-accent">stock.</span>
+        Damaged <span className="italic text-pf-burgundy">stock.</span>
       </>
     ),
     rows: getWarehouseTasks("Damaged"),
@@ -119,7 +119,7 @@ const desks = {
     eyebrow: "Support",
     title: (
       <>
-        Care <span className="italic text-accent">desk.</span>
+        Care <span className="italic text-pf-burgundy">desk.</span>
       </>
     ),
     description: "Open cases for the house. Inventory and people administration are not on this desk.",
@@ -137,7 +137,7 @@ const desks = {
     eyebrow: "Cases",
     title: (
       <>
-        Support <span className="italic text-accent">cases.</span>
+        Support <span className="italic text-pf-burgundy">cases.</span>
       </>
     ),
     rows: getSupportCases(),
@@ -152,7 +152,7 @@ const desks = {
     eyebrow: "Feedback",
     title: (
       <>
-        Customer <span className="italic text-accent">feedback.</span>
+        Customer <span className="italic text-pf-burgundy">feedback.</span>
       </>
     ),
     rows: getFeedback(),
@@ -167,7 +167,7 @@ const desks = {
     eyebrow: "Styling",
     title: (
       <>
-        The styling <span className="italic text-accent">book.</span>
+        The styling <span className="italic text-pf-burgundy">book.</span>
       </>
     ),
     description: "Requests and sittings. Bridal and wedding collections live one desk over.",
@@ -186,7 +186,7 @@ const desks = {
     eyebrow: "Appointments",
     title: (
       <>
-        Sittings this <span className="italic text-accent">week.</span>
+        Sittings this <span className="italic text-pf-burgundy">week.</span>
       </>
     ),
     rows: getAppointments(),
@@ -202,7 +202,7 @@ const desks = {
     eyebrow: "Recommendations",
     title: (
       <>
-        Suggested <span className="italic text-accent">edits.</span>
+        Suggested <span className="italic text-pf-burgundy">edits.</span>
       </>
     ),
     description: "Styling recommendations are not invented on the client. This desk stays empty until the backend styling service exists.",
@@ -219,7 +219,7 @@ const desks = {
     eyebrow: "Bridal desk",
     title: (
       <>
-        Bridal <span className="italic text-accent">consultations.</span>
+        Bridal <span className="italic text-pf-burgundy">consultations.</span>
       </>
     ),
     rows: getStylingRequests().filter((item) => /bridal|wedding|trousseau|reception/i.test(item.occasion)),
@@ -234,7 +234,7 @@ const desks = {
     eyebrow: "Wedding collections",
     title: (
       <>
-        Wedding <span className="italic text-accent">collections.</span>
+        Wedding <span className="italic text-pf-burgundy">collections.</span>
       </>
     ),
     description: "Wedding-collection availability is catalogue-owned. This desk does not invent floor locations or pairing lists.",
@@ -250,7 +250,7 @@ const desks = {
     eyebrow: "Sales",
     title: (
       <>
-        Store <span className="italic text-accent">sales.</span>
+        Store <span className="italic text-pf-burgundy">sales.</span>
       </>
     ),
     description: "Departmental floor sales come from the order ledger. Nothing is billed here until real orders exist.",
@@ -296,7 +296,7 @@ export default function EmployeeDesk() {
       eyebrow: "Returns",
       title: (
         <>
-          Pending <span className="italic text-accent">returns.</span>
+          Pending <span className="italic text-pf-burgundy">returns.</span>
         </>
       ),
       description: "Return requests held on the canonical order register.",
@@ -311,7 +311,7 @@ export default function EmployeeDesk() {
       eyebrow: "Team",
       title: (
         <>
-          Assigned <span className="italic text-accent">team.</span>
+          Assigned <span className="italic text-pf-burgundy">team.</span>
         </>
       ),
       description: "People on the floor. Credential management stays with Super Admin.",

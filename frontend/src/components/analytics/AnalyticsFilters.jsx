@@ -211,8 +211,8 @@ export default function AnalyticsFilters({
   return (
     <div className="mb-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-ui text-[11px] text-taupe">
-          Showing <span className="text-ink">{period.label}</span>
+        <p className="font-ui text-[11px] text-pf-muted">
+          Showing <span className="text-pf-text">{period.label}</span>
           {period.comparison ? ` · ${period.comparison.label}` : ""}
         </p>
         <AtelierButton
@@ -233,14 +233,14 @@ export default function AnalyticsFilters({
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Analytics filters">
           <button
             type="button"
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-pf-burgundy/40"
             aria-label="Close filters"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto border-t border-mist bg-canvas p-5">
+          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto border-t border-pf-border bg-pf-card p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="font-ui text-[11px] uppercase tracking-[.18em] text-ink">Filters</p>
-              <button type="button" onClick={() => setOpen(false)} className="p-1 text-taupe" aria-label="Close filters">
+              <p className="font-ui text-[11px] uppercase tracking-[.18em] text-pf-text">Filters</p>
+              <button type="button" onClick={() => setOpen(false)} className="p-1 text-pf-muted" aria-label="Close filters">
                 <X size={16} />
               </button>
             </div>

@@ -154,8 +154,8 @@ export default function AiBusinessAssistant() {
     return (
       <AdminPage eyebrow="Business intelligence" title="AI Business Assistant">
         <AdminPanel title="Access restricted">
-          <p className="flex items-center gap-2 font-ui text-sm text-graphite">
-            <ShieldCheck size={15} aria-hidden="true" className="text-accent" />
+          <p className="flex items-center gap-2 font-ui text-sm text-pf-muted">
+            <ShieldCheck size={15} aria-hidden="true" className="text-pf-burgundy" />
             The Business Assistant is available to authorised administration roles only.
           </p>
         </AdminPanel>
@@ -168,7 +168,7 @@ export default function AiBusinessAssistant() {
       eyebrow="Business intelligence"
       title={
         <>
-          AI Business <span className="italic text-accent">Assistant.</span>
+          AI Business <span className="italic text-pf-burgundy">Assistant.</span>
         </>
       }
       description={`${AI_BUSINESS_BRAND.tagline}. Reads the live orders, inventory, returns, offers, customers and workforce registers — and never invents a number.`}
@@ -186,14 +186,14 @@ export default function AiBusinessAssistant() {
           title="Ask about the business"
           action={
             <div className="flex items-center gap-2">
-              <label htmlFor="ai-business-period" className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+              <label htmlFor="ai-business-period" className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
                 Period
               </label>
               <select
                 id="ai-business-period"
                 value={preset}
                 onChange={(event) => setPreset(event.target.value)}
-                className="border border-mist bg-ivory px-3 py-2 font-ui text-xs text-ink focus:border-ink focus:outline-none"
+                className="border border-pf-border bg-pf-ivory px-3 py-2 font-ui text-xs text-pf-text focus:border-pf-burgundy focus:outline-none"
               >
                 {PRESET_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -222,7 +222,7 @@ export default function AiBusinessAssistant() {
               ariaLabel="Suggested business questions"
             />
           </div>
-          <p className="mt-3 font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <p className="mt-3 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             {AI_PROVIDER_LABEL} · numbers come from the existing business repositories
           </p>
         </AdminPanel>
@@ -243,13 +243,13 @@ export default function AiBusinessAssistant() {
             )}
             {thinking ? <AiThinkingIndicator stage={stage} label="PRATIKSHYA AI is analysing business records" /> : null}
             {error ? (
-              <p role="alert" className="border border-accent/40 bg-accent/5 px-4 py-3 font-ui text-sm text-accent">
+              <p role="alert" className="border border-pf-gold-deep/40 bg-pf-burgundy/5 px-4 py-3 font-ui text-sm text-pf-burgundy">
                 {error}
               </p>
             ) : null}
           </AiConversationLog>
 
-          <p className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">
+          <p className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
             <BarChart3 size={12} aria-hidden="true" />
             Every answer is read live from the database — figures are never invented or cached.
           </p>

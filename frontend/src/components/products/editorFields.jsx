@@ -12,11 +12,11 @@ import { Plus, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 export const inputClass =
-  "w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none transition-colors focus:border-accent disabled:opacity-50";
+  "w-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none transition-colors focus:border-pf-gold-deep disabled:opacity-50";
 
-export const labelClass = "font-ui text-[10px] uppercase tracking-[.18em] text-ink";
-export const hintClass = "mt-1.5 font-ui text-[11px] leading-relaxed text-taupe";
-export const errorClass = "mt-1.5 font-ui text-[11px] text-accent";
+export const labelClass = "font-ui text-[10px] uppercase tracking-[.18em] text-pf-text";
+export const hintClass = "mt-1.5 font-ui text-[11px] leading-relaxed text-pf-muted";
+export const errorClass = "mt-1.5 font-ui text-[11px] text-pf-burgundy";
 
 /** Label + control + hint/error wrapper. */
 export function Field({ label, hint, error, required, htmlFor, className = "", children }) {
@@ -25,7 +25,7 @@ export function Field({ label, hint, error, required, htmlFor, className = "", c
       <label htmlFor={htmlFor} className={cn(labelClass, "mb-2 flex items-center gap-1")}>
         {label}
         {required ? (
-          <span aria-hidden="true" className="text-accent">
+          <span aria-hidden="true" className="text-pf-burgundy">
             *
           </span>
         ) : null}
@@ -148,8 +148,8 @@ export function ChipGroup({
               className={cn(
                 "border px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] transition-colors",
                 active
-                  ? "border-ink bg-ink text-ivory"
-                  : "border-mist bg-canvas text-taupe hover:border-ink hover:text-ink"
+                  ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                  : "border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
               )}
             >
               {active ? "✓ " : ""}
@@ -178,7 +178,7 @@ export function ChipGroup({
           />
           <button
             type="submit"
-            className="inline-flex items-center gap-1 border border-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+            className="inline-flex items-center gap-1 border border-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
           >
             <Plus size={12} aria-hidden="true" /> Add
           </button>
@@ -208,8 +208,8 @@ export function ChipRadio({ options, value, onChange, allowCustom = false, ariaL
               className={cn(
                 "border px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] transition-colors",
                 active
-                  ? "border-ink bg-ink text-ivory"
-                  : "border-mist bg-canvas text-taupe hover:border-ink hover:text-ink"
+                  ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                  : "border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
               )}
             >
               {option}
@@ -217,7 +217,7 @@ export function ChipRadio({ options, value, onChange, allowCustom = false, ariaL
           );
         })}
         {isCustom ? (
-          <span className="border border-ink bg-ink px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] text-ivory">
+          <span className="border border-pf-burgundy bg-pf-burgundy px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] text-pf-ivory">
             {value}
           </span>
         ) : null}
@@ -241,7 +241,7 @@ export function ChipRadio({ options, value, onChange, allowCustom = false, ariaL
           />
           <button
             type="submit"
-            className="inline-flex items-center gap-1 border border-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+            className="inline-flex items-center gap-1 border border-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
           >
             <Plus size={12} aria-hidden="true" /> Set
           </button>
@@ -268,14 +268,14 @@ export function TagInput({ value = [], onChange, suggestions = [], placeholder =
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-2 border border-mist bg-canvas px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] text-ink"
+            className="inline-flex items-center gap-2 border border-pf-border bg-pf-card px-3 py-1.5 font-ui text-[11px] uppercase tracking-[.12em] text-pf-text"
           >
             {tag}
             <button
               type="button"
               aria-label={`Remove tag ${tag}`}
               onClick={() => onChange(value.filter((entry) => entry !== tag))}
-              className="text-taupe transition-colors hover:text-accent"
+              className="text-pf-muted transition-colors hover:text-pf-burgundy"
             >
               <X size={11} aria-hidden="true" />
             </button>
@@ -299,7 +299,7 @@ export function TagInput({ value = [], onChange, suggestions = [], placeholder =
         />
         <button
           type="submit"
-          className="inline-flex items-center gap-1 border border-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+          className="inline-flex items-center gap-1 border border-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
         >
           <Plus size={12} aria-hidden="true" /> Add
         </button>
@@ -313,7 +313,7 @@ export function TagInput({ value = [], onChange, suggestions = [], placeholder =
                 key={suggestion}
                 type="button"
                 onClick={() => add(suggestion)}
-                className="border border-mist px-2.5 py-1 font-ui text-[10px] uppercase tracking-[.12em] text-taupe transition-colors hover:border-ink hover:text-ink"
+                className="border border-pf-border px-2.5 py-1 font-ui text-[10px] uppercase tracking-[.12em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text"
               >
                 + {suggestion}
               </button>
@@ -328,12 +328,12 @@ export function TagInput({ value = [], onChange, suggestions = [], placeholder =
 export function ToggleRow({ label, hint, checked, onChange }) {
   const id = useId();
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-mist/60 py-3 last:border-0">
+    <div className="flex items-start justify-between gap-4 border-b border-pf-border/60 py-3 last:border-0">
       <div>
-        <label htmlFor={id} className="cursor-pointer font-ui text-sm text-ink">
+        <label htmlFor={id} className="cursor-pointer font-ui text-sm text-pf-text">
           {label}
         </label>
-        {hint ? <p className="mt-0.5 font-ui text-[11px] text-taupe">{hint}</p> : null}
+        {hint ? <p className="mt-0.5 font-ui text-[11px] text-pf-muted">{hint}</p> : null}
       </div>
       <button
         id={id}
@@ -344,14 +344,14 @@ export function ToggleRow({ label, hint, checked, onChange }) {
         onClick={() => onChange(!checked)}
         className={cn(
           "relative mt-0.5 inline-flex h-5 w-10 shrink-0 items-center border transition-colors",
-          checked ? "border-ink bg-ink" : "border-mist bg-canvas"
+          checked ? "border-pf-burgundy bg-pf-burgundy" : "border-pf-border bg-pf-card"
         )}
       >
         <span
           aria-hidden="true"
           className={cn(
             "absolute h-3.5 w-3.5 transition-all",
-            checked ? "left-[22px] bg-ivory" : "left-[3px] bg-taupe"
+            checked ? "left-[22px] bg-pf-ivory" : "left-[3px] bg-pf-muted"
           )}
         />
         <span className="sr-only">{checked ? "On" : "Off"}</span>
@@ -376,13 +376,13 @@ export function ListEditor({ value = [], onChange, placeholder = "Add a line…"
       {value.length ? (
         <ul className="space-y-2">
           {value.map((entry, index) => (
-            <li key={`${entry}-${index}`} className="flex items-start justify-between gap-3 border border-mist/70 bg-canvas px-3 py-2">
-              <span className="font-ui text-sm text-ink">{entry}</span>
+            <li key={`${entry}-${index}`} className="flex items-start justify-between gap-3 border border-pf-border/70 bg-pf-card px-3 py-2">
+              <span className="font-ui text-sm text-pf-text">{entry}</span>
               <button
                 type="button"
                 aria-label={`Remove “${entry}”`}
                 onClick={() => onChange(value.filter((_, i) => i !== index))}
-                className="mt-0.5 text-taupe transition-colors hover:text-accent"
+                className="mt-0.5 text-pf-muted transition-colors hover:text-pf-burgundy"
               >
                 <X size={13} aria-hidden="true" />
               </button>
@@ -390,7 +390,7 @@ export function ListEditor({ value = [], onChange, placeholder = "Add a line…"
           ))}
         </ul>
       ) : (
-        <p className="font-ui text-[11px] text-taupe">Nothing added yet.</p>
+        <p className="font-ui text-[11px] text-pf-muted">Nothing added yet.</p>
       )}
       <form
         className="mt-3 flex gap-2"
@@ -408,7 +408,7 @@ export function ListEditor({ value = [], onChange, placeholder = "Add a line…"
         />
         <button
           type="submit"
-          className="inline-flex items-center gap-1 border border-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+          className="inline-flex items-center gap-1 border border-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
         >
           <Plus size={12} aria-hidden="true" /> Add
         </button>
@@ -435,12 +435,12 @@ export function KeyValueEditor({ value = {}, onChange, keyPlaceholder = "Field",
   return (
     <div>
       {entries.length ? (
-        <dl className="divide-y divide-mist/60 border border-mist/70 bg-canvas">
+        <dl className="divide-y divide-pf-border/60 border border-pf-border/70 bg-pf-card">
           {entries.map(([key, val]) => (
             <div key={key} className="flex items-center justify-between gap-3 px-3 py-2">
               <div className="min-w-0">
-                <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{key}</dt>
-                <dd className="font-ui text-sm text-ink">{val}</dd>
+                <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{key}</dt>
+                <dd className="font-ui text-sm text-pf-text">{val}</dd>
               </div>
               <button
                 type="button"
@@ -450,7 +450,7 @@ export function KeyValueEditor({ value = {}, onChange, keyPlaceholder = "Field",
                   delete next[key];
                   onChange(next);
                 }}
-                className="text-taupe transition-colors hover:text-accent"
+                className="text-pf-muted transition-colors hover:text-pf-burgundy"
               >
                 <X size={13} aria-hidden="true" />
               </button>
@@ -458,7 +458,7 @@ export function KeyValueEditor({ value = {}, onChange, keyPlaceholder = "Field",
           ))}
         </dl>
       ) : (
-        <p className="font-ui text-[11px] text-taupe">No specifications yet.</p>
+        <p className="font-ui text-[11px] text-pf-muted">No specifications yet.</p>
       )}
       <form
         className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
@@ -483,7 +483,7 @@ export function KeyValueEditor({ value = {}, onChange, keyPlaceholder = "Field",
         />
         <button
           type="submit"
-          className="inline-flex items-center justify-center gap-1 border border-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+          className="inline-flex items-center justify-center gap-1 border border-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
         >
           <Plus size={12} aria-hidden="true" /> Add
         </button>

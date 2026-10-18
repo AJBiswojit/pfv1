@@ -16,7 +16,7 @@ const STORAGE_KEY = "pf_employee_nav_groups";
  * and route guards in EmployeeLayout continue to enforce access.
  */
 export default function EmployeeSidebar({ onNavigate, collapsed = false, onToggleCollapsed }) {
-  const { employee, hasPermission, signOut } = useEmployeeAuth();
+  const { employee, hasPermission } = useEmployeeAuth();
   const groups = navigationForRole(employee?.role, hasPermission);
   const badges = useEmployeeNavBadges(employee);
   const role = getRole(employee?.role);
@@ -36,8 +36,6 @@ export default function EmployeeSidebar({ onNavigate, collapsed = false, onToggl
         avatar: employee?.avatar,
         initials: employeeInitials(employee),
       }}
-      footerLinks={[]}
-      signOut={signOut}
       onNavigate={onNavigate}
       collapsed={collapsed}
       onToggleCollapsed={onToggleCollapsed}

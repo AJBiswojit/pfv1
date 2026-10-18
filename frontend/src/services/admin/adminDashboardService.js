@@ -44,6 +44,7 @@ export async function loadDashboardSummary({ days = 7, recentLimit = 5, workspac
       series: [],
       categories: [],
       orders: [],
+      orderStatusCounts: null,
       inventorySummary: null,
       employees: { total: 0, active: 0 },
     };

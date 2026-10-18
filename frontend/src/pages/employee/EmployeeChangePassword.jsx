@@ -52,8 +52,8 @@ export default function EmployeeChangePassword() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-mist/80 px-6 py-5">
+    <div className="min-h-screen bg-pf-card text-pf-text">
+      <header className="border-b border-pf-border/80 px-6 py-5">
         <Brand
           as="h1"
           size="default"
@@ -68,22 +68,22 @@ export default function EmployeeChangePassword() {
         />
       </header>
       <main className="mx-auto max-w-xl px-6 py-16 md:py-24">
-        <div className="border border-mist/80 bg-surface/50 p-7 sm:p-12">
-          <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">
+        <div className="border border-pf-border/80 bg-pf-ivory/50 p-7 sm:p-12">
+          <p className="font-ui text-[10px] uppercase tracking-[.3em] text-pf-burgundy">
             {mustChangePassword ? "Temporary password" : "Password"}
           </p>
           <h1 className="mt-3 font-display text-3xl font-light tracking-tight">
-            Choose a new <span className="italic text-accent">password.</span>
+            Choose a new <span className="italic text-pf-burgundy">password.</span>
           </h1>
           <Rule width="w-12" tone="accent" className="my-6" />
-          <p className="font-ui text-xs leading-relaxed text-taupe">
+          <p className="font-ui text-xs leading-relaxed text-pf-muted">
             {mustChangePassword
               ? "Your administrator issued a temporary password. Replace it before opening the portal."
               : "Update the password on this employee account. This is a demo change — not a production rotation."}
           </p>
 
           {error ? (
-            <div role="alert" className="mt-6 flex items-start gap-3 border border-accent/40 bg-accent/5 p-4 text-accent">
+            <div role="alert" className="mt-6 flex items-start gap-3 border border-pf-gold-deep/40 bg-pf-burgundy/5 p-4 text-pf-burgundy">
               <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
               <p className="font-ui text-xs leading-relaxed">{error}</p>
             </div>
@@ -100,7 +100,7 @@ export default function EmployeeChangePassword() {
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
-                className="w-full border border-pearl bg-canvas px-4 py-3.5 font-ui text-sm focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                className="w-full border border-pf-border bg-pf-card px-4 py-3.5 font-ui text-sm focus:border-pf-burgundy focus:outline-none focus:ring-1 focus:ring-pf-burgundy"
               />
             </div>
             <div>
@@ -113,7 +113,7 @@ export default function EmployeeChangePassword() {
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="w-full border border-pearl bg-canvas px-4 py-3.5 font-ui text-sm focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                className="w-full border border-pf-border bg-pf-card px-4 py-3.5 font-ui text-sm focus:border-pf-burgundy focus:outline-none focus:ring-1 focus:ring-pf-burgundy"
               />
             </div>
             <div>
@@ -127,12 +127,12 @@ export default function EmployeeChangePassword() {
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="w-full border border-pearl bg-canvas px-4 py-3.5 pr-12 font-ui text-sm focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                  className="w-full border border-pf-border bg-pf-card px-4 py-3.5 pr-12 font-ui text-sm focus:border-pf-burgundy focus:outline-none focus:ring-1 focus:ring-pf-burgundy"
                 />
                 <button
                   type="button"
                   onClick={() => setShow((open) => !open)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-taupe"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-pf-muted"
                   aria-label={show ? "Hide passwords" : "Show passwords"}
                 >
                   {show ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -153,7 +153,7 @@ export default function EmployeeChangePassword() {
               signOut();
               navigate("/login", { replace: true });
             }}
-            className="mt-6 font-ui text-xs text-taupe hover:text-accent"
+            className="mt-6 font-ui text-xs text-pf-muted hover:text-pf-burgundy"
           >
             Sign out instead
           </button>

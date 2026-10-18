@@ -38,12 +38,12 @@ import { cn } from "../../../utils/cn";
 // ── Tone → Tailwind class map ──────────────────────────────────────────────
 
 const BADGE_TONE = {
-  ink: "bg-ink text-ivory",
-  brass: "border border-brass/30 bg-brass/10 text-brass",
-  danger: "border border-accent/25 bg-accent/10 text-accent",
-  quiet: "border border-mist bg-surface text-cocoa",
-  accent: "border border-accent/25 bg-accent/10 text-accent",
-  muted: "border border-mist bg-canvas-deep text-graphite",
+  ink: "bg-pf-burgundy text-pf-ivory",
+  brass: "border border-pf-gold-deep/30 bg-pf-gold/10 text-pf-gold-text",
+  danger: "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  quiet: "border border-pf-border bg-pf-ivory text-pf-cocoa",
+  accent: "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  muted: "border border-pf-border bg-pf-ivory text-pf-muted",
   alert: "border border-amber-400/40 bg-amber-50 text-amber-700",
 };
 
@@ -69,16 +69,16 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border bg-surface/40 p-4",
-        highlight ? "border-accent/40 bg-accent/5" : "border-mist/80"
+        "border bg-pf-ivory/40 p-4",
+        highlight ? "border-pf-gold-deep/40 bg-pf-burgundy/5" : "border-pf-border/80"
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-          <p className="mt-2 font-display text-2xl font-light text-ink">{value ?? "—"}</p>
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+          <p className="mt-2 font-display text-2xl font-light text-pf-text">{value ?? "—"}</p>
         </div>
-        <Icon size={16} className={highlight ? "text-accent" : "text-brass"} />
+        <Icon size={16} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} />
       </div>
     </motion.div>
   );
@@ -143,7 +143,7 @@ export default function AdminAttendanceDay() {
       eyebrow="Workforce / Attendance"
       title={
         <>
-          Daily <span className="italic text-accent">attendance.</span>
+          Daily <span className="italic text-pf-burgundy">attendance.</span>
         </>
       }
       description="Full workforce attendance snapshot for a selected date — punches, status and working time."
@@ -153,20 +153,20 @@ export default function AdminAttendanceDay() {
         <button
           type="button"
           onClick={handlePrevDay}
-          className="flex h-9 w-9 items-center justify-center border border-mist bg-canvas text-taupe hover:border-ink hover:text-ink"
+          className="flex h-9 w-9 items-center justify-center border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           aria-label="Previous day"
         >
           <ChevronLeft size={14} />
         </button>
 
-        <label className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+        <label className="flex items-center gap-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
           Date
           <input
             type="date"
             value={date}
             max={todayKey()}
             onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="h-9 border border-mist bg-canvas px-3 font-ui text-xs text-ink outline-none focus:border-accent"
+            className="h-9 border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
           />
         </label>
 
@@ -174,19 +174,19 @@ export default function AdminAttendanceDay() {
           type="button"
           onClick={handleNextDay}
           disabled={isToday}
-          className="flex h-9 w-9 items-center justify-center border border-mist bg-canvas text-taupe hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 w-9 items-center justify-center border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Next day"
         >
           <ChevronRight size={14} />
         </button>
 
-        <span className="font-ui text-xs text-taupe">{formatDateLong(date)}</span>
+        <span className="font-ui text-xs text-pf-muted">{formatDateLong(date)}</span>
 
         {!isToday && (
           <button
             type="button"
             onClick={() => setDate(todayKey())}
-            className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:text-accent hover:underline"
+            className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold-text hover:text-pf-burgundy hover:underline"
           >
             Today
           </button>
@@ -199,7 +199,7 @@ export default function AdminAttendanceDay() {
           role="status"
           aria-live="polite"
           aria-busy="true"
-          className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe"
+          className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted"
         >
           Loading attendance…
         </p>
@@ -208,7 +208,7 @@ export default function AdminAttendanceDay() {
       {error ? (
         <div
           role="alert"
-          className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent"
+          className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy"
         >
           {error}
           <button
@@ -238,13 +238,13 @@ export default function AdminAttendanceDay() {
         bodyClassName="px-0 py-0 sm:px-0"
       >
         {/* Filter bar */}
-        <div className="border-b border-mist/60 bg-canvas/40 p-4">
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+        <div className="border-b border-pf-border/60 bg-pf-card/40 p-4">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Filter by status
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs text-ink outline-none focus:border-accent sm:w-56"
+              className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep sm:w-56"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -258,12 +258,12 @@ export default function AdminAttendanceDay() {
         {/* Desktop table */}
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left">
-            <thead className="border-b border-mist/80 bg-canvas/80">
+            <thead className="border-b border-pf-border/80 bg-pf-card/80">
               <tr>
                 {["Employee", "Check-in", "Check-out", "Status", "Work time"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                   >
                     {h}
                   </th>
@@ -274,25 +274,25 @@ export default function AdminAttendanceDay() {
               {filtered.map((row) => (
                 <tr
                   key={row.employeeId ?? row.id}
-                  className="border-b border-mist/50 last:border-0 hover:bg-surface/30"
+                  className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30"
                 >
                   <td className="px-4 py-3">
-                    <p className="font-ui text-sm text-ink">{row.employeeName ?? row.name ?? "—"}</p>
+                    <p className="font-ui text-sm text-pf-text">{row.employeeName ?? row.name ?? "—"}</p>
                     {row.employeeId ? (
-                      <p className="font-ui text-[11px] text-taupe">{row.employeeId}</p>
+                      <p className="font-ui text-[11px] text-pf-muted">{row.employeeId}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
-                    {row.checkIn ? formatTime(row.checkIn) : <span className="text-taupe">—</span>}
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
+                    {row.checkIn ? formatTime(row.checkIn) : <span className="text-pf-muted">—</span>}
                   </td>
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
-                    {row.checkOut ? formatTime(row.checkOut) : <span className="text-taupe">—</span>}
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
+                    {row.checkOut ? formatTime(row.checkOut) : <span className="text-pf-muted">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={row.status} />
                   </td>
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
-                    {row.workMinutes != null ? formatMinutes(row.workMinutes) : <span className="text-taupe">—</span>}
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
+                    {row.workMinutes != null ? formatMinutes(row.workMinutes) : <span className="text-pf-muted">—</span>}
                   </td>
                 </tr>
               ))}
@@ -300,7 +300,7 @@ export default function AdminAttendanceDay() {
           </table>
 
           {filtered.length === 0 && !loading && !error ? (
-            <p className="p-8 text-center font-ui text-sm text-taupe">
+            <p className="p-8 text-center font-ui text-sm text-pf-muted">
               {statusFilter ? "No records match this status filter." : "No attendance records for this date."}
             </p>
           ) : null}
@@ -310,7 +310,7 @@ export default function AdminAttendanceDay() {
               role="status"
               aria-live="polite"
               aria-busy="true"
-              className="p-8 text-center font-ui text-sm text-taupe"
+              className="p-8 text-center font-ui text-sm text-pf-muted"
             >
               Loading…
             </p>
@@ -322,36 +322,36 @@ export default function AdminAttendanceDay() {
           {filtered.map((row) => (
             <div
               key={row.employeeId ?? row.id}
-              className="border border-mist/70 bg-canvas p-4"
+              className="border border-pf-border/70 bg-pf-card p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-ui text-sm text-ink">{row.employeeName ?? row.name ?? "—"}</p>
+                  <p className="font-ui text-sm text-pf-text">{row.employeeName ?? row.name ?? "—"}</p>
                   {row.employeeId ? (
-                    <p className="font-ui text-[11px] text-taupe">{row.employeeId}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">{row.employeeId}</p>
                   ) : null}
                 </div>
                 <StatusBadge status={row.status} />
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 font-ui text-[11px]">
                 <div>
-                  <p className="text-taupe">Check-in</p>
-                  <p className="text-ink">{row.checkIn ? formatTime(row.checkIn) : "—"}</p>
+                  <p className="text-pf-muted">Check-in</p>
+                  <p className="text-pf-text">{row.checkIn ? formatTime(row.checkIn) : "—"}</p>
                 </div>
                 <div>
-                  <p className="text-taupe">Check-out</p>
-                  <p className="text-ink">{row.checkOut ? formatTime(row.checkOut) : "—"}</p>
+                  <p className="text-pf-muted">Check-out</p>
+                  <p className="text-pf-text">{row.checkOut ? formatTime(row.checkOut) : "—"}</p>
                 </div>
                 <div>
-                  <p className="text-taupe">Work time</p>
-                  <p className="text-ink">{row.workMinutes != null ? formatMinutes(row.workMinutes) : "—"}</p>
+                  <p className="text-pf-muted">Work time</p>
+                  <p className="text-pf-text">{row.workMinutes != null ? formatMinutes(row.workMinutes) : "—"}</p>
                 </div>
               </div>
             </div>
           ))}
 
           {filtered.length === 0 && !loading && !error ? (
-            <p className="py-6 text-center font-ui text-sm text-taupe">
+            <p className="py-6 text-center font-ui text-sm text-pf-muted">
               {statusFilter ? "No records match this status filter." : "No attendance records for this date."}
             </p>
           ) : null}

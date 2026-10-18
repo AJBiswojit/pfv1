@@ -16,7 +16,7 @@ export default function EmployeeLeave() {
       eyebrow="Leave"
       title={
         <>
-          Time away from the <span className="italic text-accent">floor.</span>
+          Time away from the <span className="italic text-pf-burgundy">floor.</span>
         </>
       }
       description="Request leave against the house calendar. Approved days appear as leave on the attendance register — they are not stored twice."

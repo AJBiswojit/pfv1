@@ -98,16 +98,16 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border bg-surface/40 p-4",
-        highlight ? "border-accent/40 bg-accent/5" : "border-mist/80"
+        "border bg-pf-ivory/40 p-4",
+        highlight ? "border-pf-gold-deep/40 bg-pf-burgundy/5" : "border-pf-border/80"
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-          <p className="mt-2 font-display text-2xl font-light text-ink">{value}</p>
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+          <p className="mt-2 font-display text-2xl font-light text-pf-text">{value}</p>
         </div>
-        <Icon size={16} className={highlight ? "text-accent" : "text-brass"} />
+        <Icon size={16} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} />
       </div>
     </motion.div>
   );
@@ -222,21 +222,21 @@ export default function AdminPayments() {
   return (
     <AdminPage
       eyebrow="Finance / Payments"
-      title={<>Payment <span className="italic text-accent">sessions.</span></>}
+      title={<>Payment <span className="italic text-pf-burgundy">sessions.</span></>}
       description="All Razorpay payment sessions — track, refund, and reconcile transactions across every order."
       actions={
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={retry}
-            className="inline-flex items-center gap-1.5 border border-mist bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+            className="inline-flex items-center gap-1.5 border border-pf-border bg-pf-card px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           >
             <RefreshCw size={11} /> Refresh
           </button>
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex items-center gap-2 border border-mist bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink md:hidden"
+            className="inline-flex items-center gap-2 border border-pf-border bg-pf-card px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text md:hidden"
           >
             <Filter size={12} /> Filters
           </button>
@@ -245,14 +245,14 @@ export default function AdminPayments() {
     >
       {/* Loading */}
       {loading && serverPage.sessions.length === 0 ? (
-        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted">
           Loading payments…
         </p>
       ) : null}
 
       {/* Error */}
       {error ? (
-        <div role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           {error.status === 401
             ? "Your admin session has expired. Sign in again."
             : error.status === 403
@@ -281,29 +281,29 @@ export default function AdminPayments() {
 
       <AdminPanel eyebrow="Gateway" title="Session ledger" bodyClassName="px-0 py-0 sm:px-0">
         {/* Filters — desktop */}
-        <div className="hidden border-b border-mist/60 bg-canvas/40 p-4 md:block">
+        <div className="hidden border-b border-pf-border/60 bg-pf-card/40 p-4 md:block">
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative flex-1">
-              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Search</span>
+              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Search</span>
               <div className="relative">
-                <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-taupe" />
+                <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-pf-muted" />
                 <input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Session ID, order, Razorpay ID, customer"
-                  className="h-9 w-full border border-mist bg-canvas pl-9 pr-3 font-ui text-xs text-ink outline-none focus:border-accent"
+                  className="h-9 w-full border border-pf-border bg-pf-card pl-9 pr-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
                 />
               </div>
             </div>
 
             {/* Status */}
             <div className="w-48 shrink-0">
-              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Status</span>
+              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Status</span>
               <select
                 value={statusFilter}
                 onChange={(e) => resetPage(setStatusFilter)(e.target.value)}
-                className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent"
+                className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep"
               >
                 <option value="all">All statuses</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -314,11 +314,11 @@ export default function AdminPayments() {
 
             {/* Method */}
             <div className="w-40 shrink-0">
-              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Method</span>
+              <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Method</span>
               <select
                 value={methodFilter}
                 onChange={(e) => resetPage(setMethodFilter)(e.target.value)}
-                className="h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent"
+                className="h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep"
               >
                 <option value="all">All methods</option>
                 <option value="upi">UPI</option>
@@ -337,11 +337,11 @@ export default function AdminPayments() {
                   setStatusFilter("all"); setMethodFilter("all");
                   setPage(1);
                 }}
-                className="font-ui text-[10px] uppercase tracking-[.13em] text-accent hover:underline"
+                className="font-ui text-[10px] uppercase tracking-[.13em] text-pf-burgundy hover:underline"
               >
                 Clear
               </button>
-              <span className="font-ui text-[11px] text-taupe">
+              <span className="font-ui text-[11px] text-pf-muted">
                 {serverPage.total} sessions
               </span>
             </div>
@@ -349,14 +349,14 @@ export default function AdminPayments() {
         </div>
 
         {/* Mobile filter chips */}
-        <div className="flex gap-2 overflow-x-auto border-b border-mist/60 bg-canvas/40 p-3 md:hidden">
+        <div className="flex gap-2 overflow-x-auto border-b border-pf-border/60 bg-pf-card/40 p-3 md:hidden">
           <div className="relative min-w-[180px]">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-taupe" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-pf-muted" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search"
-              className="h-8 w-full border border-mist bg-canvas pl-7 pr-2 font-ui text-xs outline-none"
+              className="h-8 w-full border border-pf-border bg-pf-card pl-7 pr-2 font-ui text-xs outline-none"
             />
           </div>
         </div>
@@ -365,9 +365,9 @@ export default function AdminPayments() {
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px]">
             <thead>
-              <tr className="border-b border-mist/60 bg-canvas/60">
+              <tr className="border-b border-pf-border/60 bg-pf-card/60">
                 {["Order", "Customer", "Amount", "Method", "Status", "Razorpay ID", "Paid At", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-ui text-[9px] uppercase tracking-[.18em] text-taupe">
+                  <th key={h} className="px-4 py-3 text-left font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">
                     {h}
                   </th>
                 ))}
@@ -376,7 +376,7 @@ export default function AdminPayments() {
             <tbody>
               {visibleSessions.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center font-ui text-sm text-taupe">
+                  <td colSpan={8} className="px-4 py-10 text-center font-ui text-sm text-pf-muted">
                     No payment sessions found.
                   </td>
                 </tr>
@@ -385,24 +385,24 @@ export default function AdminPayments() {
                 <tr
                   key={s.id}
                   onClick={() => navigate(`${prefix}/payments/${s.id}`)}
-                  className="cursor-pointer border-b border-mist/40 transition-colors hover:bg-surface/60"
+                  className="cursor-pointer border-b border-pf-border/40 transition-colors hover:bg-pf-ivory/60"
                 >
                   <td className="px-4 py-3">
                     <Link
                       to={`${prefix}/orders/${s.orderId}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="font-ui text-xs text-brass hover:text-accent hover:underline"
+                      className="font-ui text-xs text-pf-gold-text hover:text-pf-burgundy hover:underline"
                     >
                       {s.orderNumber ?? s.orderId?.slice(0, 8) ?? "—"}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-ui text-xs text-ink">{s.customerName ?? "—"}</p>
+                    <p className="font-ui text-xs text-pf-text">{s.customerName ?? "—"}</p>
                     {s.customerEmail ? (
-                      <p className="font-ui text-[10px] text-taupe">{s.customerEmail}</p>
+                      <p className="font-ui text-[10px] text-pf-muted">{s.customerEmail}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-ui text-xs text-ink">
+                  <td className="px-4 py-3 font-ui text-xs text-pf-text">
                     {formatINR(s.amountPaise)}
                     {(s.refundedAmountPaise ?? 0) > 0 ? (
                       <p className="font-ui text-[10px] text-blue-600">
@@ -410,23 +410,23 @@ export default function AdminPayments() {
                       </p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-ui text-xs text-taupe">
+                  <td className="px-4 py-3 font-ui text-xs text-pf-muted">
                     {methodLabel(s.paymentMethod)}
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={s.status} />
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-taupe">
+                  <td className="px-4 py-3 font-mono text-[10px] text-pf-muted">
                     {s.razorpayPaymentId ?? s.razorpayOrderId ?? "—"}
                   </td>
-                  <td className="px-4 py-3 font-ui text-[10px] text-taupe">
+                  <td className="px-4 py-3 font-ui text-[10px] text-pf-muted">
                     {formatDate(s.paidAt)}
                   </td>
                   <td className="px-4 py-3">
                     <Link
                       to={`${prefix}/payments/${s.id}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 font-ui text-[10px] text-taupe hover:text-accent"
+                      className="inline-flex items-center gap-1 font-ui text-[10px] text-pf-muted hover:text-pf-burgundy"
                     >
                       <Eye size={12} /> View
                     </Link>
@@ -440,7 +440,7 @@ export default function AdminPayments() {
         {/* Mobile cards */}
         <div className="grid gap-3 p-3 md:hidden">
           {visibleSessions.length === 0 && !loading ? (
-            <p className="py-8 text-center font-ui text-sm text-taupe">No payment sessions found.</p>
+            <p className="py-8 text-center font-ui text-sm text-pf-muted">No payment sessions found.</p>
           ) : null}
           {visibleSessions.map((s) => (
             <motion.div
@@ -448,22 +448,22 @@ export default function AdminPayments() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => navigate(`${prefix}/payments/${s.id}`)}
-              className="cursor-pointer border border-mist/80 bg-surface/40 p-4 transition-colors hover:border-ink/20"
+              className="cursor-pointer border border-pf-border/80 bg-pf-ivory/40 p-4 transition-colors hover:border-pf-burgundy/20"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                  <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                     {s.orderNumber ?? s.orderId?.slice(0, 8) ?? "—"}
                   </p>
-                  <p className="mt-0.5 font-display text-base font-light text-ink">
+                  <p className="mt-0.5 font-display text-base font-light text-pf-text">
                     {formatINR(s.amountPaise)}
                   </p>
                 </div>
                 <PaymentStatusBadge status={s.status} />
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1">
-                <p className="font-ui text-[10px] text-taupe">{s.customerName ?? "Guest"}</p>
-                <p className="font-ui text-[10px] text-taupe text-right">{methodLabel(s.paymentMethod)}</p>
+                <p className="font-ui text-[10px] text-pf-muted">{s.customerName ?? "Guest"}</p>
+                <p className="font-ui text-[10px] text-pf-muted text-right">{methodLabel(s.paymentMethod)}</p>
                 <p className="col-span-2 font-mono text-[9px] text-stone-400 truncate">
                   {s.razorpayPaymentId ?? s.razorpayOrderId ?? "—"}
                 </p>
@@ -474,8 +474,8 @@ export default function AdminPayments() {
 
         {/* Pagination */}
         {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-mist/60 px-4 py-3">
-            <p className="font-ui text-[10px] text-taupe">
+          <div className="flex items-center justify-between border-t border-pf-border/60 px-4 py-3">
+            <p className="font-ui text-[10px] text-pf-muted">
               Page {page} of {totalPages} · {serverPage.total} sessions
             </p>
             <div className="flex gap-2">
@@ -483,7 +483,7 @@ export default function AdminPayments() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40 hover:enabled:border-ink hover:enabled:text-ink"
+                className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted disabled:opacity-40 hover:enabled:border-pf-burgundy hover:enabled:text-pf-text"
               >
                 Prev
               </button>
@@ -491,7 +491,7 @@ export default function AdminPayments() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="border border-mist px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40 hover:enabled:border-ink hover:enabled:text-ink"
+                className="border border-pf-border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted disabled:opacity-40 hover:enabled:border-pf-burgundy hover:enabled:text-pf-text"
               >
                 Next
               </button>
@@ -508,23 +508,23 @@ export default function AdminPayments() {
             onClick={() => setDrawerOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative ml-auto flex h-full w-72 flex-col bg-canvas p-5 shadow-xl">
+          <div className="relative ml-auto flex h-full w-72 flex-col bg-pf-card p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Filters</p>
+              <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Filters</p>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:text-ink"
+                className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:text-pf-text"
               >
                 Close
               </button>
             </div>
-            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Status
               <select
                 value={statusFilter}
                 onChange={(e) => { resetPage(setStatusFilter)(e.target.value); setDrawerOpen(false); }}
-                className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs"
+                className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs"
               >
                 <option value="all">All statuses</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -532,12 +532,12 @@ export default function AdminPayments() {
                 ))}
               </select>
             </label>
-            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Method
               <select
                 value={methodFilter}
                 onChange={(e) => { resetPage(setMethodFilter)(e.target.value); setDrawerOpen(false); }}
-                className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs"
+                className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs"
               >
                 <option value="all">All methods</option>
                 <option value="upi">UPI</option>
@@ -551,7 +551,7 @@ export default function AdminPayments() {
               onClick={() => {
                 setStatusFilter("all"); setMethodFilter("all"); setPage(1); setDrawerOpen(false);
               }}
-              className="mt-auto font-ui text-[10px] uppercase tracking-[.14em] text-accent hover:underline"
+              className="mt-auto font-ui text-[10px] uppercase tracking-[.14em] text-pf-burgundy hover:underline"
             >
               Clear all
             </button>

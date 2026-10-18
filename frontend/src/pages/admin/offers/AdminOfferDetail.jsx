@@ -48,7 +48,7 @@ export default function AdminOfferDetail() {
   if (loading) {
     return (
       <AdminPage eyebrow="Offers" title="Loading offer…">
-        <p className="py-12 text-center font-ui text-sm text-taupe">Fetching this offer from the server…</p>
+        <p className="py-12 text-center font-ui text-sm text-pf-muted">Fetching this offer from the server…</p>
       </AdminPage>
     );
   }
@@ -57,9 +57,9 @@ export default function AdminOfferDetail() {
     return (
       <AdminPage eyebrow="Offers" title="Offer not found" description="The server has no coupon with this id.">
         {error ? (
-          <p role="alert" className="mb-4 font-ui text-sm text-accent">{error}</p>
+          <p role="alert" className="mb-4 font-ui text-sm text-pf-burgundy">{error}</p>
         ) : null}
-        <Link to={`${prefix}/offers`} className="font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/offers`} className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
           Back to offers
         </Link>
       </AdminPage>
@@ -97,7 +97,7 @@ export default function AdminOfferDetail() {
       eyebrow={`Business / Offers / ${offer.code}`}
       title={
         <>
-          {offer.name} <span className="italic text-accent">{offer.code}</span>
+          {offer.name} <span className="italic text-pf-burgundy">{offer.code}</span>
         </>
       }
       description={offer.description || "House promotion."}
@@ -127,29 +127,29 @@ export default function AdminOfferDetail() {
       }
     >
       {notice ? (
-        <p className="mb-6 border border-mist/80 bg-canvas px-4 py-3 font-ui text-sm">{notice}</p>
+        <p className="mb-6 border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm">{notice}</p>
       ) : null}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Status</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Status</p>
           <div className="mt-2">
             <OfferStatusBadge status={offer.displayStatus} />
           </div>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Discount</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Discount</p>
           <p className="mt-1 font-display text-2xl">{formatOfferDiscount(offer)}</p>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Usage</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Usage</p>
           <p className="mt-1 font-display text-2xl">
             {used}
             {offer.usageLimit > 0 ? ` / ${offer.usageLimit}` : ""}
           </p>
         </div>
-        <div className="border border-mist/80 bg-surface/40 p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Discount given</p>
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Discount given</p>
           <p className="mt-1 font-display text-2xl">{formatINR(discountGiven)}</p>
         </div>
       </div>
@@ -159,27 +159,27 @@ export default function AdminOfferDetail() {
           <AdminPanel eyebrow="Overview" title="Offer">
             <dl className="grid gap-4 sm:grid-cols-2 font-ui text-sm">
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Code</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Code</dt>
                 <dd className="mt-1">{offer.code}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Type</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Type</dt>
                 <dd className="mt-1">{offer.type === "FIXED_AMOUNT" ? "Fixed amount" : "Percentage"}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Minimum order</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Minimum order</dt>
                 <dd className="mt-1">{offer.minimumOrderValue ? formatINR(offer.minimumOrderValue) : "None"}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Maximum discount</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Maximum discount</dt>
                 <dd className="mt-1">{offer.maximumDiscount ? formatINR(offer.maximumDiscount) : "None"}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Stackable</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Stackable</dt>
                 <dd className="mt-1">{offer.stackable ? "Yes" : "No"}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-[.16em] text-taupe">Priority</dt>
+                <dt className="text-[10px] uppercase tracking-[.16em] text-pf-muted">Priority</dt>
                 <dd className="mt-1">{offer.priority}</dd>
               </div>
             </dl>
@@ -189,7 +189,7 @@ export default function AdminOfferDetail() {
             <p className="font-ui text-sm">
               {offer.startDate || "Open"} — {offer.endDate || "No end"}
             </p>
-            <p className="mt-2 font-ui text-[11px] text-taupe">
+            <p className="mt-2 font-ui text-[11px] text-pf-muted">
               Status is derived from these dates. Expired offers cannot be redeemed.
             </p>
           </AdminPanel>
@@ -197,16 +197,16 @@ export default function AdminOfferDetail() {
           <AdminPanel eyebrow="Eligibility" title="Who and what">
             <dl className="space-y-3 font-ui text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-taupe">Customers</dt>
+                <dt className="text-pf-muted">Customers</dt>
                 <dd>{describeCustomerEligibility(offer)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-taupe">Products</dt>
+                <dt className="text-pf-muted">Products</dt>
                 <dd className="text-right">{describeEligibility(offer)}</dd>
               </div>
               {offer.excludedProducts.length || offer.excludedCategories.length || offer.excludedCollections.length ? (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-taupe">Exclusions</dt>
+                  <dt className="text-pf-muted">Exclusions</dt>
                   <dd className="text-right">
                     {[
                       offer.excludedProducts.length ? `${offer.excludedProducts.length} pieces` : null,
@@ -223,29 +223,29 @@ export default function AdminOfferDetail() {
 
           <AdminPanel eyebrow="Redemptions" title="Orders using this offer">
             {redemptions.length ? (
-              <div className="divide-y divide-mist/60">
+              <div className="divide-y divide-pf-border/60">
                 {redemptions.map((entry) => (
                   <div key={entry.orderId} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div>
                       <Link
                         to={`${prefix}/orders/${entry.orderId}`}
-                        className="font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline"
+                        className="font-ui text-sm text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline"
                       >
                         {entry.orderId}
                       </Link>
-                      <p className="font-ui text-[11px] text-taupe">
+                      <p className="font-ui text-[11px] text-pf-muted">
                         {entry.customer} · {formatOrderDate(entry.date)}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-ui text-sm">{formatINR(entry.discount)}</p>
-                      <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">{entry.status}</p>
+                      <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">{entry.status}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="font-ui text-sm text-taupe">
+              <p className="font-ui text-sm text-pf-muted">
                 No orders in this browser have redeemed this code yet.
                 {used ? ` Seeded usage stands at ${used}.` : ""}
               </p>
@@ -257,19 +257,19 @@ export default function AdminOfferDetail() {
           <AdminPanel eyebrow="Usage" title="Limits">
             <dl className="space-y-3 font-ui text-sm">
               <div className="flex justify-between">
-                <dt className="text-taupe">House limit</dt>
+                <dt className="text-pf-muted">House limit</dt>
                 <dd>{offer.usageLimit || "Unlimited"}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-taupe">Per customer</dt>
+                <dt className="text-pf-muted">Per customer</dt>
                 <dd>{offer.perCustomerLimit || "Unlimited"}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-taupe">Recorded uses</dt>
+                <dt className="text-pf-muted">Recorded uses</dt>
                 <dd>{used}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-taupe">Orders on register</dt>
+                <dt className="text-pf-muted">Orders on register</dt>
                 <dd>{redemptions.length}</dd>
               </div>
             </dl>

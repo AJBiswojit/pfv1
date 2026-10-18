@@ -19,7 +19,7 @@
  *     hand-written category list;
  *   · `<Brand variant="lockup" wordmark={brand.name}>` — the single brand seam
  *     every portal shares (the mark asset is the real
- *     `src/assets/pratikshya_logo.png`, resolved by `Brand` itself);
+ *     `/design/pratikshya-logo.webp`, resolved by `Brand` itself);
  *   · the existing `SearchPanel`, `AccountDropdown`, `CartDrawer` trigger and
  *     wishlist destination — the new header *drives* them, it does not
  *     re-implement them;

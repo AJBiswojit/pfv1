@@ -302,18 +302,18 @@ export default function ProductQuickCreate({
 
   if (productId && loadState === "loading") {
     return (
-      <div className="border border-mist/80 bg-canvas p-8 text-center">
-        <p className="font-display text-2xl font-light text-ink">Loading product…</p>
-        <p className="mt-2 font-ui text-sm text-taupe">Fetching the authoritative record from the server.</p>
+      <div className="border border-pf-border/80 bg-pf-card p-8 text-center">
+        <p className="font-display text-2xl font-light text-pf-text">Loading product…</p>
+        <p className="mt-2 font-ui text-sm text-pf-muted">Fetching the authoritative record from the server.</p>
       </div>
     );
   }
 
   if (productId && loadState === "error") {
     return (
-      <div className="border border-mist/80 bg-canvas p-8 text-center">
-        <p className="font-display text-2xl font-light text-ink">Product unavailable</p>
-        <p className="mt-2 font-ui text-sm text-taupe">{loadError}</p>
+      <div className="border border-pf-border/80 bg-pf-card p-8 text-center">
+        <p className="font-display text-2xl font-light text-pf-text">Product unavailable</p>
+        <p className="mt-2 font-ui text-sm text-pf-muted">{loadError}</p>
         <AtelierButton size="chip" className="mt-5" onClick={() => navigate(exitTo)}>
           Back to products
         </AtelierButton>
@@ -323,7 +323,7 @@ export default function ProductQuickCreate({
 
   return (
     <div className="pb-24">
-      <ol className="mb-8 flex flex-wrap gap-1 border-b border-mist/80" aria-label="Create steps">
+      <ol className="mb-8 flex flex-wrap gap-1 border-b border-pf-border/80" aria-label="Create steps">
         {STEPS.map((entry) => {
           const active = step === entry.id;
           const done = step > entry.id;
@@ -336,10 +336,10 @@ export default function ProductQuickCreate({
                 className={cn(
                   "relative whitespace-nowrap px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] transition-colors",
                   active
-                    ? "border-b-2 border-accent text-ink font-semibold"
+                    ? "border-b-2 border-pf-gold-deep text-pf-text font-semibold"
                     : done
-                      ? "border-b-2 border-transparent text-ink hover:text-accent"
-                      : "border-b-2 border-transparent text-taupe"
+                      ? "border-b-2 border-transparent text-pf-text hover:text-pf-burgundy"
+                      : "border-b-2 border-transparent text-pf-muted"
                 )}
               >
                 {entry.id}. {entry.label}
@@ -350,12 +350,12 @@ export default function ProductQuickCreate({
       </ol>
 
       {draft.exists ? (
-        <p className="mb-5 font-ui text-[11px] uppercase tracking-[.14em] text-taupe">
-          Draft <span className="text-ink">{draft.id}</span>
+        <p className="mb-5 font-ui text-[11px] uppercase tracking-[.14em] text-pf-muted">
+          Draft <span className="text-pf-text">{draft.id}</span>
           {draft.sku ? (
             <>
               {" "}
-              · SKU <span className="text-ink">{draft.sku}</span>
+              · SKU <span className="text-pf-text">{draft.sku}</span>
             </>
           ) : null}
         </p>
@@ -367,8 +367,8 @@ export default function ProductQuickCreate({
             className={cn(
               "mb-5 border px-4 py-3 font-ui text-sm",
               feedback.kind === "error"
-                ? "border-accent/40 bg-accent/[0.05] text-accent"
-                : "border-mist/80 bg-canvas text-ink"
+                ? "border-pf-gold-deep/40 bg-pf-burgundy/[0.05] text-pf-burgundy"
+                : "border-pf-border/80 bg-pf-card text-pf-text"
             )}
           >
             {feedback.message}
@@ -376,7 +376,7 @@ export default function ProductQuickCreate({
         ) : null}
       </div>
 
-      <div className="border border-mist/80 bg-surface/40 p-5 sm:p-7">
+      <div className="border border-pf-border/80 bg-pf-ivory/40 p-5 sm:p-7">
         {step === 1 ? (
           <div className="grid gap-6 lg:grid-cols-2">
             <ProductTaxonomyFields
@@ -436,13 +436,13 @@ export default function ProductQuickCreate({
               </Field>
             </div>
             {pricing.finalPrice > 0 ? (
-              <p className="font-ui text-sm text-ink">
+              <p className="font-ui text-sm text-pf-text">
                 Customer pays <span className="font-medium">{formatINR(pricing.finalPrice)}</span>
                 {pricing.savings > 0 ? ` · saves ${formatINR(pricing.savings)}` : ""}
               </p>
             ) : null}
             {pricing.errors.length ? (
-              <ul className="border border-accent/40 bg-accent/[0.05] p-4 font-ui text-sm text-accent">
+              <ul className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-4 font-ui text-sm text-pf-burgundy">
                 {pricing.errors.map((error) => (
                   <li key={error}>— {error}</li>
                 ))}
@@ -474,7 +474,7 @@ export default function ProductQuickCreate({
 
             {draft.exists ? (
               <div className="space-y-3">
-                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-ink">Cover image</p>
+                <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Cover image</p>
                 <ProductMediaManager
                   productId={draft.id}
                   scope={portal}
@@ -492,7 +492,7 @@ export default function ProductQuickCreate({
                 />
               </div>
             ) : (
-              <p className="font-ui text-xs text-taupe">Save the draft on the previous step to upload a cover.</p>
+              <p className="font-ui text-xs text-pf-muted">Save the draft on the previous step to upload a cover.</p>
             )}
           </div>
         ) : null}
@@ -515,36 +515,36 @@ export default function ProductQuickCreate({
             </Field>
 
             <div>
-              <p className="mb-3 font-ui text-[10px] uppercase tracking-[.18em] text-ink">Ready checklist</p>
-              <ul className="border border-mist/80 bg-canvas divide-y divide-mist/70">
+              <p className="mb-3 font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Ready checklist</p>
+              <ul className="border border-pf-border/80 bg-pf-card divide-y divide-pf-border/70">
                 {checklist.map((item) => (
                   <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <span className="font-ui text-sm text-ink">{item.label}</span>
+                    <span className="font-ui text-sm text-pf-text">{item.label}</span>
                     {item.done ? (
-                      <span className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-wider text-ink">
+                      <span className="inline-flex items-center gap-1 font-ui text-[11px] uppercase tracking-wider text-pf-text">
                         <Check size={12} aria-hidden="true" /> Ready
                       </span>
                     ) : (
-                      <span className="font-ui text-[11px] uppercase tracking-wider text-accent">
+                      <span className="font-ui text-[11px] uppercase tracking-wider text-pf-burgundy">
                         {item.live ? "Needed to go live" : "Needed to submit"}
                       </span>
                     )}
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 font-ui text-[11px] text-taupe">
+              <p className="mt-3 font-ui text-[11px] text-pf-muted">
                 A missing cover does not block submit — it will block publishing until a manager or admin adds one.
               </p>
             </div>
           </div>
         ) : null}
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-mist/70 pt-5">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-pf-border/70 pt-5">
           {step > 1 ? (
             <button
               type="button"
               onClick={() => setStep(step - 1)}
-              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-taupe hover:text-ink"
+              className="inline-flex items-center gap-1.5 font-ui text-[11px] uppercase tracking-wider text-pf-muted hover:text-pf-text"
             >
               <ArrowLeft size={13} aria-hidden="true" /> {STEPS[step - 2].label}
             </button>
@@ -564,19 +564,19 @@ export default function ProductQuickCreate({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-col-reverse gap-3 border border-mist/80 bg-canvas p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-8 flex flex-col-reverse gap-3 border border-pf-border/80 bg-pf-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <AtelierButton variant="outline" size="chip" onClick={handleCancel}>
             Cancel
           </AtelierButton>
           <Link
             to={completeHref}
-            className="font-ui text-[11px] uppercase tracking-wider text-taupe underline-offset-4 hover:text-ink hover:underline"
+            className="font-ui text-[11px] uppercase tracking-wider text-pf-muted underline-offset-4 hover:text-pf-text hover:underline"
           >
             {draft.exists ? "Open complete record" : "Use full editor instead"}
           </Link>
           {dirty ? (
-            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Unsaved changes</span>
+            <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Unsaved changes</span>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -603,12 +603,12 @@ export default function ProductQuickCreate({
           role="dialog"
           aria-modal="true"
           aria-label="Discard unsaved changes?"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/50 p-4"
           onClick={() => setConfirmCancel(false)}
         >
-          <div className="w-full max-w-md border border-mist bg-ivory p-7" onClick={(event) => event.stopPropagation()}>
-            <p className="font-display text-2xl font-light text-ink">Leave without saving?</p>
-            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-7" onClick={(event) => event.stopPropagation()}>
+            <p className="font-display text-2xl font-light text-pf-text">Leave without saving?</p>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">
               This product has unsaved changes. If you leave now, everything entered since the last save will be lost.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
@@ -635,12 +635,12 @@ export default function ProductQuickCreate({
           role="dialog"
           aria-modal="true"
           aria-label="Approve and publish this product?"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/50 p-4"
           onClick={() => setConfirmPublish(false)}
         >
-          <div className="w-full max-w-md border border-mist bg-ivory p-7" onClick={(event) => event.stopPropagation()}>
-            <p className="font-display text-2xl font-light text-ink">Approve and publish?</p>
-            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+          <div className="w-full max-w-md border border-pf-border bg-pf-ivory p-7" onClick={(event) => event.stopPropagation()}>
+            <p className="font-display text-2xl font-light text-pf-text">Approve and publish?</p>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">
               Because you created this product, you can submit, approve and publish it in one step.
               The server still runs the same publish checklist. The piece will appear on the storefront.
             </p>

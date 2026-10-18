@@ -38,7 +38,7 @@ const emptyDraft = {
   seoDescription: "",
 };
 
-const inputClass = "w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent";
+const inputClass = "w-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep";
 
 /** Server record → form draft. Only editable columns are copied; the
  * lifecycle status is displayed from the server record itself and is never
@@ -159,7 +159,7 @@ export default function AdminCategoryForm() {
   const shell = (children) => (
     <AdminPage
       eyebrow="Business / Taxonomy"
-      title={isEdit ? <>Edit <span className="italic text-accent">category.</span></> : <>Create <span className="italic text-accent">category.</span></>}
+      title={isEdit ? <>Edit <span className="italic text-pf-burgundy">category.</span></> : <>Create <span className="italic text-pf-burgundy">category.</span></>}
       description="Categories define what a product is. They power product forms, storefront filters, category pages, search, offers and breadcrumbs."
       actions={<AtelierButton as={Link} to={`${prefix}/categories`} variant="outline" size="chip">Back to categories</AtelierButton>}
     >
@@ -170,7 +170,7 @@ export default function AdminCategoryForm() {
   if (load.state === "loading") {
     return shell(
       <AdminPanel eyebrow="Category record" title="Details">
-        <p role="status" className="font-ui text-sm text-taupe">Loading category…</p>
+        <p role="status" className="font-ui text-sm text-pf-muted">Loading category…</p>
       </AdminPanel>
     );
   }
@@ -178,7 +178,7 @@ export default function AdminCategoryForm() {
   if (load.state === "notfound" || load.state === "error") {
     return shell(
       <AdminPanel eyebrow="Category record" title="Details">
-        <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">
+        <p role="alert" className="mb-5 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3 font-ui text-sm text-pf-burgundy">
           {load.state === "notfound"
             ? "Category not found."
             : load.message || "The category could not be loaded from the server."}
@@ -193,21 +193,21 @@ export default function AdminCategoryForm() {
 
   return shell(
     <AdminPanel eyebrow="Category record" title="Details">
-      {error ? <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">{error}</p> : null}
+      {error ? <p role="alert" className="mb-5 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3 font-ui text-sm text-pf-burgundy">{error}</p> : null}
       <form onSubmit={submit} className="grid gap-6 lg:grid-cols-2">
         <label className="lg:col-span-2">
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Name *</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Name *</span>
           <input className={inputClass} value={draft.name} onChange={(event) => setField("name", event.target.value)} placeholder="Category name" />
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Slug</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Slug</span>
           <input className={inputClass} value={draft.slug} onChange={(event) => setField("slug", slugify(event.target.value))} placeholder="category-slug" />
         </label>
         <div>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Status</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Status</span>
           {existing ? (
             <div className="flex flex-wrap items-center gap-3">
-              <span data-testid="category-status" className="border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink">{existing.status}</span>
+              <span data-testid="category-status" className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text">{existing.status}</span>
               {taxonomyLifecycleActions(existing.status).map((action) => (
                 <AtelierButton
                   key={action.key}
@@ -222,36 +222,36 @@ export default function AdminCategoryForm() {
               ))}
             </div>
           ) : (
-            <p className="border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-taupe">
+            <p className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-muted">
               New categories are created as {TAXONOMY_STATUS.DRAFT} — activate the record once it is ready.
             </p>
           )}
         </div>
         <label className="lg:col-span-2">
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Description</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Description</span>
           <textarea rows={4} className={inputClass} value={draft.description} onChange={(event) => setField("description", event.target.value)} />
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Image / fallback plate</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Image / fallback plate</span>
           <input className={inputClass} value={draft.image || ""} onChange={(event) => setField("image", event.target.value)} />
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Banner media ID</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Banner media ID</span>
           <input className={inputClass} value={draft.bannerMediaId || ""} onChange={(event) => setField("bannerMediaId", event.target.value)} placeholder="med-..." />
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Sort order</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Sort order</span>
           <input type="number" className={inputClass} value={draft.sortOrder} onChange={(event) => setField("sortOrder", event.target.value)} />
         </label>
-        <label className="flex items-center gap-3 pt-7 font-ui text-sm text-ink">
+        <label className="flex items-center gap-3 pt-7 font-ui text-sm text-pf-text">
           <input type="checkbox" checked={draft.featured} onChange={(event) => setField("featured", event.target.checked)} /> Featured category
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">SEO title</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">SEO title</span>
           <input className={inputClass} value={draft.seoTitle || ""} onChange={(event) => setField("seoTitle", event.target.value)} />
         </label>
         <label>
-          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">SEO description</span>
+          <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">SEO description</span>
           <textarea rows={3} className={inputClass} value={draft.seoDescription || ""} onChange={(event) => setField("seoDescription", event.target.value)} />
         </label>
         <div className="flex flex-wrap gap-3 lg:col-span-2">

@@ -47,9 +47,9 @@ export default function CheckInCard({ employee: employeeOverride = null, compact
   void revision;
 
   return (
-    <section className="border border-mist/80 bg-surface/40 p-6">
-      <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Today's attendance</p>
-      <h2 className="mt-2 font-display text-2xl font-light text-ink">
+    <section className="border border-pf-border/80 bg-pf-ivory/40 p-6">
+      <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Today's attendance</p>
+      <h2 className="mt-2 font-display text-2xl font-light text-pf-text">
         {compact ? "On the floor" : "Check in for the floor"}
       </h2>
       <Rule width="w-8" tone="accent" className="my-3" />
@@ -57,7 +57,7 @@ export default function CheckInCard({ employee: employeeOverride = null, compact
       <div className="flex flex-wrap items-center gap-3">
         <AttendanceStatusBadge status={record.status} />
         {record.lateMinutes > 0 ? (
-          <p className="font-ui text-xs text-taupe">
+          <p className="font-ui text-xs text-pf-muted">
             You checked in {record.lateMinutes} minute{record.lateMinutes === 1 ? "" : "s"} late.
           </p>
         ) : null}
@@ -65,33 +65,33 @@ export default function CheckInCard({ employee: employeeOverride = null, compact
 
       <dl className="mt-5 grid gap-3 sm:grid-cols-3">
         <div>
-          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Check in</dt>
-          <dd className="mt-1 font-ui text-sm text-ink">{formatTime(record.checkIn)}</dd>
+          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Check in</dt>
+          <dd className="mt-1 font-ui text-sm text-pf-text">{formatTime(record.checkIn)}</dd>
         </div>
         <div>
-          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Check out</dt>
-          <dd className="mt-1 font-ui text-sm text-ink">{formatTime(record.checkOut)}</dd>
+          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Check out</dt>
+          <dd className="mt-1 font-ui text-sm text-pf-text">{formatTime(record.checkOut)}</dd>
         </div>
         <div>
-          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Hours</dt>
-          <dd className="mt-1 font-ui text-sm text-ink">
+          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Hours</dt>
+          <dd className="mt-1 font-ui text-sm text-pf-text">
             {record.workMinutes ? formatMinutes(record.workMinutes) : checkedIn && !checkedOut ? "On the floor" : "—"}
           </dd>
         </div>
       </dl>
 
-      <p className="mt-4 font-ui text-[11px] text-taupe">
+      <p className="mt-4 font-ui text-[11px] text-pf-muted">
         {location?.caption}. This is a browser demo — not payroll, GPS or biometric attendance.
       </p>
 
       {message ? (
-        <p className="mt-3 font-ui text-xs text-cocoa" role="status" aria-live="polite">
+        <p className="mt-3 font-ui text-xs text-pf-cocoa" role="status" aria-live="polite">
           {message}
         </p>
       ) : null}
 
       {onLeave ? (
-        <p className="mt-4 font-ui text-sm text-taupe">You are on approved leave today.</p>
+        <p className="mt-4 font-ui text-sm text-pf-muted">You are on approved leave today.</p>
       ) : (
         <div className="mt-5 flex flex-wrap gap-2">
           {!checkedIn ? (
@@ -103,7 +103,7 @@ export default function CheckInCard({ employee: employeeOverride = null, compact
               {busy ? "Saving…" : "Check out"}
             </AtelierButton>
           ) : (
-            <p className="font-ui text-sm text-ink">
+            <p className="font-ui text-sm text-pf-text">
               Today's attendance · in {formatTime(record.checkIn)} · out {formatTime(record.checkOut)} ·{" "}
               {formatMinutes(record.workMinutes)}
             </p>

@@ -1,9 +1,9 @@
 import { cn } from "../../utils/cn";
 
 /**
- * Operational table that becomes a stacked card list on small screens.
- *
- * Updated to use the approved warm-ivory / champagne-gold palette.
+ * The shared staff operational table (both portals): ivory card surface,
+ * 11px semibold column heads, 14px body, row hover — becoming a stacked
+ * card list on small screens so nothing clips or overflows sideways.
  */
 export default function DataTable({
   columns = [],
@@ -14,23 +14,23 @@ export default function DataTable({
 }) {
   if (!rows.length) {
     return (
-      <div className="border border-pf-border bg-pf-card px-5 py-10 text-center">
-        <p className="font-ui text-sm text-pf-muted">{empty}</p>
+      <div className="rounded-xl border border-pf-border bg-pf-card px-5 py-12 text-center shadow-[0_10px_40px_rgb(74_7_24/0.05)]">
+        <p className="font-ui text-sm leading-relaxed text-pf-muted">{empty}</p>
       </div>
     );
   }
 
   return (
-    <div className={cn("border border-pf-border bg-pf-card", className)}>
+    <div className={cn("overflow-hidden rounded-xl border border-pf-border bg-pf-card shadow-[0_10px_40px_rgb(74_7_24/0.05)]", className)}>
       <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full text-left">
-          <thead className="border-b border-pf-border bg-pf-ivory/50">
+          <thead className="border-b border-pf-border bg-pf-ivory">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.id}
                   scope="col"
-                  className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
+                  className="px-4 py-3.5 font-ui text-[11px] font-semibold uppercase tracking-[.12em] text-pf-muted"
                 >
                   {column.label}
                 </th>
@@ -39,9 +39,9 @@ export default function DataTable({
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={row[rowKey] ?? index} className="border-b border-pf-border-light last:border-0">
+              <tr key={row[rowKey] ?? index} className="border-b border-pf-border-light transition-colors last:border-0 hover:bg-pf-ivory/70">
                 {columns.map((column) => (
-                  <td key={column.id} className="px-4 py-3.5 align-top font-ui text-sm text-pf-text">
+                  <td key={column.id} className="px-4 py-4 align-top font-ui text-sm leading-relaxed text-pf-text">
                     {column.render ? column.render(row) : row[column.id]}
                   </td>
                 ))}
@@ -53,13 +53,13 @@ export default function DataTable({
 
       <ul className="divide-y divide-pf-border md:hidden">
         {rows.map((row, index) => (
-          <li key={row[rowKey] ?? index} className="space-y-2 px-4 py-4">
+          <li key={row[rowKey] ?? index} className="space-y-2.5 px-4 py-4">
             {columns.map((column) => (
               <div key={column.id} className="flex items-start justify-between gap-4">
-                <span className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">
+                <span className="font-ui text-[11px] font-semibold uppercase tracking-[.12em] text-pf-muted">
                   {column.label}
                 </span>
-                <div className="min-w-0 text-right font-ui text-sm text-pf-text">
+                <div className="min-w-0 text-right font-ui text-sm leading-relaxed text-pf-text">
                   {column.render ? column.render(row) : row[column.id]}
                 </div>
               </div>

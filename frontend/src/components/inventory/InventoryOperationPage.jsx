@@ -13,8 +13,8 @@ import { ROLES } from "../../config/employeeRoles";
 import catalogRepository from "../../services/catalogRepository";
 import { LOCATION_TYPES } from "../../services/inventory/inventoryRepository";
 
-const fieldClass = "mt-2 h-11 w-full border border-mist bg-canvas px-3 font-ui text-sm text-ink outline-none transition focus:border-accent focus:ring-1 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50";
-const labelClass = "font-ui text-[10px] uppercase tracking-[.15em] text-taupe";
+const fieldClass = "mt-2 h-11 w-full border border-pf-border bg-pf-card px-3 font-ui text-sm text-pf-text outline-none transition focus:border-pf-gold-deep focus:ring-1 focus:ring-pf-burgundy/20 disabled:cursor-not-allowed disabled:opacity-50";
+const labelClass = "font-ui text-[10px] uppercase tracking-[.15em] text-pf-muted";
 
 const actorFor = (portal, admin, employee) => portal !== "employee"
   ? { adminId: admin?.adminId, name: admin?.name || "Administrator" }
@@ -154,7 +154,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
       {feedback ? (
         <div
           role={feedback.kind === "error" ? "alert" : "status"}
-          className={`mb-6 flex items-start gap-3 border p-4 font-ui text-sm ${feedback.kind === "error" ? "border-accent/40 bg-accent/[0.05] text-accent" : "border-cocoa/25 bg-cocoa/[0.05] text-cocoa"}`}
+          className={`mb-6 flex items-start gap-3 border p-4 font-ui text-sm ${feedback.kind === "error" ? "border-pf-gold-deep/40 bg-pf-burgundy/[0.05] text-pf-burgundy" : "border-pf-cocoa/25 bg-pf-cocoa/[0.05] text-pf-cocoa"}`}
         >
           {feedback.kind === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />}
           {feedback.message}
@@ -164,7 +164,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,.75fr)]">
         <AdminPanel eyebrow="Stock operation" title={title}>
           {!isReceive ? (
-            <fieldset className="mb-6 border-b border-mist/70 pb-6">
+            <fieldset className="mb-6 border-b border-pf-border/70 pb-6">
               <legend className={labelClass}>Operation</legend>
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
@@ -179,7 +179,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
                     type="button"
                     aria-pressed={form.adjustType === value}
                     onClick={() => patch({ adjustType: value, reason: value === "ADJUST" ? "Counting Correction" : "" })}
-                    className={`border px-3 py-2 font-ui text-[10px] uppercase tracking-[.12em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${form.adjustType === value ? "border-ink bg-ink text-ivory" : "border-mist text-taupe hover:border-ink hover:text-ink"}`}
+                    className={`border px-3 py-2 font-ui text-[10px] uppercase tracking-[.12em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy ${form.adjustType === value ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory" : "border-pf-border text-pf-muted hover:border-pf-burgundy hover:text-pf-text"}`}
                   >
                     {label}
                   </button>
@@ -201,7 +201,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
                 />
               </label>
               <label className={labelClass}>
-                Product <span className="text-accent">*</span>
+                Product <span className="text-pf-burgundy">*</span>
                 <select
                   required
                   className={fieldClass}
@@ -227,7 +227,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
                 </select>
               </label>
               <label className={labelClass}>
-                {isReceive ? "Destination" : "Location"} <span className="text-accent">*</span>
+                {isReceive ? "Destination" : "Location"} <span className="text-pf-burgundy">*</span>
                 <select required className={fieldClass} value={form.locationId} onChange={(event) => patch({ locationId: event.target.value })}>
                   <option value="">Select location</option>
                   {locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.type}</option>)}
@@ -235,12 +235,12 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
               </label>
               {isReceive || form.adjustType !== "ADJUST" ? (
                 <label className={labelClass}>
-                  Quantity <span className="text-accent">*</span>
+                  Quantity <span className="text-pf-burgundy">*</span>
                   <input required min="1" step="1" type="number" className={fieldClass} value={form.quantity} onChange={(event) => patch({ quantity: event.target.value })} />
                 </label>
               ) : (
                 <label className={labelClass}>
-                  Adjustment quantity <span className="text-accent">*</span>
+                  Adjustment quantity <span className="text-pf-burgundy">*</span>
                   <input required step="1" type="number" className={fieldClass} value={form.adjustment} onChange={(event) => patch({ adjustment: event.target.value })} placeholder="Use + or −" />
                 </label>
               )}
@@ -271,7 +271,7 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
                 </label>
               ) : (
                 <label className={labelClass}>
-                  Reason <span className="text-accent">*</span>
+                  Reason <span className="text-pf-burgundy">*</span>
                   {form.adjustType === "ADJUST" ? (
                     <select className={fieldClass} value={form.reason} onChange={(event) => patch({ reason: event.target.value })}>
                       {[
@@ -293,10 +293,10 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
               </label>
               <label className={`${labelClass} sm:col-span-2`}>
                 Notes
-                <textarea className="mt-2 min-h-24 w-full resize-y border border-mist bg-canvas p-3 font-ui text-sm text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent/20" value={form.notes} onChange={(event) => patch({ notes: event.target.value })} placeholder="Operational notes for the movement ledger" />
+                <textarea className="mt-2 min-h-24 w-full resize-y border border-pf-border bg-pf-card p-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep focus:ring-1 focus:ring-pf-burgundy/20" value={form.notes} onChange={(event) => patch({ notes: event.target.value })} placeholder="Operational notes for the movement ledger" />
               </label>
             </div>
-            <div className="flex flex-wrap gap-3 border-t border-mist/70 pt-5">
+            <div className="flex flex-wrap gap-3 border-t border-pf-border/70 pt-5">
               <AtelierButton type="submit" disabled={!requiredReady}>{title}</AtelierButton>
               <AtelierButton as={Link} to={root} variant="outline">Cancel</AtelierButton>
             </div>
@@ -313,24 +313,24 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
                 ["Available before", current.available],
                 [isReceive ? "Receiving" : "Movement", isReceive ? `+${Number(form.quantity) || 0}` : form.adjustType === "ADJUST" ? `${adjustment > 0 ? "+" : ""}${adjustment}` : form.adjustType === "DAMAGE" ? `−${Number(form.quantity) || 0}` : form.adjustType === "INSPECT_SELLABLE" ? `+${Number(form.quantity) || 0}` : "Quarantine"],
               ].map(([label, value]) => (
-                <div key={label} className="flex items-start justify-between gap-4 border-b border-mist/60 pb-3 last:border-0 last:pb-0">
-                  <dt className="text-taupe">{label}</dt>
-                  <dd className="text-right font-medium text-ink">{value}</dd>
+                <div key={label} className="flex items-start justify-between gap-4 border-b border-pf-border/60 pb-3 last:border-0 last:pb-0">
+                  <dt className="text-pf-muted">{label}</dt>
+                  <dd className="text-right font-medium text-pf-text">{value}</dd>
                 </div>
               ))}
             </dl>
-            <div className="mt-5 flex items-center justify-between gap-4 border-l-2 border-accent bg-canvas p-4">
-              <span className="font-ui text-[10px] uppercase tracking-[.15em] text-taupe">Available after</span>
-              <span className="font-display text-3xl text-ink">{predicted}</span>
+            <div className="mt-5 flex items-center justify-between gap-4 border-l-2 border-pf-gold-deep bg-pf-card p-4">
+              <span className="font-ui text-[10px] uppercase tracking-[.15em] text-pf-muted">Available after</span>
+              <span className="font-display text-3xl text-pf-text">{predicted}</span>
             </div>
             {form.adjustType?.startsWith("INSPECT") ? (
-              <p className="mt-4 font-ui text-[11px] leading-relaxed text-taupe">
+              <p className="mt-4 font-ui text-[11px] leading-relaxed text-pf-muted">
                 Returned units stay quarantined until this inspection. Sellable units become on-hand; damaged units remain unavailable.
               </p>
             ) : null}
           </AdminPanel>
           <AdminPanel eyebrow="Audit rule" title="No silent changes">
-            <p className="font-ui text-xs leading-relaxed text-taupe">
+            <p className="font-ui text-xs leading-relaxed text-pf-muted">
               Confirmation writes an immutable movement with product, variant, location, before/after quantities, employee, timestamp, reference and reason.
             </p>
           </AdminPanel>
@@ -338,11 +338,11 @@ export default function InventoryOperationPage({ portal = "admin", operation = "
       </div>
 
       {confirming ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirming(false); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="stock-confirm-title" onKeyDown={(event) => { if (event.key === "Escape") setConfirming(false); }} className="w-full max-w-lg border border-mist bg-ivory p-6 shadow-2xl sm:p-8">
-            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-accent">Confirm stock movement</p>
-            <h2 id="stock-confirm-title" className="mt-2 font-display text-3xl font-light text-ink">Record this {title.toLowerCase()}?</h2>
-            <p className="mt-3 font-ui text-sm leading-relaxed text-taupe">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-pf-burgundy/55 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirming(false); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="stock-confirm-title" onKeyDown={(event) => { if (event.key === "Escape") setConfirming(false); }} className="w-full max-w-lg border border-pf-border bg-pf-ivory p-6 shadow-2xl sm:p-8">
+            <p className="font-ui text-[10px] uppercase tracking-[.2em] text-pf-burgundy">Confirm stock movement</p>
+            <h2 id="stock-confirm-title" className="mt-2 font-display text-3xl font-light text-pf-text">Record this {title.toLowerCase()}?</h2>
+            <p className="mt-3 font-ui text-sm leading-relaxed text-pf-muted">
               {product?.name} · {inventory.locations.find((location) => location.id === form.locationId)?.name}. This action will appear in Movement History.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">

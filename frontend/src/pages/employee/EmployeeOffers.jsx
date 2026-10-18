@@ -52,7 +52,7 @@ export default function EmployeeOffers() {
       eyebrow="Offers"
       title={
         <>
-          House <span className="italic text-accent">offers.</span>
+          House <span className="italic text-pf-burgundy">offers.</span>
         </>
       }
       description={
@@ -71,7 +71,7 @@ export default function EmployeeOffers() {
       <div className="mb-5 flex flex-col gap-3 sm:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Search offers</span>
-          <Search className="absolute left-3 top-3 text-taupe" size={15} aria-hidden="true" />
+          <Search className="absolute left-3 top-3 text-pf-muted" size={15} aria-hidden="true" />
           <input
             className={`${employeeInputClass()} pl-9`}
             placeholder="Search code or name"
@@ -104,7 +104,7 @@ export default function EmployeeOffers() {
             render: (row) => (
               <Link
                 to={`/employee/offers/${row.id}`}
-                className="font-ui text-sm font-medium underline-offset-4 hover:text-accent hover:underline"
+                className="font-ui text-sm font-medium underline-offset-4 hover:text-pf-burgundy hover:underline"
               >
                 {row.code}
               </Link>
@@ -126,14 +126,14 @@ export default function EmployeeOffers() {
               canEdit ? (
                 <Link
                   to={`/employee/offers/${row.id}/edit`}
-                  className="font-ui text-[11px] uppercase tracking-widest text-brass hover:text-accent"
+                  className="font-ui text-[11px] uppercase tracking-widest text-pf-gold-text hover:text-pf-burgundy"
                 >
                   Edit
                 </Link>
               ) : (
                 <Link
                   to={`/employee/offers/${row.id}`}
-                  className="font-ui text-[11px] uppercase tracking-widest text-brass hover:text-accent"
+                  className="font-ui text-[11px] uppercase tracking-widest text-pf-gold-text hover:text-pf-burgundy"
                 >
                   View
                 </Link>

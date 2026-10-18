@@ -45,9 +45,9 @@ function StatusBadge({ status }) {
 
 function StatCard({ label, value, accent = false }) {
   return (
-    <div className={cn("border p-4", accent ? "border-accent/30 bg-accent/5" : "border-mist/80 bg-surface/40")}>
-      <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-      <p className={cn("mt-2 font-display text-3xl font-light", accent ? "text-accent" : "text-ink")}>
+    <div className={cn("border p-4", accent ? "border-pf-gold-deep/30 bg-pf-burgundy/5" : "border-pf-border/80 bg-pf-ivory/40")}>
+      <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+      <p className={cn("mt-2 font-display text-3xl font-light", accent ? "text-pf-burgundy" : "text-pf-text")}>
         {value}
       </p>
     </div>
@@ -94,12 +94,12 @@ export default function AdminPaymentReconcile() {
   return (
     <AdminPage
       eyebrow="Finance / Payments"
-      title={<>Batch <span className="italic text-accent">reconciliation.</span></>}
+      title={<>Batch <span className="italic text-pf-burgundy">reconciliation.</span></>}
       description="Audit and recover payment sessions stuck in PENDING or CREATED state due to network failures, browser closures, or server interruptions."
       actions={
         <Link
           to={`${prefix}/payments`}
-          className="inline-flex items-center gap-1.5 border border-mist bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+          className="inline-flex items-center gap-1.5 border border-pf-border bg-pf-card px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
         >
           <ArrowLeft size={11} /> Back to payments
         </Link>
@@ -110,22 +110,22 @@ export default function AdminPaymentReconcile() {
         <div className="space-y-6 lg:col-span-1">
           <AdminPanel eyebrow="Configuration" title="Run reconcile">
             {/* Info callout */}
-            <div className="mb-5 flex gap-3 border border-mist/60 bg-surface/40 px-4 py-3">
-              <Info size={14} className="mt-0.5 shrink-0 text-taupe" />
-              <div className="font-ui text-xs text-taupe space-y-1">
+            <div className="mb-5 flex gap-3 border border-pf-border/60 bg-pf-ivory/40 px-4 py-3">
+              <Info size={14} className="mt-0.5 shrink-0 text-pf-muted" />
+              <div className="font-ui text-xs text-pf-muted space-y-1">
                 <p>Queries Razorpay for all PENDING / CREATED sessions.</p>
                 <p>Safe cases (captured) are auto-recovered. Unsafe cases are flagged for manual review.</p>
-                <p className="text-ink">This operation is safe to run repeatedly.</p>
+                <p className="text-pf-text">This operation is safe to run repeatedly.</p>
               </div>
             </div>
 
-            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="mb-4 block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Session limit
               <select
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
                 disabled={running}
-                className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent disabled:opacity-50"
+                className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep disabled:opacity-50"
               >
                 {LIMIT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -137,7 +137,7 @@ export default function AdminPaymentReconcile() {
               type="button"
               disabled={running}
               onClick={handleRunReconcile}
-              className="w-full border border-accent bg-accent/5 px-4 py-3 font-ui text-[10px] uppercase tracking-[.18em] text-accent transition hover:bg-accent hover:text-canvas disabled:opacity-40 flex items-center justify-center gap-2"
+              className="w-full border border-pf-gold-deep bg-pf-burgundy/5 px-4 py-3 font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy transition hover:bg-pf-burgundy hover:text-canvas disabled:opacity-40 flex items-center justify-center gap-2"
             >
               <RotateCcw size={13} className={running ? "animate-spin" : ""} />
               {running ? "Running reconciliation…" : "Run Batch Reconcile"}
@@ -149,11 +149,11 @@ export default function AdminPaymentReconcile() {
         <div className="lg:col-span-2">
           {/* Pre-run state */}
           {!ran && !running && (
-            <div className="flex h-full min-h-[200px] items-center justify-center border border-dashed border-mist/60 bg-surface/20 px-6 py-12 text-center">
+            <div className="flex h-full min-h-[200px] items-center justify-center border border-dashed border-pf-border/60 bg-pf-ivory/20 px-6 py-12 text-center">
               <div>
-                <RotateCcw size={24} className="mx-auto mb-3 text-mist" />
-                <p className="font-display text-lg font-light text-taupe">No results yet</p>
-                <p className="mt-1 font-ui text-xs text-taupe">
+                <RotateCcw size={24} className="mx-auto mb-3 text-pf-border" />
+                <p className="font-display text-lg font-light text-pf-muted">No results yet</p>
+                <p className="mt-1 font-ui text-xs text-pf-muted">
                   Configure the limit and click Run to start.
                 </p>
               </div>
@@ -162,11 +162,11 @@ export default function AdminPaymentReconcile() {
 
           {/* Running skeleton */}
           {running && (
-            <div className="flex h-full min-h-[200px] items-center justify-center border border-mist/60 bg-surface/40 px-6 py-12 text-center">
+            <div className="flex h-full min-h-[200px] items-center justify-center border border-pf-border/60 bg-pf-ivory/40 px-6 py-12 text-center">
               <div>
-                <RotateCcw size={24} className="mx-auto mb-3 animate-spin text-accent" />
-                <p className="font-display text-lg font-light text-ink">Reconciling…</p>
-                <p className="mt-1 font-ui text-xs text-taupe">
+                <RotateCcw size={24} className="mx-auto mb-3 animate-spin text-pf-burgundy" />
+                <p className="font-display text-lg font-light text-pf-text">Reconciling…</p>
+                <p className="mt-1 font-ui text-xs text-pf-muted">
                   Querying Razorpay for up to {limit} sessions.
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default function AdminPaymentReconcile() {
 
           {/* Error */}
           {error && !running && (
-            <div role="alert" className="flex gap-3 border border-accent/30 bg-accent/5 px-4 py-4 font-ui text-sm text-accent">
+            <div role="alert" className="flex gap-3 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-4 font-ui text-sm text-pf-burgundy">
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold">Reconciliation failed</p>
@@ -206,9 +206,9 @@ export default function AdminPaymentReconcile() {
               ) : null}
 
               {result.totalAudited === 0 ? (
-                <div className="flex items-center gap-3 border border-mist/60 bg-surface/40 px-4 py-3">
-                  <CheckCircle2 size={16} className="text-taupe shrink-0" />
-                  <p className="font-ui text-sm text-taupe">
+                <div className="flex items-center gap-3 border border-pf-border/60 bg-pf-ivory/40 px-4 py-3">
+                  <CheckCircle2 size={16} className="text-pf-muted shrink-0" />
+                  <p className="font-ui text-sm text-pf-muted">
                     No PENDING or CREATED sessions found — nothing to reconcile.
                   </p>
                 </div>
@@ -220,9 +220,9 @@ export default function AdminPaymentReconcile() {
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[600px]">
                       <thead>
-                        <tr className="border-b border-mist/60 bg-canvas/60">
+                        <tr className="border-b border-pf-border/60 bg-pf-card/60">
                           {["Session ID", "Reconciled", "Status", "Flags", "Message"].map((h) => (
-                            <th key={h} className="px-4 py-3 text-left font-ui text-[9px] uppercase tracking-[.18em] text-taupe">
+                            <th key={h} className="px-4 py-3 text-left font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">
                               {h}
                             </th>
                           ))}
@@ -232,12 +232,12 @@ export default function AdminPaymentReconcile() {
                         {result.details.map((row, i) => (
                           <tr
                             key={row.session_id ?? i}
-                            className="border-b border-mist/40 last:border-0"
+                            className="border-b border-pf-border/40 last:border-0"
                           >
                             <td className="px-4 py-2">
                               <Link
                                 to={`${prefix}/payments/${row.session_id}`}
-                                className="font-mono text-[10px] text-brass hover:text-accent hover:underline"
+                                className="font-mono text-[10px] text-pf-gold-text hover:text-pf-burgundy hover:underline"
                               >
                                 {(row.session_id ?? "").slice(0, 13)}…
                               </Link>
@@ -246,14 +246,14 @@ export default function AdminPaymentReconcile() {
                               {row.reconciled ? (
                                 <span className="font-ui text-[10px] text-emerald-700">Yes</span>
                               ) : (
-                                <span className="font-ui text-[10px] text-taupe">No</span>
+                                <span className="font-ui text-[10px] text-pf-muted">No</span>
                               )}
                             </td>
                             <td className="px-4 py-2">
                               {row.session_status ? (
                                 <StatusBadge status={row.session_status} />
                               ) : (
-                                <span className="font-ui text-[10px] text-taupe">—</span>
+                                <span className="font-ui text-[10px] text-pf-muted">—</span>
                               )}
                             </td>
                             <td className="px-4 py-2">
@@ -262,10 +262,10 @@ export default function AdminPaymentReconcile() {
                                   <AlertTriangle size={10} /> Review
                                 </span>
                               ) : (
-                                <span className="font-ui text-[10px] text-taupe">—</span>
+                                <span className="font-ui text-[10px] text-pf-muted">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-2 font-ui text-[10px] text-taupe max-w-[240px] truncate">
+                            <td className="px-4 py-2 font-ui text-[10px] text-pf-muted max-w-[240px] truncate">
                               {row.message ?? "—"}
                             </td>
                           </tr>

@@ -219,7 +219,7 @@ export function SectionBasics({ draft, patch, errors, isNew }) {
 
       {isNew ? (
         <p className={hintClass + " lg:col-span-2"}>
-          URL slug will be created from the name: <span className="text-ink">/{slugPreview}</span>
+          URL slug will be created from the name: <span className="text-pf-text">/{slugPreview}</span>
         </p>
       ) : null}
     </div>

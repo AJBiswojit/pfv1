@@ -96,7 +96,7 @@ export default function AdminCategories() {
   return (
     <AdminPage
       eyebrow="Business / Taxonomy"
-      title={<>Category <span className="italic text-accent">management.</span></>}
+      title={<>Category <span className="italic text-pf-burgundy">management.</span></>}
       description="One managed category hierarchy feeds product classification, shop filters, category pages, search, offers and breadcrumbs."
       actions={<AtelierButton as={Link} to={`${prefix}/categories/new`} size="chip"><Plus size={13} aria-hidden="true" /> Create category</AtelierButton>}
     >
@@ -118,36 +118,36 @@ export default function AdminCategories() {
       </div>
 
       {listError ? (
-        <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-accent/50 bg-canvas px-4 py-3">
-          <p className="font-ui text-sm text-accent">{listError}</p>
-          <button type="button" onClick={load} className="border border-ink px-3 py-1 font-ui text-[10px] uppercase tracking-[.14em] text-ink hover:bg-ink hover:text-ivory">Retry</button>
+        <div role="alert" className="mb-5 flex items-start justify-between gap-4 border border-pf-gold-deep/50 bg-pf-card px-4 py-3">
+          <p className="font-ui text-sm text-pf-burgundy">{listError}</p>
+          <button type="button" onClick={load} className="border border-pf-burgundy px-3 py-1 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text hover:bg-pf-burgundy hover:text-pf-ivory">Retry</button>
         </div>
       ) : null}
 
-      {notice ? <p role="status" className="mb-5 border border-mist bg-canvas px-4 py-3 font-ui text-sm text-ink">{notice}</p> : null}
+      {notice ? <p role="status" className="mb-5 border border-pf-border bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">{notice}</p> : null}
 
       <AdminPanel eyebrow="Taxonomy" title="Categories">
         <label className="relative mb-5 block max-w-xl">
           <span className="sr-only">Search categories</span>
-          <Search className="absolute left-3 top-3 text-taupe" size={15} aria-hidden="true" />
+          <Search className="absolute left-3 top-3 text-pf-muted" size={15} aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="w-full border border-mist bg-canvas py-2.5 pl-9 pr-3 font-ui text-sm outline-none focus:border-accent"
+            className="w-full border border-pf-border bg-pf-card py-2.5 pl-9 pr-3 font-ui text-sm outline-none focus:border-pf-gold-deep"
             placeholder="Search category name, slug or description…"
           />
         </label>
 
         {rows === null ? (
-          <p className="py-12 text-center font-ui text-sm text-taupe">Loading categories from the server…</p>
+          <p className="py-12 text-center font-ui text-sm text-pf-muted">Loading categories from the server…</p>
         ) : null}
         {rows && rows.length === 0 && !listError ? (
-          <p className="py-12 text-center font-ui text-sm text-taupe">The server has no categories yet — create the first one.</p>
+          <p className="py-12 text-center font-ui text-sm text-pf-muted">The server has no categories yet — create the first one.</p>
         ) : null}
         <div className={rows && rows.length ? "hidden overflow-x-auto lg:block" : "hidden"}>
           <table className="w-full min-w-[860px] text-left">
             <thead>
-              <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+              <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                 {["Category", "Active subs", "Products", "Status", "Featured", "Sort Order", "Actions"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}
               </tr>
             </thead>
@@ -155,10 +155,10 @@ export default function AdminCategories() {
               {filtered.map((category) => {
                 const subcategories = taxonomyRepository.subcategories(category.id);
                 return (
-                  <tr key={category.id} className="border-b border-mist/60 font-ui text-sm">
+                  <tr key={category.id} className="border-b border-pf-border/60 font-ui text-sm">
                     <td className="px-3 py-4">
-                      <Link to={`${prefix}/categories/${category.id}`} className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline">{category.name}</Link>
-                      <span className="block text-[11px] text-taupe">/{category.slug}</span>
+                      <Link to={`${prefix}/categories/${category.id}`} className="font-medium text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline">{category.name}</Link>
+                      <span className="block text-[11px] text-pf-muted">/{category.slug}</span>
                     </td>
                     <td className="px-3 py-4">{subcategories.length}</td>
                     <td className="px-3 py-4">{category.productCountTotal ?? category.productCount ?? 0}</td>
@@ -166,11 +166,11 @@ export default function AdminCategories() {
                     <td className="px-3 py-4">{category.featured ? "Yes" : "No"}</td>
                     <td className="px-3 py-4">{category.sortOrder}</td>
                     <td className="px-3 py-4">
-                      <div className="flex items-center gap-2.5 text-taupe">
+                      <div className="flex items-center gap-2.5 text-pf-muted">
                         <Link to={`${prefix}/categories/${category.id}`} title="View"><Eye size={15} /></Link>
                         <Link to={`${prefix}/categories/${category.id}/edit`} title="Edit"><Pencil size={15} /></Link>
                         <Link to={`${prefix}/categories/${category.id}/subcategories`} title="Manage subcategories"><Layers size={15} /></Link>
-                        <button type="button" disabled={busyId === category.id} onClick={() => archiveOrRestore(category)} title={category.status === TAXONOMY_STATUS.ARCHIVED ? "Restore" : "Archive"} className="hover:text-accent">
+                        <button type="button" disabled={busyId === category.id} onClick={() => archiveOrRestore(category)} title={category.status === TAXONOMY_STATUS.ARCHIVED ? "Restore" : "Archive"} className="hover:text-pf-burgundy">
                           {category.status === TAXONOMY_STATUS.ARCHIVED ? <RotateCcw size={15} /> : <Archive size={15} />}
                         </button>
                       </div>
@@ -184,18 +184,18 @@ export default function AdminCategories() {
 
         <div className="space-y-3 lg:hidden">
           {filtered.map((category) => (
-            <article key={category.id} className="border border-mist/80 bg-canvas p-4">
+            <article key={category.id} className="border border-pf-border/80 bg-pf-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <Link to={`${prefix}/categories/${category.id}`} className="font-display text-xl text-ink">{category.name}</Link>
-                  <p className="font-ui text-[11px] text-taupe">/{category.slug}</p>
+                  <Link to={`${prefix}/categories/${category.id}`} className="font-display text-xl text-pf-text">{category.name}</Link>
+                  <p className="font-ui text-[11px] text-pf-muted">/{category.slug}</p>
                 </div>
                 <StatusBadge label={category.status} tone={statusTone[category.status] || "quiet"} />
               </div>
               <dl className="mt-4 grid grid-cols-3 gap-3 font-ui text-xs">
-                <div><dt className="uppercase tracking-widest text-taupe">Subs</dt><dd>{taxonomyRepository.subcategories(category.id).length}</dd></div>
-                <div><dt className="uppercase tracking-widest text-taupe">Products</dt><dd>{category.productCountTotal ?? category.productCount ?? 0}</dd></div>
-                <div><dt className="uppercase tracking-widest text-taupe">Order</dt><dd>{category.sortOrder}</dd></div>
+                <div><dt className="uppercase tracking-widest text-pf-muted">Subs</dt><dd>{taxonomyRepository.subcategories(category.id).length}</dd></div>
+                <div><dt className="uppercase tracking-widest text-pf-muted">Products</dt><dd>{category.productCountTotal ?? category.productCount ?? 0}</dd></div>
+                <div><dt className="uppercase tracking-widest text-pf-muted">Order</dt><dd>{category.sortOrder}</dd></div>
               </dl>
               <div className="mt-4 flex flex-wrap gap-2">
                 <AtelierButton as={Link} to={`${prefix}/categories/${category.id}`} size="chip" variant="outline">View</AtelierButton>

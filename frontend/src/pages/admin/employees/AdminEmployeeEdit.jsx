@@ -154,11 +154,11 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
   return (
     <AdminPage
       eyebrow="People / Organization / Edit"
-      title={<>Edit <span className="italic text-accent">{person.firstName}.</span></>}
+      title={<>Edit <span className="italic text-pf-burgundy">{person.firstName}.</span></>}
       description={`${staffHrefId(person)} is permanent. Account level and capabilities control workspace access; the server, not this form, is the authority.`}
     >
       {notice ? (
-        <p role="alert" className="mb-6 border border-accent/40 bg-accent/5 px-4 py-3 font-ui text-sm text-accent">{notice}</p>
+        <p role="alert" className="mb-6 border border-pf-gold-deep/40 bg-pf-burgundy/5 px-4 py-3 font-ui text-sm text-pf-burgundy">{notice}</p>
       ) : null}
 
       <form onSubmit={submit} className="space-y-7">
@@ -179,8 +179,8 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
                   onClick={() => handleLevelChange(level)}
                   className={
                     isActive
-                      ? "border-ink bg-ink px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-ivory transition-colors"
-                      : "border-pearl bg-canvas px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-taupe transition-colors hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                      ? "border-pf-burgundy bg-pf-burgundy px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-ivory transition-colors"
+                      : "border-pf-border bg-pf-card px-4 py-2.5 text-left font-ui text-[11px] uppercase tracking-[.14em] text-pf-muted transition-colors hover:border-pf-burgundy hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40"
                   }
                 >
                   {meta.label}
@@ -191,7 +191,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
               );
             })}
           </div>
-          <p className="mt-3 font-ui text-[11px] leading-relaxed text-taupe">
+          <p className="mt-3 font-ui text-[11px] leading-relaxed text-pf-muted">
             Changing the level moves the account between workspaces through the unified login; no password or
             session reset happens. Business role below stays independent of the level.
           </p>
@@ -223,7 +223,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
         >
           {capabilityDriven ? (
             <>
-              <label className="mb-5 flex items-start gap-3 font-ui text-sm text-ink">
+              <label className="mb-5 flex items-start gap-3 font-ui text-sm text-pf-text">
                 <input
                   type="checkbox"
                   checked={customPermissions}
@@ -237,12 +237,12 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
                 />
                 <span>
                   Assign a custom capability set
-                  <span className="mt-1 block text-[11px] text-taupe">
+                  <span className="mt-1 block text-[11px] text-pf-muted">
                     Off, the account inherits its Admin or business-role defaults. On, only the switches below apply.
                   </span>
                 </span>
               </label>
-              <p className="mb-5 font-ui text-[11px] leading-relaxed text-taupe">
+              <p className="mb-5 font-ui text-[11px] leading-relaxed text-pf-muted">
                 {isSelf
                   ? "Your own capability set — the Super Admin assigns changes to it."
                   : ceiling === null
@@ -264,7 +264,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
             </>
           ) : (
             <>
-              <label className="mb-5 flex items-start gap-3 font-ui text-sm text-ink">
+              <label className="mb-5 flex items-start gap-3 font-ui text-sm text-pf-text">
                 <input
                   type="checkbox"
                   checked={customPermissions}
@@ -276,7 +276,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
                 />
                 <span>
                   Custom operational permissions
-                  <span className="mt-1 block text-[11px] text-taupe">Super Admin employee-management authority is never assignable to an employee.</span>
+                  <span className="mt-1 block text-[11px] text-pf-muted">Super Admin employee-management authority is never assignable to an employee.</span>
                 </span>
               </label>
               <PermissionMatrix
@@ -290,7 +290,7 @@ export default function AdminEmployeeEdit({ basePath } = {}) {
               />
             </>
           )}
-          {errors.permissions ? <p className="mt-3 font-ui text-xs text-accent">{errors.permissions}</p> : null}
+          {errors.permissions ? <p className="mt-3 font-ui text-xs text-pf-burgundy">{errors.permissions}</p> : null}
         </AdminPanel>
 
         <div className="flex flex-wrap gap-3">

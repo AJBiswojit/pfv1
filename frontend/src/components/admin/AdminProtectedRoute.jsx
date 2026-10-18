@@ -27,7 +27,7 @@ export default function AdminProtectedRoute() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <div className="flex min-h-screen items-center justify-center bg-pf-card">
         <LoadingState label="Verifying administration access" />
       </div>
     );

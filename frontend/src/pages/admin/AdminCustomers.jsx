@@ -62,10 +62,10 @@ export default function AdminCustomers() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, email, phone or customer ID"
-          className="w-full border border-pearl bg-ivory px-4 py-3 mb-5"
+          className="w-full border border-pf-border bg-pf-ivory px-4 py-3 mb-5"
         />
         {isLoading ? (
-          <p role="status" className="font-ui text-sm text-taupe">Loading customers from the server…</p>
+          <p role="status" className="font-ui text-sm text-pf-muted">Loading customers from the server…</p>
         ) : error ? (
           <EmptyState eyebrow="Directory unavailable" title="Customers could not be loaded" description={error} />
         ) : customers.length === 0 ? (
@@ -74,7 +74,7 @@ export default function AdminCustomers() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-pearl text-[10px] uppercase tracking-widest">
+                <tr className="border-b border-pf-border text-[10px] uppercase tracking-widest">
                   <th className="py-3">Customer</th>
                   <th>Contact</th>
                   <th>Orders</th>
@@ -85,7 +85,7 @@ export default function AdminCustomers() {
               </thead>
               <tbody>
                 {customers.map((c) => (
-                  <tr key={c.id} className="border-b border-pearl/60">
+                  <tr key={c.id} className="border-b border-pf-border/60">
                     <td className="py-4">
                       <Link className="font-medium underline" to={`${prefix}/customers/${c.id}`}>
                         {c.firstName} {c.lastName}

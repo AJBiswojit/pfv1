@@ -51,8 +51,8 @@ const LEAVE_TYPE_LABELS = {
 const STATUS_BADGE = {
   PENDING:   "border border-amber-400/40 bg-amber-50 text-amber-700",
   APPROVED:  "border border-emerald-400/30 bg-emerald-50 text-emerald-700",
-  REJECTED:  "border border-accent/25 bg-accent/10 text-accent",
-  CANCELLED: "border border-mist bg-surface text-cocoa",
+  REJECTED:  "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  CANCELLED: "border border-pf-border bg-pf-ivory text-pf-cocoa",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -99,16 +99,16 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border bg-surface/40 p-4",
-        highlight ? "border-accent/40 bg-accent/5" : "border-mist/80"
+        "border bg-pf-ivory/40 p-4",
+        highlight ? "border-pf-gold-deep/40 bg-pf-burgundy/5" : "border-pf-border/80"
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-          <p className="mt-2 font-display text-2xl font-light text-ink">{value ?? "—"}</p>
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+          <p className="mt-2 font-display text-2xl font-light text-pf-text">{value ?? "—"}</p>
         </div>
-        <Icon size={16} className={highlight ? "text-accent" : "text-brass"} />
+        <Icon size={16} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} />
       </div>
     </motion.div>
   );
@@ -221,10 +221,10 @@ export default function AdminLeaveQueue() {
     return (
       <AdminPage
         eyebrow="Workforce / Leave"
-        title={<>Leave <span className="italic text-accent">management.</span></>}
+        title={<>Leave <span className="italic text-pf-burgundy">management.</span></>}
       >
-        <div className="border border-mist/80 bg-surface/40 px-6 py-8 text-center">
-          <p className="font-ui text-sm text-taupe">
+        <div className="border border-pf-border/80 bg-pf-ivory/40 px-6 py-8 text-center">
+          <p className="font-ui text-sm text-pf-muted">
             You do not have permission to view leave requests.
           </p>
         </div>
@@ -237,7 +237,7 @@ export default function AdminLeaveQueue() {
       eyebrow="Workforce / Leave"
       title={
         <>
-          Leave <span className="italic text-accent">management.</span>
+          Leave <span className="italic text-pf-burgundy">management.</span>
         </>
       }
       description="Review and action employee leave requests across the organisation."
@@ -260,7 +260,7 @@ export default function AdminLeaveQueue() {
         bodyClassName="px-0 py-0 sm:px-0"
       >
         {/* Filter bar */}
-        <div className="space-y-3 border-b border-mist/60 bg-canvas/40 p-4">
+        <div className="space-y-3 border-b border-pf-border/60 bg-pf-card/40 p-4">
           {/* Status tabs */}
           <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
             {STATUS_TABS.map((tab) => (
@@ -273,8 +273,8 @@ export default function AdminLeaveQueue() {
                 className={cn(
                   "px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] transition-colors",
                   statusFilter === tab.value
-                    ? "border border-ink bg-ink text-ivory"
-                    : "border border-mist bg-canvas text-taupe hover:border-ink/40 hover:text-ink"
+                    ? "border border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                    : "border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy/40 hover:text-pf-text"
                 )}
               >
                 {tab.label}
@@ -289,19 +289,19 @@ export default function AdminLeaveQueue() {
             role="search"
             aria-label="Search by employee"
           >
-            <label className="flex flex-1 items-center gap-2 border border-mist bg-canvas px-3 py-2 focus-within:border-accent">
-              <Search size={13} className="shrink-0 text-taupe" aria-hidden="true" />
+            <label className="flex flex-1 items-center gap-2 border border-pf-border bg-pf-card px-3 py-2 focus-within:border-pf-gold-deep">
+              <Search size={13} className="shrink-0 text-pf-muted" aria-hidden="true" />
               <input
                 type="search"
                 value={employeeSearch}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
                 placeholder="Search by employee name or ID…"
-                className="w-full bg-transparent font-ui text-xs text-ink placeholder:text-taupe/60 focus:outline-none"
+                className="w-full bg-transparent font-ui text-xs text-pf-text placeholder:text-pf-muted/60 focus:outline-none"
               />
             </label>
             <button
               type="submit"
-              className="border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80"
+              className="border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80"
             >
               Search
             </button>
@@ -309,7 +309,7 @@ export default function AdminLeaveQueue() {
               <button
                 type="button"
                 onClick={handleSearchClear}
-                className="px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:text-ink"
+                className="px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:text-pf-text"
               >
                 Clear
               </button>
@@ -323,7 +323,7 @@ export default function AdminLeaveQueue() {
             role="status"
             aria-live="polite"
             aria-busy="true"
-            className="border-b border-mist/60 px-4 py-3 font-ui text-[11px] text-taupe"
+            className="border-b border-pf-border/60 px-4 py-3 font-ui text-[11px] text-pf-muted"
           >
             Loading leave requests…
           </p>
@@ -333,7 +333,7 @@ export default function AdminLeaveQueue() {
         {error ? (
           <div
             role="alert"
-            className="border-b border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent"
+            className="border-b border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy"
           >
             {error}
             <button
@@ -349,13 +349,13 @@ export default function AdminLeaveQueue() {
         {/* ── Desktop table ── */}
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left">
-            <thead className="border-b border-mist/80 bg-canvas/80">
+            <thead className="border-b border-pf-border/80 bg-pf-card/80">
               <tr>
                 {["Employee", "Type", "Date range", "Days", "Reason", "Status", "Requested at"].map(
                   (h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                      className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                     >
                       {h}
                     </th>
@@ -368,29 +368,29 @@ export default function AdminLeaveQueue() {
                 <tr
                   key={row.id}
                   onClick={() => handleRowClick(row)}
-                  className="cursor-pointer border-b border-mist/50 last:border-0 hover:bg-surface/30"
+                  className="cursor-pointer border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30"
                   title="Click to review"
                 >
                   {/* Employee */}
                   <td className="px-4 py-3">
-                    <p className="font-ui text-sm text-ink">
+                    <p className="font-ui text-sm text-pf-text">
                       {row.employeeName ?? row.employee_name ?? "—"}
                     </p>
                     {row.employeeId ?? row.employee_id ? (
-                      <p className="font-ui text-[11px] text-taupe">
+                      <p className="font-ui text-[11px] text-pf-muted">
                         {row.employeeId ?? row.employee_id}
                       </p>
                     ) : null}
                   </td>
 
                   {/* Leave type */}
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
                     {LEAVE_TYPE_LABELS[row.leaveType ?? row.leave_type] ??
                       row.leaveType ?? row.leave_type ?? "—"}
                   </td>
 
                   {/* Date range */}
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
                     {dateRange({
                       startDate: row.startDate ?? row.start_date,
                       endDate:   row.endDate   ?? row.end_date,
@@ -398,14 +398,14 @@ export default function AdminLeaveQueue() {
                   </td>
 
                   {/* Days */}
-                  <td className="px-4 py-3 font-ui text-sm text-ink">
+                  <td className="px-4 py-3 font-ui text-sm text-pf-text">
                     {row.days ?? "—"}
                   </td>
 
                   {/* Reason */}
                   <td className="max-w-[200px] px-4 py-3">
-                    <p className="truncate font-ui text-sm text-ink" title={row.reason}>
-                      {row.reason ?? <span className="text-taupe">—</span>}
+                    <p className="truncate font-ui text-sm text-pf-text" title={row.reason}>
+                      {row.reason ?? <span className="text-pf-muted">—</span>}
                     </p>
                   </td>
 
@@ -415,7 +415,7 @@ export default function AdminLeaveQueue() {
                   </td>
 
                   {/* Requested at */}
-                  <td className="whitespace-nowrap px-4 py-3 font-ui text-sm text-taupe">
+                  <td className="whitespace-nowrap px-4 py-3 font-ui text-sm text-pf-muted">
                     {formatDatetime(row.requestedAt ?? row.requested_at)}
                   </td>
                 </tr>
@@ -424,7 +424,7 @@ export default function AdminLeaveQueue() {
           </table>
 
           {items.length === 0 && !loading && !error ? (
-            <p className="p-8 text-center font-ui text-sm text-taupe">
+            <p className="p-8 text-center font-ui text-sm text-pf-muted">
               {statusFilter
                 ? `No ${statusFilter.toLowerCase()} leave requests.`
                 : "No leave requests found."}
@@ -439,14 +439,14 @@ export default function AdminLeaveQueue() {
               key={row.id}
               type="button"
               onClick={() => handleRowClick(row)}
-              className="w-full border border-mist/70 bg-canvas p-4 text-left hover:border-ink/40"
+              className="w-full border border-pf-border/70 bg-pf-card p-4 text-left hover:border-pf-burgundy/40"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-ui text-sm text-ink">
+                  <p className="truncate font-ui text-sm text-pf-text">
                     {row.employeeName ?? row.employee_name ?? "—"}
                   </p>
-                  <p className="mt-0.5 font-ui text-[11px] text-taupe">
+                  <p className="mt-0.5 font-ui text-[11px] text-pf-muted">
                     {LEAVE_TYPE_LABELS[row.leaveType ?? row.leave_type] ??
                       row.leaveType ?? row.leave_type ?? "—"}
                     {" · "}
@@ -457,21 +457,21 @@ export default function AdminLeaveQueue() {
                     {row.days != null ? ` · ${row.days}d` : ""}
                   </p>
                   {row.reason ? (
-                    <p className="mt-1 truncate font-ui text-[11px] text-taupe" title={row.reason}>
+                    <p className="mt-1 truncate font-ui text-[11px] text-pf-muted" title={row.reason}>
                       {row.reason}
                     </p>
                   ) : null}
                 </div>
                 <StatusBadge status={row.status} />
               </div>
-              <p className="mt-2 font-ui text-[11px] text-taupe">
+              <p className="mt-2 font-ui text-[11px] text-pf-muted">
                 {formatDatetime(row.requestedAt ?? row.requested_at)}
               </p>
             </button>
           ))}
 
           {items.length === 0 && !loading && !error ? (
-            <p className="py-6 text-center font-ui text-sm text-taupe">
+            <p className="py-6 text-center font-ui text-sm text-pf-muted">
               {statusFilter
                 ? `No ${statusFilter.toLowerCase()} leave requests.`
                 : "No leave requests found."}
@@ -481,8 +481,8 @@ export default function AdminLeaveQueue() {
 
         {/* ── Pagination ── */}
         {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-mist/60 px-4 py-3">
-            <p className="font-ui text-[11px] text-taupe">
+          <div className="flex items-center justify-between border-t border-pf-border/60 px-4 py-3">
+            <p className="font-ui text-[11px] text-pf-muted">
               Page {page} of {totalPages} · {total} total
             </p>
             <div className="flex gap-1">
@@ -491,7 +491,7 @@ export default function AdminLeaveQueue() {
                 onClick={handlePrevPage}
                 disabled={page <= 1 || loading}
                 aria-label="Previous page"
-                className="flex h-8 w-8 items-center justify-center border border-mist bg-canvas text-taupe hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={14} />
               </button>
@@ -500,7 +500,7 @@ export default function AdminLeaveQueue() {
                 onClick={handleNextPage}
                 disabled={page >= totalPages || loading}
                 aria-label="Next page"
-                className="flex h-8 w-8 items-center justify-center border border-mist bg-canvas text-taupe hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight size={14} />
               </button>

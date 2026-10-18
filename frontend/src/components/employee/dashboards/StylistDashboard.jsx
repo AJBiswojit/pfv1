@@ -14,7 +14,7 @@ export default function StylistDashboard() {
     <DashboardFrame description="Consultations, appointments and the bridal book. This desk is where later AI styling will sit — quietly, on structured customer and product data.">
       <div className="grid gap-6 xl:grid-cols-2">
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Today's appointments</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Today's appointments</h2>
           <DataTable
             rows={appointments}
             columns={[
@@ -26,7 +26,7 @@ export default function StylistDashboard() {
           />
         </section>
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Styling requests</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Styling requests</h2>
           <DataTable
             rows={requests}
             columns={[

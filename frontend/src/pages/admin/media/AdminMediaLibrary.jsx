@@ -150,7 +150,7 @@ function DurableAssetsPanel() {
   }
   if (state.items.length === 0) {
     return (
-      <div className="mb-6 rounded-2xl border border-dashed border-ink-faint bg-shell/50 px-5 py-4">
+      <div className="mb-6 rounded-2xl border border-dashed border-pf-burgundy-faint bg-shell/50 px-5 py-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-charcoal">
           <Database size={14} className="text-charcoal/50" /> Durable media registry — empty
         </p>
@@ -179,9 +179,9 @@ function DurableAssetsPanel() {
         {state.items.map((asset) => (
           <div
             key={asset.id}
-            className="flex items-center gap-3 rounded-xl border border-ink-faint bg-shell px-3 py-2.5"
+            className="flex items-center gap-3 rounded-xl border border-pf-burgundy-faint bg-shell px-3 py-2.5"
           >
-            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-ink/5">
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-pf-burgundy/5">
               {asset.url ? (
                 <img src={asset.url} alt={asset.objectKey || "Registered media asset"} className="h-full w-full object-cover" />
               ) : (
@@ -191,7 +191,7 @@ function DurableAssetsPanel() {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-mono text-xs font-semibold text-ink">{asset.objectKey || asset.id}</p>
+              <p className="truncate font-mono text-xs font-semibold text-pf-text">{asset.objectKey || asset.id}</p>
               <p className="text-[11px] text-charcoal/55">{asset.mimeType || "unknown type"}</p>
               <p className="text-[10px] text-charcoal/45">
                 Status: {asset.status || "unknown"}
@@ -201,7 +201,7 @@ function DurableAssetsPanel() {
         ))}
       </div>
       {totalPages > 1 ? (
-        <div className="mt-4 flex items-center justify-between border-t border-ink-faint pt-3">
+        <div className="mt-4 flex items-center justify-between border-t border-pf-burgundy-faint pt-3">
           <p className="text-[11px] text-charcoal/55">
             Page {state.page} of {totalPages}
           </p>
@@ -210,7 +210,7 @@ function DurableAssetsPanel() {
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={state.page <= 1}
-              className="rounded-lg border border-ink-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
+              className="rounded-lg border border-pf-burgundy-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
             >
               Previous
             </button>
@@ -218,7 +218,7 @@ function DurableAssetsPanel() {
               type="button"
               onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
               disabled={state.page >= totalPages}
-              className="rounded-lg border border-ink-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
+              className="rounded-lg border border-pf-burgundy-faint px-3 py-1.5 text-xs text-charcoal disabled:opacity-40"
             >
               Next
             </button>
@@ -312,7 +312,7 @@ export default function AdminMediaLibrary() {
           {metrics.pendingReview > 0 ? (
             <span
               title="The dedicated media review queue is deferred until a durable backend review workflow exists. Approvals made here are session-local."
-              className="border border-amber-700 bg-amber-800 px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory"
+              className="border border-amber-700 bg-amber-800 px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory"
             >
               <Clock size={12} className="mr-1 inline-block" />
               Pending review ({metrics.pendingReview}) · session-local
@@ -326,7 +326,7 @@ export default function AdminMediaLibrary() {
               as={Link}
               to={`${prefix}/media/upload`}
               size="chip"
-              className="bg-ink text-ivory hover:bg-cocoa shadow-sm"
+              className="bg-pf-burgundy text-pf-ivory hover:bg-pf-cocoa shadow-sm"
             >
               <Plus size={13} className="mr-1 inline-block" />
               + Upload Media
@@ -406,8 +406,8 @@ export default function AdminMediaLibrary() {
                 chip,
                 "border",
                 tab === entry.id
-                  ? "border-ink bg-ink text-ivory"
-                  : "border-mist bg-canvas text-cocoa hover:border-ink"
+                  ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                  : "border-pf-border bg-pf-card text-pf-cocoa hover:border-pf-burgundy"
               )}
             >
               {entry.label}
@@ -422,7 +422,7 @@ export default function AdminMediaLibrary() {
                 </span>
               ) : null}
               {entry.id === "DUPLICATE" && (metrics.duplicates ?? 0) > 0 ? (
-                <span className="ml-1.5 rounded-full bg-ink/70 px-1.5 py-0.2 text-[8px] text-white">
+                <span className="ml-1.5 rounded-full bg-pf-burgundy/70 px-1.5 py-0.2 text-[8px] text-white">
                   {metrics.duplicates}
                 </span>
               ) : null}
@@ -434,12 +434,12 @@ export default function AdminMediaLibrary() {
         <div className="mb-5 flex flex-col gap-3 sm:flex-row">
           <label className="relative flex-1">
             <span className="sr-only">Search media</span>
-            <Search size={15} className="absolute left-3 top-3 text-taupe" aria-hidden="true" />
+            <Search size={15} className="absolute left-3 top-3 text-pf-muted" aria-hidden="true" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search title, product SKU, placement, author..."
-              className="w-full border border-mist bg-canvas py-2.5 pl-9 pr-3 font-ui text-sm text-ink outline-none focus:border-accent"
+              className="w-full border border-pf-border bg-pf-card py-2.5 pl-9 pr-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
             />
           </label>
           <label>
@@ -447,7 +447,7 @@ export default function AdminMediaLibrary() {
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="h-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent"
+              className="h-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
             >
               <option value="ALL">All statuses</option>
               {MEDIA_STATUS_OPTIONS.map((option) => (
@@ -462,7 +462,7 @@ export default function AdminMediaLibrary() {
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              className="h-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent"
+              className="h-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
             >
               <option value="ALL">All categories</option>
               {categories.map((entry) => (
@@ -477,7 +477,7 @@ export default function AdminMediaLibrary() {
             <select
               value={usage}
               onChange={(event) => setUsage(event.target.value)}
-              className="h-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent"
+              className="h-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
             >
               <option value="ALL">All usage</option>
               {USAGE_ROLE_OPTIONS.map((option) => (
@@ -491,8 +491,8 @@ export default function AdminMediaLibrary() {
 
         {/* Bulk bar ------------------------------------------------- */}
         {selected.length ? (
-          <div className="mb-5 flex flex-wrap items-center gap-2 border border-ink/20 bg-surface/50 px-4 py-3">
-            <p className="font-ui text-[11px] uppercase tracking-[.16em] text-taupe">
+          <div className="mb-5 flex flex-wrap items-center gap-2 border border-pf-burgundy/20 bg-pf-ivory/50 px-4 py-3">
+            <p className="font-ui text-[11px] uppercase tracking-[.16em] text-pf-muted">
               {selected.length} selected
             </p>
             {actions.access.canEdit ? (
@@ -523,7 +523,7 @@ export default function AdminMediaLibrary() {
             <button
               type="button"
               onClick={clearSelection}
-              className="font-ui text-[11px] uppercase tracking-[.14em] text-taupe underline-offset-4 hover:text-accent hover:underline"
+              className="font-ui text-[11px] uppercase tracking-[.14em] text-pf-muted underline-offset-4 hover:text-pf-burgundy hover:underline"
             >
               Clear selection
             </button>
@@ -535,13 +535,13 @@ export default function AdminMediaLibrary() {
           {filtered.length ? (
             <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {filtered.map((item) => (
-                <li key={item.id} className="border border-mist/80 bg-canvas">
+                <li key={item.id} className="border border-pf-border/80 bg-pf-card">
                   <span className="block">
                     <MediaThumb media={item} />
                   </span>
                   <div className="space-y-2 p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 font-ui text-sm text-ink">
+                      <span className="min-w-0 font-ui text-sm text-pf-text">
                         <span className="line-clamp-2">{item.title}</span>
                       </span>
                       <input
@@ -552,10 +552,10 @@ export default function AdminMediaLibrary() {
                         className="mt-1 h-4 w-4 shrink-0 accent-[#B45309]"
                       />
                     </div>
-                    <p className="font-ui text-[11px] text-taupe">{assignmentLine(item)}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">{assignmentLine(item)}</p>
 
                     {item.uploadedBy ? (
-                      <p className="font-ui text-[10px] text-taupe">
+                      <p className="font-ui text-[10px] text-pf-muted">
                         By {item.uploadedBy}
                         {item.uploadedByEmployeeId ? ` (${item.uploadedByEmployeeId})` : ""}
                       </p>
@@ -582,7 +582,7 @@ export default function AdminMediaLibrary() {
                     </div>
 
                     {/* Quick action buttons */}
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-mist/50">
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-pf-border/50">
                       {item.status === MEDIA_STATUS.PENDING_REVIEW && actions.access.canEdit ? (
                         <>
                           <AtelierButton
@@ -596,7 +596,7 @@ export default function AdminMediaLibrary() {
                           <AtelierButton
                             size="chip"
                             variant="outline"
-                            className="text-accent"
+                            className="text-pf-burgundy"
                             onClick={() => actions.approve(item.id)}
                           >
                             Quick approve
@@ -605,7 +605,7 @@ export default function AdminMediaLibrary() {
                       ) : (
                         <span
                           title="Standalone media detail is deferred with the session register — durable assets live on their product's media manager."
-                          className="inline-block border border-mist/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe"
+                          className="inline-block border border-pf-border/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted"
                         >
                           Session record
                         </span>
@@ -626,8 +626,8 @@ export default function AdminMediaLibrary() {
               ))}
             </ul>
           ) : (
-            <div className="border border-mist/80 bg-surface/30 px-5 py-14 text-center">
-              <p className="font-ui text-sm text-taupe">
+            <div className="border border-pf-border/80 bg-pf-ivory/30 px-5 py-14 text-center">
+              <p className="font-ui text-sm text-pf-muted">
                 {media.length
                   ? "No media matches these filters."
                   : "No media records yet. The backend media service is not active in this phase (see INTEGRATION_AUDIT.md §7) — records will appear here once the media API is enabled, and product imagery currently comes from product records."}
@@ -636,7 +636,7 @@ export default function AdminMediaLibrary() {
           )}
         </div>
 
-        <p className="mt-5 font-ui text-[11px] text-taupe" aria-live="polite">
+        <p className="mt-5 font-ui text-[11px] text-pf-muted" aria-live="polite">
           Showing {filtered.length} of {media.length} records · {metrics.pendingReview} pending review ·{" "}
           {metrics.draft} draft · {metrics.archived} archived · only {MEDIA_STATUS.ACTIVE.toLowerCase()} media reaches customers.
         </p>

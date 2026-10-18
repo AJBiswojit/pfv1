@@ -26,8 +26,8 @@ function ActiveBadge({ isActive }) {
       className={cn(
         "inline-flex items-center gap-1 px-2 py-0.5 font-ui text-[11px]",
         isActive
-          ? "bg-ink text-ivory"
-          : "border border-mist bg-canvas-deep text-graphite"
+          ? "bg-pf-burgundy text-pf-ivory"
+          : "border border-pf-border bg-pf-ivory text-pf-muted"
       )}
     >
       {isActive ? (
@@ -66,13 +66,13 @@ function InlineRename({ current, onSave, onCancel, busy }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={busy}
-        className="h-8 w-48 border border-accent bg-canvas px-2 font-ui text-xs text-ink outline-none focus:border-accent disabled:opacity-50"
+        className="h-8 w-48 border border-pf-gold-deep bg-pf-card px-2 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep disabled:opacity-50"
         aria-label="Device label"
       />
       <button
         type="submit"
         disabled={busy || !value.trim()}
-        className="flex h-8 w-8 items-center justify-center border border-mist bg-canvas text-brass hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center border border-pf-border bg-pf-card text-pf-gold-text hover:border-pf-burgundy hover:text-pf-text disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Save label"
       >
         <Check size={13} />
@@ -81,7 +81,7 @@ function InlineRename({ current, onSave, onCancel, busy }) {
         type="button"
         disabled={busy}
         onClick={onCancel}
-        className="flex h-8 w-8 items-center justify-center border border-mist bg-canvas text-taupe hover:border-ink hover:text-ink disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center border border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
         aria-label="Cancel rename"
       >
         <X size={13} />
@@ -115,21 +115,21 @@ function RegisterForm({ onRegistered, onCancel }) {
   };
 
   const fieldClass =
-    "h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs text-ink outline-none focus:border-accent disabled:opacity-50";
+    "h-9 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep disabled:opacity-50";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-6 border border-mist/80 bg-surface/40 p-5"
+      className="mb-6 border border-pf-border/80 bg-pf-ivory/40 p-5"
     >
-      <p className="mb-4 font-ui text-[10px] uppercase tracking-[.18em] text-taupe">
+      <p className="mb-4 font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">
         Register new device
       </p>
       <form onSubmit={handleSubmit} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
-            Serial number <span className="text-accent">*</span>
+          <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
+            Serial number <span className="text-pf-burgundy">*</span>
             <input
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
@@ -139,7 +139,7 @@ function RegisterForm({ onRegistered, onCancel }) {
               required
             />
           </label>
-          <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Display label
             <input
               value={label}
@@ -152,7 +152,7 @@ function RegisterForm({ onRegistered, onCancel }) {
         </div>
 
         {error ? (
-          <p role="alert" className="mt-3 font-ui text-[11px] text-accent">
+          <p role="alert" className="mt-3 font-ui text-[11px] text-pf-burgundy">
             {error}
           </p>
         ) : null}
@@ -161,7 +161,7 @@ function RegisterForm({ onRegistered, onCancel }) {
           <button
             type="submit"
             disabled={busy || !serialNumber.trim()}
-            className="border border-ink bg-ink px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80 disabled:cursor-not-allowed disabled:opacity-40"
+            className="border border-pf-burgundy bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "Registering…" : "Register"}
           </button>
@@ -169,7 +169,7 @@ function RegisterForm({ onRegistered, onCancel }) {
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:text-ink disabled:opacity-40"
+            className="px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:text-pf-text disabled:opacity-40"
           >
             Cancel
           </button>
@@ -264,7 +264,7 @@ export default function AdminAttendanceDevices() {
       eyebrow="Workforce / Attendance"
       title={
         <>
-          Punching <span className="italic text-accent">devices.</span>
+          Punching <span className="italic text-pf-burgundy">devices.</span>
         </>
       }
       description="Register and manage biometric / RFID punching machines. Toggle active status or rename any device."
@@ -273,7 +273,7 @@ export default function AdminAttendanceDevices() {
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 border border-ink bg-ink px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory hover:bg-ink/80"
+            className="inline-flex items-center gap-2 border border-pf-burgundy bg-pf-burgundy px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory hover:bg-pf-burgundy/80"
           >
             <Plus size={12} aria-hidden="true" /> Register device
           </button>
@@ -288,8 +288,8 @@ export default function AdminAttendanceDevices() {
           className={cn(
             "mb-6 border px-4 py-3 font-ui text-sm",
             notice.ok
-              ? "border-cocoa/30 bg-cocoa/5 text-cocoa"
-              : "border-accent/40 bg-accent/5 text-accent"
+              ? "border-pf-cocoa/30 bg-pf-cocoa/5 text-pf-cocoa"
+              : "border-pf-gold-deep/40 bg-pf-burgundy/5 text-pf-burgundy"
           )}
         >
           {notice.text}
@@ -302,7 +302,7 @@ export default function AdminAttendanceDevices() {
           role="status"
           aria-live="polite"
           aria-busy="true"
-          className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe"
+          className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted"
         >
           Loading devices…
         </p>
@@ -311,7 +311,7 @@ export default function AdminAttendanceDevices() {
       {error ? (
         <div
           role="alert"
-          className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent"
+          className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy"
         >
           {error}
           <button
@@ -329,42 +329,42 @@ export default function AdminAttendanceDevices() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="border border-accent/40 bg-accent/5 p-4"
+          className="border border-pf-gold-deep/40 bg-pf-burgundy/5 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Total devices</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{devices.length}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Total devices</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{devices.length}</p>
             </div>
-            <Monitor size={16} className="text-accent" />
+            <Monitor size={16} className="text-pf-burgundy" />
           </div>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="border border-mist/80 bg-surface/40 p-4"
+          className="border border-pf-border/80 bg-pf-ivory/40 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Active</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{activeCount}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Active</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{activeCount}</p>
             </div>
-            <ToggleRight size={16} className="text-brass" />
+            <ToggleRight size={16} className="text-pf-gold-text" />
           </div>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="border border-mist/80 bg-surface/40 p-4"
+          className="border border-pf-border/80 bg-pf-ivory/40 p-4"
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Inactive</p>
-              <p className="mt-2 font-display text-2xl font-light text-ink">{inactiveCount}</p>
+              <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Inactive</p>
+              <p className="mt-2 font-display text-2xl font-light text-pf-text">{inactiveCount}</p>
             </div>
-            <ToggleLeft size={16} className="text-taupe" />
+            <ToggleLeft size={16} className="text-pf-muted" />
           </div>
         </motion.div>
       </section>
@@ -386,12 +386,12 @@ export default function AdminAttendanceDevices() {
         {/* Desktop table */}
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left">
-            <thead className="border-b border-mist/80 bg-canvas/80">
+            <thead className="border-b border-pf-border/80 bg-pf-card/80">
               <tr>
                 {["Label", "Serial number", "Status", canManage ? "Actions" : ""].filter(Boolean).map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe"
+                    className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted"
                   >
                     {h}
                   </th>
@@ -406,7 +406,7 @@ export default function AdminAttendanceDevices() {
                 return (
                   <tr
                     key={device.id}
-                    className="border-b border-mist/50 last:border-0 hover:bg-surface/30"
+                    className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30"
                   >
                     <td className="px-4 py-3">
                       {isBeingRenamed && canManage ? (
@@ -418,7 +418,7 @@ export default function AdminAttendanceDevices() {
                         />
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-ui text-sm text-ink">
+                          <span className="font-ui text-sm text-pf-text">
                             {device.label ?? device.serialNumber}
                           </span>
                           {canManage ? (
@@ -426,7 +426,7 @@ export default function AdminAttendanceDevices() {
                               type="button"
                               onClick={() => setRenamingId(device.id)}
                               disabled={Boolean(busyId)}
-                              className="text-taupe hover:text-brass disabled:cursor-not-allowed disabled:opacity-40"
+                              className="text-pf-muted hover:text-pf-gold-text disabled:cursor-not-allowed disabled:opacity-40"
                               aria-label={`Rename ${device.label ?? device.serialNumber}`}
                             >
                               <Pencil size={12} />
@@ -435,7 +435,7 @@ export default function AdminAttendanceDevices() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-taupe">
+                    <td className="px-4 py-3 font-mono text-xs text-pf-muted">
                       {device.serialNumber}
                     </td>
                     <td className="px-4 py-3">
@@ -447,7 +447,7 @@ export default function AdminAttendanceDevices() {
                           type="button"
                           disabled={Boolean(busyId)}
                           onClick={() => handleToggle(device)}
-                          className="font-ui text-[12px] text-brass hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                          className="font-ui text-[12px] text-pf-gold-text hover:text-pf-burgundy disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isBusy && busyAction === "toggle"
                             ? "Updating…"
@@ -464,13 +464,13 @@ export default function AdminAttendanceDevices() {
           </table>
 
           {devices.length === 0 && !loading && !error ? (
-            <p className="p-8 text-center font-ui text-sm text-taupe">
+            <p className="p-8 text-center font-ui text-sm text-pf-muted">
               No devices registered yet.{" "}
               {canManage ? (
                 <button
                   type="button"
                   onClick={() => setShowForm(true)}
-                  className="text-brass hover:text-accent hover:underline"
+                  className="text-pf-gold-text hover:text-pf-burgundy hover:underline"
                 >
                   Register the first device.
                 </button>
@@ -488,7 +488,7 @@ export default function AdminAttendanceDevices() {
             return (
               <div
                 key={device.id}
-                className="border border-mist/70 bg-canvas p-4"
+                className="border border-pf-border/70 bg-pf-card p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -501,7 +501,7 @@ export default function AdminAttendanceDevices() {
                       />
                     ) : (
                       <div className="flex items-center gap-2">
-                        <p className="font-ui text-sm text-ink truncate">
+                        <p className="font-ui text-sm text-pf-text truncate">
                           {device.label ?? device.serialNumber}
                         </p>
                         {canManage ? (
@@ -509,7 +509,7 @@ export default function AdminAttendanceDevices() {
                             type="button"
                             onClick={() => setRenamingId(device.id)}
                             disabled={Boolean(busyId)}
-                            className="shrink-0 text-taupe hover:text-brass disabled:opacity-40"
+                            className="shrink-0 text-pf-muted hover:text-pf-gold-text disabled:opacity-40"
                             aria-label="Rename"
                           >
                             <Pencil size={12} />
@@ -517,19 +517,19 @@ export default function AdminAttendanceDevices() {
                         ) : null}
                       </div>
                     )}
-                    <p className="mt-0.5 font-mono text-[11px] text-taupe">
+                    <p className="mt-0.5 font-mono text-[11px] text-pf-muted">
                       {device.serialNumber}
                     </p>
                   </div>
                   <ActiveBadge isActive={device.isActive} />
                 </div>
                 {canManage ? (
-                  <div className="mt-3 border-t border-mist/60 pt-3">
+                  <div className="mt-3 border-t border-pf-border/60 pt-3">
                     <button
                       type="button"
                       disabled={Boolean(busyId)}
                       onClick={() => handleToggle(device)}
-                      className="font-ui text-[12px] text-brass hover:text-accent disabled:opacity-50"
+                      className="font-ui text-[12px] text-pf-gold-text hover:text-pf-burgundy disabled:opacity-50"
                     >
                       {isBusy && busyAction === "toggle"
                         ? "Updating…"
@@ -544,7 +544,7 @@ export default function AdminAttendanceDevices() {
           })}
 
           {devices.length === 0 && !loading && !error ? (
-            <p className="py-6 text-center font-ui text-sm text-taupe">
+            <p className="py-6 text-center font-ui text-sm text-pf-muted">
               No devices registered yet.
             </p>
           ) : null}

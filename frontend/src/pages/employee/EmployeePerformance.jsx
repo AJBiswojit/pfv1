@@ -44,7 +44,7 @@ export default function EmployeePerformance() {
   if (!allowed || !record) {
     return (
       <EmployeePage eyebrow="Performance" title="Not available">
-        <p className="font-ui text-sm text-taupe">You do not have access to that performance record.</p>
+        <p className="font-ui text-sm text-pf-muted">You do not have access to that performance record.</p>
       </EmployeePage>
     );
   }
@@ -54,7 +54,7 @@ export default function EmployeePerformance() {
       eyebrow="My performance"
       title={
         <>
-          How the month is <span className="italic text-accent">reading.</span>
+          How the month is <span className="italic text-pf-burgundy">reading.</span>
         </>
       }
       description={`${record.name} · ${record.roleLabel} · ${record.periodLabel}. Targets are role-aware. Achievement comes from live house data.`}
@@ -74,9 +74,9 @@ export default function EmployeePerformance() {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <PerformanceStatusBadge status={record.status} />
         {record.displayScore != null ? (
-          <p className="font-ui text-sm text-ink">Score {formatPercent(record.displayScore)}</p>
+          <p className="font-ui text-sm text-pf-text">Score {formatPercent(record.displayScore)}</p>
         ) : (
-          <p className="font-ui text-sm text-taupe">Score appears once the review is written.</p>
+          <p className="font-ui text-sm text-pf-muted">Score appears once the review is written.</p>
         )}
       </div>
 
@@ -88,8 +88,8 @@ export default function EmployeePerformance() {
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <AttendanceSummary employeeId={record.employeeId} month={record.period} compact />
-        <section className="border border-mist/80 bg-surface/40 p-6">
-          <h2 className="font-display text-2xl font-light text-ink">Review</h2>
+        <section className="border border-pf-border/80 bg-pf-ivory/40 p-6">
+          <h2 className="font-display text-2xl font-light text-pf-text">Review</h2>
           <div className="mt-4">
             {canReview ? (
               <ReviewForm record={record} actor={employee} canFinalize={hasPermission(PERMISSIONS.PERFORMANCE_MANAGE)} />
@@ -104,7 +104,7 @@ export default function EmployeePerformance() {
       </div>
 
       <section className="mt-10">
-        <h2 className="mb-4 font-display text-2xl font-light text-ink">Previous periods</h2>
+        <h2 className="mb-4 font-display text-2xl font-light text-pf-text">Previous periods</h2>
         <DataTable
           rows={history}
           rowKey="performanceId"
@@ -121,7 +121,7 @@ export default function EmployeePerformance() {
 
       {team.length > 0 && hasPermission(PERMISSIONS.PERFORMANCE_REVIEW) ? (
         <section className="mt-10">
-          <h2 className="mb-4 font-display text-2xl font-light text-ink">Team</h2>
+          <h2 className="mb-4 font-display text-2xl font-light text-pf-text">Team</h2>
           <DataTable
             rows={team.filter((row) => row.employeeId !== employee.employeeId)}
             rowKey="employeeId"
@@ -131,7 +131,7 @@ export default function EmployeePerformance() {
                 id: "name",
                 label: "Employee",
                 render: (row) => (
-                  <Link to={`/employee/performance/${row.employeeId}`} className="text-ink underline-offset-4 hover:text-accent hover:underline">
+                  <Link to={`/employee/performance/${row.employeeId}`} className="text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline">
                     {row.name}
                   </Link>
                 ),

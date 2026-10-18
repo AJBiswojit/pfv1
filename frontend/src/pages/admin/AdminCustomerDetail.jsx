@@ -54,7 +54,7 @@ export default function AdminCustomerDetail() {
   }, [customerId, attempt]);
 
   if (status === "loading") {
-    return <AdminPage title="Customer profile"><p role="status" className="font-ui text-sm text-taupe">Loading customer from the server…</p></AdminPage>;
+    return <AdminPage title="Customer profile"><p role="status" className="font-ui text-sm text-pf-muted">Loading customer from the server…</p></AdminPage>;
   }
 
   if (status === "error" || !customer) {
@@ -108,7 +108,7 @@ export default function AdminCustomerDetail() {
             <p>Could not load this customer's orders right now.</p>
           ) : orders.length ? (
             orders.map((o) => (
-              <div className="flex justify-between border-b border-pearl py-3" key={o.id}>
+              <div className="flex justify-between border-b border-pf-border py-3" key={o.id}>
                 <Link className="underline" to={`${prefix}/orders/${o.id}`}>
                   {o.orderNumber ?? o.id}
                 </Link>

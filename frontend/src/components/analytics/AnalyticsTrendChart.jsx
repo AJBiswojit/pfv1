@@ -33,19 +33,19 @@ export default function AnalyticsTrendChart({
           const isPeak = value === peak && value > 0;
           return (
             <div key={point.key || point.date || index} className="flex min-w-[2.25rem] flex-1 flex-col items-center gap-2">
-              <span className="font-ui text-[9px] text-taupe sm:text-[10px]">
+              <span className="font-ui text-[11px] text-pf-muted">
                 {value ? formatValue(value) : ""}
               </span>
               <div className="flex w-full flex-1 items-end">
                 <div
                   className={cn(
                     "w-full min-w-[10px] transition-[height] duration-500",
-                    isPeak ? "bg-accent" : index === series.length - 1 ? "bg-ink" : "bg-ink/25"
+                    isPeak ? "bg-pf-burgundy" : index === series.length - 1 ? "bg-pf-burgundy" : "bg-pf-burgundy/25"
                   )}
                   style={{ height: `${height}%` }}
                 />
               </div>
-              <span className="max-w-full truncate font-ui text-[9px] uppercase tracking-[.08em] text-ink sm:text-[10px]">
+              <span className="max-w-full truncate font-ui text-[11px] uppercase tracking-[.08em] text-pf-text">
                 {point.shortLabel || point.day || point.date}
               </span>
             </div>

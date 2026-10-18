@@ -72,7 +72,7 @@ export default function ProductLifecycleActions({ product, onChanged = null, onD
     <AdminPanel eyebrow="Lifecycle" title="Retire this product" className="mt-6">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusBadge label={options.status} tone={options.status === "PUBLISHED" ? "accent" : "quiet"} />
-        <span className="font-ui text-[12px] text-taupe">
+        <span className="font-ui text-[12px] text-pf-muted">
           {product.id} · {product.name}
           {mediaCount ? ` · owns ${mediaCount} media asset${mediaCount === 1 ? "" : "s"}` : " · owns no media"}
         </span>
@@ -93,7 +93,7 @@ export default function ProductLifecycleActions({ product, onChanged = null, onD
         ) : null}
       </div>
 
-      <p className="mt-4 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-ink" role="note">
+      <p className="mt-4 border-l-4 border-alert bg-alert/5 px-4 py-2.5 font-ui text-[12px] leading-relaxed text-pf-text" role="note">
         <strong>Permanent deletion is not offered.</strong> The product API has no
         hard-delete route — archiving is the server’s retirement, keeping historical
         order and media references intact. A locally simulated delete would desync
@@ -101,7 +101,7 @@ export default function ProductLifecycleActions({ product, onChanged = null, onD
         (BACKEND_GAP: recorded for a future phase).
       </p>
 
-      {message ? <p className="mt-3 font-ui text-[12px] text-cocoa">{message}</p> : null}
+      {message ? <p className="mt-3 font-ui text-[12px] text-pf-cocoa">{message}</p> : null}
     </AdminPanel>
   );
 }

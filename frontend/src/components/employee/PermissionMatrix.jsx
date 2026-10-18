@@ -33,11 +33,11 @@ export default function PermissionMatrix({
         <section key={group.key} aria-labelledby={`perm-${group.key}`}>
           <h3
             id={`perm-${group.key}`}
-            className="mb-3 font-ui text-[10px] uppercase tracking-[.2em] text-brass"
+            className="mb-3 font-ui text-[10px] uppercase tracking-[.2em] text-pf-gold-text"
           >
             {group.label}
           </h3>
-          <ul className="divide-y divide-mist/70 border border-mist/80 bg-canvas/60">
+          <ul className="divide-y divide-pf-border/70 border border-pf-border/80 bg-pf-card/60">
             {group.items.map((item) => {
               const isOn = allowed.has(item.key);
               const isLocked = locked ? !locked.has(item.key) : false;
@@ -46,7 +46,7 @@ export default function PermissionMatrix({
                   key={item.key}
                   className="flex items-center justify-between gap-4 px-4 py-3"
                 >
-                  <span className="font-ui text-sm text-ink">{item.label}</span>
+                  <span className="font-ui text-sm text-pf-text">{item.label}</span>
                   {editable ? (
                     <button
                       type="button"
@@ -60,8 +60,8 @@ export default function PermissionMatrix({
                         "min-w-[4.5rem] border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.16em] transition-colors",
                         isLocked && "cursor-not-allowed opacity-40",
                         isOn
-                          ? "border-ink bg-ink text-ivory"
-                          : "border-pearl bg-canvas text-taupe hover:border-ink hover:text-ink"
+                          ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                          : "border-pf-border bg-pf-card text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
                       )}
                     >
                       {isOn ? "Allowed" : "No"}
@@ -70,7 +70,7 @@ export default function PermissionMatrix({
                     <span
                       className={cn(
                         "font-ui text-[10px] uppercase tracking-[.16em]",
-                        isOn ? "text-cocoa" : "text-taupe"
+                        isOn ? "text-pf-cocoa" : "text-pf-muted"
                       )}
                     >
                       {isOn ? "Allowed" : "No"}

@@ -14,19 +14,19 @@ export default function AdminAccessDenied() {
   const { isAuthenticated: isEmployee } = useEmployeeAuth();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-5 py-16">
+    <div className="flex min-h-screen items-center justify-center bg-pf-card px-5 py-16">
       <div className="mx-auto max-w-xl text-center">
-        <span className="mx-auto mb-6 inline-flex h-12 w-12 items-center justify-center bg-ink text-gold">
+        <span className="mx-auto mb-6 inline-flex h-12 w-12 items-center justify-center bg-pf-burgundy text-pf-gold-text">
           <ShieldAlert size={20} strokeWidth={1.5} aria-hidden="true" />
         </span>
-        <p className="font-ui text-[10px] uppercase tracking-[.3em] text-accent">
+        <p className="font-ui text-[10px] uppercase tracking-[.3em] text-pf-burgundy">
           Admin access required
         </p>
-        <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-ink">
-          Not your <span className="italic text-accent">portal.</span>
+        <h1 className="mt-3 font-display text-4xl font-light tracking-tight text-pf-text">
+          Not your <span className="italic text-pf-burgundy">portal.</span>
         </h1>
         <Rule width="w-12" tone="accent" className="mx-auto my-6" />
-        <p className="font-ui text-sm leading-relaxed text-taupe">
+        <p className="font-ui text-sm leading-relaxed text-pf-muted">
           You don't have permission to access the administration portal.
         </p>
 

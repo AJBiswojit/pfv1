@@ -60,7 +60,7 @@ export default function ManagerDashboard() {
     <DashboardFrame metrics={metrics} description="Sales, orders, customers and the team on the floor. Credentials and global people administration stay with Super Admin.">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Floor tickets</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Floor tickets</h2>
           <DataTable
             rows={floor}
             columns={[
@@ -73,7 +73,7 @@ export default function ManagerDashboard() {
           />
         </section>
         <section>
-          <h2 className="mb-3 font-display text-2xl font-light text-ink">Assigned team</h2>
+          <h2 className="mb-3 font-display text-2xl font-light text-pf-text">Assigned team</h2>
           <DataTable
             rows={team.slice(0, 8)}
             columns={[
@@ -85,7 +85,7 @@ export default function ManagerDashboard() {
           />
         </section>
       </div>
-      <p className="mt-6 font-ui text-xs text-taupe">
+      <p className="mt-6 font-ui text-xs text-pf-muted">
         Store stock: {inventory.metrics?.storeStock || 0} units · {inventory.metrics?.lowStock || 0} low-stock rows · {inventory.metrics?.pendingTransfers || 0} pending transfers.
       </p>
       <div className="mt-4">

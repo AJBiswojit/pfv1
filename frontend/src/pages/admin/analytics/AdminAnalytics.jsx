@@ -40,7 +40,7 @@ export default function AdminAnalytics() {
       eyebrow="Business intelligence"
       title={
         <>
-          House <span className="italic text-accent">analytics.</span>
+          House <span className="italic text-pf-burgundy">analytics.</span>
         </>
       }
       description="A read-model over the existing orders, catalogue, customers, inventory, returns, offers and workforce. Same sources, same date range, same numbers."

@@ -78,9 +78,9 @@ function PaymentStatusBadge({ status }) {
 
 function Field({ label, children, mono = false }) {
   return (
-    <div className="border-b border-mist/40 py-3 last:border-0 sm:grid sm:grid-cols-3 sm:gap-4">
-      <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe self-center">{label}</dt>
-      <dd className={cn("mt-1 sm:col-span-2 sm:mt-0", mono ? "font-mono text-xs text-ink" : "font-ui text-sm text-ink")}>
+    <div className="border-b border-pf-border/40 py-3 last:border-0 sm:grid sm:grid-cols-3 sm:gap-4">
+      <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted self-center">{label}</dt>
+      <dd className={cn("mt-1 sm:col-span-2 sm:mt-0", mono ? "font-mono text-xs text-pf-text" : "font-ui text-sm text-pf-text")}>
         {children}
       </dd>
     </div>
@@ -100,7 +100,7 @@ function Notice({ ok, message, onDismiss }) {
         "mb-4 flex items-start gap-3 border px-4 py-3",
         ok
           ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-accent/30 bg-accent/5 text-accent"
+          : "border-pf-gold-deep/30 bg-pf-burgundy/5 text-pf-burgundy"
       )}
     >
       {ok ? <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> : <AlertTriangle size={14} className="mt-0.5 shrink-0" />}
@@ -248,7 +248,7 @@ export default function AdminPaymentDetail() {
   if (loading) {
     return (
       <AdminPage eyebrow="Payments" title="Loading session…">
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading payment session…
         </p>
       </AdminPage>
@@ -269,18 +269,18 @@ export default function AdminPaymentDetail() {
       : loadError?.message ?? "Something went wrong. Please try again.";
     return (
       <AdminPage eyebrow="Payments" title={title}>
-        <p role="alert" className="font-ui text-sm text-graphite">{detail}</p>
+        <p role="alert" className="font-ui text-sm text-pf-muted">{detail}</p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {status >= 500 || status === 0 ? (
             <button
               type="button"
               onClick={reload}
-              className="border border-mist px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+              className="border border-pf-border px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
             >
               Try again
             </button>
           ) : null}
-          <Link to={`${prefix}/payments`} className="font-ui text-sm text-brass hover:text-accent">
+          <Link to={`${prefix}/payments`} className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
             ← Back to payments
           </Link>
         </div>
@@ -311,12 +311,12 @@ export default function AdminPaymentDetail() {
   return (
     <AdminPage
       eyebrow="Finance / Payments"
-      title={<>Session <span className="italic text-accent">detail.</span></>}
+      title={<>Session <span className="italic text-pf-burgundy">detail.</span></>}
       description={`Payment session ${sessionId}`}
       actions={
         <Link
           to={`${prefix}/payments`}
-          className="inline-flex items-center gap-1.5 border border-mist bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+          className="inline-flex items-center gap-1.5 border border-pf-border bg-pf-card px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
         >
           <ArrowLeft size={11} /> Back
         </Link>
@@ -369,7 +369,7 @@ export default function AdminPaymentDetail() {
                 <Field label="Order">
                   <Link
                     to={`${prefix}/orders/${order.id}`}
-                    className="font-ui text-sm text-brass hover:text-accent hover:underline"
+                    className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy hover:underline"
                   >
                     {order.orderNumber ?? order.order_number ?? order.id}
                   </Link>
@@ -383,20 +383,20 @@ export default function AdminPaymentDetail() {
                   }).format(order.total ?? 0)}
                 </Field>
                 <Field label="Order Status">
-                  <span className="font-ui text-xs text-ink">{order.status?.replace(/_/g, " ") ?? "—"}</span>
+                  <span className="font-ui text-xs text-pf-text">{order.status?.replace(/_/g, " ") ?? "—"}</span>
                 </Field>
                 <Field label="Payment Status">
-                  <span className="font-ui text-xs text-ink">{order.paymentStatus?.replace(/_/g, " ") ?? order.payment_status?.replace(/_/g, " ") ?? "—"}</span>
+                  <span className="font-ui text-xs text-pf-text">{order.paymentStatus?.replace(/_/g, " ") ?? order.payment_status?.replace(/_/g, " ") ?? "—"}</span>
                 </Field>
               </dl>
             </AdminPanel>
           ) : orderId ? (
             <AdminPanel eyebrow="Order" title="Linked order">
-              <p className="font-ui text-sm text-taupe">
+              <p className="font-ui text-sm text-pf-muted">
                 Order{" "}
                 <Link
                   to={`${prefix}/orders/${orderId}`}
-                  className="text-brass hover:text-accent hover:underline"
+                  className="text-pf-gold-text hover:text-pf-burgundy hover:underline"
                 >
                   {orderId}
                 </Link>
@@ -411,11 +411,11 @@ export default function AdminPaymentDetail() {
           {/* Refund section — only for PAID/CAPTURED */}
           {isPaid ? (
             <AdminPanel eyebrow="Action" title="Refund">
-              <p className="mb-4 font-ui text-xs text-taupe">
-                Maximum refundable: <span className="text-ink">{formatINR(maxRefundPaise)}</span>
+              <p className="mb-4 font-ui text-xs text-pf-muted">
+                Maximum refundable: <span className="text-pf-text">{formatINR(maxRefundPaise)}</span>
               </p>
               <form onSubmit={handleRefund} className="space-y-4">
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Amount (₹)
                   <input
                     type="number"
@@ -425,37 +425,37 @@ export default function AdminPaymentDetail() {
                     placeholder={`Max ${(maxRefundPaise / 100).toFixed(2)}`}
                     value={refundAmountRupees}
                     onChange={(e) => setRefundAmountRupees(e.target.value)}
-                    className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs text-ink outline-none focus:border-accent"
+                    className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
                   />
-                  <span className="mt-1 block font-ui text-[10px] text-taupe">
+                  <span className="mt-1 block font-ui text-[10px] text-pf-muted">
                     Leave blank for full refund of {formatINR(maxRefundPaise)}
                   </span>
                 </label>
 
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Reason
                   <textarea
                     rows={3}
                     placeholder="Optional reason for refund"
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
-                    className="mt-1.5 w-full border border-mist bg-canvas px-3 py-2 font-ui text-xs text-ink outline-none focus:border-accent resize-none"
+                    className="mt-1.5 w-full border border-pf-border bg-pf-card px-3 py-2 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep resize-none"
                   />
                 </label>
 
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Idempotency Key
                   <div className="mt-1.5 flex gap-2">
                     <input
                       type="text"
                       value={idempotencyKey}
                       onChange={(e) => setIdempotencyKey(e.target.value)}
-                      className="h-9 flex-1 border border-mist bg-canvas px-3 font-mono text-[10px] text-ink outline-none focus:border-accent"
+                      className="h-9 flex-1 border border-pf-border bg-pf-card px-3 font-mono text-[10px] text-pf-text outline-none focus:border-pf-gold-deep"
                     />
                     <button
                       type="button"
                       onClick={() => setIdempotencyKey(newIdempotencyKey())}
-                      className="border border-mist px-2 font-ui text-[10px] text-taupe hover:border-ink hover:text-ink"
+                      className="border border-pf-border px-2 font-ui text-[10px] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
                       title="Regenerate key"
                     >
                       <RefreshCw size={11} />
@@ -466,7 +466,7 @@ export default function AdminPaymentDetail() {
                 <button
                   type="submit"
                   disabled={refundLoading}
-                  className="w-full border border-accent bg-accent/5 px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.18em] text-accent transition hover:bg-accent hover:text-canvas disabled:opacity-40"
+                  className="w-full border border-pf-gold-deep bg-pf-burgundy/5 px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy transition hover:bg-pf-burgundy hover:text-canvas disabled:opacity-40"
                 >
                   {refundLoading ? "Processing…" : "Submit Refund"}
                 </button>
@@ -477,7 +477,7 @@ export default function AdminPaymentDetail() {
           {/* Reconcile section — only for CREATED/PENDING */}
           {isPending ? (
             <AdminPanel eyebrow="Action" title="Reconcile session">
-              <p className="mb-4 font-ui text-xs text-taupe">
+              <p className="mb-4 font-ui text-xs text-pf-muted">
                 This session is in a non-terminal state. Query Razorpay to
                 recover the real payment status (handles network failures and
                 browser closures during checkout).
@@ -486,7 +486,7 @@ export default function AdminPaymentDetail() {
                 type="button"
                 disabled={reconcileLoading}
                 onClick={handleReconcile}
-                className="w-full border border-mist bg-canvas px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.18em] text-ink transition hover:border-ink disabled:opacity-40 flex items-center justify-center gap-2"
+                className="w-full border border-pf-border bg-pf-card px-4 py-2.5 font-ui text-[10px] uppercase tracking-[.18em] text-pf-text transition hover:border-pf-burgundy disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 <RotateCcw size={12} />
                 {reconcileLoading ? "Reconciling…" : "Reconcile with Razorpay"}
@@ -495,14 +495,14 @@ export default function AdminPaymentDetail() {
           ) : null}
 
           {/* Batch reconcile link */}
-          <div className="border border-mist/60 bg-surface/40 px-4 py-3">
-            <p className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Batch reconciliation</p>
-            <p className="mt-1 font-ui text-xs text-taupe">
+          <div className="border border-pf-border/60 bg-pf-ivory/40 px-4 py-3">
+            <p className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Batch reconciliation</p>
+            <p className="mt-1 font-ui text-xs text-pf-muted">
               Run bulk reconciliation across all stuck sessions.
             </p>
             <Link
               to={`${prefix}/payments/reconcile`}
-              className="mt-2 inline-block font-ui text-[10px] uppercase tracking-[.14em] text-brass hover:text-accent hover:underline"
+              className="mt-2 inline-block font-ui text-[10px] uppercase tracking-[.14em] text-pf-gold-text hover:text-pf-burgundy hover:underline"
             >
               Open reconcile utility →
             </Link>

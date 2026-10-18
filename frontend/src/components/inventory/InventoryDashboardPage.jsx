@@ -37,7 +37,7 @@ import InventoryNav from "./InventoryNav";
 import InventoryStatusBadge from "./InventoryStatusBadge";
 import { LOCATION_TYPES, STOCK_STATUS } from "../../services/inventory/inventoryRepository";
 
-const inputClass = "h-10 w-full border border-mist bg-canvas px-3 font-ui text-xs text-ink outline-none transition focus:border-accent focus:ring-1 focus:ring-accent/20";
+const inputClass = "h-10 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none transition focus:border-pf-gold-deep focus:ring-1 focus:ring-pf-burgundy/20";
 
 function Metric({ label, value, hint, Icon, alert = false }) {
   return (
@@ -45,17 +45,17 @@ function Metric({ label, value, hint, Icon, alert = false }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className="border border-mist/80 bg-surface/45 p-4 sm:p-5"
+      className="border border-pf-border/80 bg-pf-ivory/45 p-4 sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-          <p className={`mt-2 font-display text-2xl font-light sm:text-3xl ${alert ? "text-accent" : "text-ink"}`}>
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+          <p className={`mt-2 font-display text-2xl font-light sm:text-3xl ${alert ? "text-pf-burgundy" : "text-pf-text"}`}>
             {value}
           </p>
-          {hint ? <p className="mt-1 font-ui text-[10px] text-taupe">{hint}</p> : null}
+          {hint ? <p className="mt-1 font-ui text-[10px] text-pf-muted">{hint}</p> : null}
         </div>
-        <Icon size={17} strokeWidth={1.3} className={alert ? "text-accent" : "text-brass"} aria-hidden="true" />
+        <Icon size={17} strokeWidth={1.3} className={alert ? "text-pf-burgundy" : "text-pf-gold-text"} aria-hidden="true" />
       </div>
     </motion.div>
   );
@@ -239,11 +239,11 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
 
       <AdminPanel eyebrow="Stock summary" title="Catalogue inventory" bodyClassName="px-0 py-0 sm:px-0">
         <form
-          className="grid gap-3 border-b border-mist/70 bg-canvas/60 p-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid gap-3 border-b border-pf-border/70 bg-pf-card/60 p-4 sm:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => event.preventDefault()}
           aria-label="Inventory filters"
         >
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Search
             <input
               type="search"
@@ -253,21 +253,21 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
               className={`${inputClass} mt-2 normal-case tracking-normal`}
             />
           </label>
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Category
             <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
               <option value="">All categories</option>
               {categories.map((category) => <option key={category} value={category}>{categoryLabels[category] || category}</option>)}
             </select>
           </label>
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Subcategory
             <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.subcategory} onChange={(event) => setFilters((current) => ({ ...current, subcategory: event.target.value }))}>
               <option value="">All subcategories</option>
               {subcategories.map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory}</option>)}
             </select>
           </label>
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Product type
             <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.productType} onChange={(event) => setFilters((current) => ({ ...current, productType: event.target.value }))}>
               <option value="">All product types</option>
@@ -275,7 +275,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
             </select>
           </label>
           {!availabilityOnly ? (
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Location
               <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.locationId} onChange={(event) => setFilters((current) => ({ ...current, locationId: event.target.value }))}>
                 <option value="">All locations</option>
@@ -287,7 +287,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
           ) : null}
           {!availabilityOnly ? (
             <>
-              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                 Location type
                 <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.locationType} onChange={(event) => setFilters((current) => ({ ...current, locationType: event.target.value }))}>
                   <option value="">Store & warehouse</option>
@@ -295,7 +295,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
                   <option value={LOCATION_TYPES.WAREHOUSE}>Warehouse</option>
                 </select>
               </label>
-              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                 Department
                 <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.department} onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}>
                   <option value="">All departments</option>
@@ -304,7 +304,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
               </label>
             </>
           ) : null}
-          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
             Stock status
             <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
               <option value="">All statuses</option>
@@ -326,7 +326,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
                 type="button"
                 onClick={() => setFilters((current) => ({ ...current, status: current.status === status ? "" : status }))}
                 aria-pressed={filters.status === status}
-                className={`border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${filters.status === status ? "border-ink bg-ink text-ivory" : "border-mist text-taupe hover:border-ink hover:text-ink"}`}
+                className={`border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy ${filters.status === status ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory" : "border-pf-border text-pf-muted hover:border-pf-burgundy hover:text-pf-text"}`}
               >
                 {label}
               </button>
@@ -342,12 +342,12 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
                 type="button"
                 aria-pressed={filters[key]}
                 onClick={() => setFilters((current) => ({ ...current, [key]: !current[key] }))}
-                className={`border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${filters[key] ? "border-ink bg-ink text-ivory" : "border-mist text-taupe hover:border-ink hover:text-ink"}`}
+                className={`border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy ${filters[key] ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory" : "border-pf-border text-pf-muted hover:border-pf-burgundy hover:text-pf-text"}`}
               >
                 {label}
               </button>
             )) : null}
-            <button type="button" onClick={() => setFilters({ search: "", category: "", subcategory: "", productType: "", locationId: "", status: "", locationType: "", department: "", hasAvailable: false, hasReserved: false, hasDamaged: false, hasReturned: false })} className="px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] text-accent hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">
+            <button type="button" onClick={() => setFilters({ search: "", category: "", subcategory: "", productType: "", locationId: "", status: "", locationType: "", department: "", hasAvailable: false, hasReserved: false, hasDamaged: false, hasReturned: false })} className="px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.13em] text-pf-burgundy hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-pf-burgundy">
               Clear filters
             </button>
           </div>
@@ -359,7 +359,7 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
             rows={availabilityRows}
             empty="No products match these filters."
             columns={[
-              { id: "product", label: "Product", render: (row) => <div><p className="font-medium">{row.productName}</p><p className="mt-1 font-mono text-[10px] text-taupe">{row.sku} · {row.variantLabel}</p></div> },
+              { id: "product", label: "Product", render: (row) => <div><p className="font-medium">{row.productName}</p><p className="mt-1 font-mono text-[10px] text-pf-muted">{row.sku} · {row.variantLabel}</p></div> },
               { id: "category", label: "Category", render: (row) => categoryLabels[row.category] || row.category },
               { id: "status", label: "Availability", render: (row) => <InventoryStatusBadge status={row.customerAvailability.status} /> },
               { id: "guidance", label: "Customer guidance", render: (row) => row.customerAvailability.available <= 0 ? "Currently unavailable" : row.customerAvailability.status === STOCK_STATUS.LOW_STOCK ? "Only a few left" : "In stock" },
@@ -376,13 +376,13 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
               label: "Product",
               render: (row) => (
                 <div className="min-w-44">
-                  <p className="font-medium text-ink">{row.productName}</p>
-                  <p className="mt-0.5 font-mono text-[10px] text-taupe">{row.sku}</p>
-                  <p className="mt-0.5 text-[10px] text-taupe">{categoryLabels[row.category] || row.category} · {row.variantLabel}</p>
+                  <p className="font-medium text-pf-text">{row.productName}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-pf-muted">{row.sku}</p>
+                  <p className="mt-0.5 text-[10px] text-pf-muted">{categoryLabels[row.category] || row.category} · {row.variantLabel}</p>
                 </div>
               ),
             },
-            { id: "location", label: "Location", render: (row) => <div><p>{row.location?.name || "—"}</p><p className="mt-0.5 max-w-48 text-[10px] text-taupe">{row.placementLabel || "Placement not assigned"}</p></div> },
+            { id: "location", label: "Location", render: (row) => <div><p>{row.location?.name || "—"}</p><p className="mt-0.5 max-w-48 text-[10px] text-pf-muted">{row.placementLabel || "Placement not assigned"}</p></div> },
             { id: "onHand", label: "On hand", render: (row) => row.quantity.onHand },
             { id: "available", label: "Available", render: (row) => <strong>{row.quantity.available}</strong> },
             { id: "reserved", label: "Reserved", render: (row) => row.quantity.reserved },
@@ -391,22 +391,22 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
             { id: "damaged", label: "Damaged", render: (row) => row.quantity.damaged },
             { id: "threshold", label: "Threshold", render: (row) => row.lowStockThreshold },
             { id: "status", label: "Status", render: (row) => <InventoryStatusBadge status={row.status} /> },
-            { id: "updated", label: "Last updated", render: (row) => <span className="whitespace-nowrap text-[11px] text-taupe">{formatEmployeeDateTime(row.updatedAt)}</span> },
+            { id: "updated", label: "Last updated", render: (row) => <span className="whitespace-nowrap text-[11px] text-pf-muted">{formatEmployeeDateTime(row.updatedAt)}</span> },
             {
               id: "actions",
               label: "Actions",
               render: (row) => (
                 <div className="flex flex-col items-end gap-1 sm:items-start">
-                  {can(PERMISSIONS.INVENTORY_RECEIVE) ? <Link className="text-[11px] text-brass hover:text-accent" to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`}>Receive</Link> : null}
-                  {can(PERMISSIONS.INVENTORY_ADJUST) ? <Link className="text-[11px] text-brass hover:text-accent" to={`${root}/adjust?inventoryId=${encodeURIComponent(row.id)}`}>Adjust</Link> : null}
-                  {can(PERMISSIONS.INVENTORY_TRANSFER) ? <Link className="text-[11px] text-brass hover:text-accent" to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`}>Transfer</Link> : null}
+                  {can(PERMISSIONS.INVENTORY_RECEIVE) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`}>Receive</Link> : null}
+                  {can(PERMISSIONS.INVENTORY_ADJUST) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/adjust?inventoryId=${encodeURIComponent(row.id)}`}>Adjust</Link> : null}
+                  {can(PERMISSIONS.INVENTORY_TRANSFER) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`}>Transfer</Link> : null}
                 </div>
               ),
             },
           ]}
         />
         )}
-        <p className="border-t border-mist/60 px-5 py-3 font-ui text-[10px] text-taupe">
+        <p className="border-t border-pf-border/60 px-5 py-3 font-ui text-[10px] text-pf-muted">
           {availabilityOnly
             ? `Showing ${availabilityRows.length} customer-safe availability status${availabilityRows.length === 1 ? "" : "es"}. Internal counts and locations are restricted.`
             : `Showing ${rows.length} inventory row${rows.length === 1 ? "" : "s"} · ${metrics.totalProducts || 0} catalogue products · ${metrics.totalVariants || 0} explicit variants`}
@@ -447,39 +447,39 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
       <AdminPanel eyebrow="Physical network" title="Locations" className="mt-7">
         <div className="grid gap-3 sm:grid-cols-2">
           {visibleLocations.map((location) => (
-            <article key={location.id} className="border border-mist/70 bg-canvas/60 p-4">
+            <article key={location.id} className="border border-pf-border/70 bg-pf-card/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-display text-xl text-ink">{location.name}</p>
-                  <p className="mt-1 font-ui text-[10px] uppercase tracking-[.15em] text-brass">{location.type}</p>
+                  <p className="font-display text-xl text-pf-text">{location.name}</p>
+                  <p className="mt-1 font-ui text-[10px] uppercase tracking-[.15em] text-pf-gold-text">{location.type}</p>
                 </div>
-                <span className="font-ui text-[9px] uppercase tracking-[.14em] text-cocoa">{location.status}</span>
+                <span className="font-ui text-[9px] uppercase tracking-[.14em] text-pf-cocoa">{location.status}</span>
               </div>
-              <p className="mt-3 font-ui text-xs text-taupe">{location.address}</p>
-              <p className="mt-1 font-ui text-[10px] text-taupe">{location.area}</p>
+              <p className="mt-3 font-ui text-xs text-pf-muted">{location.address}</p>
+              <p className="mt-1 font-ui text-[10px] text-pf-muted">{location.area}</p>
             </article>
           ))}
         </div>
         {portal !== "employee" ? (
-          <form onSubmit={addLocation} className="mt-5 grid gap-3 border-t border-mist/70 pt-5 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+          <form onSubmit={addLocation} className="mt-5 grid gap-3 border-t border-pf-border/70 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Location name
               <input required className={`${inputClass} mt-2 normal-case tracking-normal`} value={locationDraft.name} onChange={(event) => setLocationDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Future store or warehouse" />
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Type
               <select className={`${inputClass} mt-2 normal-case tracking-normal`} value={locationDraft.type} onChange={(event) => setLocationDraft((current) => ({ ...current, type: event.target.value }))}>
                 <option value={LOCATION_TYPES.STORE}>Store</option>
                 <option value={LOCATION_TYPES.WAREHOUSE}>Warehouse</option>
               </select>
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
               Address / area
               <input className={`${inputClass} mt-2 normal-case tracking-normal`} value={locationDraft.address} onChange={(event) => setLocationDraft((current) => ({ ...current, address: event.target.value }))} placeholder="Physical address" />
             </label>
             <div className="flex items-end gap-3">
               <AtelierButton type="submit" size="chip">Add location</AtelierButton>
-              {locationNotice ? <span role="status" className="font-ui text-[10px] text-taupe">{locationNotice}</span> : null}
+              {locationNotice ? <span role="status" className="font-ui text-[10px] text-pf-muted">{locationNotice}</span> : null}
             </div>
           </form>
         ) : null}

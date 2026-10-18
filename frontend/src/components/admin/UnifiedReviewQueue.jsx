@@ -54,11 +54,11 @@ const PAGE_SIZE = 25;
 
 const chipClass = (active) =>
   `px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] transition-colors ${
-    active ? "bg-ink text-ivory" : "text-taupe hover:bg-mist/60 hover:text-ink"
+    active ? "bg-pf-burgundy text-pf-ivory" : "text-pf-muted hover:bg-pf-border/60 hover:text-pf-text"
   }`;
 
 const selectClass =
-  "border border-mist bg-canvas px-2 py-1.5 font-ui text-[11px] outline-none focus:border-accent";
+  "border border-pf-border bg-pf-card px-2 py-1.5 font-ui text-[11px] outline-none focus:border-pf-gold-deep";
 
 const stageTone = {
   PUBLISHED: "ink",
@@ -199,25 +199,25 @@ function BulkWorkflowConfirmDialog({ action, preview, busy, onCancel, onConfirm 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-ink/55 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-pf-burgundy/55 px-4 py-8 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
     >
       <section
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden border border-champagne/45 bg-canvas shadow-2xl"
+        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden border border-champagne/45 bg-pf-card shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bulk-workflow-title"
         aria-describedby="bulk-workflow-description"
       >
-        <header className="border-b border-mist px-6 py-5">
-          <p className="font-ui text-[9px] uppercase tracking-[.22em] text-accent">Workflow confirmation</p>
-          <h3 id="bulk-workflow-title" className="mt-1 font-display text-xl text-ink">
+        <header className="border-b border-pf-border px-6 py-5">
+          <p className="font-ui text-[9px] uppercase tracking-[.22em] text-pf-burgundy">Workflow confirmation</p>
+          <h3 id="bulk-workflow-title" className="mt-1 font-display text-xl text-pf-text">
             {action.label} selected products
           </h3>
-          <p id="bulk-workflow-description" className="mt-2 font-ui text-xs leading-relaxed text-taupe">
+          <p id="bulk-workflow-description" className="mt-2 font-ui text-xs leading-relaxed text-pf-muted">
             Every Product ID runs through the canonical individual {action.label} command. Blocked products
             remain unchanged and keep the exact validation messages shown below.
           </p>
@@ -225,33 +225,33 @@ function BulkWorkflowConfirmDialog({ action, preview, busy, onCancel, onConfirm 
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <dl className="grid grid-cols-3 gap-3 text-center">
-            <div className="border border-mist bg-ivory/50 p-3">
-              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-taupe">Selected</dt>
-              <dd className="mt-1 font-display text-2xl text-ink">{preview.selected.length}</dd>
+            <div className="border border-pf-border bg-pf-ivory/50 p-3">
+              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-muted">Selected</dt>
+              <dd className="mt-1 font-display text-2xl text-pf-text">{preview.selected.length}</dd>
             </div>
-            <div className="border border-ink/20 bg-ivory/50 p-3">
-              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-ink">
+            <div className="border border-pf-burgundy/20 bg-pf-ivory/50 p-3">
+              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-text">
                 Ready to {action.label.toLowerCase()}
               </dt>
-              <dd className="mt-1 font-display text-2xl text-ink">{readyCount}</dd>
+              <dd className="mt-1 font-display text-2xl text-pf-text">{readyCount}</dd>
             </div>
-            <div className="border border-accent/40 bg-accent/[0.05] p-3">
-              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-accent">Blocked</dt>
-              <dd className="mt-1 font-display text-2xl text-accent">{preview.blocked.length}</dd>
+            <div className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-3">
+              <dt className="font-ui text-[9px] uppercase tracking-[.16em] text-pf-burgundy">Blocked</dt>
+              <dd className="mt-1 font-display text-2xl text-pf-burgundy">{preview.blocked.length}</dd>
             </div>
           </dl>
 
           {preview.blocked.length ? (
-            <div className="mt-5 border border-accent/40 bg-accent/[0.05] px-4 py-3">
-              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-accent">
+            <div className="mt-5 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3">
+              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-burgundy">
                 Blocker details by Product ID
               </p>
               <ul className="mt-3 max-h-72 space-y-3 overflow-y-auto pr-1">
                 {preview.blocked.map((entry) => (
-                  <li key={entry.productId} className="border-t border-accent/20 pt-2 first:border-0 first:pt-0">
-                    <span className="font-ui text-[12px] font-medium text-ink">{entry.productId}</span>
-                    {entry.name ? <span className="ml-2 font-ui text-[11px] text-taupe">{entry.name}</span> : null}
-                    <ul className="mt-1 list-disc space-y-1 pl-5 font-ui text-[11px] leading-relaxed text-accent">
+                  <li key={entry.productId} className="border-t border-pf-gold-deep/20 pt-2 first:border-0 first:pt-0">
+                    <span className="font-ui text-[12px] font-medium text-pf-text">{entry.productId}</span>
+                    {entry.name ? <span className="ml-2 font-ui text-[11px] text-pf-muted">{entry.name}</span> : null}
+                    <ul className="mt-1 list-disc space-y-1 pl-5 font-ui text-[11px] leading-relaxed text-pf-burgundy">
                       {entry.reasons.map((reason) => <li key={reason}>{reason}</li>)}
                     </ul>
                   </li>
@@ -259,18 +259,18 @@ function BulkWorkflowConfirmDialog({ action, preview, busy, onCancel, onConfirm 
               </ul>
             </div>
           ) : (
-            <p className="mt-5 border border-mist bg-ivory/50 px-4 py-3 font-ui text-xs text-ink">
+            <p className="mt-5 border border-pf-border bg-pf-ivory/50 px-4 py-3 font-ui text-xs text-pf-text">
               Every selected product is ready for this transition.
             </p>
           )}
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-mist bg-ivory/40 px-6 py-4">
+        <footer className="flex items-center justify-end gap-2 border-t border-pf-border bg-pf-ivory/40 px-6 py-4">
           <button
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink disabled:opacity-40"
+            className="border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text disabled:opacity-40"
           >
             Cancel
           </button>
@@ -279,7 +279,7 @@ function BulkWorkflowConfirmDialog({ action, preview, busy, onCancel, onConfirm 
             type="button"
             disabled={busy || readyCount === 0}
             onClick={onConfirm}
-            className="border border-accent bg-accent px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-ivory disabled:cursor-not-allowed disabled:opacity-40"
+            className="border border-pf-gold-deep bg-pf-burgundy px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? `${action.label} in progress…` : readyCount ? `${action.label} ${readyCount}` : "No products ready"}
           </button>
@@ -453,7 +453,7 @@ export default function UnifiedReviewQueue({
   return (
     <div>
       {/* Quick lenses -------------------------------------------------- */}
-      <div className="mb-4 flex flex-wrap gap-1.5 border-b border-mist pb-4" role="tablist" aria-label="Review queue lenses">
+      <div className="mb-4 flex flex-wrap gap-1.5 border-b border-pf-border pb-4" role="tablist" aria-label="Review queue lenses">
         {UNIFIED_QUICK_FILTERS.map((entry) => (
           <button
             key={entry.id}
@@ -469,9 +469,9 @@ export default function UnifiedReviewQueue({
       </div>
 
       {/* Canonical-data filters ---------------------------------------- */}
-      <div className="mb-4 grid gap-2 border-b border-mist pb-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="flex items-center gap-2 border border-mist bg-canvas px-3 py-2 sm:col-span-2 lg:col-span-4">
-          <Search size={13} className="text-taupe" aria-hidden="true" />
+      <div className="mb-4 grid gap-2 border-b border-pf-border pb-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="flex items-center gap-2 border border-pf-border bg-pf-card px-3 py-2 sm:col-span-2 lg:col-span-4">
+          <Search size={13} className="text-pf-muted" aria-hidden="true" />
           <span className="sr-only">Search the review queue</span>
           <input
             type="search"
@@ -483,7 +483,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Workflow state</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Workflow state</span>
           <select value={filters.stage} onChange={(event) => setFilter("stage", event.target.value)} className={selectClass}>
             <option value="ALL">All states</option>
             {Object.values(WORKFLOW_STAGES).map((stage) => (
@@ -493,7 +493,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Category</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Category</span>
           <select value={filters.category} onChange={(event) => setFilter("category", event.target.value)} className={selectClass}>
             <option value="ALL">All categories</option>
             {categories.map((entry) => (
@@ -503,7 +503,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Department</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Department</span>
           <select value={filters.department} onChange={(event) => setFilter("department", event.target.value)} className={selectClass}>
             <option value="ALL">All departments</option>
             {departments.map((dept) => (
@@ -513,7 +513,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Assignment</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Assignment</span>
           <select value={filters.assignment} onChange={(event) => setFilter("assignment", event.target.value)} className={selectClass}>
             <option value="ALL">Any assignment</option>
             <option value="ASSIGNED">Assigned</option>
@@ -522,7 +522,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Review flags</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Review flags</span>
           <select value={filters.flag} onChange={(event) => setFilter("flag", event.target.value)} className={selectClass}>
             <option value="ALL">Any flag state</option>
             <option value="ANY">Any blocking flag</option>
@@ -533,7 +533,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Media status</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Media status</span>
           <select value={filters.media} onChange={(event) => setFilter("media", event.target.value)} className={selectClass}>
             <option value="ALL">Any media state</option>
             <option value="READY">Media valid</option>
@@ -542,7 +542,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Taxonomy status</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Taxonomy status</span>
           <select value={filters.taxonomy} onChange={(event) => setFilter("taxonomy", event.target.value)} className={selectClass}>
             <option value="ALL">Any taxonomy state</option>
             <option value="VALID">Taxonomy valid</option>
@@ -551,7 +551,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Price status</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Price status</span>
           <select value={filters.price} onChange={(event) => setFilter("price", event.target.value)} className={selectClass}>
             <option value="ALL">Any price state</option>
             <option value="VALID">Price valid</option>
@@ -560,7 +560,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Name status</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Name status</span>
           <select value={filters.name} onChange={(event) => setFilter("name", event.target.value)} className={selectClass}>
             <option value="ALL">Any name state</option>
             <option value="VALID">Name valid</option>
@@ -569,7 +569,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Grouping status</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Grouping status</span>
           <select value={filters.grouping} onChange={(event) => setFilter("grouping", event.target.value)} className={selectClass}>
             <option value="ALL">Any grouping state</option>
             <option value="VALID">Grouping resolved</option>
@@ -578,7 +578,7 @@ export default function UnifiedReviewQueue({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">Missing information</span>
+          <span className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">Missing information</span>
           <select value={filters.missing} onChange={(event) => setFilter("missing", event.target.value)} className={selectClass}>
             <option value="ALL">Any completeness</option>
             <option value="MISSING">Has blockers</option>
@@ -589,16 +589,16 @@ export default function UnifiedReviewQueue({
 
       {/* Workflow-aware bulk toolbar — stable IDs, action-specific groups. */}
       {selected.length ? (
-        <div className="mb-5 border border-mist/80 bg-canvas p-3">
+        <div className="mb-5 border border-pf-border/80 bg-pf-card p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-1 font-ui text-[11px] font-medium uppercase tracking-[.16em] text-ink">
+            <p className="mr-1 font-ui text-[11px] font-medium uppercase tracking-[.16em] text-pf-text">
               {selected.length} selected{bulkBusy ? " · processing…" : ""}
             </p>
-            <span className="font-ui text-[9px] uppercase tracking-[.14em] text-taupe">Workflow</span>
+            <span className="font-ui text-[9px] uppercase tracking-[.14em] text-pf-muted">Workflow</span>
             {workflowComposition.map((entry) => (
               <span
                 key={entry.stage}
-                className="border border-mist bg-ivory/70 px-2 py-1 font-ui text-[9px] uppercase tracking-[.12em] text-ink"
+                className="border border-pf-border bg-pf-ivory/70 px-2 py-1 font-ui text-[9px] uppercase tracking-[.12em] text-pf-text"
               >
                 {entry.count} {entry.label}
               </span>
@@ -607,7 +607,7 @@ export default function UnifiedReviewQueue({
               type="button"
               onClick={clearSelection}
               disabled={bulkBusy}
-              className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-taupe underline-offset-4 hover:text-accent hover:underline disabled:opacity-40"
+              className="ml-auto font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted underline-offset-4 hover:text-pf-burgundy hover:underline disabled:opacity-40"
             >
               Clear
             </button>
@@ -625,7 +625,7 @@ export default function UnifiedReviewQueue({
                   disabled={bulkBusy}
                   onClick={() => openConfirm(actionId)}
                   aria-label={`${action.label} selected products (${count})`}
-                  className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory disabled:opacity-40"
+                  className="border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory disabled:opacity-40"
                 >
                   <Check size={11} className="mr-1 inline" aria-hidden="true" /> {action.label} {count}
                 </button>
@@ -642,8 +642,8 @@ export default function UnifiedReviewQueue({
           aria-live="polite"
           className={`mb-5 border px-4 py-3 font-ui text-sm ${
             bulkResult.skipped
-              ? "border-accent/60 bg-accent/5 text-ink"
-              : "border-mist/80 bg-canvas text-ink"
+              ? "border-pf-gold-deep/60 bg-pf-burgundy/5 text-pf-text"
+              : "border-pf-border/80 bg-pf-card text-pf-text"
           }`}
         >
           <p className="font-medium">
@@ -657,12 +657,12 @@ export default function UnifiedReviewQueue({
           </p>
           {bulkResult.blocked?.length ? (
             <div className="mt-2">
-              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">Blocked products</p>
+              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">Blocked products</p>
               <ul className="mt-1 max-h-52 space-y-1.5 overflow-y-auto">
                 {bulkResult.blocked.map((entry) => (
                   <li key={entry.productId} className="text-[12px]">
                     <span className="font-medium">{entry.productId}</span>
-                    <ul className="list-disc pl-4 text-accent">
+                    <ul className="list-disc pl-4 text-pf-burgundy">
                       {(entry.reasons.length ? entry.reasons : ["Workflow action failed."]).map((reason) => (
                         <li key={`${entry.productId}-${reason}`}>{reason}</li>
                       ))}
@@ -675,7 +675,7 @@ export default function UnifiedReviewQueue({
           <button
             type="button"
             onClick={() => setBulkResult(null)}
-            className="mt-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe underline-offset-4 hover:text-accent hover:underline"
+            className="mt-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted underline-offset-4 hover:text-pf-burgundy hover:underline"
           >
             Dismiss
           </button>
@@ -693,12 +693,12 @@ export default function UnifiedReviewQueue({
 
       {/* The queue ------------------------------------------------------ */}
       {!filtered.length ? (
-        <p className="py-10 text-center font-ui text-sm text-taupe">No products match this view. The atelier is in order.</p>
+        <p className="py-10 text-center font-ui text-sm text-pf-muted">No products match this view. The atelier is in order.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left">
             <thead>
-              <tr className="border-b border-mist font-ui text-[10px] uppercase tracking-widest text-taupe">
+              <tr className="border-b border-pf-border font-ui text-[10px] uppercase tracking-widest text-pf-muted">
                 <th className="px-3 py-3" scope="col">
                   <input
                     type="checkbox"
@@ -719,7 +719,7 @@ export default function UnifiedReviewQueue({
                 return (
                   <tr
                     key={row.productId}
-                    className={`border-b border-mist/60 align-top font-ui text-sm ${focusId === row.productId ? "bg-ivory/70" : ""}`}
+                    className={`border-b border-pf-border/60 align-top font-ui text-sm ${focusId === row.productId ? "bg-pf-ivory/70" : ""}`}
                   >
                     <td className="px-3 py-3 align-top">
                       <input
@@ -733,23 +733,23 @@ export default function UnifiedReviewQueue({
                       <button
                         type="button"
                         onClick={() => onSelect?.(row.productId)}
-                        className="text-left underline-offset-4 hover:text-accent hover:underline"
+                        className="text-left underline-offset-4 hover:text-pf-burgundy hover:underline"
                       >
-                        <span className="block font-ui text-[10px] uppercase tracking-[.18em] text-accent">{row.productId}</span>
-                        {row.name?.trim() || <span className="text-taupe">[Not yet defined]</span>}
+                        <span className="block font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy">{row.productId}</span>
+                        {row.name?.trim() || <span className="text-pf-muted">[Not yet defined]</span>}
                       </button>
                       {row.returned && row.rejectionReason ? (
-                        <p className="mt-0.5 text-[11px] text-accent">Returned: {row.rejectionReason}</p>
+                        <p className="mt-0.5 text-[11px] text-pf-burgundy">Returned: {row.rejectionReason}</p>
                       ) : null}
                     </td>
                     <td className="px-3 py-3">
                       {categoryLabels[row.category] ?? row.category ?? "—"}
-                      {row.subcategory ? <span className="block text-[11px] text-taupe">{row.subcategory}</span> : null}
+                      {row.subcategory ? <span className="block text-[11px] text-pf-muted">{row.subcategory}</span> : null}
                     </td>
                     <td className="px-3 py-3">
                       <StatusBadge label={row.stageLabel ?? row.stage} tone={stageTone[row.stage] ?? "quiet"} />
                     </td>
-                    <td className="px-3 py-3 text-[11px] text-taupe">{row.assignedEmployeeName ?? "—"}</td>
+                    <td className="px-3 py-3 text-[11px] text-pf-muted">{row.assignedEmployeeName ?? "—"}</td>
                     <td className="px-3 py-3">
                       {row.blockingFlags.length ? (
                         <span className="inline-flex flex-wrap gap-1">
@@ -759,7 +759,7 @@ export default function UnifiedReviewQueue({
                           {row.blockingFlags.length > 2 ? <StatusBadge label={`+${row.blockingFlags.length - 2}`} tone="danger" /> : null}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-taupe">None</span>
+                        <span className="text-[11px] text-pf-muted">None</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -783,7 +783,7 @@ export default function UnifiedReviewQueue({
                       <button
                         type="button"
                         onClick={() => onSelect?.(row.productId)}
-                        className="border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+                        className="border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.12em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
                       >
                         Review
                       </button>
@@ -801,14 +801,14 @@ export default function UnifiedReviewQueue({
           <button
             type="button"
             onClick={() => setVisible((value) => value + PAGE_SIZE)}
-            className="border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+            className="border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
           >
             Load more · {filtered.length - visible} remaining
           </button>
         </div>
       ) : null}
 
-      <p className="mt-4 font-ui text-[10px] leading-relaxed text-taupe">
+      <p className="mt-4 font-ui text-[10px] leading-relaxed text-pf-muted">
         One queue over one lifecycle — {rows.length} products. All departments use the same review system.
         Bulk Submit, Approve and Publish run the same canonical commands as individual review.
       </p>

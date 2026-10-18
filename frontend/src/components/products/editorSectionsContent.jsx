@@ -35,7 +35,7 @@ export function SectionContent({ draft, patch, errors = {} }) {
   return (
     <div className="space-y-8">
       {/* Short & Full Description */}
-      <div className="grid gap-6 lg:grid-cols-2 border-b border-mist/70 pb-8">
+      <div className="grid gap-6 lg:grid-cols-2 border-b border-pf-border/70 pb-8">
         <Field
           label="Short description"
           hint="One considered line for cards, headers and quick previews."
@@ -106,7 +106,7 @@ export function SectionContent({ draft, patch, errors = {} }) {
       </Field>
 
       {/* Delivery & Returns */}
-      <div className="grid gap-6 lg:grid-cols-2 border-t border-mist/70 pt-6">
+      <div className="grid gap-6 lg:grid-cols-2 border-t border-pf-border/70 pt-6">
         <Field
           label="Delivery information"
           hint="Delivery timelines and dispatch details."
@@ -198,29 +198,29 @@ export function SectionMedia({ draft, patch, portal }) {
     <div className="space-y-6">
       {/* Media Metrics Display */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="border border-mist/80 bg-canvas p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Cover Image</p>
-          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-ink">
+        <div className="border border-pf-border/80 bg-pf-card p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Cover Image</p>
+          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-pf-text">
             {hasCoverImage ? (
               <>
-                <Check size={14} className="text-accent" aria-hidden="true" /> Cover set
+                <Check size={14} className="text-pf-burgundy" aria-hidden="true" /> Cover set
               </>
             ) : (
-              <span className="text-accent font-medium">Needs cover</span>
+              <span className="text-pf-burgundy font-medium">Needs cover</span>
             )}
           </p>
         </div>
-        <div className="border border-mist/80 bg-canvas p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Images</p>
-          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-ink">
+        <div className="border border-pf-border/80 bg-pf-card p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Images</p>
+          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-pf-text">
             <ImageIcon size={14} aria-hidden="true" /> {imageCount} image{imageCount === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="border border-mist/80 bg-canvas p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Videos</p>
-          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-ink">
+        <div className="border border-pf-border/80 bg-pf-card p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Videos</p>
+          <p className="mt-2 flex items-center gap-2 font-ui text-sm text-pf-text">
             <Film size={14} aria-hidden="true" /> {videoCount} video{videoCount === 1 ? "" : "s"}
-            <span className="text-[10px] uppercase tracking-[.14em] text-taupe">optional</span>
+            <span className="text-[10px] uppercase tracking-[.14em] text-pf-muted">optional</span>
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ export function SectionMedia({ draft, patch, portal }) {
             />
           </Field>
 
-          <p className="mt-3 font-ui text-[11px] leading-relaxed text-taupe">
+          <p className="mt-3 font-ui text-[11px] leading-relaxed text-pf-muted">
             {isSaved
               ? "Upload files with the media manager below. Device files are registered as durable assets — they are never stored as a browser data URL."
               : "Save this product as a draft first, then upload a cover from your device. The file is registered on the server after save."}
@@ -253,12 +253,12 @@ export function SectionMedia({ draft, patch, portal }) {
         </div>
 
         <div>
-          <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-ink">Cover Preview</p>
+          <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Cover Preview</p>
           {cover?.url || cover?.thumbnail ? (
             <img
               src={resolveMediaUrl(cover.url || cover.thumbnail)}
               alt={cover.alt || `${draft.name} cover`}
-              className="h-44 w-full max-w-xs object-cover border border-mist"
+              className="h-44 w-full max-w-xs object-cover border border-pf-border"
             />
           ) : draft.image && !String(draft.image).startsWith("data:") ? (
             <img
@@ -268,14 +268,14 @@ export function SectionMedia({ draft, patch, portal }) {
                   : imageRef(draft.image)?.src
               }
               alt={`${draft.name} catalogue plate`}
-              className="h-44 w-full max-w-xs object-cover border border-mist"
+              className="h-44 w-full max-w-xs object-cover border border-pf-border"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
             />
           ) : (
-            <div className="flex h-44 w-full max-w-xs items-center justify-center border border-dashed border-mist bg-canvas text-center p-4">
-              <span className="font-ui text-xs text-taupe">No cover image specified yet.</span>
+            <div className="flex h-44 w-full max-w-xs items-center justify-center border border-dashed border-pf-border bg-pf-card text-center p-4">
+              <span className="font-ui text-xs text-pf-muted">No cover image specified yet.</span>
             </div>
           )}
         </div>
@@ -286,15 +286,15 @@ export function SectionMedia({ draft, patch, portal }) {
           storage, register as durable assets, attach to this product and the
           product is re-read from the server — never a browser-local echo. */}
       {isSaved ? (
-        <div className="border border-mist/80 bg-surface/40 p-5 space-y-5">
+        <div className="border border-pf-border/80 bg-pf-ivory/40 p-5 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-ui text-sm leading-relaxed text-ink">
+            <p className="font-ui text-sm leading-relaxed text-pf-text">
               Upload new imagery, choose the cover and arrange the gallery. Everything below is
               confirmed by the server before it is shown as media.
             </p>
             <Link
               to={mediaHref}
-              className="inline-flex items-center gap-2 border border-ink px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-ink transition-colors hover:bg-ink hover:text-ivory"
+              className="inline-flex items-center gap-2 border border-pf-burgundy px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-text transition-colors hover:bg-pf-burgundy hover:text-pf-ivory"
             >
               <Star size={12} aria-hidden="true" /> Open full Media Manager <ExternalLink size={11} aria-hidden="true" />
             </Link>
@@ -302,7 +302,7 @@ export function SectionMedia({ draft, patch, portal }) {
           <ProductMediaManager productId={draft.id} scope={portal === "employee" ? "employee" : "admin"} />
         </div>
       ) : (
-        <div className="border border-mist/80 bg-canvas p-4 text-taupe font-ui text-xs">
+        <div className="border border-pf-border/80 bg-pf-card p-4 text-pf-muted font-ui text-xs">
           Tip: Save this product as a draft first — then this section can upload real images,
           register them as durable media assets and assign them to the product.
         </div>
@@ -376,19 +376,19 @@ export function SectionPublishing({ draft, patch, publishIssues }) {
   return (
     <div className="space-y-8">
       {/* Current Publishing Status */}
-      <div className="border border-mist/80 bg-canvas p-5">
-        <p className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Current status</p>
+      <div className="border border-pf-border/80 bg-pf-card p-5">
+        <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Current status</p>
         <div className="mt-2 flex items-center gap-3">
-          <p className="font-display text-2xl font-light text-ink">
+          <p className="font-display text-2xl font-light text-pf-text">
             {getProductStatusLabel(draft.status)}
           </p>
           <span
             className={
               draft.status === "PUBLISHED"
-                ? "border border-ink bg-ink px-2.5 py-0.5 font-ui text-[10px] uppercase tracking-wider text-ivory"
+                ? "border border-pf-burgundy bg-pf-burgundy px-2.5 py-0.5 font-ui text-[10px] uppercase tracking-wider text-pf-ivory"
                 : draft.status === "PENDING_REVIEW"
                   ? "border border-amber-600 bg-amber-50 px-2.5 py-0.5 font-ui text-[10px] uppercase tracking-wider text-amber-800"
-                  : "border border-mist bg-surface px-2.5 py-0.5 font-ui text-[10px] uppercase tracking-wider text-taupe"
+                  : "border border-pf-border bg-pf-ivory px-2.5 py-0.5 font-ui text-[10px] uppercase tracking-wider text-pf-muted"
             }
           >
             {draft.status}
@@ -396,21 +396,21 @@ export function SectionPublishing({ draft, patch, publishIssues }) {
         </div>
 
         {draft.review?.state === "REJECTED" && draft.review.rejectionReason ? (
-          <div className="mt-4 border border-accent/40 bg-accent/[0.05] p-4">
-            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-accent font-semibold">
+          <div className="mt-4 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-4">
+            <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy font-semibold">
               Rejection Reason from Reviewer
             </p>
-            <p className="mt-1 font-ui text-sm text-accent">
+            <p className="mt-1 font-ui text-sm text-pf-burgundy">
               {draft.review.rejectionReason}
             </p>
-            <p className="mt-2 font-ui text-xs text-taupe">
+            <p className="mt-2 font-ui text-xs text-pf-muted">
               Please update the requested fields and click &quot;Submit for review&quot; below to resubmit.
             </p>
           </div>
         ) : null}
 
         {draft.review?.state === "PENDING" ? (
-          <p className="mt-3 font-ui text-[11px] text-taupe">
+          <p className="mt-3 font-ui text-[11px] text-pf-muted">
             Submitted {draft.review.submittedAt ? new Date(draft.review.submittedAt).toLocaleString("en-IN") : ""}
             {draft.review.submittedBy ? ` by ${draft.review.submittedBy}` : ""} — awaiting manager or admin approval.
           </p>
@@ -419,8 +419,8 @@ export function SectionPublishing({ draft, patch, publishIssues }) {
 
       {/* Merchandising Flags */}
       <div>
-        <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-ink">Merchandising flags</p>
-        <div className="border border-mist/80 bg-canvas px-4 py-1">
+        <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Merchandising flags</p>
+        <div className="border border-pf-border/80 bg-pf-card px-4 py-1">
           {flags.map((flag) => (
             <ToggleRow
               key={flag.key}
@@ -435,11 +435,11 @@ export function SectionPublishing({ draft, patch, publishIssues }) {
 
       {/* Inventory preparation */}
       <div>
-        <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-ink">Inventory preparation</p>
-        <p className="mb-3 font-ui text-[11px] text-taupe">
+        <p className="mb-2 font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Inventory preparation</p>
+        <p className="mb-3 font-ui text-[11px] text-pf-muted">
           These settings feed the central inventory ledger. Opening stock is written once when the product is first published.
         </p>
-        <div className="border border-mist/80 bg-canvas px-4 py-1">
+        <div className="border border-pf-border/80 bg-pf-card px-4 py-1">
           <ToggleRow
             label="Track inventory for this product"
             hint="Uses variant/location stock for availability, cart and checkout."
@@ -475,20 +475,20 @@ export function SectionPublishing({ draft, patch, publishIssues }) {
 
       {/* Publishing Readiness Checklist */}
       {publishIssues.length ? (
-        <div className="border border-accent/40 bg-accent/[0.05] p-4">
-          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-accent font-semibold">
+        <div className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] p-4">
+          <p className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy font-semibold">
             Before Publishing ({publishIssues.length} issue{publishIssues.length === 1 ? "" : "s"} to resolve)
           </p>
           <ul className="mt-2 space-y-1.5">
             {publishIssues.map((issue) => (
-              <li key={issue} className="font-ui text-sm text-accent">
+              <li key={issue} className="font-ui text-sm text-pf-burgundy">
                 — {issue}
               </li>
             ))}
           </ul>
         </div>
       ) : (
-        <p className="border border-mist/80 bg-canvas p-4 font-ui text-sm text-ink">
+        <p className="border border-pf-border/80 bg-pf-card p-4 font-ui text-sm text-pf-text">
           ✓ This product meets every publishing requirement and is ready to go live.
         </p>
       )}

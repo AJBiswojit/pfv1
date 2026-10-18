@@ -14,7 +14,7 @@ export default function AdminOfferFormPage() {
   if (offerId && !existing) {
     return (
       <AdminPage eyebrow="Offers" title="Offer not found">
-        <Link to={`${prefix}/offers`} className="font-ui text-sm text-brass hover:text-accent">
+        <Link to={`${prefix}/offers`} className="font-ui text-sm text-pf-gold-text hover:text-pf-burgundy">
           Back to offers
         </Link>
       </AdminPage>
@@ -27,11 +27,11 @@ export default function AdminOfferFormPage() {
       title={
         existing ? (
           <>
-            Edit <span className="italic text-accent">{existing.code}</span>
+            Edit <span className="italic text-pf-burgundy">{existing.code}</span>
           </>
         ) : (
           <>
-            New <span className="italic text-accent">offer.</span>
+            New <span className="italic text-pf-burgundy">offer.</span>
           </>
         )
       }

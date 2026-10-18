@@ -143,11 +143,11 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
   ];
 
   const rows = (items) => (
-    <dl className="divide-y divide-mist/70">
+    <dl className="divide-y divide-pf-border/70">
       {items.map(([label, value]) => (
         <div key={label} className="grid gap-1 py-3 sm:grid-cols-[150px_minmax(0,1fr)]">
-          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-          <dd className="font-ui text-sm text-ink">{value}</dd>
+          <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+          <dd className="font-ui text-sm text-pf-text">{value}</dd>
         </div>
       ))}
     </dl>
@@ -168,7 +168,7 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
       }
     >
       {notice ? (
-        <p role="status" aria-live="polite" className="mb-6 border border-cocoa/30 bg-cocoa/5 px-4 py-3 font-ui text-sm text-cocoa">{notice}</p>
+        <p role="status" aria-live="polite" className="mb-6 border border-pf-cocoa/30 bg-pf-cocoa/5 px-4 py-3 font-ui text-sm text-pf-cocoa">{notice}</p>
       ) : null}
 
       <div className="mb-7 flex flex-wrap items-center gap-2">
@@ -209,10 +209,10 @@ export default function AdminEmployeeDetail({ basePath } = {}) {
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,.75fr)_minmax(0,1.25fr)]">
         <AdminPanel eyebrow="Contact" title="Reach this employee">
           <div className="space-y-4 font-ui text-sm">
-            <p className="flex items-center gap-3"><Mail size={14} className="text-accent" aria-hidden="true" /><a className="break-all text-brass hover:text-accent" href={`mailto:${person.email}`}>{person.email}</a></p>
-            <p className="flex items-center gap-3"><Phone size={14} className="text-accent" aria-hidden="true" /><span>{person.phone || "No phone recorded"}</span></p>
-            <p className="flex items-center gap-3"><KeyRound size={14} className="text-accent" aria-hidden="true" /><span>Credentials remain isolated from this profile.</span></p>
-            <p className="flex items-center gap-3"><ShieldCheck size={14} className="text-accent" aria-hidden="true" /><span>No Admin Portal identity or authority.</span></p>
+            <p className="flex items-center gap-3"><Mail size={14} className="text-pf-burgundy" aria-hidden="true" /><a className="break-all text-pf-gold-text hover:text-pf-burgundy" href={`mailto:${person.email}`}>{person.email}</a></p>
+            <p className="flex items-center gap-3"><Phone size={14} className="text-pf-burgundy" aria-hidden="true" /><span>{person.phone || "No phone recorded"}</span></p>
+            <p className="flex items-center gap-3"><KeyRound size={14} className="text-pf-burgundy" aria-hidden="true" /><span>Credentials remain isolated from this profile.</span></p>
+            <p className="flex items-center gap-3"><ShieldCheck size={14} className="text-pf-burgundy" aria-hidden="true" /><span>No Admin Portal identity or authority.</span></p>
           </div>
         </AdminPanel>
         <AdminPanel eyebrow={`${person.permissions.length} grants`} title={capabilityDriven ? "Effective capabilities" : "Operational permissions"}>

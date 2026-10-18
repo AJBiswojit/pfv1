@@ -177,9 +177,9 @@ export default function AdminWarehouseForm() {
 
   const eyebrow = isEdit ? "Inventory / Warehouses / Edit" : "Inventory / Warehouses / New";
   const pageTitle = isEdit ? (
-    <>Edit <span className="italic text-accent">warehouse.</span></>
+    <>Edit <span className="italic text-pf-burgundy">warehouse.</span></>
   ) : (
-    <>New <span className="italic text-accent">warehouse.</span></>
+    <>New <span className="italic text-pf-burgundy">warehouse.</span></>
   );
   const pageDesc = isEdit
     ? "Update the warehouse name and address. Code and type are fixed after creation."
@@ -194,7 +194,7 @@ export default function AdminWarehouseForm() {
         <button
           type="button"
           onClick={() => navigate(isEdit ? `${prefix}/warehouses/${warehouseId}` : `${prefix}/warehouses`)}
-          className="inline-flex items-center gap-2 border border-mist px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink"
+          className="inline-flex items-center gap-2 border border-pf-border px-4 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
         >
           <ArrowLeft size={13} /> Back
         </button>
@@ -202,14 +202,14 @@ export default function AdminWarehouseForm() {
     >
       {/* Loading skeleton */}
       {loading && (
-        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="font-ui text-sm text-pf-muted">
           Loading warehouse…
         </p>
       )}
 
       {/* Load error */}
       {!loading && loadError && (
-        <div role="alert" className="flex items-center gap-2 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="flex items-center gap-2 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           <AlertTriangle size={13} /> {loadError}
           <button
             type="button"
@@ -228,7 +228,7 @@ export default function AdminWarehouseForm() {
           title={isEdit ? "Update warehouse" : "Warehouse details"}
         >
           {saveError && (
-            <div role="alert" className="mb-5 flex items-center gap-2 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+            <div role="alert" className="mb-5 flex items-center gap-2 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
               <AlertTriangle size={13} /> {saveError}
             </div>
           )}
@@ -238,7 +238,7 @@ export default function AdminWarehouseForm() {
 
               {/* Name */}
               <div>
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Name <span aria-hidden="true">*</span>
                 </label>
                 <input
@@ -251,8 +251,8 @@ export default function AdminWarehouseForm() {
                   aria-invalid={Boolean(errors.name)}
                   aria-describedby={errors.name ? "wh-name-err" : undefined}
                   className={cn(
-                    "mt-1.5 h-10 w-full border bg-canvas px-3 font-ui text-sm text-ink outline-none focus:border-accent",
-                    errors.name ? "border-red-400" : "border-mist",
+                    "mt-1.5 h-10 w-full border bg-pf-card px-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep",
+                    errors.name ? "border-red-400" : "border-pf-border",
                   )}
                 />
                 {errors.name && (
@@ -264,10 +264,10 @@ export default function AdminWarehouseForm() {
 
               {/* Code */}
               <div>
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Code <span aria-hidden="true">{isEdit ? "" : "*"}</span>
                   {isEdit && (
-                    <span className="ml-2 text-[9px] normal-case tracking-normal text-taupe/70">
+                    <span className="ml-2 text-[9px] normal-case tracking-normal text-pf-muted/70">
                       (cannot be changed after creation)
                     </span>
                   )}
@@ -282,8 +282,8 @@ export default function AdminWarehouseForm() {
                   aria-invalid={Boolean(errors.code)}
                   aria-describedby={errors.code ? "wh-code-err" : undefined}
                   className={cn(
-                    "mt-1.5 h-10 w-full border bg-canvas px-3 font-mono text-sm text-ink outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-50",
-                    errors.code ? "border-red-400" : "border-mist",
+                    "mt-1.5 h-10 w-full border bg-pf-card px-3 font-mono text-sm text-pf-text outline-none focus:border-pf-gold-deep disabled:cursor-not-allowed disabled:opacity-50",
+                    errors.code ? "border-red-400" : "border-pf-border",
                   )}
                 />
                 {errors.code && (
@@ -292,7 +292,7 @@ export default function AdminWarehouseForm() {
                   </p>
                 )}
                 {!isEdit && form.code && !errors.code && (
-                  <p className="mt-1 font-ui text-[10px] text-taupe/70">
+                  <p className="mt-1 font-ui text-[10px] text-pf-muted/70">
                     Auto-generated from name. You can customise it.
                   </p>
                 )}
@@ -300,10 +300,10 @@ export default function AdminWarehouseForm() {
 
               {/* Type */}
               <div>
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Type
                   {isEdit && (
-                    <span className="ml-2 text-[9px] normal-case tracking-normal text-taupe/70">
+                    <span className="ml-2 text-[9px] normal-case tracking-normal text-pf-muted/70">
                       (cannot be changed after creation)
                     </span>
                   )}
@@ -312,7 +312,7 @@ export default function AdminWarehouseForm() {
                   value={form.type}
                   onChange={set("type")}
                   disabled={isEdit}
-                  className="mt-1.5 h-10 w-full border border-mist bg-canvas px-3 font-ui text-sm text-ink outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-1.5 h-10 w-full border border-pf-border bg-pf-card px-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {WAREHOUSE_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -322,9 +322,9 @@ export default function AdminWarehouseForm() {
 
               {/* Address */}
               <div>
-                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+                <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                   Address
-                  <span className="ml-2 text-[9px] normal-case tracking-normal text-taupe/70">
+                  <span className="ml-2 text-[9px] normal-case tracking-normal text-pf-muted/70">
                     (optional)
                   </span>
                 </label>
@@ -332,17 +332,17 @@ export default function AdminWarehouseForm() {
                   value={form.address}
                   onChange={set("address")}
                   placeholder="123 Main St, City"
-                  className="mt-1.5 h-10 w-full border border-mist bg-canvas px-3 font-ui text-sm text-ink outline-none focus:border-accent"
+                  className="mt-1.5 h-10 w-full border border-pf-border bg-pf-card px-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="mt-8 flex items-center gap-3 border-t border-mist/60 pt-6">
+            <div className="mt-8 flex items-center gap-3 border-t border-pf-border/60 pt-6">
               <button
                 type="submit"
                 disabled={saving}
-                className="border border-ink bg-ink px-5 py-2.5 font-ui text-[10px] uppercase tracking-[.16em] text-ivory hover:bg-ink/80 disabled:opacity-50"
+                className="border border-pf-burgundy bg-pf-burgundy px-5 py-2.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-ivory hover:bg-pf-burgundy/80 disabled:opacity-50"
               >
                 {saving
                   ? isEdit ? "Saving…" : "Creating…"
@@ -353,7 +353,7 @@ export default function AdminWarehouseForm() {
                 onClick={() =>
                   navigate(isEdit ? `${prefix}/warehouses/${warehouseId}` : `${prefix}/warehouses`)
                 }
-                className="border border-mist px-5 py-2.5 font-ui text-[10px] uppercase tracking-[.16em] text-taupe hover:border-ink hover:text-ink"
+                className="border border-pf-border px-5 py-2.5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text"
               >
                 Cancel
               </button>

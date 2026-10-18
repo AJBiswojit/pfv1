@@ -8,7 +8,7 @@ import { slugify } from "../../../services/catalogRepository";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { formatAdminError } from "../../../services/admin/adminError";
 
-const inputClass = "w-full border border-mist bg-canvas px-3 py-2.5 font-ui text-sm text-ink outline-none focus:border-accent";
+const inputClass = "w-full border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep";
 const emptyDraft = {
   name: "",
   slug: "",
@@ -118,7 +118,7 @@ export default function AdminCollectionForm() {
         description="Fetching the latest collection data from the server."
       >
         <AdminPanel eyebrow="Collection record" title="Loading…">
-          <p className="font-ui text-sm text-taupe">Loading details from server…</p>
+          <p className="font-ui text-sm text-pf-muted">Loading details from server…</p>
         </AdminPanel>
       </AdminPage>
     );
@@ -127,61 +127,61 @@ export default function AdminCollectionForm() {
   return (
     <AdminPage
       eyebrow="Business / Collections"
-      title={existing ? <>Edit <span className="italic text-accent">collection.</span></> : <>Create <span className="italic text-accent">collection.</span></>}
+      title={existing ? <>Edit <span className="italic text-pf-burgundy">collection.</span></> : <>Create <span className="italic text-pf-burgundy">collection.</span></>}
       description="Collections are editorial groupings. They are not categories, and product records are never duplicated."
       actions={<AtelierButton as={Link} to={`${prefix}/collections`} variant="outline" size="chip">Back to collections</AtelierButton>}
     >
       <AdminPanel eyebrow="Collection record" title="Details">
-        {error ? <p role="alert" className="mb-5 border border-accent/40 bg-accent/[0.05] px-4 py-3 font-ui text-sm text-accent">{error}</p> : null}
+        {error ? <p role="alert" className="mb-5 border border-pf-gold-deep/40 bg-pf-burgundy/[0.05] px-4 py-3 font-ui text-sm text-pf-burgundy">{error}</p> : null}
         <form onSubmit={submit} className="grid gap-6 lg:grid-cols-2">
           <label className="lg:col-span-2">
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Name *</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Name *</span>
             <input className={inputClass} value={draft.name} onChange={(event) => setField("name", event.target.value)} placeholder="Wedding Edit" />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Slug</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Slug</span>
             <input className={inputClass} value={draft.slug} onChange={(event) => setField("slug", slugify(event.target.value))} />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Type</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Type</span>
             <select className={inputClass} value={draft.type} onChange={(event) => setField("type", event.target.value)}>
               {Object.values(COLLECTION_TYPES).map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
           </label>
           <label className="lg:col-span-2">
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Description</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Description</span>
             <textarea rows={4} className={inputClass} value={draft.description || ""} onChange={(event) => setField("description", event.target.value)} />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Fallback image</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Fallback image</span>
             <input className={inputClass} value={draft.image || ""} onChange={(event) => setField("image", event.target.value)} placeholder="lehenga-wine" />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Hero media ID</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Hero media ID</span>
             <input className={inputClass} value={draft.heroMediaId || ""} onChange={(event) => setField("heroMediaId", event.target.value)} placeholder="med-..." />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Thumbnail media ID</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Thumbnail media ID</span>
             <input className={inputClass} value={draft.thumbnailMediaId || ""} onChange={(event) => setField("thumbnailMediaId", event.target.value)} placeholder="med-..." />
           </label>
-          <div className="border border-mist bg-canvas px-3 py-2.5">
-            <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.18em] text-taupe">Status</span>
-            <span className="font-ui text-sm text-ink">{existing ? draft.status : "DRAFT on create"}</span>
-            <p className="mt-1 font-ui text-[11px] text-taupe">Use the dedicated lifecycle actions after saving.</p>
+          <div className="border border-pf-border bg-pf-card px-3 py-2.5">
+            <span className="mb-1 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">Status</span>
+            <span className="font-ui text-sm text-pf-text">{existing ? draft.status : "DRAFT on create"}</span>
+            <p className="mt-1 font-ui text-[11px] text-pf-muted">Use the dedicated lifecycle actions after saving.</p>
           </div>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Start date</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Start date</span>
             <input type="date" className={inputClass} value={draft.startDate || ""} onChange={(event) => setField("startDate", event.target.value)} />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">End date</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">End date</span>
             <input type="date" className={inputClass} value={draft.endDate || ""} onChange={(event) => setField("endDate", event.target.value)} />
           </label>
           <label>
-            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-ink">Sort order</span>
+            <span className="mb-2 block font-ui text-[10px] uppercase tracking-[.18em] text-pf-text">Sort order</span>
             <input type="number" className={inputClass} value={draft.sortOrder} onChange={(event) => setField("sortOrder", event.target.value)} />
           </label>
-          <label className="flex items-center gap-3 pt-7 font-ui text-sm text-ink">
+          <label className="flex items-center gap-3 pt-7 font-ui text-sm text-pf-text">
             <input type="checkbox" checked={draft.featured} onChange={(event) => setField("featured", event.target.checked)} /> Featured collection
           </label>
           <div className="flex flex-wrap gap-3 lg:col-span-2">

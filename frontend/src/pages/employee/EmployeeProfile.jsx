@@ -75,7 +75,7 @@ export default function EmployeeProfile() {
       eyebrow="Identity"
       title={
         <>
-          Your house <span className="italic text-accent">profile.</span>
+          Your house <span className="italic text-pf-burgundy">profile.</span>
         </>
       }
       description="Role, department and employee ID are issued by administration. You may keep your name and reachable number current."
@@ -89,7 +89,7 @@ export default function EmployeeProfile() {
           role="status"
           className={cn(
             "mb-6 flex items-center gap-3 border p-4 font-ui text-xs",
-            feedback.ok ? "border-cocoa/40 bg-cocoa/10 text-cocoa" : "border-accent/40 bg-accent/5 text-accent"
+            feedback.ok ? "border-pf-cocoa/40 bg-pf-cocoa/10 text-pf-cocoa" : "border-pf-gold-deep/40 bg-pf-burgundy/5 text-pf-burgundy"
           )}
         >
           {feedback.ok ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
@@ -98,16 +98,16 @@ export default function EmployeeProfile() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <dl className="divide-y divide-mist/70 border border-mist/80 bg-surface/30">
+        <dl className="divide-y divide-pf-border/70 border border-pf-border/80 bg-pf-ivory/30">
           {rows.map(([label, value]) => (
             <div key={label} className="grid gap-1 px-5 py-4 sm:grid-cols-[180px_minmax(0,1fr)]">
-              <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-              <dd className="font-ui text-sm text-ink">{value || "—"}</dd>
+              <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+              <dd className="font-ui text-sm text-pf-text">{value || "—"}</dd>
             </div>
           ))}
         </dl>
 
-        <form onSubmit={handleSubmit} className="border border-mist/80 bg-surface/40 p-6">
+        <form onSubmit={handleSubmit} className="border border-pf-border/80 bg-pf-ivory/40 p-6">
           <div className="grid gap-5">
             <EmployeeField label="Name" required hint="Shown on your desk and in the directory.">
               <input
@@ -126,7 +126,7 @@ export default function EmployeeProfile() {
               />
             </EmployeeField>
           </div>
-          <p className="mt-4 font-ui text-[11px] text-taupe">
+          <p className="mt-4 font-ui text-[11px] text-pf-muted">
             Role, department, section and status can only be changed by an administrator.
           </p>
           {canEdit ? (

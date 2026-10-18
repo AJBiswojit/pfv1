@@ -215,16 +215,19 @@ export const staffPortal = {
   wine: "#2A0610",
   ivory: "#FBF4EB",
   card: "#FFF9F2",
-  gold: "#D6AE70",
+  gold: "#D6AE70", // decoration/icons/rules ONLY — never essential text (1.98:1 on card)
   goldDeep: "#B98948",
+  goldText: "#865E20", // accessible gold-brown TEXT on ivory (5.52:1 on card)
+  cocoa: "#6A4E38",
   text: "#351A1B",
-  muted: "#88786E",
-  border: "#EDE4D8",
+  muted: "#6F5D52", // 5.97:1 on card (was #88786E at 4.05:1 — failed WCAG AA)
+  border: "#EDE4D8", // decorative hairline only
   borderLight: "#F5EDE3",
+  borderStrong: "#A68A68", // structural boundaries (3.11:1 on card)
   success: "#4A7C59",
-  warning: "#C4922A",
+  warning: "#8F660F", // 4.93:1 on card (was #C4922A at 2.68:1)
   error: "#A84448",
-  info: "#5B8FA8",
+  info: "#3E6E85",
 };
 
 export const tokens = {

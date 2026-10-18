@@ -195,6 +195,50 @@ export const campaign = {
   measure: "max-w-[40ch]",
 };
 
+/* ------------------------------------------------------------------ */
+/* Staff Portal scale (Phase 2 — Admin / Super Admin / Employee)       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The ONE staff type hierarchy. Editorial Cormorant Garamond at weight
+ * 500 (never 300 — too thin at operational sizes, and no local 300 cut
+ * exists) with lining figures; Instrument Sans for everything
+ * operational. Nothing informational below 11px. Enforced jointly by
+ * these semantic classes in shared staff components and the `.pf-staff`
+ * floor in `src/index.css`.
+ */
+export const staff = {
+  /** Page heading / dashboard greeting. */
+  pageTitle: "font-display text-[32px] md:text-[44px] font-medium leading-[1.05] tracking-tight",
+  /** Panel / section heading. */
+  sectionTitle: "font-display text-[24px] md:text-[28px] font-medium leading-[1.12] tracking-tight",
+  /** KPI / hero metric value. */
+  metricValue: "font-display text-[36px] md:text-[42px] font-medium leading-none tracking-tight tabular-nums",
+  /** Chart centre / panel total. */
+  panelValue: "font-display text-[28px] md:text-[32px] font-medium leading-none tabular-nums",
+  /** Eyebrow / kicker (accessible gold-brown, never pale gold). */
+  eyebrow: "font-ui text-[11px] font-semibold uppercase tracking-[0.22em]",
+  /** KPI / field label. */
+  label: "font-ui text-[12px] font-semibold uppercase tracking-[0.14em]",
+  /** Navigation item. */
+  navItem: "font-ui text-[13.5px] font-medium leading-snug",
+  /** Navigation group heading. */
+  navGroup: "font-ui text-[11px] font-semibold uppercase tracking-[0.18em]",
+  /** Primary body / table text. */
+  body: "font-ui text-sm leading-relaxed",
+  /** Secondary / supporting information. */
+  secondary: "font-ui text-[13px] leading-relaxed",
+  /** Captions, hints, chart legend text. */
+  caption: "font-ui text-[12px] leading-relaxed",
+  /** Status badge. */
+  badge: "font-ui text-[11px] font-semibold uppercase tracking-[0.08em]",
+  /** Chart axis minimum (effective rendered size). */
+  chartAxis: "font-ui text-[11px]",
+  /** Buttons. */
+  button: "font-ui text-[13px] font-semibold uppercase tracking-[0.12em]",
+  buttonSmall: "font-ui text-[12px] font-semibold uppercase tracking-[0.1em]",
+};
+
 export const typography = {
   fonts,
   fontFamilies,
@@ -207,6 +251,7 @@ export const typography = {
   price,
   badge,
   campaign,
+  staff,
 };
 
 export default typography;

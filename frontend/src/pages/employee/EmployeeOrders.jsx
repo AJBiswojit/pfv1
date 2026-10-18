@@ -19,10 +19,10 @@ import { formatOrderDate } from "../../utils/orders";
 
 function Metric({ label, value, hint }) {
   return (
-    <div className="border border-mist/70 bg-surface/30 p-4">
-      <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-      <p className="mt-2 font-display text-2xl font-light text-ink">{value}</p>
-      {hint && <p className="mt-1 font-ui text-[10px] text-taupe">{hint}</p>}
+    <div className="border border-pf-border/70 bg-pf-ivory/30 p-4">
+      <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+      <p className="mt-2 font-display text-2xl font-light text-pf-text">{value}</p>
+      {hint && <p className="mt-1 font-ui text-[10px] text-pf-muted">{hint}</p>}
     </div>
   );
 }
@@ -129,7 +129,7 @@ export default function EmployeeOrders() {
       eyebrow={`${employee?.roleLabel || role} / Orders`}
       title={
         <>
-          Orders <span className="italic text-accent">desk.</span>
+          Orders <span className="italic text-pf-burgundy">desk.</span>
         </>
       }
       description={
@@ -153,56 +153,56 @@ export default function EmployeeOrders() {
       {/* Search */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-md">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-taupe" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order, customer, phone" className="h-9 w-full border border-mist bg-canvas pl-9 pr-3 font-ui text-xs outline-none focus:border-accent" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-pf-muted" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order, customer, phone" className="h-9 w-full border border-pf-border bg-pf-card pl-9 pr-3 font-ui text-xs outline-none focus:border-pf-gold-deep" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 border border-mist bg-canvas px-3 font-ui text-xs">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 border border-pf-border bg-pf-card px-3 font-ui text-xs">
           <option value="all">All statuses</option>
           {Object.values(ORDER_STATUS).map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
         </select>
-        <span className="font-ui text-[11px] text-taupe">{filtered.length} orders</span>
+        <span className="font-ui text-[11px] text-pf-muted">{filtered.length} orders</span>
       </div>
 
       {/* Queues */}
       <div className="mb-8 grid gap-6 lg:grid-cols-5">
         {queueSections.map((section) => (
-          <div key={section.id} className="border border-mist/60 bg-surface/20 p-3">
-            <p className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{section.label}</p>
+          <div key={section.id} className="border border-pf-border/60 bg-pf-ivory/20 p-3">
+            <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{section.label}</p>
             <p className="mt-1 font-display text-xl">{section.orders.length}</p>
             <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
               {section.orders.slice(0, 6).map((o) => (
-                <Link key={o.id} to={`/employee/orders/${o.id}`} className="block border border-mist/40 bg-canvas px-2 py-2 hover:border-accent/40">
+                <Link key={o.id} to={`/employee/orders/${o.id}`} className="block border border-pf-border/40 bg-pf-card px-2 py-2 hover:border-pf-gold-deep/40">
                   <p className="font-mono text-[11px]">{o.id}</p>
                   <p className="font-ui text-[11px] truncate">{o.customer?.fullName} · {o.items.length} pcs</p>
                 </Link>
               ))}
-              {section.orders.length === 0 && <p className="font-ui text-[11px] text-taupe">No orders</p>}
+              {section.orders.length === 0 && <p className="font-ui text-[11px] text-pf-muted">No orders</p>}
             </div>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="border border-mist/80 bg-surface/30 overflow-x-auto">
+      <div className="border border-pf-border/80 bg-pf-ivory/30 overflow-x-auto">
         <table className="min-w-full text-left hidden md:table">
-          <thead className="border-b border-mist/70 bg-canvas/60">
+          <thead className="border-b border-pf-border/70 bg-pf-card/60">
             <tr>
               {["Order", "Customer", "Items", "Total", "Status", "Location", "Created", ""].map((h) => (
-                <th key={h} className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{h}</th>
+                <th key={h} className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map((order) => (
-              <tr key={order.id} className="border-b border-mist/40">
-                <td className="px-4 py-3 font-mono text-xs"><Link to={`/employee/orders/${order.id}`} className="text-brass hover:text-accent">{order.id}</Link></td>
+              <tr key={order.id} className="border-b border-pf-border/40">
+                <td className="px-4 py-3 font-mono text-xs"><Link to={`/employee/orders/${order.id}`} className="text-pf-gold-text hover:text-pf-burgundy">{order.id}</Link></td>
                 <td className="px-4 py-3 font-ui text-sm">{order.customer?.fullName}</td>
                 <td className="px-4 py-3 font-ui text-xs">{order.items.length} items</td>
                 <td className="px-4 py-3 font-ui text-xs">{formatINR(order.pricing?.total)}</td>
                 <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
                 <td className="px-4 py-3 font-ui text-[11px]">{order.fulfillment?.sourceLocationId || "—"}</td>
-                <td className="px-4 py-3 font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</td>
-                <td className="px-4 py-3"><Link to={`/employee/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-brass"><Eye size={12} /> Open</Link></td>
+                <td className="px-4 py-3 font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</td>
+                <td className="px-4 py-3"><Link to={`/employee/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-pf-gold-text"><Eye size={12} /> Open</Link></td>
               </tr>
             ))}
           </tbody>
@@ -210,13 +210,13 @@ export default function EmployeeOrders() {
 
         <div className="grid gap-3 p-3 md:hidden">
           {filtered.map((order) => (
-            <Link key={order.id} to={`/employee/orders/${order.id}`} className="border border-mist/60 bg-canvas p-3">
+            <Link key={order.id} to={`/employee/orders/${order.id}`} className="border border-pf-border/60 bg-pf-card p-3">
               <div className="flex justify-between">
                 <span className="font-mono text-xs">{order.id}</span>
                 <OrderStatusBadge status={order.status} />
               </div>
               <p className="mt-1 font-ui text-sm">{order.customer?.fullName} · {formatINR(order.pricing?.total)}</p>
-              <p className="font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</p>
+              <p className="font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</p>
             </Link>
           ))}
         </div>

@@ -253,6 +253,15 @@ class AdminDashboardSummaryTests(unittest.IsolatedAsyncioTestCase):
         # canonical definition: revenue ÷ ALL orders (not just revenue-eligible)
         self.assertEqual(metrics["avgOrderValue"], 1166.67)
 
+    async def test_order_status_counts_cover_the_whole_order_book(self):
+        # Phase 2 additive aggregate: the dashboard donut must describe
+        # every order, never the recent-orders sample (3 seeded orders:
+        # 2 revenue-eligible + 1 CANCELLED).
+        summary = await self._summary()
+        counts = summary["orderStatusCounts"]
+        self.assertEqual(sum(counts.values()), summary["metrics"]["orderCount"])
+        self.assertEqual(counts.get("CANCELLED"), 1)
+
     async def test_employee_counts_are_counts_not_a_list_read(self):
         summary = await self._summary()
         self.assertEqual(summary["employees"], {"total": 1, "active": 1})

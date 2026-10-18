@@ -111,14 +111,25 @@
   --color-pf-card: #FFF9F2;
   --color-pf-gold: #D6AE70;
   --color-pf-gold-deep: #B98948;
+  /* Accessible gold-brown for essential TEXT on ivory (5.52:1 on card).
+     Pale champagne (--color-pf-gold) is decoration/icons/rules only and
+     must never carry essential text (1.98:1 on card). */
+  --color-pf-gold-text: #865E20;
+  --color-pf-cocoa: #6A4E38;
   --color-pf-text: #351A1B;
-  --color-pf-muted: #88786E;
+  /* Darkened from #88786E (4.05:1, failed WCAG AA normal text) to
+     #6F5D52 (5.97:1 on card / 5.72:1 on ivory) — same warm-grey family. */
+  --color-pf-muted: #6F5D52;
   --color-pf-border: #EDE4D8;
   --color-pf-border-light: #F5EDE3;
+  /* Structural boundary tier — 3.11:1 on card. Use where the boundary
+     itself carries structure (inputs, active plates); pf-border stays a
+     purely decorative hairline. */
+  --color-pf-border-strong: #A68A68;
   --color-pf-success: #4A7C59;
-  --color-pf-warning: #C4922A;
+  --color-pf-warning: #8F660F;
   --color-pf-error: #A84448;
-  --color-pf-info: #5B8FA8;
+  --color-pf-info: #3E6E85;
 
   /* ------------------------------------------------------------------
      Campaign motion curves — Phase 1, ADDITIVE.
@@ -132,10 +143,162 @@
   --ease-editorial-inout: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
+/* ------------------------------------------------------------------
+   Staff font delivery — ONE deliberate strategy.
+
+   Staff surfaces use only locally-available cuts so the portals never
+   depend on Google-only weights: Cormorant Garamond 400 / 400 italic /
+   500 (display + KPI, weight 500) and Instrument Sans 400–700 (UI).
+   The document-head Google Fonts link is retained solely for the
+   customer storefront (Cormorant 300/600 display cuts + Playfair
+   Display accent), which must not change. A browser downloads one
+   face per requested weight/style, so staff text set in the weights
+   below is served by these WOFF2 self-hosted files. The staff login
+   already self-hosts the same files (staff-login.css).
+   ------------------------------------------------------------------ */
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("./assets/fonts/cormorant-garamond-latin-400-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("./assets/fonts/cormorant-garamond-latin-400-italic.woff2") format("woff2");
+  font-style: italic; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("./assets/fonts/cormorant-garamond-latin-500-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 500; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("./assets/fonts/instrument-sans-latin-400-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("./assets/fonts/instrument-sans-latin-500-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 500; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("./assets/fonts/instrument-sans-latin-600-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 600; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("./assets/fonts/instrument-sans-latin-700-normal.woff2") format("woff2");
+  font-style: normal; font-weight: 700; font-display: swap;
+}
+
+/* Staff masthead height — the single source of truth consumed by the
+   portal shell (sticky sidebar offset / drawer padding). No component
+   may hard-code a header pixel height. */
+:root {
+  --pf-header-h: 64px;
+}
+@media (min-width: 768px) {
+  :root {
+    --pf-header-h: 72px;
+  }
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ------------------------------------------------------------------
+   Staff Portal theme layer (.pf-staff scope on Admin/Employee
+   layouts ONLY — the customer storefront never carries this class).
+
+   Purpose: shared/storefront components that also render inside the
+   portals (Atelier buttons/badges/states, order components, media
+   components) still speak the legacy Atelier class vocabulary
+   (text-ink, bg-canvas, border-mist, bg-accent…). Staff-owned source
+   files were migrated to pf-* utilities directly; this layer remaps
+   the remaining shared-component classes AND enforces the staff
+   type floor so no portal page can fall back to white/terracotta
+   micro-type. Every rule is scoped — nothing here can leak into
+   customer pages.
+   ------------------------------------------------------------------ */
+.pf-staff .text-ink { color: var(--color-pf-text); }
+.pf-staff .text-taupe, .pf-staff .text-graphite, .pf-staff .text-ash { color: var(--color-pf-muted); }
+.pf-staff .text-accent { color: var(--color-pf-burgundy); }
+.pf-staff .text-brass, .pf-staff .text-gold { color: var(--color-pf-gold-text); }
+.pf-staff .text-cocoa { color: var(--color-pf-cocoa); }
+.pf-staff .bg-ink { background-color: var(--color-pf-burgundy); }
+.pf-staff .bg-accent { background-color: var(--color-pf-burgundy); }
+.pf-staff .bg-canvas, .pf-staff .bg-white { background-color: var(--color-pf-card); }
+.pf-staff .bg-surface, .pf-staff .bg-canvas-deep { background-color: var(--color-pf-ivory); }
+.pf-staff [class~="bg-surface/40"], .pf-staff [class~="bg-surface/30"], .pf-staff [class~="bg-surface/60"] { background-color: rgb(251 244 235 / 0.55); }
+.pf-staff .bg-mist { background-color: var(--color-pf-border); }
+.pf-staff [class~="bg-mist/70"] { background-color: rgb(237 228 216 / 0.7); }
+.pf-staff .bg-gold { background-color: var(--color-pf-gold); }
+.pf-staff .border-mist, .pf-staff .border-pearl { border-color: var(--color-pf-border); }
+.pf-staff [class~="border-mist/80"], .pf-staff [class~="border-mist/70"] { border-color: rgb(237 228 216 / 0.8); }
+.pf-staff .divide-mist > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-pf-border); }
+.pf-staff .border-ink { border-color: var(--color-pf-burgundy); }
+.pf-staff .border-accent { border-color: var(--color-pf-gold-deep); }
+.pf-staff [class~="hover:bg-ink"]:hover { background-color: var(--color-pf-burgundy); }
+.pf-staff [class~="hover:bg-accent"]:hover { background-color: var(--color-pf-wine); }
+.pf-staff [class~="hover:border-ink"]:hover { border-color: var(--color-pf-burgundy); }
+.pf-staff [class~="hover:text-accent"]:hover { color: var(--color-pf-burgundy); }
+.pf-staff [class~="from-accent"] { --tw-gradient-from: var(--color-pf-burgundy) var(--tw-gradient-via-position); }
+.pf-staff [class~="to-accent-deep"] { --tw-gradient-to: var(--color-pf-wine) var(--tw-gradient-via-position); }
+
+/* Staff typography enforcement: editorial serif at weight 500 with
+   lining figures (Cormorant's oldstyle "1" reads as "I"), and an
+   11px floor for informational micro-type. */
+.pf-staff .font-display {
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+}
+.pf-staff [class~="text-[7px]"],
+.pf-staff [class~="text-[8px]"],
+.pf-staff [class~="text-[9px]"],
+.pf-staff [class~="text-[10px]"] {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Generic operational-table polish for hand-rolled tables. */
+.pf-staff table th {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-pf-muted);
+}
+.pf-staff table td {
+  font-size: 14px;
+}
+
+/* Form controls + buttons: readable size, structural border, rounded
+   to match the reference's softened card language. */
+.pf-staff input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pf-staff select,
+.pf-staff textarea {
+  font-size: 14px;
+  border-radius: 8px;
+}
+.pf-staff button {
+  border-radius: 8px;
+}
+.pf-staff ::placeholder {
+  color: var(--color-pf-muted);
+  opacity: 1;
+}
+
+/* One visible focus treatment on ivory and burgundy alike. */
+.pf-staff :focus-visible {
+  outline: 2px solid var(--color-pf-gold-text);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(214 174 112 / 0.35);
 }
 
 body {

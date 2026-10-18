@@ -28,14 +28,14 @@ import { employeeFullName, formatEmployeeDateTime, staffHrefId } from "../../../
 import { cn } from "../../../utils/cn";
 
 const Metric = ({ icon: Icon, label, value, detail }) => (
-  <div className="border border-mist/80 bg-surface/40 px-5 py-4">
+  <div className="border border-pf-border/80 bg-pf-ivory/40 px-5 py-4">
     <div className="flex items-start justify-between gap-4">
       <div>
-        <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-taupe">{label}</dt>
-        <dd className="mt-1 font-display text-3xl font-light text-ink">{value}</dd>
-        <p className="mt-1 font-ui text-[11px] text-taupe">{detail}</p>
+        <dt className="font-ui text-[10px] uppercase tracking-[.18em] text-pf-muted">{label}</dt>
+        <dd className="mt-1 font-display text-3xl font-light text-pf-text">{value}</dd>
+        <p className="mt-1 font-ui text-[11px] text-pf-muted">{detail}</p>
       </div>
-      <span className="inline-flex h-9 w-9 items-center justify-center border border-mist bg-canvas text-accent">
+      <span className="inline-flex h-9 w-9 items-center justify-center border border-pf-border bg-pf-card text-pf-burgundy">
         <Icon size={16} aria-hidden="true" />
       </span>
     </div>
@@ -57,11 +57,11 @@ const STATUS_MEANING = {
 };
 
 const STATUS_TONE = {
-  ink: "bg-ink text-ivory",
-  accent: "border border-accent/25 bg-accent/10 text-accent",
-  quiet: "border border-mist bg-surface text-cocoa",
-  danger: "border border-accent/25 bg-accent/10 text-accent",
-  muted: "border border-mist bg-canvas-deep text-graphite",
+  ink: "bg-pf-burgundy text-pf-ivory",
+  accent: "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  quiet: "border border-pf-border bg-pf-ivory text-pf-cocoa",
+  danger: "border border-pf-gold-deep/25 bg-pf-burgundy/10 text-pf-burgundy",
+  muted: "border border-pf-border bg-pf-ivory text-pf-muted",
 };
 
 const directoryRole = (person) => {
@@ -120,7 +120,7 @@ const DirectoryStatus = ({ status }) => {
       >
         {definition.label}
       </span>
-      <p className="mt-1 font-ui text-[11px] text-taupe">
+      <p className="mt-1 font-ui text-[11px] text-pf-muted">
         {STATUS_MEANING[definition.id] ?? (definition.canLogin ? "Can sign in" : "Cannot sign in")}
       </p>
     </div>
@@ -132,7 +132,7 @@ const DirectoryRole = ({ person }) => {
   return (
     <div>
       <p>{primary}</p>
-      {detail ? <p className="mt-1 font-ui text-[11px] text-taupe">{detail}</p> : null}
+      {detail ? <p className="mt-1 font-ui text-[11px] text-pf-muted">{detail}</p> : null}
     </div>
   );
 };
@@ -194,7 +194,7 @@ export default function AdminEmployees({ basePath } = {}) {
   return (
     <AdminPage
       eyebrow="People / Organization"
-      title={<>Employee <span className="italic text-accent">accounts.</span></>}
+      title={<>Employee <span className="italic text-pf-burgundy">accounts.</span></>}
       description="Create and administer employee access. Attendance, performance and day-to-day operations remain in the Employee Portal."
       actions={
         canManageEmployees ? (
@@ -208,7 +208,7 @@ export default function AdminEmployees({ basePath } = {}) {
         <div
           role="status"
           aria-live="polite"
-          className={`mb-6 border px-4 py-3 font-ui text-sm ${notice.ok ? "border-cocoa/30 bg-cocoa/5 text-cocoa" : "border-accent/40 bg-accent/5 text-accent"}`}
+          className={`mb-6 border px-4 py-3 font-ui text-sm ${notice.ok ? "border-pf-cocoa/30 bg-pf-cocoa/5 text-pf-cocoa" : "border-pf-gold-deep/40 bg-pf-burgundy/5 text-pf-burgundy"}`}
         >
           {notice.text}
         </div>
@@ -260,10 +260,10 @@ export default function AdminEmployees({ basePath } = {}) {
               label: "Employee",
               render: (row) => (
                 <div>
-                  <Link to={`${base}/${staffHrefId(row)}`} className="font-medium text-ink hover:text-accent">
+                  <Link to={`${base}/${staffHrefId(row)}`} className="font-medium text-pf-text hover:text-pf-burgundy">
                     {employeeFullName(row)}
                   </Link>
-                  <p className="mt-1 text-[11px] text-taupe">{row.employeeId || staffHrefId(row)} · {row.email}</p>
+                  <p className="mt-1 text-[11px] text-pf-muted">{row.employeeId || staffHrefId(row)} · {row.email}</p>
                 </div>
               ),
             },
@@ -285,16 +285,16 @@ export default function AdminEmployees({ basePath } = {}) {
               label: "Actions",
               render: (row) => (
                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-[12px]">
-                  <Link to={`${base}/${staffHrefId(row)}`} className="text-brass hover:text-accent">View</Link>
+                  <Link to={`${base}/${staffHrefId(row)}`} className="text-pf-gold-text hover:text-pf-burgundy">View</Link>
                   {canManageEmployees ? (
-                  <Link to={`${base}/${staffHrefId(row)}/edit`} className="text-brass hover:text-accent">Edit</Link>
+                  <Link to={`${base}/${staffHrefId(row)}/edit`} className="text-pf-gold-text hover:text-pf-burgundy">Edit</Link>
                   ) : null}
                   {canManageEmployees && isAccessBlocked(row.status) ? (
                     <button
                       type="button"
                       disabled={Boolean(busyId)}
                       onClick={() => changeAccess(row, "activate")}
-                      className="text-brass hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                      className="text-pf-gold-text hover:text-pf-burgundy disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {busyId === staffHrefId(row) ? "Activating…" : "Activate"}
                     </button>
@@ -305,7 +305,7 @@ export default function AdminEmployees({ basePath } = {}) {
                         type="button"
                         disabled={Boolean(busyId)}
                         onClick={() => changeAccess(row, "suspend")}
-                        className="text-brass hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                        className="text-pf-gold-text hover:text-pf-burgundy disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyId === staffHrefId(row) ? "Updating…" : "Suspend"}
                       </button>
@@ -313,7 +313,7 @@ export default function AdminEmployees({ basePath } = {}) {
                         type="button"
                         disabled={Boolean(busyId)}
                         onClick={() => changeAccess(row, "deactivate")}
-                        className="text-brass hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                        className="text-pf-gold-text hover:text-pf-burgundy disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyId === staffHrefId(row) ? "Updating…" : "Deactivate"}
                       </button>

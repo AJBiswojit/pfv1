@@ -42,16 +42,16 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border bg-surface/40 p-4",
-        highlight ? "border-accent/40 bg-accent/5" : "border-mist/80"
+        "border bg-pf-ivory/40 p-4",
+        highlight ? "border-pf-gold-deep/40 bg-pf-burgundy/5" : "border-pf-border/80"
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-taupe">{label}</p>
-          <p className="mt-2 font-display text-2xl font-light text-ink">{value}</p>
+          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
+          <p className="mt-2 font-display text-2xl font-light text-pf-text">{value}</p>
         </div>
-        <Icon size={16} className={highlight ? "text-accent" : "text-brass"} />
+        <Icon size={16} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} />
       </div>
     </motion.div>
   );
@@ -195,7 +195,7 @@ export default function AdminOrders() {
       eyebrow="Sales / Orders"
       title={
         <>
-          Order <span className="italic text-accent">management.</span>
+          Order <span className="italic text-pf-burgundy">management.</span>
         </>
       }
       description="One connected retail operation — customer checkout, inventory reservation, fulfillment and delivery."
@@ -203,7 +203,7 @@ export default function AdminOrders() {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="inline-flex items-center gap-2 border border-mist bg-canvas px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-taupe hover:border-ink hover:text-ink md:hidden"
+          className="inline-flex items-center gap-2 border border-pf-border bg-pf-card px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted hover:border-pf-burgundy hover:text-pf-text md:hidden"
         >
           <Filter size={12} /> Filters
         </button>
@@ -211,12 +211,12 @@ export default function AdminOrders() {
     >
       {/* Loading / error — never rendered as an empty order book. */}
       {isLoadingOrders && serverPage.orders.length === 0 ? (
-        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-mist/80 bg-surface/40 px-4 py-3 font-ui text-[11px] text-taupe">
+        <p role="status" aria-live="polite" aria-busy="true" className="mb-6 border border-pf-border/80 bg-pf-ivory/40 px-4 py-3 font-ui text-[11px] text-pf-muted">
           Loading orders…
         </p>
       ) : null}
       {ordersError ? (
-        <div role="alert" className="mb-6 border border-accent/30 bg-accent/5 px-4 py-3 font-ui text-[11px] text-accent">
+        <div role="alert" className="mb-6 border border-pf-gold-deep/30 bg-pf-burgundy/5 px-4 py-3 font-ui text-[11px] text-pf-burgundy">
           {ordersErrorStatus === 401
             ? "Your admin session has expired. Sign in again to load orders."
             : ordersErrorStatus === 403
@@ -245,61 +245,61 @@ export default function AdminOrders() {
 
       {/* Filters — desktop */}
       <AdminPanel eyebrow="Operations" title="Order queue" bodyClassName="px-0 py-0 sm:px-0">
-        <div className="hidden border-b border-mist/60 bg-canvas/40 p-4 md:block">
+        <div className="hidden border-b border-pf-border/60 bg-pf-card/40 p-4 md:block">
           <div className="grid gap-3 lg:grid-cols-12">
             <div className="lg:col-span-4">
-              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe">
+              <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">
                 Search
                 <div className="relative mt-1.5">
-                  <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-taupe" />
+                  <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-pf-muted" />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Order, customer, phone, product, SKU, tracking"
-                    className="h-9 w-full border border-mist bg-canvas pl-9 pr-3 font-ui text-xs text-ink outline-none focus:border-accent"
+                    className="h-9 w-full border border-pf-border bg-pf-card pl-9 pr-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
                   />
                 </div>
               </label>
             </div>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted lg:col-span-2">
               Status
-              <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All statuses</option>
                 {Object.values(ORDER_STATUS).map((s) => (
                   <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
                 ))}
               </select>
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted lg:col-span-2">
               Payment
-              <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All payments</option>
                 {Object.values(ORDER_PAYMENT_STATUS).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted lg:col-span-2">
               Fulfillment
-              <select value={fulfillmentFilter} onChange={(e) => setFulfillmentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={fulfillmentFilter} onChange={(e) => setFulfillmentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All fulfillment</option>
                 {Object.values(FULFILLMENT_STATUS).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted lg:col-span-2">
               Placed
-              <select value={dateFilter} onChange={(e) => resetToFirstPage(setDateFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={dateFilter} onChange={(e) => resetToFirstPage(setDateFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All dates</option>
                 <option value="today">Today</option>
                 <option value="week">Last 7 days</option>
                 <option value="month">Last 30 days</option>
               </select>
             </label>
-            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-taupe lg:col-span-2">
+            <label className="font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted lg:col-span-2">
               Value
-              <select value={valueFilter} onChange={(e) => resetToFirstPage(setValueFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs outline-none focus:border-accent">
+              <select value={valueFilter} onChange={(e) => resetToFirstPage(setValueFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All values</option>
                 <option value="low">Under ₹5k</option>
                 <option value="mid">₹5k–₹20k</option>
@@ -318,27 +318,27 @@ export default function AdminOrders() {
                   setValueFilter("all");
                   setPage(1);
                 }}
-                className="px-3 font-ui text-[10px] uppercase tracking-[.13em] text-accent hover:underline"
+                className="px-3 font-ui text-[10px] uppercase tracking-[.13em] text-pf-burgundy hover:underline"
               >
                 Clear
               </button>
-              <span className="ml-auto font-ui text-[11px] text-taupe self-center">{filtered.length} orders</span>
+              <span className="ml-auto font-ui text-[11px] text-pf-muted self-center">{filtered.length} orders</span>
             </div>
           </div>
         </div>
 
         {/* Mobile filter chip row */}
-        <div className="flex gap-2 overflow-x-auto border-b border-mist/60 bg-canvas/40 p-3 md:hidden">
+        <div className="flex gap-2 overflow-x-auto border-b border-pf-border/60 bg-pf-card/40 p-3 md:hidden">
           <div className="relative min-w-[200px]">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-taupe" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-pf-muted" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search orders"
-              className="h-8 w-full border border-mist bg-canvas pl-7 pr-2 font-ui text-xs outline-none"
+              className="h-8 w-full border border-pf-border bg-pf-card pl-7 pr-2 font-ui text-xs outline-none"
             />
           </div>
-          <span className="font-ui text-[11px] text-taupe self-center whitespace-nowrap">
+          <span className="font-ui text-[11px] text-pf-muted self-center whitespace-nowrap">
             {serverPage.total} order{serverPage.total === 1 ? "" : "s"}
           </span>
         </div>
@@ -346,31 +346,31 @@ export default function AdminOrders() {
         {/* Table desktop */}
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left">
-            <thead className="border-b border-mist/80 bg-canvas/80">
+            <thead className="border-b border-pf-border/80 bg-pf-card/80">
               <tr>
                 {["Order ID", "Customer", "Items", "Amount", "Payment", "Order Status", "Fulfillment", "Location", "Created", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{h}</th>
+                  <th key={h} className="px-4 py-3 font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((order) => (
-                <tr key={order.id} className="border-b border-mist/50 last:border-0 hover:bg-surface/30">
-                  <td className="px-4 py-3 font-mono text-xs text-ink">
-                    <Link to={`${prefix}/orders/${order.id}`} className="text-brass hover:text-accent hover:underline">{order.orderNumber ?? order.id}</Link>
+                <tr key={order.id} className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30">
+                  <td className="px-4 py-3 font-mono text-xs text-pf-text">
+                    <Link to={`${prefix}/orders/${order.id}`} className="text-pf-gold-text hover:text-pf-burgundy hover:underline">{order.orderNumber ?? order.id}</Link>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-ui text-sm text-ink">{order.customer?.fullName}</p>
-                    <p className="font-ui text-[11px] text-taupe">{order.customer?.email}</p>
+                    <p className="font-ui text-sm text-pf-text">{order.customer?.fullName}</p>
+                    <p className="font-ui text-[11px] text-pf-muted">{order.customer?.email}</p>
                   </td>
                   <td className="px-4 py-3 font-ui text-sm">{order.items?.length} item{order.items?.length !== 1 ? "s" : ""} · {order.items?.reduce((s, i) => s + i.quantity, 0)} pcs</td>
                   <td className="px-4 py-3 font-ui text-sm">{formatINR(order.pricing?.total)}</td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.paymentStatus} kind="payment" /></td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
                   <td className="px-4 py-3 font-ui text-[11px]">{fulfillmentStage(order)}</td>
-                  <td className="px-4 py-3 font-ui text-[11px] text-taupe">{formatOrderDate(order.createdAt)}</td>
+                  <td className="px-4 py-3 font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
-                    <Link to={`${prefix}/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-brass hover:text-accent">
+                    <Link to={`${prefix}/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-pf-gold-text hover:text-pf-burgundy">
                       <Eye size={12} /> View
                     </Link>
                   </td>
@@ -379,15 +379,15 @@ export default function AdminOrders() {
             </tbody>
           </table>
           {filtered.length === 0 && !isLoadingOrders && !ordersError && (
-            <p className="p-8 text-center font-ui text-sm text-taupe">No orders match these filters.</p>
+            <p className="p-8 text-center font-ui text-sm text-pf-muted">No orders match these filters.</p>
           )}
           {filtered.length === 0 && isLoadingOrders && (
-            <p role="status" aria-live="polite" aria-busy="true" className="p-8 text-center font-ui text-sm text-taupe">Loading orders…</p>
+            <p role="status" aria-live="polite" aria-busy="true" className="p-8 text-center font-ui text-sm text-pf-muted">Loading orders…</p>
           )}
 
           {/* Server pagination (HP-4): one bounded page per request. */}
-          <div className="flex items-center justify-between border-t border-mist/60 px-4 py-3">
-            <p className="font-ui text-[11px] text-taupe" aria-live="polite">
+          <div className="flex items-center justify-between border-t border-pf-border/60 px-4 py-3">
+            <p className="font-ui text-[11px] text-pf-muted" aria-live="polite">
               {serverPage.total > 0 ? `Showing ${rangeStart}–${rangeEnd} of ${serverPage.total}` : "No orders"}
             </p>
             <div className="flex items-center gap-2">
@@ -395,16 +395,16 @@ export default function AdminOrders() {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || isLoadingOrders}
-                className="border border-mist bg-canvas px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40"
+                className="border border-pf-border bg-pf-card px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted disabled:opacity-40"
               >
                 Prev
               </button>
-              <span className="font-ui text-[11px] text-ink">Page {page} of {totalPages}</span>
+              <span className="font-ui text-[11px] text-pf-text">Page {page} of {totalPages}</span>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages || isLoadingOrders}
-                className="border border-mist bg-canvas px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-taupe disabled:opacity-40"
+                className="border border-pf-border bg-pf-card px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted disabled:opacity-40"
               >
                 Next
               </button>
@@ -415,20 +415,20 @@ export default function AdminOrders() {
         {/* Cards mobile */}
         <div className="grid gap-3 p-3 md:hidden">
           {filtered.map((order) => (
-            <Link key={order.id} to={`${prefix}/orders/${order.id}`} className="border border-mist/70 bg-canvas p-4">
+            <Link key={order.id} to={`${prefix}/orders/${order.id}`} className="border border-pf-border/70 bg-pf-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-xs text-ink">{order.orderNumber ?? order.id}</p>
-                  <p className="mt-1 font-ui text-sm text-ink">{order.customer?.fullName}</p>
-                  <p className="font-ui text-[11px] text-taupe">{order.items?.length} items · {formatINR(order.pricing?.total)}</p>
+                  <p className="font-mono text-xs text-pf-text">{order.orderNumber ?? order.id}</p>
+                  <p className="mt-1 font-ui text-sm text-pf-text">{order.customer?.fullName}</p>
+                  <p className="font-ui text-[11px] text-pf-muted">{order.items?.length} items · {formatINR(order.pricing?.total)}</p>
                 </div>
                 <OrderStatusBadge status={order.status} />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <OrderStatusBadge status={order.paymentStatus} kind="payment" />
-                <span className="font-ui text-[10px] px-2 py-1 border border-mist bg-surface text-taupe">{fulfillmentStage(order)}</span>
+                <span className="font-ui text-[10px] px-2 py-1 border border-pf-border bg-pf-ivory text-pf-muted">{fulfillmentStage(order)}</span>
               </div>
-              <p className="mt-2 font-ui text-[10px] text-taupe">{formatOrderDate(order.createdAt)} · {order.customer?.email}</p>
+              <p className="mt-2 font-ui text-[10px] text-pf-muted">{formatOrderDate(order.createdAt)} · {order.customer?.email}</p>
             </Link>
           ))}
         </div>
@@ -436,35 +436,35 @@ export default function AdminOrders() {
 
       {/* Filter drawer mobile */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm md:hidden">
-          <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-ivory shadow-xl overflow-y-auto p-5">
+        <div className="fixed inset-0 z-50 bg-pf-burgundy/40 backdrop-blur-sm md:hidden">
+          <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-pf-ivory shadow-xl overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-6">
-              <p className="font-ui text-[11px] uppercase tracking-[.2em] text-accent">Filters</p>
-              <button onClick={() => setDrawerOpen(false)} className="p-2 text-taupe"><X size={16} /></button>
+              <p className="font-ui text-[11px] uppercase tracking-[.2em] text-pf-burgundy">Filters</p>
+              <button onClick={() => setDrawerOpen(false)} className="p-2 text-pf-muted"><X size={16} /></button>
             </div>
             <div className="space-y-4">
-              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Search
-                <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Order, customer" className="mt-1.5 h-9 w-full border border-mist bg-canvas px-3 font-ui text-xs" />
+              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Search
+                <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Order, customer" className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-3 font-ui text-xs" />
               </label>
-              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Status
-                <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Status
+                <select value={statusFilter} onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(ORDER_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
-              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Payment
-                <select value={paymentFilter} onChange={(e) => resetToFirstPage(setPaymentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Payment
+                <select value={paymentFilter} onChange={(e) => resetToFirstPage(setPaymentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(ORDER_PAYMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
-              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-taupe">Fulfillment
-                <select value={fulfillmentFilter} onChange={(e) => resetToFirstPage(setFulfillmentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-mist bg-canvas px-2 font-ui text-xs">
+              <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Fulfillment
+                <select value={fulfillmentFilter} onChange={(e) => resetToFirstPage(setFulfillmentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                   <option value="all">All</option>
                   {Object.values(FULFILLMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
-              <button onClick={() => setDrawerOpen(false)} className="mt-6 w-full bg-ink text-ivory py-3 font-ui text-[11px] uppercase tracking-[.16em]">Apply</button>
+              <button onClick={() => setDrawerOpen(false)} className="mt-6 w-full bg-pf-burgundy text-pf-ivory py-3 font-ui text-[11px] uppercase tracking-[.16em]">Apply</button>
             </div>
           </div>
         </div>

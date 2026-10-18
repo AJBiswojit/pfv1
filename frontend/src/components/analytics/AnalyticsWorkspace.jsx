@@ -62,7 +62,7 @@ export default function AnalyticsWorkspace({
       <AnalyticsNav portal={portal} tabs={allowedTabs} />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-ui text-[11px] text-taupe">
+        <p className="font-ui text-[11px] text-pf-muted">
           Read-model over live backend data · not audited financial reporting
         </p>
         <AtelierButton type="button" variant="outline" size="chip" onClick={exportView}>
@@ -241,9 +241,9 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
                 ["Average spend", money(snapshot.customers.averageSpend)],
                 ["Orders / customer", snapshot.customers.ordersPerCustomer],
               ].map(([label, value]) => (
-                <div key={label} className="border border-mist/70 bg-canvas/70 p-3">
-                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-                  <dd className="mt-1 font-display text-xl font-light text-ink">{value}</dd>
+                <div key={label} className="border border-pf-border/70 bg-pf-card/70 p-3">
+                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+                  <dd className="mt-1 font-display text-xl font-light text-pf-text">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -255,15 +255,15 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
 
       <div className="grid gap-6 xl:grid-cols-3">
         <AdminPanel eyebrow="Stock" title="Inventory">
-          <dl className="space-y-2 font-ui text-sm text-ink">
-            <div className="flex justify-between"><dt className="text-taupe">On hand</dt><dd>{formatAdminNumber(snapshot.inventory.totalOnHand)}</dd></div>
-            <div className="flex justify-between"><dt className="text-taupe">Available</dt><dd>{formatAdminNumber(snapshot.inventory.available)}</dd></div>
-            <div className="flex justify-between"><dt className="text-taupe">Low stock</dt><dd>{snapshot.inventory.lowStock}</dd></div>
-            <div className="flex justify-between"><dt className="text-taupe">Out of stock</dt><dd>{snapshot.inventory.outOfStock}</dd></div>
-            <div className="flex justify-between"><dt className="text-taupe">Retail value</dt><dd>{formatCompactINR(snapshot.inventory.retailValue)}</dd></div>
+          <dl className="space-y-2 font-ui text-sm text-pf-text">
+            <div className="flex justify-between"><dt className="text-pf-muted">On hand</dt><dd>{formatAdminNumber(snapshot.inventory.totalOnHand)}</dd></div>
+            <div className="flex justify-between"><dt className="text-pf-muted">Available</dt><dd>{formatAdminNumber(snapshot.inventory.available)}</dd></div>
+            <div className="flex justify-between"><dt className="text-pf-muted">Low stock</dt><dd>{snapshot.inventory.lowStock}</dd></div>
+            <div className="flex justify-between"><dt className="text-pf-muted">Out of stock</dt><dd>{snapshot.inventory.outOfStock}</dd></div>
+            <div className="flex justify-between"><dt className="text-pf-muted">Retail value</dt><dd>{formatCompactINR(snapshot.inventory.retailValue)}</dd></div>
           </dl>
           {!snapshot.inventory.costConfigured ? (
-            <p className="mt-4 font-ui text-[11px] text-taupe">
+            <p className="mt-4 font-ui text-[11px] text-pf-muted">
               Inventory valuation unavailable — cost data not configured.
             </p>
           ) : null}
@@ -279,22 +279,22 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
           <ul className="space-y-2 font-ui text-sm">
             {snapshot.fulfillment.pipeline.map((stage) => (
               <li key={stage.id} className="flex justify-between gap-3">
-                <span className="text-taupe">{stage.label}</span>
+                <span className="text-pf-muted">{stage.label}</span>
                 <span>{stage.count}</span>
               </li>
             ))}
           </ul>
           {snapshot.fulfillment.hasDurations ? (
-            <dl className="mt-4 space-y-1 font-ui text-[11px] text-taupe">
+            <dl className="mt-4 space-y-1 font-ui text-[11px] text-pf-muted">
               <div>Average fulfillment: {snapshot.fulfillment.averageFulfillmentHours ?? "—"} h</div>
               <div>Average dispatch: {snapshot.fulfillment.averageDispatchHours ?? "—"} h</div>
               <div>Average delivery: {snapshot.fulfillment.averageDeliveryHours ?? "—"} h</div>
             </dl>
           ) : (
-            <p className="mt-4 font-ui text-[11px] text-taupe">Insufficient fulfillment history</p>
+            <p className="mt-4 font-ui text-[11px] text-pf-muted">Insufficient fulfillment history</p>
           )}
           {snapshot.fulfillment.bottleneck ? (
-            <p className="mt-3 font-ui text-[11px] text-accent">
+            <p className="mt-3 font-ui text-[11px] text-pf-burgundy">
               Current bottleneck: {snapshot.fulfillment.bottleneck.label} ({snapshot.fulfillment.bottleneck.count})
             </p>
           ) : null}
@@ -389,9 +389,9 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
                 ["Return rate", formatPercent(snapshot.orders.returnRate)],
                 ["Refund rate", formatPercent(snapshot.orders.refundRate)],
               ].map(([label, value]) => (
-                <div key={label} className="border border-mist/70 bg-canvas/70 p-3">
-                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-                  <dd className="mt-1 font-display text-xl font-light text-ink">{value}</dd>
+                <div key={label} className="border border-pf-border/70 bg-pf-card/70 p-3">
+                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+                  <dd className="mt-1 font-display text-xl font-light text-pf-text">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -401,7 +401,7 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
         </AdminPanel>
       </div>
 
-      <p className="mt-6 font-ui text-[11px] text-taupe">{snapshot.tax.message}</p>
+      <p className="mt-6 font-ui text-[11px] text-pf-muted">{snapshot.tax.message}</p>
     </>
   );
 }
@@ -411,7 +411,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <p className="font-ui text-[11px] uppercase tracking-[.16em] text-taupe">Rank by</p>
+        <p className="font-ui text-[11px] uppercase tracking-[.16em] text-pf-muted">Rank by</p>
         {[
           { id: "revenue", label: "Revenue" },
           { id: "units", label: "Units sold" },
@@ -427,7 +427,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
             {option.label}
           </AtelierButton>
         ))}
-        <span className="font-ui text-[11px] text-taupe">Margin ranking unavailable — cost data not configured.</span>
+        <span className="font-ui text-[11px] text-pf-muted">Margin ranking unavailable — cost data not configured.</span>
       </div>
 
       {snapshot.products.hasData ? (
@@ -547,7 +547,7 @@ function CustomersSection({ snapshot, portal }) {
                 label: "Customer",
                 render: (row) =>
                   isAdminPortal(portal) && row.registry ? (
-                    <Link to={`${customerBase}/${row.id}`} className="underline-offset-4 hover:text-accent hover:underline">
+                    <Link to={`${customerBase}/${row.id}`} className="underline-offset-4 hover:text-pf-burgundy hover:underline">
                       {row.name}
                     </Link>
                   ) : (
@@ -600,7 +600,7 @@ function InventorySection({ snapshot, filters, portal }) {
         ]}
       />
       {!inventory.costConfigured ? (
-        <p className="mb-6 font-ui text-sm text-taupe">
+        <p className="mb-6 font-ui text-sm text-pf-muted">
           Inventory valuation unavailable — cost data not configured.
         </p>
       ) : null}
@@ -627,7 +627,7 @@ function InventorySection({ snapshot, filters, portal }) {
             ]}
             empty="No locations configured."
           />
-          <p className="mt-4 font-ui text-[11px] text-taupe">
+          <p className="mt-4 font-ui text-[11px] text-pf-muted">
             Fulfilled counts use the order’s fulfillment location. They are not storefront sales by floor.
           </p>
         </AdminPanel>
@@ -645,7 +645,7 @@ function InventorySection({ snapshot, filters, portal }) {
                 render: (row) => (
                   <Link
                     to={isAdminPortal(portal) ? `/${portal}/products/${row.productId}` : `/employee/products/${row.productId}/edit`}
-                    className="underline-offset-4 hover:text-accent hover:underline"
+                    className="underline-offset-4 hover:text-pf-burgundy hover:underline"
                   >
                     {row.product}
                   </Link>
@@ -705,7 +705,7 @@ function OffersSection({ snapshot, portal }) {
   const offerBase = isAdminPortal(portal) ? `/${portal}/offers` : "/employee/offers";
   return (
     <>
-      <p className="mb-4 font-ui text-[11px] text-taupe">
+      <p className="mb-4 font-ui text-[11px] text-pf-muted">
         Revenue influenced by offer — not profit. Discount cost is the coupon amount recorded on the order.
       </p>
       {snapshot.offers.hasData ? (
@@ -717,7 +717,7 @@ function OffersSection({ snapshot, portal }) {
               id: "name",
               label: "Offer",
               render: (row) => (
-                <Link to={`${offerBase}/${row.id}`} className="underline-offset-4 hover:text-accent hover:underline">
+                <Link to={`${offerBase}/${row.id}`} className="underline-offset-4 hover:text-pf-burgundy hover:underline">
                   {row.name}
                 </Link>
               ),
@@ -768,9 +768,9 @@ function EmployeesSection({ snapshot }) {
                 ["Half day", people.halfDay],
                 ["Hours", people.hoursLabel],
               ].map(([label, value]) => (
-                <div key={label} className="border border-mist/70 bg-canvas/70 p-3">
-                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-taupe">{label}</dt>
-                  <dd className="mt-1 font-display text-xl font-light text-ink">{value}</dd>
+                <div key={label} className="border border-pf-border/70 bg-pf-card/70 p-3">
+                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
+                  <dd className="mt-1 font-display text-xl font-light text-pf-text">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -779,14 +779,14 @@ function EmployeesSection({ snapshot }) {
           )}
         </AdminPanel>
         <AdminPanel eyebrow="Reviews" title="Performance">
-          <p className="mb-3 font-ui text-[11px] text-taupe">
+          <p className="mb-3 font-ui text-[11px] text-pf-muted">
             Scores come from the Phase 18 performance module. Roles are not compared across unrelated metrics.
           </p>
-          <h3 className="mb-2 font-ui text-[10px] uppercase tracking-[.16em] text-brass">Top performers</h3>
+          <h3 className="mb-2 font-ui text-[10px] uppercase tracking-[.16em] text-pf-gold-text">Top performers</h3>
           <PeopleList rows={people.topPerformers} empty="No top performers to show." to={performanceBase} />
-          <h3 className="mb-2 mt-5 font-ui text-[10px] uppercase tracking-[.16em] text-brass">Needs attention</h3>
+          <h3 className="mb-2 mt-5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-gold-text">Needs attention</h3>
           <PeopleList rows={people.needsAttention} empty="No one currently needs attention." to={performanceBase} />
-          <h3 className="mb-2 mt-5 font-ui text-[10px] uppercase tracking-[.16em] text-brass">Review pending</h3>
+          <h3 className="mb-2 mt-5 font-ui text-[10px] uppercase tracking-[.16em] text-pf-gold-text">Review pending</h3>
           <PeopleList rows={people.reviewPending} empty="No reviews waiting." to={performanceBase} />
         </AdminPanel>
       </div>
@@ -795,15 +795,15 @@ function EmployeesSection({ snapshot }) {
 }
 
 function PeopleList({ rows, empty, to }) {
-  if (!rows?.length) return <p className="font-ui text-sm text-taupe">{empty}</p>;
+  if (!rows?.length) return <p className="font-ui text-sm text-pf-muted">{empty}</p>;
   return (
-    <ul className="divide-y divide-mist/70 border border-mist/70">
+    <ul className="divide-y divide-pf-border/70 border border-pf-border/70">
       {rows.map((row) => (
         <li key={row.employeeId} className="flex items-center justify-between gap-3 px-3 py-2">
-          <Link to={`${to}/${row.employeeId}`} className="font-ui text-sm text-ink underline-offset-4 hover:text-accent hover:underline">
+          <Link to={`${to}/${row.employeeId}`} className="font-ui text-sm text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline">
             {row.name}
           </Link>
-          <span className="font-ui text-[11px] text-taupe">
+          <span className="font-ui text-[11px] text-pf-muted">
             {row.targetPercent != null ? `${row.targetPercent}%` : row.roleLabel}
           </span>
         </li>
@@ -825,7 +825,7 @@ function ProductTable({ rows, portal, empty = "No products to show." }) {
           id: "name",
           label: "Product",
           render: (row) => (
-            <Link to={hrefFor(row.productId)} className="underline-offset-4 hover:text-accent hover:underline">
+            <Link to={hrefFor(row.productId)} className="underline-offset-4 hover:text-pf-burgundy hover:underline">
               {row.name}
             </Link>
           ),
