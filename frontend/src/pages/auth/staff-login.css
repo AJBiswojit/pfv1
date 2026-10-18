@@ -78,61 +78,109 @@
   box-sizing: border-box;
 }
 
+/* Staff header — the homepage navbar's design system, adapted for the portal.
+   Same translucent blush bar, same 64px height, same container gutter, same
+   centered official lockup (mark + stacked wordmark + rules); the portal
+   label and security descriptor occupy the left/right slots the shopping
+   nav and icons use at home. Values mirror `.pf-root .header` / `.logo`. */
 .staff-login__header {
-  position: relative;
-  z-index: 3;
-  min-height: 80px;
-  border-bottom: 1px solid rgb(196 154 100 / 42%);
-  background: var(--staff-burgundy);
-  color: #f7eee5;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  border-bottom: 1px solid transparent;
+  background: rgba(247, 238, 237, 0.86);
+  backdrop-filter: saturate(1.2) blur(12px);
+  -webkit-backdrop-filter: saturate(1.2) blur(12px);
+  transition: box-shadow 0.5s ease, border-color 0.5s ease, background-color 0.5s ease;
+}
+
+.staff-login__header.is-scrolled {
+  background: rgba(247, 238, 237, 0.94);
+  border-color: rgba(101, 8, 31, 0.16);
+  box-shadow: 0 8px 28px -20px rgba(58, 24, 6, 0.45);
 }
 
 .staff-login__header-inner {
-  display: flex;
+  display: grid;
   width: 100%;
-  min-height: 79px;
+  max-width: 1440px;
+  height: 64px;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding-left: clamp(24px, 6.45vw, 102px);
-  padding-right: clamp(24px, 5.6vw, 90px);
+  gap: 16px;
+  padding-inline: clamp(16px, 3.6vw, 56px);
   margin-inline: auto;
 }
 
 .staff-login__brand {
-  display: flex;
-  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-self: center;
+  gap: 12px;
   min-width: 0;
+  color: #65081f;
 }
 
-.staff-login__brand-mark {
+.staff-login__logo-mark {
   display: block;
-  width: 64px;
-  height: 68px;
-  flex: 0 0 auto;
-  margin-left: -17px;
-  object-fit: contain;
-  mix-blend-mode: screen;
+  width: auto;
+  height: 46px;
+  flex: none;
 }
 
-.staff-login__brand-name {
-  color: #f5e9db;
+.staff-login__logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  line-height: 1;
+}
+
+.staff-login__logo-word {
+  margin-right: -0.2em;
+  color: #3a1806;
   font-family: "Staff Cormorant Garamond", "Cormorant Garamond", Georgia, serif;
   font-size: 25px;
   font-weight: 500;
-  letter-spacing: 0.012em;
+  letter-spacing: 0.2em;
   line-height: 1;
   white-space: nowrap;
 }
 
-.staff-login__portal-label {
-  padding: 5px 0 5px 20px;
-  margin-left: 20px;
-  border-left: 1px solid rgb(213 177 127 / 68%);
-  color: #d9bd8c;
-  font-size: 10px;
+.staff-login__logo-sub {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 6px;
+  color: #65081f;
+  font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.62em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.staff-login__logo-sub::before,
+.staff-login__logo-sub::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+/* Cancel the trailing tracking so the rules balance. */
+.staff-login__logo-sub::after {
+  margin-left: -0.62em;
+}
+
+/* Side slots, set in the homepage nav register (600-weight tracked caps). */
+.staff-login__portal-label {
+  justify-self: start;
+  margin: 0;
+  color: #3a1806;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   line-height: 1.4;
   text-transform: uppercase;
   white-space: nowrap;
@@ -140,30 +188,160 @@
 
 .staff-login__security {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 13px;
-  margin-left: auto;
-  color: #d7b980;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.28em;
+  justify-self: end;
+  gap: 10px;
+  margin: 0;
+  color: #65081f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   line-height: 1.4;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .staff-login__security-emblem {
-  width: 25px;
-  height: 25px;
-  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  flex: none;
   stroke: currentColor;
-  stroke-width: 0.8;
+  stroke-width: 0.9;
+}
+
+/* Header responsive behavior mirrors the homepage breakpoints: the wordmark
+   steps down at 1199px; at 1023px (where the homepage collapses its nav) the
+   staff slots stack under the centered lockup; the lockup compacts at 599px
+   and 379px exactly as at home. */
+@media (max-width: 1199px) {
+  .staff-login__logo-word {
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    margin-right: -0.18em;
+  }
+
+  /* Slightly tighter side slots so the full portal + security lines keep
+     clear of the centered lockup down to the 1024px single-row floor. */
+  .staff-login__portal-label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+  }
+
+  .staff-login__security {
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+  }
+}
+
+@media (max-width: 1023px) {
+  .staff-login__header-inner {
+    display: flex;
+    height: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding-block: 14px;
+  }
+
+  .staff-login__brand {
+    order: -1;
+  }
+
+  .staff-login__logo-word {
+    font-size: 21px;
+  }
+
+  .staff-login__logo-sub {
+    gap: 8px;
+    margin-top: 5px;
+    font-size: 7.5px;
+  }
+
+  .staff-login__portal-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-align: center;
+  }
+
+  .staff-login__security {
+    gap: 8px;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+
+  .staff-login__security-emblem {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+@media (max-width: 599px) {
+  .staff-login__brand {
+    gap: 8px;
+  }
+
+  .staff-login__logo-mark {
+    height: 34px;
+  }
+
+  .staff-login__logo-word {
+    font-size: 18px;
+    letter-spacing: 0.15em;
+    margin-right: -0.15em;
+  }
+
+  .staff-login__logo-sub {
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 7px;
+  }
+
+  .staff-login__portal-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
+
+  .staff-login__security {
+    font-size: 8.5px;
+  }
+
+  .staff-login__security-emblem {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+@media (max-width: 379px) {
+  .staff-login__brand {
+    gap: 6px;
+  }
+
+  .staff-login__logo-mark {
+    height: 30px;
+  }
+
+  .staff-login__logo-word {
+    font-size: 15.5px;
+    letter-spacing: 0.1em;
+    margin-right: -0.1em;
+  }
+
+  .staff-login__logo-sub {
+    gap: 5px;
+    font-size: 6.5px;
+    letter-spacing: 0.5em;
+  }
+
+  .staff-login__logo-sub::after {
+    margin-left: -0.5em;
+  }
 }
 
 .staff-login__main {
   position: relative;
-  min-height: calc(100svh - 80px);
+  min-height: calc(100svh - 64px);
   overflow: hidden;
   isolation: isolate;
   background-color: var(--staff-ivory);
@@ -316,7 +494,7 @@
   z-index: 1;
   display: grid;
   width: 100%;
-  min-height: calc(100svh - 80px);
+  min-height: calc(100svh - 64px);
   grid-template-columns: minmax(0, 1fr) minmax(520px, 562px);
   align-items: center;
   gap: clamp(70px, 8vw, 126px);
@@ -853,40 +1031,6 @@
   }
 }
 
-@media (max-width: 1199px) {
-  .staff-login__header-inner {
-    padding-inline: clamp(28px, 5.2vw, 62px);
-  }
-
-  .staff-login__brand-mark {
-    width: 43px;
-    height: 54px;
-    margin-left: 0;
-  }
-
-  .staff-login__brand-name {
-    font-size: 22px;
-  }
-
-  .staff-login__portal-label {
-    padding-left: 14px;
-    margin-left: 14px;
-    font-size: 9px;
-    letter-spacing: 0.16em;
-  }
-
-  .staff-login__security {
-    gap: 9px;
-    font-size: 8px;
-    letter-spacing: 0.14em;
-  }
-
-  .staff-login__security-emblem {
-    width: 21px;
-    height: 21px;
-  }
-}
-
 @media (max-width: 1199px) and (min-width: 921px) {
   .staff-login__layout {
     grid-template-columns: minmax(0, 1fr) minmax(420px, 0.96fr);
@@ -1050,54 +1194,6 @@
 }
 
 @media (max-width: 920px) {
-  .staff-login__header-inner {
-    display: grid;
-    min-height: 88px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-content: center;
-    column-gap: 16px;
-    row-gap: 7px;
-    padding: 10px 25px;
-  }
-
-  .staff-login__brand {
-    grid-column: 1;
-    grid-row: 1;
-    gap: 8px;
-  }
-
-  .staff-login__brand-mark {
-    width: 35px;
-    height: 42px;
-  }
-
-  .staff-login__brand-name {
-    font-size: 21px;
-  }
-
-  .staff-login__portal-label {
-    grid-column: 1;
-    grid-row: 2;
-    padding: 0;
-    margin: 0 0 0 43px;
-    border: 0;
-    font-size: 8px;
-    letter-spacing: 0.15em;
-  }
-
-  .staff-login__security {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    gap: 8px;
-    font-size: 8px;
-    letter-spacing: 0.12em;
-  }
-
-  .staff-login__security-emblem {
-    width: 20px;
-    height: 20px;
-  }
-
   .staff-login__layout {
     width: min(100% - 40px, 680px);
     gap: 27px;
@@ -1167,42 +1263,6 @@
 }
 
 @media (max-width: 540px) {
-  .staff-login__header-inner {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 12px 20px 13px;
-  }
-
-  .staff-login__brand-mark {
-    width: 32px;
-    height: 38px;
-  }
-
-  .staff-login__brand-name {
-    font-size: 20px;
-  }
-
-  .staff-login__portal-label {
-    margin: 0 0 0 40px;
-    font-size: 8px;
-    letter-spacing: 0.14em;
-  }
-
-  .staff-login__security {
-    gap: 7px;
-    margin: 0 0 0 40px;
-    font-size: 7px;
-    letter-spacing: 0.16em;
-  }
-
-  .staff-login__security-emblem {
-    width: 16px;
-    height: 16px;
-  }
-
   .staff-login__layout {
     width: calc(100% - 36px);
     gap: 25px;

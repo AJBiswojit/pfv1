@@ -17,8 +17,31 @@ import { homeForAccountLevel } from "../../config/rbacModel";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useEmployeeAuth } from "../../context/EmployeeAuthContext";
 import { apiSignInStaff } from "../../services/api/authApi";
-import brandMark from "../../assets/pratikshya_logo.webp";
 import "./staff-login.css";
+
+// Official homepage brand mark — the SAME file the customer navbar renders
+// (see `components/customer/components/ui/Logo.jsx` MARK_SRC, served from
+// `public/design/pratikshya-logo.webp`). Referenced by URL on purpose:
+// importing that component would drag the storefront router shim and mock
+// catalogue into the staff chunk; the bytes served here are identical, and
+// the lockup (mark + stacked wordmark + rules) mirrors Logo.jsx exactly.
+const BRAND_MARK_SRC = "/design/pratikshya-logo.webp";
+const BRAND_MARK_RATIO = 237 / 288; // width / height of the exported file, matching Logo.jsx
+
+/** The official mark. Decorative wherever it sits next to the written name. */
+function StaffBrandMark({ height, className }) {
+  return (
+    <img
+      className={className}
+      src={BRAND_MARK_SRC}
+      alt=""
+      width={Math.round(height * BRAND_MARK_RATIO)}
+      height={height}
+      decoding="async"
+      draggable="false"
+    />
+  );
+}
 
 /**
  * PRATIKSHYA FASHION — the ONE canonical staff sign-in page.
@@ -145,7 +168,7 @@ function AtelierDecorations() {
         />
       </svg>
 
-      <img className="staff-login__monogram" src={brandMark} alt="" aria-hidden="true" />
+      <img className="staff-login__monogram" src={BRAND_MARK_SRC} alt="" aria-hidden="true" />
       <span className="staff-login__center-rule" aria-hidden="true" />
     </>
   );
@@ -180,6 +203,7 @@ export default function StaffLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     const previous = document.title;
@@ -187,6 +211,15 @@ export default function StaffLogin() {
     return () => {
       document.title = previous;
     };
+  }, []);
+
+  // Same scroll treatment as the customer navbar (useScrolled(24)): the
+  // translucent bar gains its hairline border + shadow once the page moves.
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const handleSubmit = async (event) => {
@@ -251,17 +284,23 @@ export default function StaffLogin() {
 
   return (
     <div className="staff-login">
-      <header className="staff-login__header">
+      {/* Staff header — the homepage navbar's bar, lockup and proportions:
+          the official mark + stacked wordmark centered, with the portal
+          label and security descriptor in the side slots. */}
+      <header className={`staff-login__header${isScrolled ? " is-scrolled" : ""}`}>
         <div className="staff-login__header-inner">
+          <p className="staff-login__portal-label">Staff Sign In · Admin &amp; Team Portal</p>
           <div className="staff-login__brand" aria-label="PRATIKSHYA FASHION">
-            <img className="staff-login__brand-mark" src={brandMark} alt="" />
-            <span className="staff-login__brand-name">PRATIKSHYA FASHION</span>
+            <StaffBrandMark height={46} className="staff-login__logo-mark" />
+            <span className="staff-login__logo-text">
+              <span className="staff-login__logo-word">PRATIKSHYA</span>
+              <span className="staff-login__logo-sub">Fashion</span>
+            </span>
           </div>
-          <span className="staff-login__portal-label">Staff Sign In · Admin &amp; Team Portal</span>
-          <div className="staff-login__security">
+          <p className="staff-login__security">
             <SecurityEmblem />
             <span>Secure · Responsible · Together</span>
-          </div>
+          </p>
         </div>
       </header>
 
