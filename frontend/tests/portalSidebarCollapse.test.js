@@ -100,7 +100,7 @@ test("desktop collapse keeps icons, hides labels, and exposes an accessible cont
 
 test("collapsed rail preserves active state and does not drop navigation items", () => {
   assert.match(portal, /aria-current=\{isActive \? "page" : undefined\}/);
-  assert.match(portal, /border-accent bg-ink font-medium text-ivory/);
+  assert.match(portal, /border-pf-gold bg-pf-wine text-pf-ivory/);
   assert.match(portal, /showItems = open \|\| collapsed/);
   assert.doesNotMatch(portal, /filter\(\(item\) => !collapsed/);
 });

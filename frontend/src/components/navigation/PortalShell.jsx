@@ -26,7 +26,7 @@ export default function PortalShell({
 }) {
   return (
     <div className="lg:flex lg:min-w-0">
-      {navOpen ? (
+        {navOpen ? (
         <button
           type="button"
           className={overlayClassName}
@@ -36,10 +36,11 @@ export default function PortalShell({
         />
       ) : null}
 
+
       <aside
         ref={drawerRef}
         className={cn(
-          "fixed inset-y-0 left-0 w-72 overflow-hidden border-r border-mist/80 bg-canvas pt-[65px]",
+          "fixed inset-y-0 left-0 w-72 overflow-hidden border-r border-pf-burgundy/20 bg-pf-burgundy pt-[65px]",
           "transition-[width,transform] duration-200 ease-out motion-reduce:transition-none",
           "lg:static lg:z-0 lg:translate-x-0 lg:overflow-visible lg:pt-0 lg:shrink-0",
           asideZClass,

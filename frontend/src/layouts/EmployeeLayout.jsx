@@ -33,7 +33,7 @@ export default function EmployeeLayout() {
     pathname !== "/employee/access-denied";
 
   return (
-    <div className="min-h-screen bg-canvas text-ink font-display selection:bg-accent selection:text-white">
+    <div className="min-h-screen bg-pf-ivory text-pf-text font-display selection:bg-pf-gold/30">
       <EmployeeHeader navOpen={navOpen} onToggleNav={toggleNav} menuButtonRef={triggerRef} />
 
       <PortalShell
@@ -53,7 +53,7 @@ export default function EmployeeLayout() {
           />
         }
         beforeMain={
-          <p className="mb-6 font-ui text-[11px] text-taupe xl:hidden">
+          <p className="mb-6 font-ui text-[11px] text-pf-muted xl:hidden">
             {employee?.employeeId} · {employee?.shift}
           </p>
         }

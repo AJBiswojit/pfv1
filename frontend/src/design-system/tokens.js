@@ -201,11 +201,38 @@ export const imageTreatment = {
     "absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-luminosity",
 };
 
+/* ------------------------------------------------------------------ */
+/* Staff Portal palette (ADDITIVE)                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The PRATIKSHYA FASHION staff portal identity: deep burgundy, warm ivory,
+ * champagne gold. Every value is ADDITIVE — no token in `colors` above is
+ * redefined, so the storefront keeps its current palette.
+ */
+export const staffPortal = {
+  burgundy: "#4A0718",
+  wine: "#2A0610",
+  ivory: "#FBF4EB",
+  card: "#FFF9F2",
+  gold: "#D6AE70",
+  goldDeep: "#B98948",
+  text: "#351A1B",
+  muted: "#88786E",
+  border: "#EDE4D8",
+  borderLight: "#F5EDE3",
+  success: "#4A7C59",
+  warning: "#C4922A",
+  error: "#A84448",
+  info: "#5B8FA8",
+};
+
 export const tokens = {
   colors,
   colorClasses,
   campaign,
   campaignClasses,
+  staffPortal,
   tones,
   radius,
   shadows,
