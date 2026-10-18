@@ -1,299 +1,946 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   PHASE 10 — the authentication screens' own chrome.
+   PRATIKSHYA FASHION — CINEMATIC GLASS AUTH
 
-   Everything the design DOES draw for these pages is drawn by the design's own
-   stylesheets (`customer.css`, scoped under `.pf-root` and compared against the
-   design on every port run): the page frame (`.container`, `.info`, `.crumbs`,
-   `.label`, `.display`, `.info__title`, `.info__lead`), the form register
-   (`.form`, `.form label`, `.form input`, `.form__err`, `.form__note`) and the
-   button register (`.btn`, `.btn--solid`, `.btn--ghost`, `.btn--block`).
+   One full-bleed campaign photograph, one editorial column, one genuinely
+   transparent glass panel. This sheet carries the whole authentication hero and
+   nothing else: every selector is scoped under `.pf-root`, so no rule here can
+   reach the host application's pages, and the shared navbar stylesheet is not
+   touched at all (the header above the hero is exactly the storefront's own).
 
-   The design drew no authentication screen — its `/account` is a prototype that
-   stores a name in `localStorage` and says so on the page — so everything a
-   real credential form needs that a prototype did not is declared here: the
-   password field's reveal toggle, the labelled row that carries the "forgot
-   password" link, the remember-me row, the "or continue with" divider, the
-   two-column field pair (and its collapse), the alternate-action block, the
-   confirmation panel, the back link, and the centered column the pages
-   narrow into.
+   The glass is deliberately translucent. The panel's wine tint is a gradient of
+   roughly 0.34–0.44 alpha over an 8px backdrop blur, which keeps the photograph
+   — its fabric, jewellery and candlelight — recognisably visible through the
+   form. Readability is protected by the hero scrim first, the panel's tint
+   second and local text contrast third; never by turning the panel opaque.
 
-   Every declaration is scoped to `.pf-root` and every value is a design token
-   (`--c-*`, `--f-*`, `--fs-*`, `--track-*`, `--t-*`, `--ease-out`), so these
-   rules read as the design's own do and can never reach the host application's
-   pages.
+   Palette notes (fixed by the campaign reference):
+     · warm ivory text      #F8EFE6
+     · champagne gold       #EBC484
+     · deep wine            #2D0811
+     · brand burgundy       #65081F
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* A note on specificity. Every selector of the design's own stylesheet is
-   scoped under `.pf-root` by the port tool (`scripts/customer-port.js`), so the
-   design's rules arrive as `.pf-root .form label` — one class MORE specific
-   than a plain `.pf-root .pf-…` rule. Wherever a rule below has to outweigh a
-   design declaration (the remember-me row against `.form label`'s flex column,
-   a field error against its uppercase, the divider, the terms notice and the
-   confirmation against `.info p`), the selector is written one step deeper —
-   `.pf-root .form .pf-auth__check` — so it wins on specificity and never on
-   source order alone. This was measured the hard way: the first build of this
-   file lost the remember-me row to `.form label` and the probe recorded it.
+.pf-root .pf-auth-experience {
+  --pa-ivory: #F8EFE6;
+  --pa-gold: #EBC484;
+  --pa-gold-soft: rgba(235, 196, 132, 0.62);
+  --pa-champagne: rgba(246, 220, 187, 0.78);
+  --pa-muted: rgba(247, 238, 237, 0.7);
+  --pa-hairline: rgba(246, 220, 187, 0.24);
 
-   ── the page and the form's width ──────────────────────────────────────── */
-
-.pf-root .pf-auth .info__title { margin-bottom: 14px; }
-
-.pf-root .pf-auth .info__lead { max-width: 52ch; }
-
-/* The design's `.form` is written for a 420px column; a credential form with a
-   two-up name row and a two-up password row needs a little more room, and the
-   sign-up form a little more again. Nothing else about `.form` changes. */
-.pf-root .pf-auth__form { max-width: 480px; margin-top: 22px; }
-
-.pf-root .pf-auth__form--wide { max-width: 620px; }
-
-/* The production screen pairs first/last name and password/confirmation. */
-.pf-root .pf-auth__pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-@media (max-width: 599px) {
-  .pf-root .pf-auth__pair { grid-template-columns: 1fr; }
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  min-height: calc(100vh - var(--header-h) - 34px);
+  min-height: calc(100svh - var(--header-h) - 34px);
+  background: #1B060D;
+  color: var(--pa-ivory);
+  font-family: var(--f-sans);
 }
 
-/* ── the password field: label row, reveal toggle ───────────────────────── */
+/* The authentication hero is the whole page: while it is mounted the storefront
+   footer is not painted beneath it. Route- and mode-stable, purely presentational
+   — no other page loses its footer. */
+.pf-root:has(.pf-auth-experience) .footer { display: none; }
 
-.pf-root .pf-auth__group { display: flex; flex-direction: column; gap: 6px; }
+/* ── the campaign photograph, continuous across the whole hero ──────────── */
 
-.pf-root .pf-auth__row {
+.pf-root .pf-auth-experience__media {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  margin: 0;
+}
+
+.pf-root .pf-auth-experience__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  display: block;
+  max-width: none;
+}
+
+/* Cinematic scrim: darker at the left where the editorial stands, gentler over
+   the right where the glass must show the photograph through it. */
+.pf-root .pf-auth-experience__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg,
+      rgba(24, 5, 12, 0.58) 0%,
+      rgba(24, 5, 12, 0.34) 22%,
+      rgba(24, 5, 12, 0.06) 42%,
+      rgba(24, 5, 12, 0) 62%,
+      rgba(24, 5, 12, 0.08) 100%),
+    linear-gradient(180deg,
+      rgba(24, 5, 12, 0.12) 0%,
+      rgba(24, 5, 12, 0) 14%,
+      rgba(24, 5, 12, 0) 88%,
+      rgba(24, 5, 12, 0.14) 100%);
+}
+
+.pf-root .pf-auth-experience__inner {
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  padding: clamp(28px, 3.4vw, 52px)
+    clamp(18px, 4.2vw, 64px)
+    clamp(28px, 3.4vw, 52px)
+    clamp(18px, 6.1vw, 96px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 560px);
+  align-items: center;
+  gap: clamp(32px, 4.6vw, 84px);
+}
+
+/* ── the left editorial composition ─────────────────────────────────────── */
+
+.pf-root .pf-auth-editorial {
+  max-width: 560px;
+  position: relative;
+  z-index: 1;
+}
+
+.pf-root .pf-auth-eyebrow {
+  margin: 0 0 22px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(235, 196, 132, 0.88);
+}
+
+.pf-root .pf-auth-headline {
+  font-family: var(--f-serif);
+  font-weight: 400;
+  font-size: clamp(40px, 4.45vw, 72px);
+  line-height: 0.99;
+  letter-spacing: -0.012em;
+  color: var(--pa-ivory);
+  margin: 0;
+}
+
+.pf-root .pf-auth-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.075em;
+  margin-bottom: -0.075em;
+}
+
+.pf-root .pf-auth-line__inner {
+  display: block;
+  will-change: transform;
+}
+
+.pf-root .pf-auth-line--accent {
+  font-style: italic;
+  color: var(--pa-gold);
+}
+
+.pf-root .pf-auth-rule {
+  display: block;
+  width: 64px;
+  height: 1px;
+  margin: 26px 0 22px;
+  background: linear-gradient(90deg, rgba(235, 196, 132, 0.7), rgba(235, 196, 132, 0.06));
+}
+
+.pf-root .pf-auth-lead {
+  max-width: 25ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.8;
+  color: rgba(247, 238, 237, 0.8);
+  text-shadow: 0 1px 18px rgba(10, 2, 6, 0.4);
+}
+
+.pf-root .pf-auth-highlights {
+  display: grid;
+  gap: 30px;
+  margin: clamp(28px, 2.2vw, 32px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pf-root .pf-auth-highlight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pf-root .pf-auth-highlight__icon {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  flex: none;
+  border: 1px solid rgba(235, 196, 132, 0.5);
+  border-radius: 50%;
+  color: var(--pa-gold);
+  transition: color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out);
+}
+
+.pf-root .pf-auth-highlight:hover .pf-auth-highlight__icon {
+  color: #F6E7CB;
+  border-color: rgba(235, 196, 132, 0.85);
+}
+
+.pf-root .pf-auth-highlight__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pf-root .pf-auth-highlight__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pa-ivory);
+}
+
+.pf-root .pf-auth-highlight__detail {
+  font-size: 13px;
+  color: rgba(247, 238, 237, 0.64);
+}
+
+.pf-root .pf-auth-signature {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: clamp(30px, 3vw, 44px);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(247, 238, 237, 0.66);
+}
+
+.pf-root .pf-auth-signature__rule {
+  width: 44px;
+  height: 1px;
+  background: rgba(235, 196, 132, 0.6);
+}
+
+.pf-root .pf-auth-signature__dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.pf-root .pf-auth-signature__dots span {
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(235, 196, 132, 0.6);
+  border-radius: 50%;
+}
+
+.pf-root .pf-auth-signature__dots span.is-active {
+  background: rgba(235, 196, 132, 0.85);
+  border-color: rgba(235, 196, 132, 0.85);
+}
+
+/* ── the transparent authentication panel ───────────────────────────────── */
+
+.pf-root .pf-auth-panel {
+  position: relative;
+  justify-self: end;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  padding: clamp(28px, 2.7vw, 38px) clamp(24px, 3vw, 40px) clamp(24px, 2.3vw, 32px);
+  border: 1px solid rgba(231, 190, 125, 0.62);
+  border-radius: 20px;
+  background:
+    linear-gradient(168deg,
+      rgba(48, 9, 19, 0.30) 0%,
+      rgba(42, 8, 18, 0.24) 52%,
+      rgba(35, 6, 15, 0.27) 100%);
+  -webkit-backdrop-filter: blur(5px) saturate(1.05);
+  backdrop-filter: blur(5px) saturate(1.05);
+  box-shadow:
+    0 34px 80px -46px rgba(10, 2, 5, 0.85),
+    inset 0 1px 0 rgba(255, 236, 208, 0.18);
+  color: var(--pa-ivory);
+  overflow: hidden;
+}
+
+/* A browser without backdrop-filter still gets translucency (slightly deeper
+   tint so the form stays legible), never an opaque card. */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .pf-root .pf-auth-panel {
+    background: rgba(45, 8, 17, 0.58);
+  }
+}
+
+.pf-root .pf-auth-ornament {
+  position: absolute;
+  z-index: 0;
+  width: 96px;
+  height: auto;
+  color: rgba(235, 196, 132, 0.55);
+  opacity: 0.26;
+  pointer-events: none;
+}
+
+.pf-root .pf-auth-ornament--top {
+  top: 10px;
+  right: 10px;
+}
+
+.pf-root .pf-auth-ornament--bottom {
+  right: 8px;
+  bottom: 8px;
+  transform: rotate(180deg);
+}
+
+.pf-root .pf-auth-panel__body {
+  position: relative;
+  z-index: 1;
+}
+
+.pf-root .pf-auth-panel__body:focus {
+  outline: none;
+}
+
+.pf-root .pf-auth-panel__eyebrow {
+  margin: 0 0 16px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(240, 205, 148, 0.92);
+  text-shadow: 0 1px 12px rgba(14, 2, 7, 0.35);
+  /* the reference's short gold tick under the greeting */
+  background: linear-gradient(90deg, rgba(235, 196, 132, 0.6) 0 64px, transparent 64px)
+    left bottom / 100% 1px no-repeat;
+  padding-bottom: 13px;
+}
+
+.pf-root .pf-auth-panel__title {
+  margin: 0 0 14px;
+  font-family: var(--f-serif);
+  font-weight: 400;
+  font-size: clamp(31px, 2.8vw, 43px);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: #FBF3E8;
+  text-shadow: 0 1px 16px rgba(14, 2, 7, 0.3);
+}
+
+/* The heading is focused programmatically so a mode change is announced; it is
+   not an interactive control, so it never draws a focus rectangle. The
+   experience-wide `:focus-visible` ring is declared later in this sheet, so
+   these selectors carry one extra class to outrank it. */
+.pf-root .pf-auth-experience .pf-auth-panel__title:focus,
+.pf-root .pf-auth-experience .pf-auth-panel__title:focus-visible,
+.pf-root .pf-auth-experience .pf-auth-panel__body:focus,
+.pf-root .pf-auth-experience .pf-auth-panel__body:focus-visible {
+  outline: none;
+}
+
+.pf-root .pf-auth-panel__title em {
+  font-style: italic;
+  color: var(--pa-gold);
+}
+
+.pf-root .pf-auth-panel__lead {
+  margin: 0 0 24px;
+  max-width: 46ch;
+  font-size: 13.8px;
+  line-height: 1.68;
+  color: rgba(251, 244, 237, 0.94);
+  text-shadow:
+    0 1px 2px rgba(14, 3, 7, 0.62),
+    0 2px 18px rgba(12, 2, 7, 0.34);
+}
+
+/* ── the form register ──────────────────────────────────────────────────── */
+
+.pf-root .pf-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 0;
+}
+
+.pf-root .pf-auth-form__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 18px;
+}
+
+.pf-root .pf-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pf-root .pf-auth-field__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 
-.pf-root .pf-auth__field { position: relative; display: block; }
+.pf-root .pf-auth-field__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: rgba(250, 228, 198, 0.9);
+  text-shadow: 0 1px 3px rgba(16, 3, 8, 0.5);
+}
 
-.pf-root .pf-auth__field input { width: 100%; padding-right: 46px; }
+.pf-root .pf-auth-field__req {
+  color: var(--pa-gold);
+}
 
-.pf-root .pf-auth__toggle {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
+.pf-root .pf-auth-control {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid rgba(246, 220, 187, 0.46);
+  border-radius: 8px;
+  background: rgba(255, 244, 232, 0.08);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.pf-root .pf-auth-control:hover {
+  border-color: rgba(246, 220, 187, 0.68);
+}
+
+.pf-root .pf-auth-field--invalid .pf-auth-control {
+  border-color: rgba(255, 178, 178, 0.68);
+  background: rgba(120, 20, 40, 0.16);
+}
+
+.pf-root .pf-auth-control:focus-within {
+  border-color: rgba(235, 196, 132, 0.95);
+  background: rgba(255, 244, 232, 0.09);
+  box-shadow: 0 0 0 3px rgba(235, 196, 132, 0.16);
+}
+
+.pf-root .pf-auth-control__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--pa-gold);
+  opacity: 0.88;
+}
+
+.pf-root .pf-auth-control input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #FBF3E8;
+  font: inherit;
+  font-size: 14.5px;
+  letter-spacing: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.pf-root .pf-auth-control input::placeholder {
+  color: rgba(246, 220, 187, 0.52);
+  opacity: 1;
+}
+
+.pf-root .pf-auth-control input[type="date"] {
+  color-scheme: dark;
+}
+
+.pf-root .pf-auth-control input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.7;
+}
+
+.pf-root .pf-auth-control input:-webkit-autofill,
+.pf-root .pf-auth-control input:-webkit-autofill:hover,
+.pf-root .pf-auth-control input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #FBF3E8;
+  caret-color: #FBF3E8;
+  box-shadow: 0 0 0 1000px #3A101C inset;
+  transition: background-color 9999s ease-out;
+}
+
+.pf-root .pf-auth-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  min-height: 32px;
+  width: 36px;
+  height: 36px;
+  margin-right: -6px;
+  flex: none;
+  border-radius: 50%;
+  color: rgba(246, 220, 187, 0.66);
+  transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+
+.pf-root .pf-auth-toggle:hover {
+  color: var(--pa-gold);
+  background: rgba(235, 196, 132, 0.08);
+}
+
+.pf-root .pf-auth-field__error {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #FFC9C9;
+}
+
+.pf-root .pf-auth-field__note {
+  font-size: 11px;
+  color: rgba(247, 238, 237, 0.54);
+}
+
+/* ── links, check row, alerts ───────────────────────────────────────────── */
+
+.pf-root .pf-auth-textlink {
+  display: inline;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--c-ink-3);
+  color: #F3E3C4;
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(235, 196, 132, 0.5);
   cursor: pointer;
-  transition: color var(--t-base) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), text-decoration-color var(--t-fast) var(--ease-out);
 }
 
-.pf-root .pf-auth__toggle:hover,
-.pf-root .pf-auth__toggle:focus-visible { color: var(--c-espresso); }
-
-/* ── the small print and the alternate actions ──────────────────────────── */
-
-.pf-root .pf-auth__mark { color: var(--c-accent-deep); }
-
-.pf-root .form .pf-auth__optional {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
-  color: var(--c-ink-3);
+.pf-root .pf-auth-textlink:hover {
+  color: var(--pa-gold);
+  text-decoration-color: currentColor;
 }
 
-/* A field error sits inside its `.form label`, which is why the label's own
-   casing and tracking are undone here — the sentence stays a sentence. */
-.pf-root .form .pf-auth__err {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
+.pf-root .pf-auth-textlink--quiet {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: rgba(246, 220, 187, 0.8);
+  text-decoration: none;
 }
 
-.pf-root .info .pf-auth__alert { margin: 18px 0 0; }
+.pf-root .pf-auth-textlink--quiet:hover {
+  text-decoration: underline;
+}
 
-.pf-root .pf-auth__status { max-width: 480px; margin-top: 18px; }
-
-.pf-root .form .pf-auth__check {
-  flex-direction: row;
+.pf-root .pf-auth-check {
+  display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--c-ink-2);
+  width: fit-content;
+  font-size: 12.5px;
+  color: rgba(247, 238, 237, 0.8);
   cursor: pointer;
   user-select: none;
 }
 
-.pf-root .form .pf-auth__check input {
+.pf-root .pf-auth-check input {
   width: 15px;
   height: 15px;
   margin: 0;
-  padding: 0;
-  border: 1px solid var(--c-line-strong);
-  background: var(--c-paper);
-  accent-color: var(--c-espresso);
+  flex: none;
+  accent-color: var(--pa-gold);
   cursor: pointer;
 }
 
-.pf-root .form .pf-auth__divider {
+.pf-root .pf-auth-alert {
+  margin: 16px 0 0;
+  padding: 10px 13px;
+  border: 1px solid rgba(235, 150, 150, 0.4);
+  border-left: 2px solid rgba(255, 170, 170, 0.8);
+  border-radius: 6px;
+  background: rgba(110, 16, 36, 0.32);
+  color: #FFD9D9;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.pf-root .pf-auth-alert .pf-auth-textlink {
+  color: #FFD9D9;
+  font-size: 12.5px;
+}
+
+.pf-root .pf-auth-status {
+  margin: 16px 0 0;
+  padding: 10px 13px;
+  border: 1px solid rgba(235, 196, 132, 0.5);
+  border-radius: 6px;
+  background: rgba(235, 196, 132, 0.12);
+  color: #F6E7CB;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* ── the actions ────────────────────────────────────────────────────────── */
+
+.pf-root .pf-auth-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 2px;
+  padding: 0 22px;
+  border: 1px solid rgba(235, 196, 132, 0.55);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #7C1329 0%, #530A1D 100%);
+  color: #FBF3E8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    opacity var(--t-fast) var(--ease-out);
+}
+
+.pf-root .pf-auth-submit:hover:not(:disabled) {
+  background: linear-gradient(180deg, #8A1830 0%, #65081F 100%);
+  border-color: rgba(235, 196, 132, 0.82);
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 236, 208, 0.14);
+}
+
+.pf-root .pf-auth-submit:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.pf-root .pf-auth-submit--ghost {
+  background: rgba(255, 244, 232, 0.06);
+  border-color: rgba(246, 220, 187, 0.55);
+  color: #F3E3C4;
+}
+
+.pf-root .pf-auth-submit--ghost:hover:not(:disabled) {
+  background: rgba(255, 244, 232, 0.12);
+  border-color: rgba(235, 196, 132, 0.8);
+}
+
+.pf-root .pf-auth-divider {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 6px 0;
+  margin: 0;
 }
 
-.pf-root .pf-auth__divider::before,
-.pf-root .pf-auth__divider::after {
+.pf-root .pf-auth-divider::before,
+.pf-root .pf-auth-divider::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--c-line);
+  background: var(--pa-hairline);
 }
 
-.pf-root .pf-auth__divider span {
-  font-size: var(--fs-xs);
+.pf-root .pf-auth-divider span {
+  font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--c-muted);
+  color: rgba(247, 238, 237, 0.52);
+  white-space: nowrap;
 }
 
-.pf-root .info .pf-auth__terms { font-size: 12px; line-height: 1.7; color: var(--c-ink-3); }
+/* ── Google (the shared GIS component's glass skin) ─────────────────────── */
 
-.pf-root .info .pf-auth__terms a { text-decoration: underline; text-underline-offset: 3px; }
+.pf-root .pf-auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(246, 220, 187, 0.44);
+  border-radius: 7px;
+  background: rgba(255, 244, 232, 0.045);
+  color: var(--pa-ivory);
+  font-family: var(--f-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
 
-.pf-root .pf-auth__alt {
+.pf-root .pf-auth-google:hover {
+  background: rgba(255, 244, 232, 0.1);
+  border-color: rgba(235, 196, 132, 0.75);
+}
+
+.pf-root .pf-auth-google--official {
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 244, 232, 0.045);
+}
+
+.pf-root .pf-auth-google__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(235, 150, 150, 0.42);
+  border-radius: 6px;
+  background: rgba(110, 16, 36, 0.3);
+  color: #FFD9D9;
+  font-size: 11.5px;
+}
+
+/* ── the alternate actions under the form ───────────────────────────────── */
+
+.pf-root .pf-auth-alt {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--pa-hairline);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 480px;
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--c-line);
   font-size: 13px;
-  color: var(--c-ink-2);
+  color: rgba(249, 241, 234, 0.86);
+  text-shadow:
+    0 1px 2px rgba(14, 3, 7, 0.5),
+    0 2px 12px rgba(14, 2, 7, 0.28);
 }
 
-.pf-root .pf-auth__form--wide ~ .pf-auth__alt { max-width: 620px; }
+.pf-root .pf-auth-alt p {
+  margin: 0;
+}
 
-.pf-root .pf-auth__alt a,
-.pf-root .info .pf-auth__terms a { color: var(--c-espresso); }
-
-.pf-root .pf-auth__alt a:hover { color: var(--c-accent-deep); }
-
-.pf-root .pf-auth__guest {
-  font-size: var(--fs-xs);
+.pf-root .pf-auth-guest {
+  align-self: flex-start;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
+  color: var(--pa-gold);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(235, 196, 132, 0.35);
+  padding-bottom: 2px;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-/* ── the confirmation panel and the back link ───────────────────────────── */
-
-.pf-root .info .pf-auth__sent { padding: 6px 0 10px; }
-
-.pf-root .pf-auth__sent .info__title { margin-bottom: 12px; }
-
-.pf-root .pf-auth__sent-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 360px;
-  margin-top: 22px;
+.pf-root .pf-auth-guest:hover {
+  color: #F6E7CB;
+  border-color: #F6E7CB;
 }
 
-.pf-root .info .pf-auth__back {
-  max-width: 480px;
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--c-line);
-}
+/* ── registration small print and the receipt states ────────────────────── */
 
-.pf-root .pf-auth__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.pf-root .pf-auth-terms {
+  margin: 0;
   font-size: 11.5px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-2);
+  line-height: 1.7;
+  color: rgba(247, 238, 237, 0.62);
+}
+
+.pf-root .pf-auth-terms a {
+  color: var(--pa-gold);
   text-decoration: underline;
   text-underline-offset: 3px;
-  transition: color var(--t-base) var(--ease-out);
+  text-decoration-color: rgba(235, 196, 132, 0.5);
 }
 
-.pf-root .pf-auth__link:hover,
-.pf-root .pf-auth__link:focus-visible { color: var(--c-espresso); }
-
-/* The password row's "Forgot password?" link is the same register, at rest. */
-.pf-root .pf-auth__row .pf-auth__link { font-size: 11.5px; }
-
-/* ── the centered column ────────────────────────────────────────────────────
-
-   The design's `.info` page box is 860px wide; a credential form at that width
-   hugs the left gutter, which reads as a broken layout rather than a narrow
-   form. The auth column narrows the page to the form's own measure and centers
-   it, so the eyebrow, title and fields share one left edge and the page holds
-   together at desktop widths. The two-column registration form takes the wide
-   measure. Inside the narrowed column the form blocks fill the column — a
-   short divider under full-width inputs would read as broken in the same way.
-   The breadcrumb keeps the full column width and stays left-aligned. */
-
-.pf-root .pf-auth {
-  max-width: 560px;
-  margin-inline: auto;
+.pf-root .pf-auth-sent__copy {
+  margin: 2px 0 22px;
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: rgba(247, 238, 237, 0.76);
 }
 
-.pf-root .pf-auth--wide {
-  max-width: 680px;
+.pf-root .pf-auth-sent__copy strong {
+  color: #F6E7CB;
+  font-weight: 600;
 }
 
-.pf-root .pf-auth .pf-auth__form,
-.pf-root .pf-auth .pf-auth__status,
-.pf-root .pf-auth .pf-auth__alt,
-.pf-root .pf-auth .pf-auth__sent-actions {
-  max-width: none;
+.pf-root .pf-auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(247, 238, 237, 0.66);
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out);
 }
 
-/* One class deeper than the back link's own rule above, for the reason the
-   doctrine gives: an equal-specificity rule would win on source order alone. */
-.pf-root .info .pf-auth .pf-auth__back {
-  max-width: none;
+.pf-root .pf-auth-back:hover {
+  color: var(--pa-gold);
 }
 
-/* Premium auth workspace: a roomy, restrained card that keeps the existing
-   maroon/blush palette and typography while giving forms a usable measure. */
-.pf-root .pf-auth {
-  box-sizing: border-box;
-  width: min(100% - 40px, 1080px);
-  max-width: 1080px;
-  min-height: min(680px, calc(100vh - 220px));
-  margin: 36px auto;
-  padding: clamp(28px, 5vw, 64px);
-  border: 1px solid var(--c-line);
-  border-radius: 18px;
-  background: var(--c-paper);
-  box-shadow: 0 18px 60px color-mix(in srgb, var(--c-espresso) 8%, transparent);
+/* ── focus, motion, and the responsive composition ──────────────────────── */
+
+.pf-root .pf-auth-experience :focus-visible {
+  outline: 2px solid rgba(235, 196, 132, 0.9);
+  outline-offset: 3px;
 }
-.pf-root .pf-auth .info__title { font-size: clamp(28px, 3vw, 40px); line-height: 1.12; margin-bottom: 10px; }
-.pf-root .pf-auth .info__lead { margin-top: 0; font-size: 14px; }
-.pf-root .pf-auth__form { width: 100%; max-width: 620px; margin-top: 20px; }
-.pf-root .pf-auth .form input:not([type="checkbox"]) { box-sizing: border-box; min-height: 48px; }
-.pf-root .pf-auth .form input:focus-visible { outline: 2px solid var(--c-accent-deep); outline-offset: 2px; }
-.pf-root .pf-auth__toggle { min-width: 44px; min-height: 44px; }
-.pf-root .pf-auth .btn--block { min-height: 48px; width: 100%; }
-.pf-root .pf-auth input:-webkit-autofill,
-.pf-root .pf-auth input:-webkit-autofill:hover,
-.pf-root .pf-auth input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--c-ink);
-  box-shadow: 0 0 0 1000px var(--c-paper) inset;
-  transition: background-color 9999s ease-out;
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-root .pf-auth-experience *,
+  .pf-root .pf-auth-experience *::before,
+  .pf-root .pf-auth-experience *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-@media (max-width: 1023px) {
-  .pf-root .pf-auth { width: calc(100% - 32px); min-height: 0; margin: 24px auto; padding: clamp(24px, 6vw, 40px); }
+
+@media (max-width: 1279px) {
+  .pf-root .pf-auth-experience__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 540px);
+    gap: clamp(28px, 4vw, 56px);
+  }
+  .pf-root .pf-auth-headline {
+    font-size: clamp(40px, 4.7vw, 64px);
+  }
+  .pf-root .pf-auth-panel {
+    max-width: 540px;
+  }
 }
-@media (max-width: 480px) {
-  .pf-root .pf-auth { width: calc(100% - 32px); padding: 24px 20px; border-radius: 14px; }
-  .pf-root .pf-auth__row { align-items: center; }
+
+/* Below this width the two columns stop sharing the frame: the editorial sits
+   over the photograph and the panel follows it, so the campaign is composed as
+   one stacked page rather than two cramped columns. */
+@media (max-width: 1119px) {
+  .pf-root .pf-auth-experience__media img {
+    object-position: 22% top;
+  }
+  .pf-root .pf-auth-experience__scrim {
+    background:
+      linear-gradient(104deg,
+        rgba(17, 3, 8, 0.6) 0%,
+        rgba(17, 3, 8, 0.4) 34%,
+        rgba(17, 3, 8, 0.06) 62%,
+        rgba(17, 3, 8, 0.14) 100%),
+      linear-gradient(180deg,
+        rgba(17, 3, 8, 0.1) 0%,
+        rgba(17, 3, 8, 0.04) 40%,
+        rgba(20, 4, 10, 0.34) 100%);
+  }
+  .pf-root .pf-auth-experience__inner {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    max-width: 720px;
+    padding-block: clamp(32px, 6vw, 56px);
+    gap: clamp(26px, 4vw, 40px);
+  }
+  .pf-root .pf-auth-editorial {
+    max-width: 620px;
+  }
+  .pf-root .pf-auth-headline {
+    font-size: clamp(38px, 5.6vw, 58px);
+  }
+  .pf-root .pf-auth-highlights {
+    display: none;
+  }
+  .pf-root .pf-auth-signature {
+    margin-top: 26px;
+  }
+  .pf-root .pf-auth-panel {
+    justify-self: stretch;
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .pf-root .pf-auth-experience__media img {
+    /* the portrait is framed on the model: keep her face clear of the copy by
+       holding the crop to the right of the editorial column */
+    object-position: 30% top;
+  }
+  .pf-root .pf-auth-experience__scrim {
+    background:
+      linear-gradient(102deg,
+        rgba(17, 3, 8, 0.58) 0%,
+        rgba(17, 3, 8, 0.42) 38%,
+        rgba(17, 3, 8, 0.08) 64%,
+        rgba(17, 3, 8, 0.16) 100%),
+      linear-gradient(180deg,
+        rgba(17, 3, 8, 0.14) 0%,
+        rgba(17, 3, 8, 0.04) 22%,
+        rgba(20, 4, 10, 0.42) 62%,
+        rgba(17, 3, 8, 0.62) 100%);
+  }
+  .pf-root .pf-auth-experience__inner {
+    padding-block: 30px 40px;
+    gap: 24px;
+  }
+  .pf-root .pf-auth-eyebrow {
+    margin-bottom: 14px;
+    font-size: 9.5px;
+    letter-spacing: 0.3em;
+  }
+  .pf-root .pf-auth-headline {
+    font-size: clamp(34px, 8vw, 46px);
+  }
+  .pf-root .pf-auth-rule {
+    margin: 18px 0 16px;
+  }
+  .pf-root .pf-auth-lead {
+    font-size: 13.5px;
+    line-height: 1.65;
+    max-width: 28ch;
+  }
+  .pf-root .pf-auth-experience__inner {
+    padding-inline: 18px;
+  }
+  .pf-root .pf-auth-panel {
+    border-radius: 18px;
+    padding: 24px 20px 22px;
+  }
+  .pf-root .pf-auth-panel__title {
+    font-size: clamp(27px, 7.2vw, 34px);
+  }
+  .pf-root .pf-auth-panel__lead {
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  .pf-root .pf-auth-form__pair {
+    grid-template-columns: 1fr;
+  }
+  .pf-root .pf-auth-control {
+    min-height: 50px;
+  }
+  .pf-root .pf-auth-submit,
+  .pf-root .pf-auth-google {
+    min-height: 50px;
+  }
+  .pf-root .pf-auth-ornament {
+    width: 96px;
+  }
+}
+
+@media (max-width: 420px) {
+  .pf-root .pf-auth-experience__inner {
+    padding-inline: 14px;
+  }
+  .pf-root .pf-auth-panel {
+    padding: 22px 16px 20px;
+  }
 }
