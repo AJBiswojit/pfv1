@@ -85,8 +85,11 @@ const preserveMediaFailure = (result, context = {}) => ({
  * The registered-media read model for one product, straight from
  * `GET /media/products/{id}/media-set`. Never synthesized locally.
  */
-export async function getRegisteredProductMedia(productId) {
-  const result = await apiGetProductMediaSet(productId);
+export async function getRegisteredProductMedia(productId, { scope = "none" } = {}) {
+  // Batch 2 / 1A: pass the caller's session scope — staff are served DRAFT
+  // media-sets by their token; the default public read resolves PUBLISHED
+  // products only (anything else is a 404, like a missing product).
+  const result = await apiGetProductMediaSet(productId, { scope });
   if (!result.ok) return preserveMediaFailure(result);
   const data = result.data ?? {};
   return {
@@ -112,12 +115,24 @@ export async function syncProductMediaFromServer(productId, { scope = "admin" } 
   const id = String(productId || "").trim();
   if (!id) return { ok: false, error: "No product id supplied.", status: 0 };
 
-  const media = await getRegisteredProductMedia(id);
+  const media = await getRegisteredProductMedia(id, { scope });
   if (!media.ok) return preserveMediaFailure(media, { stage: "read" });
 
-  // `scope` remains part of the compatibility signature for current callers;
-  // product DTO refreshes are admin-scoped by the canonical API layer.
-  void scope;
+  // Employee sessions read the staff-gated registered media-set only — the
+  // admin product DTO refresh is admin-scoped by design and must not be
+  // attempted with an employee token.
+  if (scope === "employee") {
+    return {
+      ok: true,
+      product: null,
+      items: media.items,
+      mediaRecordsAvailable: media.mediaRecordsAvailable,
+      primary: media.primary,
+      primaryMediaUrl: media.primaryMediaUrl,
+      gallery: media.gallery,
+      stage: PRODUCT_MEDIA_STAGES.REFRESHED,
+    };
+  }
   const fresh = await apiAdminGetProduct(id);
   if (!fresh.ok || !fresh.product) {
     return preserveMediaFailure(fresh, {
@@ -176,7 +191,7 @@ export async function uploadAndRegisterProductImage(
   };
 
   report(PRODUCT_MEDIA_STAGES.UPLOADING);
-  const uploaded = await apiUploadProductMediaObject(id, file);
+  const uploaded = await apiUploadProductMediaObject(id, file, { scope });
   if (!uploaded.ok) {
     report(PRODUCT_MEDIA_STAGES.FAILED, { step: "upload", error: uploaded.error });
     return preserveMediaFailure(uploaded, {

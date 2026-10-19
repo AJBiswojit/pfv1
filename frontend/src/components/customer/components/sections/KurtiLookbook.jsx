@@ -15,10 +15,20 @@ import { InView } from '../ui/InView.jsx';
  * renders nothing.
  */
 export default function KurtiLookbook({ content }) {
-  const [active, setActive] = useState('anarkalis');
+  /* B-15: the initial mood used to be hardcoded to 'anarkalis' — when that
+     slot was unconfigured the hero image rendered blank until a mood was
+     clicked. Now the default is null and resolves to the first configured
+     mood; if a re-save removes the selected mood, the render falls back to
+     the first configured mood instead of going blank. */
+  const [selected, setSelected] = useState(null);
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
   const catalogueRevision = useCatalogueRevision();
+  const moods = useMemo(() => content ? content.mediaList().map((m) => ({ key: m.key, label: (m.title || m.key).replace(/\n/g, ' ') })) : [], [content]);
+  /* Recovery: a missing/stale selection (or the null default) resolves to
+     the first configured mood, so a re-save that removes the active slot
+     never blanks the visual. */
+  const active = moods.some((m) => m.key === selected) ? selected : (moods[0]?.key ?? selected);
   const items = useMemo(() => {
     const own = content ? content.products(active) : [];
     const fill = (content ? content.products('pairings') : []).filter((p) => !own.includes(p)).slice(0, Math.max(0, 4 - own.length));
@@ -26,7 +36,6 @@ export default function KurtiLookbook({ content }) {
   }, [active, catalogueRevision, content]);
   /* Database-driven only: without authored content this section renders nothing. */
   if (!content) return null;
-  const moods = content.mediaList().map((m) => ({ key: m.key, label: (m.title || m.key).replace(/\n/g, ' ') }));
   const current = content.media(active);
   const mood = { image: current.url, line: [current.title, current.subtitle].filter(Boolean).join(' · ') };
   const ownCount = items.filter((x) => !x.pairing).length;
@@ -74,7 +83,7 @@ export default function KurtiLookbook({ content }) {
           <div className="kurti__selector" role="tablist" aria-label="Kurti collections">
             <LayoutGroup id="kurti">
               {moods.map((c, i) => (
-                <button key={c.key} type="button" role="tab" aria-selected={active === c.key} className={cx('kmood', active === c.key && 'is-active')} onClick={() => setActive(c.key)}>
+                <button key={c.key} type="button" role="tab" aria-selected={active === c.key} className={cx('kmood', active === c.key && 'is-active')} onClick={() => setSelected(c.key)}>
                   <sup>0{i + 1}</sup>
                   <span>{c.label}</span>
                   {active === c.key && <motion.span layoutId="kurti-line" className="kmood__line" transition={{ duration: 0.35, ease: ease.out }} />}

@@ -234,7 +234,7 @@ class _MediaCase(unittest.IsolatedAsyncioTestCase):
         from app.api.v1.media import router as media_router
         from app.api.v1.products import router as products_router
         from app.core.error_handlers import register_error_handlers
-        from app.dependencies import get_current_user, get_db
+        from app.dependencies import get_current_user, get_db, get_optional_user
 
         app = FastAPI()
         register_error_handlers(app)
@@ -265,6 +265,11 @@ class _MediaCase(unittest.IsolatedAsyncioTestCase):
 
         app.dependency_overrides[get_db] = _override_get_db
         app.dependency_overrides[get_current_user] = _override_current_user
+        # The public media-set now gates non-PUBLISHED products for callers
+        # without a staff session (Batch 2 / 1A): these suites ARE staff
+        # (both seeded actors are admins), so the simulated optional session
+        # must match the required one.
+        app.dependency_overrides[get_optional_user] = _override_current_user
         return app
 
     # ── actors ───────────────────────────────────────────────────────────────

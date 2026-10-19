@@ -336,3 +336,12 @@ test("the model is keyed on live contents, not on the slide array identity", () 
   assert.match(heroSource, /\[slideKey, heroMedia\]/);
   assert.doesNotMatch(heroSource, /\[slides, heroMedia\]/);
 });
+
+test("B-07: authored altText from /home renders as the img alt; empty keeps previous behaviour", () => {
+  const withAlt = normalizeHeroSlides([slide({ altText: "Banarasi campaign plate" })], []);
+  assert.equal(withAlt[0].image.alt, "Banarasi campaign plate");
+  const without = normalizeHeroSlides([slide()], []);
+  assert.equal(without[0].image.alt, "", "absent altText keeps the previous alt=\"\" behaviour");
+  const blank = normalizeHeroSlides([slide({ altText: "   " })], []);
+  assert.equal(blank[0].image.alt, "", "blank altText falls back unchanged");
+});

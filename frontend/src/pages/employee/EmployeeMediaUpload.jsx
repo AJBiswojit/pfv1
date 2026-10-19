@@ -48,7 +48,7 @@ export default function EmployeeMediaUpload() {
     <EmployeePage
       eyebrow="Media Operations"
       title="Upload Product Media"
-      description="Submit new imagery and video for catalogue review and merchandising. Uploaded files enter the review queue for store manager approval."
+      description="Submit product imagery through the real backend media pipeline. With the media.upload grant, files are stored and registered onto the chosen product immediately; no approval queue exists in this portal."
       actions={
         <AtelierButton as={Link} to="/employee/media" size="chip" variant="outline">
           <ArrowLeft size={13} className="mr-1 inline-block" />

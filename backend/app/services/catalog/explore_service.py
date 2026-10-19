@@ -442,6 +442,10 @@ class ExploreService:
                         cta=row.cta_label or "Explore Collection",
                         href=row.cta_href or "/shop",
                         image=image_url,
+                        # B-07: surface the authored alt text (was saved but
+                        # never exposed). Empty stays "" — the storefront
+                        # alt="" fallback is unchanged.
+                        alt_text=row.alt_text or "",
                         media_id=row.object_key,
                     )
                 )

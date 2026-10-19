@@ -74,6 +74,13 @@ class Step11BResponseContractTests(unittest.TestCase):
                     "url": "/api/v1/media/objects/products/PF-W-0001/cover.png",
                     "status": "legacy-status-is-preserved",
                     "mimeType": "image/png",
+                    # Batch 2 (B-11) additions — the picker context fields are
+                    # part of the declared wire shape and round-trip verbatim
+                    # like every other field.
+                    "scope": "product",
+                    "productId": "PF-W-0001",
+                    "productName": "Banarasi Silk Saree",
+                    "productSku": "PF-W-0001",
                 }
             ],
         }

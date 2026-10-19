@@ -28,7 +28,6 @@ export default function AdminMarketingMedia() {
   const [sectionId, setSectionId] = useState('hero');
   const [type, setType] = useState('MEDIA');
   const [pending, setPending] = useState(false);
-  const [legacy, setLegacy] = useState(false);
   const section = HOMEPAGE_SECTIONS.find((item) => item.id === sectionId);
   const loading = employeeWorkspace ? employeeAuth.isLoading : adminAuth.isLoading;
   if (loading) return <p role="status">Verifying homepage content access…</p>;
@@ -41,14 +40,14 @@ export default function AdminMarketingMedia() {
       {hasAdminPermission(actor.admin, 'catalogue.view') && <Link to={`${prefix}/products`} className="border border-pf-border p-2 text-xs">Product lifecycle workspace</Link>}
     </div> : null}>
     <div className="mb-6 border border-pf-border bg-pf-card p-4 text-sm">
-      <strong>Production homepage selection is unchanged.</strong> Hero retains its marketing owner. Configured non-hero sections use the additive /home content contract; missing sections retain existing content. Inactive or empty configurations never restore fallback.
+      <strong>Production homepage selection is unchanged.</strong> Hero retains its marketing owner. Configured non-hero sections use the additive /home content contract; unconfigured or inactive sections are hidden on the storefront. Configure and activate a section to render it.
       <p className="mt-2">Product creation stays in the existing draft workspace; this control center never invents identity, price, approval or publication.</p>
     </div>
     {access.employeeOnly && !staff.view && <p role="status" className="mb-6 border border-amber-200 bg-amber-50 p-4 text-sm">Your media permission allows this overview and published-product inspection. The current registered-media and marketing APIs require an admin session and reject employee tokens. The new homepage routes additionally require explicit marketing grants; no admin credentials are reused here.</p>}
     <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
       <nav aria-label="Homepage sections" className="space-y-1 self-start border border-pf-border bg-pf-ivory p-2 lg:sticky lg:top-4">
         {HOMEPAGE_SECTIONS.map((item, index) => <button key={item.id} type="button" disabled={pending} aria-current={item.id === sectionId ? 'true' : undefined}
-          onClick={() => { setSectionId(item.id); setType('MEDIA'); setLegacy(false); }}
+          onClick={() => { setSectionId(item.id); setType('MEDIA'); }}
           className={`block w-full border-l-2 px-3 py-3 text-left disabled:opacity-50 ${item.id === sectionId ? 'border-pf-gold-deep bg-pf-ivory' : 'border-transparent'}`}>
           <span className="mr-2 font-mono text-[10px] text-pf-muted">{String(index + 1).padStart(2, '0')}</span>
           <span className="text-sm">{item.title}</span>
@@ -66,9 +65,13 @@ export default function AdminMarketingMedia() {
             onClick={() => setType(kind)} className={`border px-4 py-2 text-xs tracking-widest disabled:opacity-40 ${type === kind ? 'border-pf-burgundy bg-pf-burgundy text-pf-ivory' : 'border-pf-border'}`}>{kind}</button>)}
         </div>
         {section.id === 'newsletter' && <p>No verified subscription endpoint is connected. Newsletter editing is content-only; subscription remains unavailable.</p>}
-        {section.id !== 'hero' && section.placement && access.view && <button type="button" disabled={pending} onClick={() => setLegacy((v) => !v)} className="border border-pf-border p-2 text-xs">{legacy ? 'Return to live section content' : 'Show legacy marketing preparation (not live section content)'}</button>}
-        {legacy && section.placement && access.view ? <BackendHomeHeroPanel key={`legacy-${section.id}`} placement={section.placement} contentType={type === 'PRODUCT' ? 'TEXT' : type} onDirtyChange={setPending} /> :
-          section.id !== 'hero' && staff.view ? <SectionContentEditor key={`${section.id}-${type}`} actor={actor} sectionKey={section.id} contentType={type} onDirtyChange={setPending} /> :
+        {/* B-06 — the "legacy marketing preparation" workflow for the six
+           non-hero placements (SAREE_SECTION, BRIDAL_SECTION, JEWELLERY_SECTION,
+           PROMOTION, GROOM_SECTION, KIDS_SECTION) saved rows the storefront
+           never reads; its toggle is HIDDEN (default-deny UI change only —
+           the endpoint, rows and schema are untouched, and the HOME_HERO
+           placement panel below stays available). */}
+        {section.id !== 'hero' && staff.view ? <SectionContentEditor key={`${section.id}-${type}`} actor={actor} sectionKey={section.id} contentType={type} onDirtyChange={setPending} /> :
           type === 'PRODUCT' ? section.product ? <PublishedProductPicker key={section.id} actor={actor} /> : <AdminPanel title="No product slot"><p>This section does not accept product placements.</p></AdminPanel> :
           section.id === 'hero' && (access.view || staff.mediaView) ? <BackendHomeHeroPanel actor={actor} placement="HOME_HERO" contentType={type} onDirtyChange={setPending} /> :
           <AdminPanel title={`${type} control unavailable`}><p>Explicit marketing.view/manage and any operation-specific media permissions are required. No unauthorized request is sent.</p></AdminPanel>}

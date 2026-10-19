@@ -88,5 +88,73 @@ class AdminRbacWiringTests(unittest.TestCase):
             self.assertIn(perm, manager_perms, f"MANAGER role must grant read-only {perm}")
 
 
+class HomepageMarketingCapabilityTests(unittest.TestCase):
+    """Homepage editing authority (Batch 1 / Track A).
+
+    Approved policy: the built-in ADMIN role views and manages homepage
+    sections; SUPER_ADMIN keeps the wildcard; homepage access for employees
+    stays opt-in through explicit per-account grants, so NO employee business
+    role may carry the standalone marketing capabilities. The capabilities
+    have empty ``implies`` lists, so only a verbatim grant satisfies them —
+    which is what these pins lock in.
+    """
+
+    def test_builtin_admin_role_grants_marketing_view_and_manage(self):
+        from app.api.v1.admin import BUILT_IN_ROLES
+
+        admin_permissions = set(BUILT_IN_ROLES["ADMIN"]["permissions"])
+        self.assertIn("marketing.view", admin_permissions)
+        self.assertIn("marketing.manage", admin_permissions)
+
+    def test_super_admin_keeps_unrestricted_wildcard(self):
+        from app.api.v1.admin import BUILT_IN_ROLES
+
+        self.assertEqual(BUILT_IN_ROLES["SUPER_ADMIN"]["permissions"], ["*"])
+
+    def test_only_admin_and_the_wildcard_carry_marketing_codes(self):
+        from app.api.v1.admin import BUILT_IN_ROLES
+
+        for name, role in BUILT_IN_ROLES.items():
+            permissions = role.get("permissions") or []
+            if name == "ADMIN" or "*" in permissions:
+                continue
+            self.assertNotIn(
+                "marketing.view", permissions, f"{name} must not grant homepage access"
+            )
+            self.assertNotIn(
+                "marketing.manage", permissions, f"{name} must not grant homepage editing"
+            )
+
+    def test_no_employee_business_role_grants_marketing(self):
+        from app.core.rbac import BUSINESS_ROLE_CAPABILITIES
+
+        for role_name, capabilities in BUSINESS_ROLE_CAPABILITIES.items():
+            marketing = [code for code in capabilities if code.startswith("marketing.")]
+            self.assertEqual(
+                marketing,
+                [],
+                f"employee business role {role_name} must stay without homepage defaults",
+            )
+
+    def test_marketing_capabilities_imply_nothing(self):
+        # A legacy/granular code must never satisfy homepage checks silently:
+        # the route asks for the capability itself.
+        from app.core.rbac import CAPABILITY_IMPLIES
+
+        self.assertEqual(CAPABILITY_IMPLIES["marketing.view"], [])
+        self.assertEqual(CAPABILITY_IMPLIES["marketing.manage"], [])
+
+    def test_homepage_routes_enforce_the_capability_server_side(self):
+        import inspect as _inspect
+
+        import app.api.v1.homepage as homepage
+        from app.services.media.homepage_content_service import HomepageContentService
+
+        route_source = _inspect.getsource(homepage.workspace_routes)
+        self.assertIn('"marketing.view"', route_source)
+        write_source = _inspect.getsource(HomepageContentService.write)
+        self.assertIn('"marketing.view", "marketing.manage"', write_source)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

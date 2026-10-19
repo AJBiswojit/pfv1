@@ -40,11 +40,21 @@ class MarketingMediaModel(Base):
     # storage/media (local provider) or S3; this row stores metadata only.
     object_key: Mapped[str] = mapped_column(String(512), nullable=False)
 
-    # Optional FK to the durable media_asset row (if the object was
-    # registered via /media/register). Nullable so a marketing entry can be
-    # created directly from an existing hero file without first registering
-    # a media_asset row — the migration CLI copies files into storage/media
-    # and they are addressable by key alone.
+    # Optional FK to the durable media_asset row.
+    #
+    # REGISTER-FIRST CONTRACT (current service behaviour — this comment used
+    # to document the retired key-only path): for HOME_HERO, the service
+    # layer REQUIRES a registered asset on create and whenever the reference
+    # changes (`marketing_media_service` → `homepage_content_service.
+    # registered_asset`), which verifies the row exists, is actually stored
+    # and is a supported image before the entry is written. A bare object
+    # key is no longer sufficient. Registration paths: the product media
+    # upload/register flow (product art) or `POST /media/register-placement`
+    # (hero/ and marketing/ objects, admin `media.upload`);
+    # `scripts/seed_marketing_hero.py` registers the canonical seed art
+    # before creating entries. The column stays nullable for rows that
+    # pre-date the enforcement and for the non-hero placements, whose
+    # key-based contract is unchanged.
     media_asset_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("media_media_asset.id", ondelete="SET NULL"),

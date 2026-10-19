@@ -10,7 +10,7 @@ from app.api.v1.collections import router as collections_router
 from app.api.v1.variants import router as variants_router
 from app.api.v1.attributes import router as attributes_router
 from app.api.v1.pricing import router as pricing_router
-from app.api.v1.media import router as media_router
+from app.api.v1.media import employee_router as employee_media_router, router as media_router
 from app.api.v1.media_reviews import router as media_reviews_router
 from app.api.v1.customers import router as customers_router
 from app.api.v1.addresses import router as addresses_router
@@ -55,6 +55,7 @@ api_router.include_router(variants_router)
 api_router.include_router(attributes_router)
 api_router.include_router(pricing_router)
 api_router.include_router(media_router)
+api_router.include_router(employee_media_router)
 api_router.include_router(media_reviews_router)
 api_router.include_router(customers_router)
 api_router.include_router(addresses_router)

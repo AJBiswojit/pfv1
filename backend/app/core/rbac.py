@@ -210,6 +210,13 @@ _ROLE_DEFS: Dict[str, dict] = {
             "attendance.view", "leave.view", "leave.approve", "performance.view", "performance.review",
             "audit.view", "users.view", "users.manage", "roles.view", "roles.manage",
             "ai.view",
+            # Homepage/marketing content is part of operational admin authority
+            # (approved policy: built-in ADMIN views and manages homepage
+            # sections). These capabilities imply NOTHING (``implies: []`` in
+            # MARKETING group below), so they must be granted verbatim and
+            # stay absent from every employee business role — employees reach
+            # homepage editing only through an explicit per-account grant.
+            "marketing.view", "marketing.manage",
         ],
     },
     "SUPER_EMPLOYEE": {

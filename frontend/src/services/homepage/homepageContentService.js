@@ -19,19 +19,28 @@ export function loadHomepagePlacement(admin, placement) {
   return apiListMarketingMedia({ placement });
 }
 
-export async function loadRegisteredImages(admin, page = 1) {
+export async function loadRegisteredImages(admin, page = 1, { q = "", scopeFilter = "" } = {}) {
+  // Batch 2 (B-11): the picker filters server-side — `q` matches object key /
+  // filename / owning product name or SKU, `scopeFilter` narrows by
+  // product/hero/marketing. Empty filters keep the exact legacy page shape.
+  const query = String(q || "").trim();
+  const filter = String(scopeFilter || "").trim();
+  const suffix = `${query ? `&q=${encodeURIComponent(query)}` : ""}${filter ? `&scope=${encodeURIComponent(filter)}` : ""}`;
   if (admin?.employee) {
-    const result = await homepageRequest(admin, `/media-assets?page=${page}&pageSize=24`, "get", undefined, ["media.view"]);
+    const result = await homepageRequest(admin, `/media-assets?page=${page}&pageSize=24${suffix}`, "get", undefined, ["media.view"]);
     return result.ok ? { ...result, items: result.items.filter(isRegisteredImage) } : result;
   }
   if (!homepageAccess({ admin }).view) return denied();
-  const result = await apiListMediaAssets({ page, pageSize: 24 });
+  const result = await apiListMediaAssets({ page, pageSize: 24, q: query, scopeFilter: filter });
   return result.ok ? { ...result, items: result.items.filter(isRegisteredImage) } : result;
 }
 
-export async function loadPublishedHomepageProducts(actor, page = 1) {
+export async function loadPublishedHomepageProducts(actor, page = 1, { q = "" } = {}) {
   if (!homepageAccess(actor).overview && !staffHomepageAccess(actor).view) return denied();
-  const result = await apiListProducts({ page, pageSize: 24 });
+  // Server-side search (B-10): `q` runs against the catalogue endpoint rather
+  // than filtering the loaded page, so paging + search are consistent.
+  const query = String(q || "").trim();
+  const result = await apiListProducts(query ? { q: query, page, pageSize: 24 } : { page, pageSize: 24 });
   return result.ok ? { ...result, items: (result.items ?? []).filter(eligibleHomepageProduct) } : result;
 }
 
@@ -40,7 +49,7 @@ export function saveHomepageEntry(admin, { placement, id, draft, asset, sortOrde
   const access = homepageAccess({ admin });
   if (!(id ? access.edit : access.create)) return Promise.resolve(denied());
   if (!validPlacement(placement)) return Promise.resolve({ ok: false, error: 'Unsupported placement.' });
-  if (!safeCtaHref(draft?.ctaHref)) return Promise.resolve({ ok: false, error: 'Use a site-relative or HTTP(S) CTA URL.' });
+  if (!safeCtaHref(draft?.ctaHref)) return Promise.resolve({ ok: false, error: 'Use a site-relative CTA URL (starting with a single /).' });
   if ((!id || asset) && !isRegisteredImage(asset)) {
     return Promise.resolve({ ok: false, error: 'Choose a safe image from the registered media library.' });
   }

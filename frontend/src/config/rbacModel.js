@@ -135,7 +135,7 @@ export const CAPABILITY_GROUPS = Object.freeze([
   { id: "OFFERS", label: "Offers", actions: [
     { code: "offers.view", label: "View" },
     { code: "offers.manage", label: "Manage" },
-    { code: "instagram_reward.manage", label: "Manage Loyalty Rewards" },
+    { code: "instagram_reward.manage", label: "Manage Instagram Rewards" },
   ] },
   { id: "SETTINGS", label: "Settings", actions: [
     { code: "settings.view", label: "View" },

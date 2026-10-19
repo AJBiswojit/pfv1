@@ -150,7 +150,11 @@ test("STATIC: media registration goes through apiClient with an explicit scope",
   const end = rest.indexOf("export ", 1);
   const body = end > -1 ? rest.slice(0, end) : rest;
 
-  assert.match(body, /apiClient\.upload\(\s*"\/media\/register"/);
+  // Admin registration keeps its canonical path; employees route to the
+  // dedicated employee register — both must stay apiClient + explicit scope.
+  assert.ok(body.includes("\"/media/register\""), "admin register route literal missing");
+  assert.ok(body.includes("\"/employee/media/register\""), "employee register route literal missing");
+  assert.match(body, /apiClient\.upload\(/);
   assert.match(body, /\{\s*scope\s*\}/, "the upload must carry an explicit scope");
   assert.doesNotMatch(body, /\bfetch\s*\(/, "raw fetch bypasses apiClient");
 });
@@ -230,7 +234,9 @@ test("STATIC: product API writers all use the central payload without legacy med
 
 test("STATIC: registered media is read through media-set and product DTO APIs", () => {
   const text = src("services/media/productMediaService.js");
-  assert.match(text, /getRegisteredProductMedia\(id\)/);
+  // 1A: the refresh forwards the caller's session scope to the staff-gated
+  // media-set (DRAFT sets answer 404 without a staff token).
+  assert.match(text, /getRegisteredProductMedia\(id, \{ scope \}\)/);
   assert.match(text, /apiAdminGetProduct\(id\)/);
   assert.match(text, /upsertServerProducts\(\[fresh\.product\]\)/);
   assert.match(text, /stage: PRODUCT_MEDIA_STAGES\.REFRESHED/);

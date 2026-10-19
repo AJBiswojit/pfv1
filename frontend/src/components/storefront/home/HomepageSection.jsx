@@ -1,10 +1,17 @@
 import HomepageSectionLoading from './HomepageSectionLoading';
 import { cloneElement, useMemo, useSyncExternalStore } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { getCatalogState, subscribeCatalog, refreshCatalog } from '../../../services/catalog/catalogStore';
+import { getCatalogState, subscribeCatalog } from '../../../services/catalog/catalogStore';
 import { usingPreviewCatalogue } from '../../customer/mock/data/products.js';
 import { Link } from '../../customer/router/index.jsx';
 import { homepageSectionMode, adaptHomepageSection } from './homepageSectionModel';
+
+/* B-09: a partial homepage-content outage previously rendered one identical
+   "Homepage content is unavailable" error wall PER SECTION (11 stacked).
+   Now an unavailable section renders nothing and the outage is logged once
+   per page load through the existing client warn channel. The hero keeps
+   its own (single) error surface — untouched by this change. */
+let unavailableLogged = false;
 
 export default function HomepageSection({ sectionKey, children }) {
   const snapshot = useSyncExternalStore(subscribeCatalog, getCatalogState, getCatalogState);
@@ -13,7 +20,13 @@ export default function HomepageSection({ sectionKey, children }) {
   if (usingPreviewCatalogue()) return children;
   if (result.mode === 'hidden') return null;
   if (result.mode === 'loading') return <HomepageSectionLoading sectionKey={sectionKey} />;
-  if (result.mode === 'unavailable') return <section className="container" aria-label={sectionKey}><p role="alert">Homepage content is unavailable.</p><button type="button" onClick={() => refreshCatalog()}>Retry homepage content</button></section>;
+  if (result.mode === 'unavailable') {
+    if (!unavailableLogged) {
+      unavailableLogged = true;
+      console.warn(`PRATIKSHYA homepage content is unavailable; non-hero sections are hidden (${sectionKey} and any other affected sections).`);
+    }
+    return null;
+  }
   // Reset local carousel/filter/hover state when authoritative entries change.
   return cloneElement(children, { content, key: JSON.stringify(result.section.items) });
 }

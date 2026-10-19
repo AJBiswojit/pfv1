@@ -63,10 +63,6 @@ export const useProductMedia = (productId) =>
 export const useMarketingMedia = (placement = null) =>
   useMediaSelector(() => mediaRepository.getMarketingMedia(placement), [placement]);
 
-/** Media pending review across the house. */
-export const usePendingReviewMedia = () =>
-  useMediaSelector(() => mediaRepository.getPendingReview(), []);
-
 /**
  * The ACTIVE record a live storefront placement should show, or null when
  * the house artwork should stand. This is the only hook the landing page

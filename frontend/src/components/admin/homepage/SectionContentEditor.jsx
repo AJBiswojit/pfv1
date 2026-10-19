@@ -77,12 +77,12 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
   if (!access.view) return <p>Section persistence requires marketing.view. Existing media-only access is unchanged.</p>;
   if (!section) return <div>{error ? <p role="alert">{error}</p> : <p role="status">Loading section content…</p>}<button type="button" onClick={reload}>Retry section</button></div>;
   return <div className="space-y-4 border border-pf-border p-4">
-    <p role="status">{section.configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · existing storefront content remains in use.'}</p>
+    <p role="status">{section.configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · hidden on the storefront until configured and activated.'}</p>
     <button type="button" className={button} disabled={busy} onClick={reload}>Reload section and public content</button>
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
     {needsReload && <p>Reload and reconcile before another write; no automatic retry is performed.</p>}
     {!section.configured ? access.write && <button type="button" className={button} disabled={busy || needsReload} onClick={() => {
-      if (window.confirm('Switch this section to backend control? The first save is inactive and hides its existing fallback until you activate it.')) run('', 'put', { expectedRevision: 0, isActive: false }, { configuring: true });
+      if (window.confirm('Switch this section to backend control? The first save is inactive and keeps the section hidden on the storefront until you activate it.')) run('', 'put', { expectedRevision: 0, isActive: false }, { configuring: true });
     }}>Configure section (initially hidden)</button> : <>
       {access.write && <button type="button" className={button} disabled={busy || dirty || needsReload || (!section.isActive && section.items.some((r) => r.contentType === 'MEDIA' && r.isActive) && !access.mediaAssign)} onClick={() => run('', 'put', { expectedRevision: revision, isActive: !section.isActive }, { configuring: true })}>{section.isActive ? 'Deactivate section' : 'Activate section'}</button>}
       {!allowed.length ? <p>No {contentType} slot is registered for this section.</p> : <>

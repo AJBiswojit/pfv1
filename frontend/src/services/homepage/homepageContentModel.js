@@ -52,7 +52,11 @@ export function isSafeMediaUrl(url) {
 
 export function isRegisteredImage(asset) {
   return Boolean(typeof asset?.id === 'string' && asset.id.trim() && isSafeObjectKey(asset.objectKey) &&
-    /^image\/(jpeg|png|webp|avif|gif)$/i.test(asset.mimeType ?? '') &&
+    /* B-04: gif dropped — the backend allow-list is {jpeg,png,webp,avif}
+       (`schemas/media/homepage.py` IMAGE_MIMES); accepting gif at browse
+       time meant the save then failed server-side. The two allow-lists
+       must stay equal. */
+    /^image\/(jpeg|png|webp|avif)$/i.test(asset.mimeType ?? '') &&
     ['uploaded', 'active', 'ready'].includes(String(asset.status).toLowerCase()) &&
     isSafeMediaUrl(asset.url));
 }
@@ -66,7 +70,11 @@ export function eligibleHomepageProduct(product) {
 export function safeCtaHref(href = '') {
   if (!href) return true;
   if (/[\x00-\x20\\]/.test(href)) return false;
-  return /^\/(?!\/)/.test(href) || /^https?:\/\//i.test(href) && isSafeMediaUrl(href);
+  /* B-13: CTAs are site-relative ONLY — the backend now enforces the same
+     single-slash rule on marketing-media writes (the storefront routes
+     external CTAs to '/', so accepting them here was a lie). The former
+     https? branch is dropped by design. */
+  return /^\/(?!\/)/.test(href);
 }
 
 export const entryDraft = (item = {}) => ({
