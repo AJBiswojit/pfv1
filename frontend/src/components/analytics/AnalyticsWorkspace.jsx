@@ -40,6 +40,10 @@ export default function AnalyticsWorkspace({
   portal = "admin",
   allowedTabs = ANALYTICS_TABS,
   actor = null,
+  sourceNote = "Read-model over live backend data · not audited financial reporting",
+  status = "ready",
+  error = null,
+  onRetry = null,
 }) {
   const { pathname } = useLocation();
   const view = viewFromPath(pathname);
@@ -61,9 +65,30 @@ export default function AnalyticsWorkspace({
     <div>
       <AnalyticsNav portal={portal} tabs={allowedTabs} />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-ui text-[11px] text-pf-muted">
-          Read-model over live backend data · not audited financial reporting
+      {status === "error" ? (
+        <div
+          role="alert"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-pf-error/30 bg-pf-error/[0.04] px-4 py-3"
+        >
+          <div className="min-w-0">
+            <p className="font-ui text-[12.5px] font-semibold text-pf-error">
+              Live figures could not be loaded
+            </p>
+            <p className="mt-0.5 font-ui text-[12px] leading-relaxed text-pf-muted">
+              {error || "The order-book request failed."} Figures stay empty rather than reading as zero.
+            </p>
+          </div>
+          {onRetry ? (
+            <AtelierButton type="button" variant="outline" size="chip" onClick={onRetry}>
+              Try again
+            </AtelierButton>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-ui text-[11.5px] leading-relaxed text-pf-muted">
+          {status === "loading" ? "Reading the live order book…" : sourceNote}
         </p>
         <AtelierButton type="button" variant="outline" size="chip" onClick={exportView}>
           Export CSV
@@ -116,7 +141,7 @@ export default function AnalyticsWorkspace({
 
 function MetricGrid({ items }) {
   return (
-    <section aria-label="Period metrics" className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <section aria-label="Period metrics" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (
         <AnalyticsMetric key={item.label} {...item} />
       ))}
@@ -126,11 +151,19 @@ function MetricGrid({ items }) {
 
 function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric, portal }) {
   const o = snapshot.overview;
+  const changeText = (metric) => {
+    if (!metric.comparable) return null;
+    const value = Number(metric.change);
+    if (Number.isFinite(value) && Math.abs(value) >= 1000) {
+      return `${value > 0 ? "+" : "−"}${(Math.abs(value) / 100).toFixed(1)}× ${comparisonLabel}`;
+    }
+    return `${metric.changeLabel} ${comparisonLabel}`;
+  };
   const metrics = [
     {
       label: "Revenue",
       value: money(o.revenue.current),
-      change: o.revenue.comparable ? `${o.revenue.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.revenue),
       direction: o.revenue.direction,
       comparable: o.revenue.comparable,
       hint: snapshot.orders.hasData ? "Eligible orders, refunds deducted" : "No sales data for this period.",
@@ -138,7 +171,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
     {
       label: "Orders",
       value: formatAdminNumber(o.orders.current),
-      change: o.orders.comparable ? `${o.orders.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.orders),
       direction: o.orders.direction,
       comparable: o.orders.comparable,
       hint: snapshot.orders.hasData ? `${o.eligibleOrders} revenue-eligible` : "No completed orders yet.",
@@ -146,7 +179,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
     {
       label: "Average order value",
       value: snapshot.orders.eligible ? money(o.aov.current) : "—",
-      change: o.aov.comparable ? `${o.aov.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.aov),
       direction: o.aov.direction,
       comparable: o.aov.comparable && snapshot.orders.eligible > 0,
       hint: "Eligible revenue ÷ eligible orders",
@@ -159,28 +192,28 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
     {
       label: "New customers",
       value: formatAdminNumber(o.newCustomers.current),
-      change: o.newCustomers.comparable ? `${o.newCustomers.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.newCustomers),
       direction: o.newCustomers.direction,
       comparable: o.newCustomers.comparable,
     },
     {
       label: "Returning customers",
       value: formatAdminNumber(o.returningCustomers.current),
-      change: o.returningCustomers.comparable ? `${o.returningCustomers.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.returningCustomers),
       direction: o.returningCustomers.direction,
       comparable: o.returningCustomers.comparable,
     },
     {
       label: "Units sold",
       value: formatAdminNumber(o.unitsSold.current),
-      change: o.unitsSold.comparable ? `${o.unitsSold.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.unitsSold),
       direction: o.unitsSold.direction,
       comparable: o.unitsSold.comparable,
     },
     {
       label: "Returns",
       value: formatAdminNumber(o.returns.current),
-      change: o.returns.comparable ? `${o.returns.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.returns),
       direction: o.returns.direction,
       comparable: o.returns.comparable,
       hint: snapshot.returns.hasData ? "Return requests in this period" : "No return data for this period.",
@@ -188,7 +221,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
     {
       label: "Refunds",
       value: money(o.refunds.current),
-      change: o.refunds.comparable ? `${o.refunds.changeLabel} ${comparisonLabel}` : null,
+      change: changeText(o.refunds),
       direction: o.refunds.direction,
       comparable: o.refunds.comparable,
       hint: "Completed refunds only",
@@ -199,7 +232,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
     <>
       <MetricGrid items={metrics} />
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <AdminPanel
           eyebrow={snapshot.period.label}
           title="Sales trend"
@@ -220,7 +253,7 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
         </AdminPanel>
       </div>
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-5 xl:grid-cols-2">
         <AdminPanel
           eyebrow="Catalogue"
           title="Top products"
@@ -241,19 +274,61 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
                 ["Average spend", money(snapshot.customers.averageSpend)],
                 ["Orders / customer", snapshot.customers.ordersPerCustomer],
               ].map(([label, value]) => (
-                <div key={label} className="border border-pf-border/70 bg-pf-card/70 p-3">
-                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
-                  <dd className="mt-1 font-display text-xl font-light text-pf-text">{value}</dd>
+                <div key={label} className="rounded-lg border border-pf-border/80 bg-pf-card-soft/60 px-3 py-2.5">
+                  <dt className="font-ui text-[11px] font-medium uppercase tracking-[.1em] text-pf-muted">{label}</dt>
+                  <dd className="mt-1 font-display text-[21px] leading-none text-pf-text tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
           ) : (
             <AnalyticsEmpty title="No customer purchases in this period." />
           )}
+          {snapshot.customers.hasPeriodActivity && snapshot.customers.segments?.some((segment) => segment.customers > 0) ? (
+            <div className="mt-4 border-t border-pf-border/80 pt-3.5">
+              <p className="font-ui text-[11px] font-semibold uppercase tracking-[.1em] text-pf-muted">
+                Segment split
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {snapshot.customers.segments
+                  .filter((segment) => segment.customers > 0)
+                  .slice(0, 3)
+                  .map((segment) => (
+                    <li key={segment.id} className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-ui text-[12.5px] text-pf-text">
+                        {CUSTOMER_SEGMENT_LABELS[segment.id] || segment.label}
+                      </span>
+                      <span className="shrink-0 font-ui text-[12px] tabular-nums text-pf-muted">
+                        {formatAdminNumber(segment.customers)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+          {snapshot.customers.hasPeriodActivity && snapshot.customers.top?.length ? (
+            <div className="mt-4 border-t border-pf-border/80 pt-3.5">
+              <p className="font-ui text-[11px] font-semibold uppercase tracking-[.1em] text-pf-muted">
+                Top customers this period
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {snapshot.customers.top.slice(0, 3).map((customer) => (
+                  <li key={customer.id} className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 truncate font-ui text-[12.5px] text-pf-text">{customer.name}</span>
+                    <span className="shrink-0 font-ui text-[12px] tabular-nums text-pf-muted">
+                      {money(customer.periodSpend)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </AdminPanel>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      {/* Three independently-composed panels. They align on their top edge
+          and end with their own content, so a short Returns state never
+          stretches into a blank column. */}
+      <div className="grid items-start gap-5 xl:grid-cols-3">
         <AdminPanel eyebrow="Stock" title="Inventory">
           <dl className="space-y-2 font-ui text-sm text-pf-text">
             <div className="flex justify-between"><dt className="text-pf-muted">On hand</dt><dd>{formatAdminNumber(snapshot.inventory.totalOnHand)}</dd></div>
@@ -262,9 +337,22 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
             <div className="flex justify-between"><dt className="text-pf-muted">Out of stock</dt><dd>{snapshot.inventory.outOfStock}</dd></div>
             <div className="flex justify-between"><dt className="text-pf-muted">Retail value</dt><dd>{formatCompactINR(snapshot.inventory.retailValue)}</dd></div>
           </dl>
+          {snapshot.inventory.locations?.length ? (
+            <div className="mt-5 border-t border-pf-border/70 pt-4">
+              <p className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">By location</p>
+              <ul className="mt-2 space-y-1.5 font-ui text-[12.5px]">
+                {snapshot.inventory.locations.slice(0, 4).map((location) => (
+                  <li key={location.id} className="flex justify-between gap-3">
+                    <span className="min-w-0 truncate text-pf-muted">{location.name}</span>
+                    <span className="tabular-nums text-pf-text">{formatAdminNumber(location.available)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {!snapshot.inventory.costConfigured ? (
             <p className="mt-4 font-ui text-[11px] text-pf-muted">
-              Inventory valuation unavailable — cost data not configured.
+              Cost-based valuation unavailable — product cost is not configured.
             </p>
           ) : null}
         </AdminPanel>
@@ -306,6 +394,14 @@ function OverviewSection({ snapshot, comparisonLabel, trendMetric, setTrendMetri
 
 function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }) {
   const o = snapshot.overview;
+  const changeText = (metric) => {
+    if (!metric.comparable) return null;
+    const value = Number(metric.change);
+    if (Number.isFinite(value) && Math.abs(value) >= 1000) {
+      return `${value > 0 ? "+" : "−"}${(Math.abs(value) / 100).toFixed(1)}× ${comparisonLabel}`;
+    }
+    return `${metric.changeLabel} ${comparisonLabel}`;
+  };
   return (
     <>
       <MetricGrid
@@ -313,7 +409,7 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
           {
             label: "Revenue",
             value: snapshot.orders.hasData ? money(o.revenue.current) : "—",
-            change: o.revenue.comparable ? `${o.revenue.changeLabel} ${comparisonLabel}` : null,
+            change: changeText(o.revenue),
             direction: o.revenue.direction,
             comparable: o.revenue.comparable && snapshot.orders.hasData,
             hint: snapshot.orders.hasData ? "Cancelled and failed payments excluded" : "No sales data for this period.",
@@ -347,7 +443,7 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
       />
 
       <AdminPanel
-        className="mb-6"
+        className="mb-5"
         eyebrow={snapshot.period.granularity.toLowerCase()}
         title="Sales trend"
         action={<TrendToggle value={trendMetric} onChange={setTrendMetric} />}
@@ -355,7 +451,7 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
         <AnalyticsTrendChart series={snapshot.sales.series} metric={trendMetric} />
       </AdminPanel>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <AdminPanel eyebrow="Lifecycle" title="Order status">
           {snapshot.orders.hasData ? (
             <DataTable
@@ -389,9 +485,9 @@ function SalesSection({ snapshot, comparisonLabel, trendMetric, setTrendMetric }
                 ["Return rate", formatPercent(snapshot.orders.returnRate)],
                 ["Refund rate", formatPercent(snapshot.orders.refundRate)],
               ].map(([label, value]) => (
-                <div key={label} className="border border-pf-border/70 bg-pf-card/70 p-3">
-                  <dt className="font-ui text-[10px] uppercase tracking-[.16em] text-pf-muted">{label}</dt>
-                  <dd className="mt-1 font-display text-xl font-light text-pf-text">{value}</dd>
+                <div key={label} className="rounded-lg border border-pf-border/80 bg-pf-card-soft/60 px-3 py-2.5">
+                  <dt className="font-ui text-[11px] font-medium uppercase tracking-[.1em] text-pf-muted">{label}</dt>
+                  <dd className="mt-1 font-display text-[21px] leading-none text-pf-text tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -431,7 +527,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
       </div>
 
       {snapshot.products.hasData ? (
-        <ProductTable rows={productRows} portal={portal} />
+        <ProductTable rows={productRows} portal={portal} showSku />
       ) : (
         <AnalyticsEmpty
           title="No products sold in this period."
@@ -440,7 +536,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
         />
       )}
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-2">
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <AdminPanel eyebrow="Taxonomy" title="Categories">
           {snapshot.categories.length ? (
             <DataTable
@@ -483,7 +579,7 @@ function ProductsSection({ snapshot, productRank, setProductRank, productRows, p
       </div>
 
       {snapshot.products.slowest.length ? (
-        <AdminPanel className="mt-6" eyebrow="Movement" title="Slowest products">
+        <AdminPanel className="mt-5" eyebrow="Movement" title="Slowest products">
           <ProductTable rows={snapshot.products.slowest} portal={portal} />
         </AdminPanel>
       ) : null}
@@ -506,7 +602,7 @@ function CustomersSection({ snapshot, portal }) {
         ]}
       />
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-5 xl:grid-cols-2">
         <AdminPanel eyebrow="Segments" title="Existing segmentation">
           <DataTable
             rows={snapshot.customers.segments}
@@ -522,14 +618,7 @@ function CustomersSection({ snapshot, portal }) {
         </AdminPanel>
         <AdminPanel eyebrow="Growth" title="Customers over time">
           {snapshot.customers.growth.some((point) => point.newCustomers || point.returningCustomers) ? (
-            <AnalyticsBarList
-              items={snapshot.customers.growth.map((point) => ({
-                id: point.key,
-                label: point.label,
-                revenue: point.newCustomers + point.returningCustomers,
-              }))}
-              currency={false}
-            />
+            <GrowthColumns points={snapshot.customers.growth} />
           ) : (
             <AnalyticsEmpty title="No customer growth in this period." />
           )}
@@ -577,6 +666,73 @@ function CustomersSection({ snapshot, portal }) {
   );
 }
 
+/**
+ * Customer activity per bucket as stacked columns (new + returning).
+ * The previous version rendered one labelled row per day — thirty rows of
+ * mostly zeros — so the panel read as an empty column of lines.
+ */
+function GrowthColumns({ points = [] }) {
+  const peak = Math.max(...points.map((point) => point.newCustomers + point.returningCustomers), 0);
+  const step = Math.max(1, Math.round((points.length - 1) / 6));
+  const tickIndices = [];
+  for (let index = 0; index < points.length; index += step) tickIndices.push(index);
+  if (!tickIndices.includes(points.length - 1)) tickIndices.push(points.length - 1);
+
+  return (
+    <div>
+      <div className="flex items-center gap-4 pb-3">
+        {[
+          ["New", "#B98948"],
+          ["Returning", "#65081F"],
+        ].map(([label, color]) => (
+          <span key={label} className="flex items-center gap-1.5 font-ui text-[11.5px] text-pf-muted">
+            <span aria-hidden="true" className="h-2 w-2 rounded-[1px]" style={{ backgroundColor: color }} />
+            {label}
+          </span>
+        ))}
+      </div>
+      <div className="flex h-[150px] items-end gap-1 border-b border-pf-border/80" role="img" aria-label="New and returning customers per period">
+        {points.map((point) => {
+          const total = point.newCustomers + point.returningCustomers;
+          const height = peak > 0 ? (total / peak) * 100 : 0;
+          const newShare = total ? (point.newCustomers / total) * 100 : 0;
+          return (
+            <div
+              key={point.key}
+              className="flex h-full flex-1 items-end"
+              title={`${point.label}: ${point.newCustomers} new · ${point.returningCustomers} returning`}
+            >
+              <div className="flex w-full flex-col justify-end" style={{ height: `${Math.max(height, total ? 3 : 0)}%` }}>
+                <span aria-hidden="true" className="w-full rounded-t-[1px] bg-pf-burgundy" style={{ height: `${100 - newShare}%` }} />
+                <span aria-hidden="true" className="w-full bg-pf-gold-deep/80" style={{ height: `${newShare}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="relative mt-2 h-4" aria-hidden="true">
+        {points.map((point, index) =>
+          tickIndices.includes(index) ? (
+            <span
+              key={point.key}
+              className="absolute top-0 whitespace-nowrap font-ui text-[10.5px] text-pf-muted"
+              style={{
+                left: `${points.length > 1 ? (index / (points.length - 1)) * 100 : 50}%`,
+                transform: index === 0 ? "none" : index === points.length - 1 ? "translateX(-100%)" : "translateX(-50%)",
+              }}
+            >
+              {point.label}
+            </span>
+          ) : null
+        )}
+      </div>
+      <p className="mt-4 border-t border-pf-border/80 pt-3 font-ui text-[11.5px] leading-relaxed text-pf-muted">
+        Customers whose first order fell in a bucket are new; customers with an earlier order are returning.
+      </p>
+    </div>
+  );
+}
+
 function InventorySection({ snapshot, filters, portal }) {
   const inventory = snapshot.inventory;
   const lowRows = filters.location
@@ -600,12 +756,12 @@ function InventorySection({ snapshot, filters, portal }) {
         ]}
       />
       {!inventory.costConfigured ? (
-        <p className="mb-6 font-ui text-sm text-pf-muted">
-          Inventory valuation unavailable — cost data not configured.
+        <p className="mb-5 font-ui text-[12px] text-pf-muted">
+          Cost-based valuation unavailable — product cost is not configured.
         </p>
       ) : null}
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-5 xl:grid-cols-2">
         <AdminPanel eyebrow="Ledger" title="Movement">
           {inventory.movementCount ? (
             <AnalyticsBarList items={inventory.movements} valueKey="quantity" currency={false} />
@@ -617,9 +773,12 @@ function InventorySection({ snapshot, filters, portal }) {
           <DataTable
             rows={inventory.locations}
             rowKey="id"
+            /* Type is dropped: the panel is titled "Store / warehouse" and
+               the location names already say which is which. Removing it
+               keeps all six figures inside a 1536px two-column panel instead
+               of clipping "Transfers". */
             columns={[
               { id: "name", label: "Location" },
-              { id: "typeLabel", label: "Type" },
               { id: "available", label: "Stock available" },
               { id: "unitsMoved", label: "Units moved" },
               { id: "ordersFulfilled", label: "Orders fulfilled" },
@@ -633,7 +792,7 @@ function InventorySection({ snapshot, filters, portal }) {
         </AdminPanel>
       </div>
 
-      <AdminPanel eyebrow="Attention" title="Low stock">
+      <AdminPanel eyebrow="Attention" title="Needs replenishment">
         {lowRows.length ? (
           <DataTable
             rows={lowRows}
@@ -653,7 +812,16 @@ function InventorySection({ snapshot, filters, portal }) {
               },
               { id: "sku", label: "SKU" },
               { id: "available", label: "Available" },
-              { id: "threshold", label: "Threshold" },
+              { id: "threshold", label: "Low at" },
+              {
+                id: "status",
+                label: "State",
+                render: (row) => (
+                  <span className="whitespace-nowrap font-ui text-[11.5px] font-semibold uppercase tracking-[.06em] text-pf-burgundy">
+                    {row.status === "OUT_OF_STOCK" ? "Out of stock" : "Low"}
+                  </span>
+                ),
+              },
               { id: "location", label: "Location" },
             ]}
           />
@@ -756,7 +924,7 @@ function EmployeesSection({ snapshot }) {
         ]}
       />
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-5 grid gap-5 xl:grid-cols-2">
         <AdminPanel eyebrow="Attendance" title="Period presence">
           {people.hasAttendance ? (
             <dl className="grid grid-cols-2 gap-3">
@@ -812,9 +980,12 @@ function PeopleList({ rows, empty, to }) {
   );
 }
 
-function ProductTable({ rows, portal, empty = "No products to show." }) {
+function ProductTable({ rows, portal, empty = "No products to show.", showSku = false }) {
   const hrefFor = (productId) =>
     isAdminPortal(portal) ? `/${portal}/products/${productId}` : `/employee/products/${productId}/edit`;
+  const tight = (value) => (
+    <span className="whitespace-nowrap font-ui text-[12.5px] tabular-nums">{value}</span>
+  );
   return (
     <DataTable
       rows={rows}
@@ -825,17 +996,31 @@ function ProductTable({ rows, portal, empty = "No products to show." }) {
           id: "name",
           label: "Product",
           render: (row) => (
-            <Link to={hrefFor(row.productId)} className="underline-offset-4 hover:text-pf-burgundy hover:underline">
+            <Link
+              to={hrefFor(row.productId)}
+              className="font-medium text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline"
+            >
               {row.name}
             </Link>
           ),
         },
-        { id: "sku", label: "SKU" },
-        { id: "category", label: "Category" },
-        { id: "unitsSold", label: "Units" },
-        { id: "revenue", label: "Revenue", render: (row) => money(row.revenue) },
-        { id: "returnUnits", label: "Returns" },
-        { id: "available", label: "Stock", render: (row) => (row.available == null ? "—" : row.available) },
+        ...(showSku
+          ? [
+              {
+                id: "sku",
+                label: "SKU",
+                render: (row) => (
+                  <span className="whitespace-nowrap font-ui text-[12px] tabular-nums text-pf-muted">
+                    {row.sku || "—"}
+                  </span>
+                ),
+              },
+              { id: "category", label: "Category", render: (row) => row.category || "—" },
+            ]
+          : []),
+        { id: "unitsSold", label: "Units", render: (row) => tight(row.unitsSold ?? row.units ?? 0) },
+        { id: "revenue", label: "Revenue", render: (row) => <span className="whitespace-nowrap tabular-nums">{money(row.revenue)}</span> },
+        { id: "returnUnits", label: "Returns", render: (row) => tight(row.returnUnits ?? 0) },
       ]}
     />
   );

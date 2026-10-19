@@ -41,7 +41,7 @@ export default function EmployeeLayout() {
         navOpen={navOpen}
         onCloseNav={closeNav}
         drawerRef={drawerRef}
-        expandedWidthClass="lg:w-[240px]"
+        expandedWidthClass="lg:w-[252px]"
         collapsedWidthClass="lg:w-[72px]"
         overlayClassName="fixed inset-0 z-20 bg-ink/30 lg:hidden"
         asideZClass="z-30"

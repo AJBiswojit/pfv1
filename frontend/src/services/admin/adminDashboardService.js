@@ -65,22 +65,44 @@ export async function loadDashboardSummary({ days = 7, recentLimit = 5, workspac
   const categories = (result.categories ?? []).map((entry) => ({
     name: entry.name,
     revenue: entry.revenue,
+    units: entry.units,
   }));
-  const orders = (result.recentOrders ?? []).map((order) => ({
-    id: order.id,
-    customer: order.customer?.fullName || order.shippingAddress?.fullName || "Guest",
-    items: (order.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0),
-    amount: Number(order.total ?? order.pricing?.total ?? 0),
-    status: order.status,
-    placedAt: order.createdAt ?? order.created_at,
-    isDemo: false,
-  }));
+  /* Recent orders arrive as the backend's AdminOrderResponse (snake_case
+     keys). The dashboard list needs the display identity — order number,
+     first product thumbnail/name, "n more" — so it is derived here from
+     the real line items rather than rendered as `#undefined`. */
+  const orders = (result.recentOrders ?? []).map((order) => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const first = items[0] ?? {};
+    const address = order.shipping_address ?? order.shippingAddress ?? {};
+    return {
+      id: order.id,
+      orderNumber: order.order_number ?? order.orderNumber ?? "",
+      customer:
+        order.customer?.fullName ||
+        address.fullName ||
+        order.guest_email ||
+        "Guest",
+      items: items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0),
+      amount: Number(order.total ?? order.pricing?.total ?? 0),
+      status: order.status,
+      placedAt: order.created_at ?? order.createdAt,
+      firstItemName: first.product_name ?? first.productName ?? "",
+      firstItemImage: first.product_image ?? first.productImage ?? "",
+      additionalItems: Math.max(items.length - 1, 0),
+      isDemo: false,
+    };
+  });
   return {
     ok: true,
     metrics,
     series,
     categories,
     orders,
+    /* Whole-book status distribution — the donut's only source. Dropping
+       this key made the dashboard report "breakdown unavailable" while the
+       backend was returning a complete, correct distribution. */
+    orderStatusCounts: result.orderStatusCounts ?? null,
     inventorySummary: result.inventorySummary ?? null,
     employees: result.employees ?? { total: 0, active: 0 },
   };

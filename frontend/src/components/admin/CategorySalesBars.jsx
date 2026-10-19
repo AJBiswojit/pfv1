@@ -3,16 +3,20 @@ import { formatINR } from "../../utils/shopping";
 
 /**
  * Category performance — a real table (category, units sold, revenue,
- * share) with a proportional bar, per the approved reference. Every
- * figure comes from the dashboard summary's category aggregates; share
- * is each category's part of the listed categories' combined revenue.
+ * share) with a proportional bar. Every figure comes from the dashboard
+ * summary's category aggregates; share is each category's part of the
+ * listed categories' combined revenue.
+ *
+ * Phase 3: stronger category names, tabular right-aligned figures, a
+ * quieter bar track and a reconciled totals footer.
  */
-const BAR_TONES = ["#6E0F2A", "#8A3B4F", "#B98948", "#C98A5E", "#C4898A"];
+const BAR_TONES = ["#65081F", "#8A3B4F", "#B98948", "#C98A5E", "#C4898A"];
 
 export default function CategorySalesBars({ categories = [] }) {
   if (!categories.length) return null;
   const peak = Math.max(...categories.map((category) => category.sales), 0);
   const totalRevenue = categories.reduce((sum, category) => sum + (category.sales || 0), 0);
+  const totalUnits = categories.reduce((sum, category) => sum + (Number(category.units) || 0), 0);
 
   return (
     <div className="overflow-x-auto">
@@ -20,10 +24,12 @@ export default function CategorySalesBars({ categories = [] }) {
         <thead>
           <tr className="border-b border-pf-border">
             <th scope="col" className="py-2.5 pr-3">Category</th>
-            <th scope="col" className="px-3 py-2.5 text-right">Units sold</th>
+            {/* Units drop out below `sm` so the three remaining columns fit a
+                320px panel without the SHARE figure being clipped. */}
+            <th scope="col" className="hidden px-3 py-2.5 text-right sm:table-cell">Units</th>
             <th scope="col" className="px-3 py-2.5 text-right">Revenue</th>
             <th scope="col" className="px-3 py-2.5 text-right">Share</th>
-            <th scope="col" className="hidden py-2.5 pl-3 sm:table-cell">
+            <th scope="col" className="hidden w-[26%] py-2.5 pl-4 sm:table-cell">
               <span className="sr-only">Revenue bar</span>
             </th>
           </tr>
@@ -35,14 +41,16 @@ export default function CategorySalesBars({ categories = [] }) {
             return (
               <tr key={category.id} className="border-b border-pf-border-light last:border-0">
                 <td className="py-3 pr-3 font-medium">{category.label}</td>
-                <td className="px-3 py-3 text-right tabular-nums text-pf-muted">{category.units ?? "—"}</td>
+                <td className="hidden px-3 py-3 text-right tabular-nums text-pf-muted sm:table-cell">
+                  {category.units ?? "—"}
+                </td>
                 <td className="px-3 py-3 text-right font-medium tabular-nums">
                   <span className="sr-only">{formatINR(category.sales)}</span>
                   <span aria-hidden="true">{formatCompactINR(category.sales)}</span>
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums text-pf-muted">{share.toFixed(0)}%</td>
-                <td className="hidden w-[28%] py-3 pl-3 sm:table-cell">
-                  <div className="h-2 w-full rounded-full bg-pf-border-light" aria-hidden="true">
+                <td className="hidden py-3 pl-4 sm:table-cell">
+                  <div className="h-1.5 w-full rounded-full bg-pf-border-light" aria-hidden="true">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${width}%`, backgroundColor: BAR_TONES[index % BAR_TONES.length] }}
@@ -53,6 +61,21 @@ export default function CategorySalesBars({ categories = [] }) {
             );
           })}
         </tbody>
+        <tfoot>
+          <tr className="border-t border-pf-border">
+            <td className="py-2.5 pr-3 font-ui text-[11px] font-semibold uppercase tracking-[.12em] text-pf-muted">
+              Total
+            </td>
+            <td className="hidden px-3 py-2.5 text-right font-ui text-[12.5px] font-semibold tabular-nums text-pf-text sm:table-cell">
+              {totalUnits || "—"}
+            </td>
+            <td className="px-3 py-2.5 text-right font-ui text-[12.5px] font-semibold tabular-nums text-pf-text">
+              {formatCompactINR(totalRevenue)}
+            </td>
+            <td className="px-3 py-2.5 text-right font-ui text-[12px] tabular-nums text-pf-muted">100%</td>
+            <td className="hidden sm:table-cell" />
+          </tr>
+        </tfoot>
       </table>
     </div>
   );

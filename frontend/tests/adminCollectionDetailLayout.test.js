@@ -22,7 +22,7 @@ const page = src("src/components/admin/AdminPage.jsx");
 const panel = src("src/components/admin/AdminPanel.jsx");
 
 test("Admin shell main content can shrink to the remaining viewport beside the sidebar", () => {
-  assert.match(layout, /expandedWidthClass="lg:w-\[248px\]"/);
+  assert.match(layout, /expandedWidthClass="lg:w-\[260px\]"/);
   assert.match(shell, /min-w-0 w-full max-w-full flex-1/);
   assert.doesNotMatch(layout, /min-w-\[1\d{3}px\]/);
   assert.doesNotMatch(layout, /w-\[12\d{2}px\]/);

@@ -185,10 +185,12 @@ test("Super Admin dashboard survives the loading → ready transition (no hook-o
   assert.notEqual(tree.toJSON(), null, "the dashboard must still be on screen after the data arrives");
 
   const rendered = text(tree.toJSON());
-  assert.match(rendered, /Total Revenue/, "the KPI cards render");
-  assert.match(rendered, /Total Orders/, "the KPI cards render");
+  /* Phase 3 set the KPI labels in sentence case (the tiles carry the
+     emphasis, not the capitalisation). */
+  assert.match(rendered, /Total revenue/i, "the KPI cards render");
+  assert.match(rendered, /Total orders/i, "the KPI cards render");
   assert.match(rendered, /Revenue trend/, "the revenue chart renders");
-  assert.match(rendered, /Quick Actions/, "the quick actions render");
+  assert.match(rendered, /Common operations|Quick actions/i, "the quick actions render");
 
   const hookErrors = consoleErrors.filter((message) => /hook/i.test(message));
   assert.deepEqual(hookErrors, [], `no Rules-of-Hooks violation may be logged: ${hookErrors.join(" | ")}`);

@@ -7,7 +7,7 @@ import InventoryDashboard from "./InventoryDashboard";
 import WarehouseDashboard from "./WarehouseDashboard";
 import SupportDashboard from "./SupportDashboard";
 import StylistDashboard from "./StylistDashboard";
-import DashboardFrame from "./DashboardFrame";
+import PersonalDashboard from "./PersonalDashboard";
 
 export default function RoleDashboard() {
   const { employee } = useEmployeeAuth();
@@ -29,9 +29,9 @@ export default function RoleDashboard() {
   if (role === ROLES.WAREHOUSE_STAFF) return <WarehouseDashboard />;
   if (role === ROLES.CUSTOMER_SUPPORT) return <SupportDashboard />;
   if (role === ROLES.FASHION_STYLIST) return <StylistDashboard />;
-  return (
-    <DashboardFrame
-      description={`${employee?.firstName || "Welcome"}, this is your operations desk.`}
-    />
-  );
+  /* No business role on the session (the backend can hold `roles: []` while
+     the profile still records a designation). Rather than a near-empty frame,
+     the seat gets a truthful personal desk built only from its own
+     attendance, leave and profile rows. */
+  return <PersonalDashboard />;
 }

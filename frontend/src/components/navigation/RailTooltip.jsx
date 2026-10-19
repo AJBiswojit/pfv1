@@ -47,7 +47,7 @@ export default function RailTooltip({
             <span
               role="tooltip"
               aria-hidden="true"
-              className="pointer-events-none fixed z-[80] border border-mist bg-ink px-2.5 py-1 font-ui text-[10px] uppercase tracking-[.14em] text-ivory shadow-xl"
+              className="pointer-events-none fixed z-[80] rounded-md border border-pf-gold/30 bg-pf-wine px-2.5 py-1.5 font-ui text-[10.5px] font-medium tracking-[.08em] text-pf-ivory shadow-[0_10px_28px_rgb(20_2_8/0.4)]"
               style={{ top: coords.top, left: coords.left, transform: "translateY(-50%)" }}
             >
               {label}

@@ -771,10 +771,21 @@ const buildCustomerRows = (allOrders, periodOrders, period) => {
   };
 };
 
-const buildInventorySummary = (period) => {
-  const rows = queryInventory();
+const buildInventorySummary = (period, inventoryRecords = null) => {
+  /* The browser's inventory context merges backend stock rows with any
+     in-memory adjustments. Callers that have it hand it over so analytics
+     reads the same ledger as the inventory desk; the repository remains
+     the fallback for memory-only surfaces and tests. */
+  const usingContextRecords = Array.isArray(inventoryRecords) && inventoryRecords.length > 0;
+  const rows = usingContextRecords ? inventoryRecords : queryInventory();
   const metrics = getInventoryMetrics(rows);
-  const locations = loadLocations();
+  const configuredLocations = loadLocations();
+  /* Backend stock rows carry their store/warehouse on the row. When no
+     locations are configured locally, derive the same breakdown from the
+     ledger instead of claiming "No locations configured". */
+  const locations = configuredLocations.length
+    ? configuredLocations
+    : [...new Map(rows.map((row) => [row.locationId, row.location])).values()].filter(Boolean);
   const movements = loadMovements().filter((movement) =>
     isInRange(movement.timestamp, period.start, period.end)
   );
@@ -1087,6 +1098,7 @@ const overviewFrom = (orderSummary, customers, returns) => ({
 
 export const getAnalyticsSnapshot = ({
   orders = null,
+  inventoryRecords = null,
   period: periodInput = {},
   filters = {},
   now = new Date(),
@@ -1121,7 +1133,7 @@ export const getAnalyticsSnapshot = ({
         end: period.comparison.end,
       })
     : null;
-  const inventory = buildInventorySummary(period);
+  const inventory = buildInventorySummary(period, inventoryRecords);
   const returns = buildReturnSummary(allOrders, period);
   const previousReturns = period.comparison
     ? buildReturnSummary(allOrders, {

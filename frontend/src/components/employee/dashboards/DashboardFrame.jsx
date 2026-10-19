@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { getDepartmentLabel } from "../../../config/employeeDepartments";
 import { getRole } from "../../../config/employeeRoles";
 import { useEmployeeAuth } from "../../../context/EmployeeAuthContext";
@@ -26,29 +25,32 @@ export default function DashboardFrame({
 
   return (
     <div className="pb-16">
-      <header className="mb-8 rounded-xl border border-pf-border bg-pf-card p-6 shadow-[0_10px_40px_rgb(74_7_24/0.07)] sm:p-8">
-        <p className="font-ui text-[11px] font-semibold uppercase tracking-[.28em] text-pf-gold-text">
-          {eyebrow || role.portal}
-        </p>
-        <h1 className="mt-2 font-display text-[32px] font-medium leading-[1.05] tracking-tight text-pf-text md:text-[44px]">
-          {title || (
-            <>
-              {greetingForNow()}, <span className="italic text-pf-burgundy">{employee?.firstName}</span>
-            </>
-          )}
-        </h1>
-        <p className="mt-3 max-w-2xl font-ui text-sm leading-relaxed text-pf-muted">
-          {description ||
-            `${employeeFullName(employee)} · ${role.label} · ${getDepartmentLabel(employee?.department)} · ${employee?.employeeId}`}
-        </p>
-        <p className="mt-2 font-ui text-[11px] uppercase tracking-[.14em] text-pf-gold-text">
+      <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <p className="flex items-center gap-2.5 font-ui text-[11px] font-semibold uppercase tracking-[.28em] text-pf-gold-text">
+            <span aria-hidden="true" className="h-px w-6 bg-pf-gold-deep/70" />
+            {eyebrow || role.portal}
+          </p>
+          <h1 className="mt-2 font-display text-[32px] font-medium leading-[1.05] tracking-tight text-pf-text md:text-[44px]">
+            {title || (
+              <>
+                {greetingForNow()}, <span className="italic text-pf-burgundy">{employee?.firstName}</span>
+              </>
+            )}
+          </h1>
+          <p className="mt-3 max-w-2xl font-ui text-sm leading-relaxed text-pf-muted">
+            {description ||
+              `${employeeFullName(employee)} · ${role.label} · ${getDepartmentLabel(employee?.department)} · ${employee?.employeeId}`}
+          </p>
+        </div>
+        <p className="font-ui text-[11px] uppercase tracking-[.14em] text-pf-gold-text md:text-right">
           {formatTodayLong()}
           {employee?.shift ? ` · ${employee.shift}` : ""}
         </p>
       </header>
 
       {metrics.primary?.length ? (
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.primary.map((metric) => (
             <MetricCard key={metric.label} {...metric} />
           ))}
@@ -57,19 +59,16 @@ export default function DashboardFrame({
 
       {children}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <AttendancePanel />
-        <PerformancePanel employeeId={employee?.employeeId} compact />
+      <div className="mt-1 flex flex-wrap items-stretch gap-5">
+        <div className="min-w-0 flex-1 basis-[320px] empty:hidden">
+          <AttendancePanel />
+        </div>
+        <div className="min-w-0 flex-1 basis-[320px] empty:hidden">
+          <PerformancePanel employeeId={employee?.employeeId} compact />
+        </div>
       </div>
 
       {extras}
-
-      <p className="mt-8 font-ui text-[11px] text-pf-muted">
-        Need the storefront?{" "}
-        <Link to="/" className="text-pf-text underline-offset-4 hover:text-pf-burgundy hover:underline">
-          Open PRATIKSHYA FASHION
-        </Link>
-      </p>
     </div>
   );
 }

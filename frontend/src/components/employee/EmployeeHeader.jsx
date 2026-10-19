@@ -9,7 +9,6 @@ import {
   employeeFullName,
   employeeInitials,
   formatTodayLong,
-  greetingForNow,
 } from "../../utils/employee";
 import { cn } from "../../utils/cn";
 import { Brand, transition } from "../../design-system";
@@ -56,13 +55,13 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
 
   return (
     <header className="sticky top-0 z-30 h-[var(--pf-header-h)] border-b border-pf-gold/25 bg-gradient-to-r from-pf-wine via-pf-burgundy to-pf-burgundy text-pf-ivory shadow-[0_2px_24px_rgb(42_6_16/0.35)]">
-      <div className="flex h-full items-center justify-between gap-4 px-4 md:px-6">
+      <div className="flex h-full items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4 md:px-6">
         {/* ---- Brand + nav toggle ---- */}
         <div className="flex min-w-0 items-center gap-3">
           <button
             ref={menuButtonRef}
             type="button"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-pf-ivory/25 text-pf-ivory/85 transition-colors hover:border-pf-gold/60 hover:text-pf-ivory lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-pf-ivory/25 text-pf-ivory/85 transition-colors hover:border-pf-gold/60 hover:text-pf-ivory sm:h-10 sm:w-10 lg:hidden"
             onClick={onToggleNav}
             aria-expanded={navOpen}
             aria-controls="employee-navigation"
@@ -75,6 +74,7 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
             size="default"
             variant="lockup"
             theme="dark"
+            size="compact"
             wordmark={EMPLOYEE_BRAND.name}
             className="min-w-0"
           />
@@ -88,15 +88,16 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
           </span>
         </div>
 
-        {/* ---- Greeting (centre, very large screens) ---- */}
-        <div className="hidden min-w-0 flex-1 px-8 2xl:block">
-          <p className="truncate font-display text-[22px] font-medium leading-tight text-pf-ivory">
-            {greetingForNow()}, <span className="italic text-pf-gold">{employee?.firstName}</span>
-          </p>
-          <p className="mt-0.5 truncate font-ui text-[12px] text-pf-ivory/70">
-            {employee?.designation || role.label} · {getDepartmentLabel(employee?.department)} · {employee?.employeeId} ·{" "}
+        {/* The page heading owns the greeting; the masthead carries the
+            portal identity so the same sentence is not printed twice. */}
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 px-6 lg:flex">
+          <span className="font-ui text-[10.5px] font-semibold uppercase tracking-[.16em] text-pf-gold/90">
             {formatTodayLong()}
-          </p>
+          </span>
+          <span aria-hidden="true" className="h-3 w-px bg-pf-ivory/20" />
+          <span className="max-w-[240px] truncate font-ui text-[11.5px] text-pf-ivory/65">
+            {employee?.designation || role.label} · {getDepartmentLabel(employee?.department)}
+          </span>
         </div>
 
         {/* ---- Right actions ---- */}
@@ -122,9 +123,9 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
               className="flex min-h-11 items-center gap-2.5 rounded-lg border border-transparent py-1 pl-1 pr-2 transition-colors hover:border-pf-ivory/25"
             >
               {employee?.avatar ? (
-                <img src={employee.avatar} alt="" className="h-10 w-10 rounded-lg object-cover ring-1 ring-pf-gold/50" />
+                <img src={employee.avatar} alt="" className="h-9 w-9 rounded-md object-cover ring-1 ring-pf-gold/50" />
               ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-gold font-display text-[18px] font-medium text-pf-wine">
+                <span className="flex h-9 w-9 items-center justify-center rounded-md bg-pf-gold font-display text-[16px] font-semibold tabular-nums text-pf-wine">
                   {employeeInitials(employee)}
                 </span>
               )}

@@ -142,10 +142,13 @@ export const hydrateDay = (employee, date, records = loadAttendance(), leaves = 
 };
 
 export const getTodayAttendance = (employeeId, date = todayKey()) => {
-  const employees = loadEmployees();
-  const employee = getEmployee(employees, employeeId);
-  if (!employee) return null;
-  return hydrateDay(employee, date);
+  const employee = getEmployee(loadEmployees(), employeeId);
+  if (employee) return hydrateDay(employee, date);
+  /* Employee sessions hydrate their own attendance rows but not the full
+     staff roster (that read needs attendance.view). Returning null here
+     blanked the dashboard's attendance card even though a real punch was
+     stored, so fall back to the stored self row. No row means no card. */
+  return findAttendance(employeeId, date, loadAttendance());
 };
 
 export const summarizeRecords = (records = []) => {

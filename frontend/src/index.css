@@ -132,6 +132,24 @@
   --color-pf-info: #3E6E85;
 
   /* ------------------------------------------------------------------
+     Phase 3 refinement — additive surface and rule tiers.
+
+     These sit BELOW the approved palette (nothing above is redefined):
+       pf-card-soft   inset plates, table heads, quiet chips
+       pf-canvas-soft the page's second ivory step (behind cards)
+       pf-gold-line   fine gold hairlines that carry structure, not text
+       pf-wine-soft   the lighter burgundy used for hover washes on dark
+     ------------------------------------------------------------------ */
+  --color-pf-card-soft: #F8EDE0;
+  --color-pf-canvas-soft: #F7EEE2;
+  --color-pf-gold-line: #E4CFAB;
+  --color-pf-wine-soft: #3A0A1B;
+
+  /* One radius for every panel, one for every control. */
+  --radius-pf-panel: 14px;
+  --radius-pf-control: 9px;
+
+  /* ------------------------------------------------------------------
      Campaign motion curves — Phase 1, ADDITIVE.
 
      Mirrors `campaign.ease` in `src/design-system/motion.js`. New
@@ -249,14 +267,126 @@ html {
 .pf-staff [class~="from-accent"] { --tw-gradient-from: var(--color-pf-burgundy) var(--tw-gradient-via-position); }
 .pf-staff [class~="to-accent-deep"] { --tw-gradient-to: var(--color-pf-wine) var(--tw-gradient-via-position); }
 
-/* Staff typography enforcement: editorial serif at weight 500 with
-   lining figures (Cormorant's oldstyle "1" reads as "I"), and an
-   11px floor for informational micro-type. */
+/* Staff typography enforcement.
+
+   CRITICAL NUMERAL RULE (verified in Chromium against the self-hosted
+   Cormorant cut): Cormorant's default figures are OLD-STYLE — the "1" is
+   a small-cap I. The previous rule forced `font-feature-settings: "lnum" 1,
+   "tnum" 1`, and because that property REPLACES the font's default feature
+   set it switched off Cormorant's contextual alternates (`calt`), which is
+   the substitution that keeps the old-style "1" legible. The rendered KPI
+   "1" therefore still looked like an "I".
+
+   `font-variant-numeric: lining-nums tabular-nums` enables the lining and
+   tabular features WITHOUT clobbering `calt`, so every staff serif value
+   renders a true lining figure. Keep `font-feature-settings` unset here —
+   do not reintroduce the lnum/tnum pair. */
 .pf-staff .font-display {
   font-weight: 500;
   font-variant-numeric: lining-nums tabular-nums;
-  font-feature-settings: "lnum" 1, "tnum" 1;
+  font-feature-settings: normal;
+  letter-spacing: -0.005em;
 }
+
+/* Any figure that must read as a figure (KPI value, total, table amount). */
+.pf-figure {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: normal;
+  letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------------
+   Staff scrollbars — scoped to `.pf-staff`, never the storefront.
+
+   Two tiers:
+     .pf-scroll--dark   the burgundy navigation rail (champagne thumb)
+     .pf-scroll--light  ivory scroll regions (burgundy thumb)
+
+   The thumb is slim and translucent until the region is hovered or
+   contains focus, at which point it becomes clearly visible. Both
+   `scrollbar-width`/`scrollbar-color` (Firefox + Chromium 121+) and the
+   `::-webkit-scrollbar` pseudo-elements are declared, so the track stays
+   transparent everywhere and operating systems that auto-hide scrollbars
+   keep doing so. Nothing is hidden outright: the region remains
+   scrollable by wheel, trackpad, keyboard and touch.
+   ------------------------------------------------------------------ */
+.pf-staff .pf-scroll {
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(214 174 112 / 0.38) transparent;
+}
+.pf-staff .pf-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.pf-staff .pf-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pf-staff .pf-scroll::-webkit-scrollbar-thumb {
+  background-color: rgb(214 174 112 / 0.38);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.pf-staff .pf-scroll:hover::-webkit-scrollbar-thumb,
+.pf-staff .pf-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgb(214 174 112 / 0.7);
+}
+.pf-staff .pf-scroll:focus-visible::-webkit-scrollbar-thumb {
+  background-color: rgb(214 174 112 / 0.85);
+}
+
+.pf-staff .pf-scroll--light {
+  scrollbar-color: rgb(101 8 31 / 0.28) transparent;
+}
+.pf-staff .pf-scroll--light::-webkit-scrollbar-thumb {
+  background-color: rgb(101 8 31 / 0.28);
+}
+.pf-staff .pf-scroll--light:hover::-webkit-scrollbar-thumb,
+.pf-staff .pf-scroll--light:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgb(101 8 31 / 0.5);
+}
+
+/* Repaint the sidebar nav after this rule set: the scroll region owns the
+   scrollbar, the aside never does. */
+.pf-staff .pf-sidebar-scroll {
+  scroll-padding-block: 10px;
+  /* A single soft fade at the FOOT of the rail, where the nav meets the
+     fixed wine footer, so a half-row dissolves instead of being sliced by
+     a hard edge. There is no fade at the top: the first group heading sits
+     inside the padding box and must render at full opacity when the rail is
+     scrolled to its start. The mask does not block input, scrolling or
+     focus. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 12px), transparent 100%);
+}
+
+/* ------------------------------------------------------------------
+   Shared staff surfaces and rules.
+   ------------------------------------------------------------------ */
+.pf-staff .pf-card {
+  border: 1px solid var(--color-pf-border);
+  border-radius: var(--radius-pf-panel);
+  background-color: var(--color-pf-card);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.65),
+    0 10px 30px rgb(74 7 24 / 0.055);
+}
+.pf-staff .pf-card--inset {
+  background-color: var(--color-pf-card-soft);
+  box-shadow: inset 0 1px 2px rgb(74 7 24 / 0.05);
+}
+.pf-staff .pf-rule-gold {
+  height: 1px;
+  background: linear-gradient(90deg, rgb(214 174 112 / 0.85), rgb(214 174 112 / 0.12));
+}
+.pf-staff .pf-hairline {
+  border-color: var(--color-pf-border);
+}
+
 .pf-staff [class~="text-[7px]"],
 .pf-staff [class~="text-[8px]"],
 .pf-staff [class~="text-[9px]"],
@@ -265,17 +395,32 @@ html {
   line-height: 1.35;
 }
 
-/* Generic operational-table polish for hand-rolled tables. */
+/* Generic operational-table polish for hand-rolled tables. Column heads
+   stay the one place micro-uppercase is legitimate; body cells sit at the
+   operational 13.5–14px band so dense desks stay readable. */
 .pf-staff table th {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--color-pf-muted);
+  background-color: transparent;
 }
 .pf-staff table td {
   font-size: 14px;
+  color: var(--color-pf-text);
+}
+.pf-staff table tbody tr {
+  transition: background-color 160ms ease;
+}
+.pf-staff table tbody tr:hover {
+  background-color: rgb(248 237 224 / 0.55);
+}
+.pf-staff table caption {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-pf-muted);
 }
 
 /* Form controls + buttons: readable size, structural border, rounded
@@ -284,10 +429,10 @@ html {
 .pf-staff select,
 .pf-staff textarea {
   font-size: 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-pf-control);
 }
 .pf-staff button {
-  border-radius: 8px;
+  border-radius: var(--radius-pf-control);
 }
 .pf-staff ::placeholder {
   color: var(--color-pf-muted);
@@ -299,6 +444,39 @@ html {
   outline: 2px solid var(--color-pf-gold-text);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgb(214 174 112 / 0.35);
+}
+.pf-staff .bg-pf-burgundy :focus-visible,
+.pf-staff .bg-pf-wine :focus-visible,
+.pf-staff [class*="bg-gradient"] :focus-visible {
+  outline-color: var(--color-pf-gold);
+}
+
+/* Editorial headings inside the staff shell share one rhythm. */
+/* Status markers: legible at arm's length without becoming pills. */
+.pf-staff .pf-status {
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+.pf-staff .pf-eyebrow {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-pf-gold-text);
+}
+.pf-staff .pf-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--color-pf-text);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 body {

@@ -83,7 +83,14 @@ test("dashboard analytics are honest: whole-book distribution, derived stock, no
   assert.match(dashboard, /toUpperCase\(\)/, "backend enum values are normalised");
   assert.match(dashboard, /productCount - lowStock - outOfStock/, "in-stock derives from real aggregates");
   assert.doesNotMatch(dashboard, /vs previous 7 days/, "no mislabelled intra-week comparison");
-  assert.doesNotMatch(dashboard, /inventorySummary\?\.items/, "low-stock rows are never read as in-stock");
+  /* `inventorySummary.items` is the backend's low-stock list (stock ≤
+     threshold). It may feed the "low stock attention" list, but it must
+     never be counted as in-stock stock. */
+  assert.doesNotMatch(
+    dashboard,
+    /inStock\s*=\s*[^;]*inventorySummary/,
+    "low-stock rows are never read as in-stock",
+  );
   assert.match(dashboard, /firstItemImage/, "recent orders are product-led");
   assert.match(dashboard, /hasPermission/, "quick actions are permission-filtered");
 });

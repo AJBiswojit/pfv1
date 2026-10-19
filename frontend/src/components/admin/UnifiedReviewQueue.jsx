@@ -49,6 +49,7 @@ import { reviewFlagLabel } from "../../services/productReviewFlags";
 import { runAction } from "../../services/admin/productAdminService";
 import { formatAdminError } from "../../services/admin/adminError";
 import { categoryLabels } from "../../data/products/taxonomy";
+import { resolveProductCover } from "../../services/media/mediaResolver";
 
 const PAGE_SIZE = 25;
 
@@ -300,6 +301,10 @@ export default function UnifiedReviewQueue({
   const items = useProducts(); /* reactivity only — the queue reads the register */
 
   const rows = useMemo(() => getUnifiedReviewQueue(), [items]);
+  const covers = useMemo(
+    () => Object.fromEntries(rows.map((row) => [row.productId, row.product ? resolveProductCover(row.product) : null])),
+    [rows]
+  );
   const counts = useMemo(() => countUnifiedQuickFilters(rows), [rows]);
   const categories = useMemo(() => categoriesInUnifiedQueue(rows), [rows]);
   const departments = useMemo(() => departmentsInUnifiedQueue(rows), [rows]);
@@ -733,10 +738,21 @@ export default function UnifiedReviewQueue({
                       <button
                         type="button"
                         onClick={() => onSelect?.(row.productId)}
-                        className="text-left underline-offset-4 hover:text-pf-burgundy hover:underline"
+                        className="flex items-start gap-2.5 text-left underline-offset-4 hover:text-pf-burgundy hover:underline"
                       >
-                        <span className="block font-ui text-[10px] uppercase tracking-[.18em] text-pf-burgundy">{row.productId}</span>
-                        {row.name?.trim() || <span className="text-pf-muted">[Not yet defined]</span>}
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 overflow-hidden rounded-[5px] border border-pf-border bg-pf-card-soft">
+                          {covers[row.productId]?.src ? (
+                            <img src={covers[row.productId].src} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block whitespace-nowrap font-ui text-[10.5px] font-semibold uppercase tracking-[.1em] text-pf-gold-text">
+                            {row.sku || "No SKU"}
+                          </span>
+                          <span className="block font-ui text-[13px] leading-snug text-pf-text">
+                            {row.name?.trim() || <span className="text-pf-muted">Not yet defined</span>}
+                          </span>
+                        </span>
                       </button>
                       {row.returned && row.rejectionReason ? (
                         <p className="mt-0.5 text-[11px] text-pf-burgundy">Returned: {row.rejectionReason}</p>

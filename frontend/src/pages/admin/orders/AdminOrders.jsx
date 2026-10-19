@@ -15,25 +15,33 @@ import AdminPanel from "../../../components/admin/AdminPanel";
 import OrderStatusBadge from "../../../components/orders/OrderStatusBadge";
 import { useAdminAuth } from "../../../context/AdminAuthContext";
 import { useOrder } from "../../../context/OrderContext";
-import { ORDER_STATUS, ORDER_PAYMENT_STATUS, FULFILLMENT_STATUS } from "../../../config/orderConfig";
+import {
+  ORDER_STATUS,
+  ORDER_PAYMENT_STATUS_VALUES,
+  FULFILLMENT_STATUS,
+  PAYMENT_STATUSES,
+  FULFILLMENT_STATUSES,
+} from "../../../config/orderConfig";
 import { formatINR } from "../../../utils/shopping";
 import { formatOrderDate } from "../../../utils/orders";
 import { cn } from "../../../utils/cn";
 
 const METRIC_DEFS = [
-  { id: "total", label: "Total Orders", icon: Boxes, key: "total" },
-  { id: "pending", label: "Pending Payment", icon: Clock, statuses: [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PLACED] },
+  { id: "total", label: "Total orders", icon: Boxes, key: "total" },
+  /* Headline tiles, then the pipeline strip. */
+
+  { id: "pending", label: "Pending payment", icon: Clock, statuses: [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PLACED] },
   { id: "confirmed", label: "Confirmed", icon: CheckCircle2, statuses: [ORDER_STATUS.ORDER_CONFIRMED, ORDER_STATUS.CONFIRMED, ORDER_STATUS.PAYMENT_CONFIRMED] },
   { id: "processing", label: "Processing", icon: Package, statuses: [ORDER_STATUS.PROCESSING] },
   { id: "allocated", label: "Allocated", icon: Boxes, statuses: [ORDER_STATUS.ALLOCATED] },
   { id: "picking", label: "Picking", icon: Boxes, statuses: [ORDER_STATUS.PICKING] },
   { id: "packed", label: "Packed", icon: Package, statuses: [ORDER_STATUS.PACKED] },
-  { id: "ready", label: "Ready to Dispatch", icon: Truck, statuses: [ORDER_STATUS.READY_TO_DISPATCH] },
+  { id: "ready", label: "Ready to dispatch", icon: Truck, statuses: [ORDER_STATUS.READY_TO_DISPATCH] },
   { id: "shipped", label: "Shipped", icon: Truck, statuses: [ORDER_STATUS.SHIPPED] },
-  { id: "out", label: "Out for Delivery", icon: Truck, statuses: [ORDER_STATUS.OUT_FOR_DELIVERY] },
+  { id: "out", label: "Out for delivery", icon: Truck, statuses: [ORDER_STATUS.OUT_FOR_DELIVERY] },
   { id: "delivered", label: "Delivered", icon: CheckCircle2, statuses: [ORDER_STATUS.DELIVERED] },
   { id: "cancelled", label: "Cancelled", icon: X, statuses: [ORDER_STATUS.CANCELLED] },
-  { id: "returns", label: "Return Requests", icon: RotateCcw, statuses: [ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING, ORDER_STATUS.REFUNDED] },
+  { id: "returns", label: "Return requests", icon: RotateCcw, statuses: [ORDER_STATUS.RETURN_REQUESTED, ORDER_STATUS.RETURNED, ORDER_STATUS.REFUND_PENDING, ORDER_STATUS.REFUNDED] },
 ];
 
 function MetricCard({ label, value, icon: Icon, highlight }) {
@@ -42,20 +50,27 @@ function MetricCard({ label, value, icon: Icon, highlight }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border bg-pf-ivory/40 p-4",
-        highlight ? "border-pf-gold-deep/40 bg-pf-burgundy/5" : "border-pf-border/80"
+        "flex min-h-[96px] flex-col justify-between rounded-lg border p-3.5",
+        highlight
+          ? "border-pf-gold-deep/45 bg-pf-burgundy/[0.055]"
+          : "border-pf-border/80 bg-pf-card-soft/35"
       )}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-ui text-[9px] uppercase tracking-[.18em] text-pf-muted">{label}</p>
-          <p className="mt-2 font-display text-2xl font-light text-pf-text">{value}</p>
-        </div>
-        <Icon size={16} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} />
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-ui text-[10.5px] font-medium uppercase leading-tight tracking-[.1em] text-pf-muted">
+          {label}
+        </p>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border border-pf-border/70 bg-pf-card">
+          <Icon size={13} className={highlight ? "text-pf-burgundy" : "text-pf-gold-text"} aria-hidden="true" />
+        </span>
       </div>
+      <p className="mt-3 font-display text-[26px] leading-none text-pf-text tabular-nums">{value}</p>
     </motion.div>
   );
 }
+
+const PRIMARY_METRIC_IDS = ["total", "pending", "confirmed", "processing", "shipped", "delivered"];
+const PIPELINE_METRIC_IDS = ["allocated", "picking", "packed", "ready", "out", "cancelled", "returns"];
 
 /** Map an order status onto its fulfillment-desk stage (matches the server's
  * FULFILLMENT_STATUS_GROUPS so display and filtering agree). */
@@ -230,16 +245,38 @@ export default function AdminOrders() {
         </div>
       ) : null}
 
-      {/* Metrics */}
-      <section aria-label="Order metrics" className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        {METRIC_DEFS.map((def) => (
-          <MetricCard
-            key={def.id}
-            label={def.label}
-            value={def.key ? metrics[def.key] : metrics[def.id] ?? 0}
-            icon={def.icon}
-            highlight={def.id === "total"}
-          />
+      {/* Order book: six headline figures, then the floor pipeline as a
+          compact ledger strip. Every number is the backend's grouped status
+          count over the whole order book. */}
+      <section aria-label="Order metrics" className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {PRIMARY_METRIC_IDS.map((id) => {
+          const def = METRIC_DEFS.find((entry) => entry.id === id);
+          return (
+            <MetricCard
+              key={def.id}
+              label={def.label}
+              value={def.key ? metrics[def.key] : metrics[def.id] ?? 0}
+              icon={def.icon}
+              highlight={def.id === "total"}
+            />
+          );
+        })}
+      </section>
+
+      <section
+        aria-label="Fulfillment pipeline"
+        className="mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-pf-border/80 bg-pf-card px-4 py-3"
+      >
+        <p className="font-ui text-[10.5px] font-semibold uppercase tracking-[.12em] text-pf-muted">
+          Fulfillment pipeline
+        </p>
+        {METRIC_DEFS.filter((def) => PIPELINE_METRIC_IDS.includes(def.id)).map((def) => (
+          <div key={def.id} className="flex items-baseline gap-1.5 border-l border-pf-border/70 pl-4 first:border-0 first:pl-0">
+            <span className="font-ui text-[11.5px] text-pf-muted">{def.label}</span>
+            <span className="font-ui text-[12.5px] font-semibold tabular-nums text-pf-text">
+              {metrics[def.key] ?? metrics[def.id] ?? 0}
+            </span>
+          </div>
         ))}
       </section>
 
@@ -255,7 +292,7 @@ export default function AdminOrders() {
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Order, customer, phone, product, SKU, tracking"
+                    placeholder="Order, customer, phone, SKU"
                     className="h-9 w-full border border-pf-border bg-pf-card pl-9 pr-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
                   />
                 </div>
@@ -274,8 +311,8 @@ export default function AdminOrders() {
               Payment
               <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs outline-none focus:border-pf-gold-deep">
                 <option value="all">All payments</option>
-                {Object.values(ORDER_PAYMENT_STATUS).map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {ORDER_PAYMENT_STATUS_VALUES.map((s) => (
+                  <option key={s} value={s}>{PAYMENT_STATUSES[s]?.label ?? s.replace(/_/g, " ")}</option>
                 ))}
               </select>
             </label>
@@ -356,19 +393,21 @@ export default function AdminOrders() {
             <tbody>
               {filtered.map((order) => (
                 <tr key={order.id} className="border-b border-pf-border/50 last:border-0 hover:bg-pf-ivory/30">
-                  <td className="px-4 py-3 font-mono text-xs text-pf-text">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-[11.5px] text-pf-text">
                     <Link to={`${prefix}/orders/${order.id}`} className="text-pf-gold-text hover:text-pf-burgundy hover:underline">{order.orderNumber ?? order.id}</Link>
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-ui text-sm text-pf-text">{order.customer?.fullName}</p>
                     <p className="font-ui text-[11px] text-pf-muted">{order.customer?.email}</p>
                   </td>
-                  <td className="px-4 py-3 font-ui text-sm">{order.items?.length} item{order.items?.length !== 1 ? "s" : ""} · {order.items?.reduce((s, i) => s + i.quantity, 0)} pcs</td>
-                  <td className="px-4 py-3 font-ui text-sm">{formatINR(order.pricing?.total)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-ui text-[12.5px] tabular-nums text-pf-muted">
+                    {order.items?.reduce((s, i) => s + i.quantity, 0)} pcs
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 font-ui text-[13px] tabular-nums">{formatINR(order.pricing?.total)}</td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.paymentStatus} kind="payment" /></td>
                   <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3 font-ui text-[11px]">{fulfillmentStage(order)}</td>
-                  <td className="px-4 py-3 font-ui text-[11px] text-pf-muted">{formatOrderDate(order.createdAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-ui text-[11px]">{fulfillmentStage(order)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-ui text-[11.5px] tabular-nums text-pf-muted">{formatOrderDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
                     <Link to={`${prefix}/orders/${order.id}`} className="inline-flex items-center gap-1 font-ui text-[11px] text-pf-gold-text hover:text-pf-burgundy">
                       <Eye size={12} /> View
@@ -455,13 +494,17 @@ export default function AdminOrders() {
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Payment
                 <select value={paymentFilter} onChange={(e) => resetToFirstPage(setPaymentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                   <option value="all">All</option>
-                  {Object.values(ORDER_PAYMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
+                  {ORDER_PAYMENT_STATUS_VALUES.map((s) => (
+                    <option key={s} value={s}>{PAYMENT_STATUSES[s]?.label ?? s.replace(/_/g, " ")}</option>
+                  ))}
                 </select>
               </label>
               <label className="block font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted">Fulfillment
                 <select value={fulfillmentFilter} onChange={(e) => resetToFirstPage(setFulfillmentFilter)(e.target.value)} className="mt-1.5 h-9 w-full border border-pf-border bg-pf-card px-2 font-ui text-xs">
                   <option value="all">All</option>
-                  {Object.values(FULFILLMENT_STATUS).map((s) => <option key={s} value={s}>{s}</option>)}
+                  {Object.values(FULFILLMENT_STATUS).map((s) => (
+                    <option key={s} value={s}>{FULFILLMENT_STATUSES[s]?.label ?? s.replace(/_/g, " ")}</option>
+                  ))}
                 </select>
               </label>
               <button onClick={() => setDrawerOpen(false)} className="mt-6 w-full bg-pf-burgundy text-pf-ivory py-3 font-ui text-[11px] uppercase tracking-[.16em]">Apply</button>

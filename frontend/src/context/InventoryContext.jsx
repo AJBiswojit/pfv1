@@ -3,10 +3,12 @@ import inventoryRepository, {
   INVENTORY_CHANGED_EVENT,
   LOCATION_TYPES,
   calculateStockStatus,
+  filterInventoryRecords,
   getInventoryMetrics,
 } from "../services/inventory/inventoryRepository";
-import { PRODUCTS_CHANGED_EVENT } from "../services/catalogRepository";
+import catalogRepository, { PRODUCTS_CHANGED_EVENT } from "../services/catalogRepository";
 import { apiListStock } from "../services/api/inventoryApi";
+import { getAccessToken } from "../services/api/apiClient";
 
 const InventoryContext = createContext(null);
 
@@ -23,19 +25,42 @@ function mapBackendItem(item) {
   // Treat records with a warehouse_id as WAREHOUSE, otherwise STORE
   const locationType = item.warehouse_id ? LOCATION_TYPES.WAREHOUSE : LOCATION_TYPES.STORE;
 
+  /* Join the stock row to the session catalogue cache. Without this the
+     ledger showed blank names/SKUs and threw every row into "Unassigned",
+     because the backend stock payload carries only the product id. */
+  let product = null;
+  try {
+    product = catalogRepository.find(String(item.product_id ?? "")) ?? null;
+  } catch {
+    product = null;
+  }
+  const price = Number(product?.pricing?.price ?? product?.price ?? 0) || 0;
+
   return {
     id: `backend::${item.id}`,
     productId:  item.product_id  ?? "",
     variantId:  item.variant_id  ?? null,
     locationId: item.warehouse_id ?? "loc-main-store",
-    placement:  { department: "" },
+    placement:  {
+      department: product?.department ?? "",
+      category: product?.category ?? "",
+      subcategory: product?.subcategory ?? "",
+      productType: product?.productType ?? "",
+    },
     location:   { id: item.warehouse_id ?? "loc-main-store", name: locationType === LOCATION_TYPES.WAREHOUSE ? "Main Warehouse" : "Main Store", type: locationType },
-    product:    null,
+    product,
+    productName: product?.name ?? "Unlinked product record",
+    sku: product?.sku ?? item.sku ?? "—",
+    variantLabel: null,
+    category: product?.category ?? "",
+    subcategory: product?.subcategory ?? "",
+    productType: product?.productType ?? "",
+    placementLabel: product?.category ?? "",
     quantity:   { onHand, available, reserved, sold: 0, returned: 0, damaged: 0 },
     lowStockThreshold: threshold,
     maximumStock:      null,
     active:     true,
-    estimatedValue: 0,
+    estimatedValue: available * price,
     status: calculateStockStatus({ available, lowStockThreshold: threshold }),
     createdAt: item.created_at ?? null,
     updatedAt: item.updated_at ?? null,
@@ -72,7 +97,15 @@ export function InventoryProvider({ children }) {
   // (covers initial load + after any in-memory mutation triggers a refresh)
   useEffect(() => {
     let cancelled = false;
-    apiListStock({ pageSize: 500 }).then((result) => {
+    /* /admin/inventory/stock is admin-scoped. Asking for it from an
+       employee session produced two 401s per load, so only fetch when the
+       admin scope is present; employee desks keep the session mirror. */
+    if (!getAccessToken("admin")) return undefined;
+    /* The stock endpoint caps page size at 100; requesting 500 was rejected
+       with 422, so the context silently held zero records and every
+       inventory surface rendered an empty ledger. Request the documented
+       maximum instead. */
+    apiListStock({ pageSize: 100 }).then((result) => {
       if (!cancelled && result.ok) {
         setBackendRecords(result.items.map(mapBackendItem));
       }
@@ -115,7 +148,9 @@ export function InventoryProvider({ children }) {
     ...snapshot,
     revision,
     refresh,
-    query: (filters) => inventoryRepository.query(filters),
+    /* Query the merged ledger (backend stock + this session's adjustments)
+       so the desk lists exactly the rows its summary counts. */
+    query: (filters) => filterInventoryRecords(snapshot.records, filters),
     getAvailability: (product, selection) => inventoryRepository.getCustomerAvailability(product, selection),
     receiveStock: (payload) => run("receiveStock", payload),
     adjustStock: (payload) => run("adjustStock", payload),

@@ -53,7 +53,7 @@ export default function OrderStatusBadge({
     return (
       <span
         className={cn(
-          "inline-block px-2 py-1 font-ui text-[9px] uppercase tracking-widest",
+          "pf-status inline-block px-2 py-1 font-ui text-[9px] uppercase tracking-widest",
           quiet,
           className
         )}
