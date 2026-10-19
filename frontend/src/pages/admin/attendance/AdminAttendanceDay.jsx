@@ -149,7 +149,7 @@ export default function AdminAttendanceDay() {
       description="Full workforce attendance snapshot for a selected date — punches, status and working time."
     >
       {/* ── Date navigator ── */}
-      <div className="mb-7 flex items-center gap-3">
+      <div className="mb-7 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={handlePrevDay}
@@ -166,7 +166,7 @@ export default function AdminAttendanceDay() {
             value={date}
             max={todayKey()}
             onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="h-9 border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
+            className="h-9 min-w-0 max-w-full border border-pf-border bg-pf-card px-3 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
           />
         </label>
 
@@ -180,7 +180,7 @@ export default function AdminAttendanceDay() {
           <ChevronRight size={14} />
         </button>
 
-        <span className="font-ui text-xs text-pf-muted">{formatDateLong(date)}</span>
+        <span className="min-w-0 font-ui text-xs leading-snug text-pf-muted">{formatDateLong(date)}</span>
 
         {!isToday && (
           <button

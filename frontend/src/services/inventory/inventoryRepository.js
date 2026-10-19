@@ -1373,7 +1373,7 @@ export const resolveTransfer = (transfer) => {
 };
 
 /** Centralized inventory search & filters. */
-export const queryInventory = ({
+export const filterInventoryRecords = (records, {
   search = "",
   category = "",
   subcategory = "",
@@ -1388,8 +1388,7 @@ export const queryInventory = ({
   hasReturned = false,
 } = {}) => {
   const term = String(search).trim().toLowerCase();
-  return loadInventory()
-    .map(resolveInventoryRecord)
+  return records
     .filter((row) => {
       const haystack = [
         row.productName,
@@ -1413,8 +1412,12 @@ export const queryInventory = ({
         (!hasDamaged || row.quantity.damaged > 0) &&
         (!hasReturned || row.quantity.returned > 0);
     })
-    .sort((a, b) => a.productName.localeCompare(b.productName) || a.locationId.localeCompare(b.locationId));
+    .sort((a, b) => String(a.productName || "").localeCompare(String(b.productName || "")) ||
+      String(a.locationId || "").localeCompare(String(b.locationId || "")));
 };
+
+export const queryInventory = (filters = {}) =>
+  filterInventoryRecords(loadInventory().map(resolveInventoryRecord), filters);
 
 export const getInventoryMetrics = (rows = queryInventory()) => {
   const products = new Set(rows.map((row) => row.productId));

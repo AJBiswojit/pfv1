@@ -448,9 +448,12 @@ export default function AdminProducts() {
         </>
       }
     >
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+      {/* Four primary tiles carry the catalogue's actual state; the
+          housekeeping figures sit in one compact ledger strip so the grid
+          never leaves a hole in the second row. */}
+      <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metricsError ? (
-          <div className="col-span-full border border-pf-gold-deep/40 bg-pf-card px-4 py-3 font-ui text-xs text-pf-burgundy" role="alert">
+          <div className="col-span-full rounded-lg border border-pf-gold-deep/40 bg-pf-card px-4 py-3 font-ui text-xs text-pf-burgundy" role="alert">
             Metrics unavailable — {metricsError}
           </div>
         ) : !metrics ? (
@@ -460,10 +463,7 @@ export default function AdminProducts() {
             { label: "Total", value: metrics.total, hint: "Every product record" },
             { label: "Published", value: metrics.published, hint: "Visible to customers" },
             { label: "Draft", value: metrics.draft, hint: "In progress" },
-            { label: "Pending Review", value: metrics.pendingReview, hint: "Awaiting approval", alert: (metrics.pendingReview ?? 0) > 0 },
-            { label: "Archived", value: metrics.archived, hint: "Retired, order-safe" },
-            { label: "Unassigned", value: metrics.unassigned, hint: "No owner on draft/review work", alert: (metrics.unassigned ?? 0) > 0 },
-            { label: "Blocked", value: metrics.blocked, hint: "Carrying blocking review flags", alert: (metrics.blocked ?? 0) > 0 },
+            { label: "Pending review", value: metrics.pendingReview, hint: "Awaiting approval", alert: (metrics.pendingReview ?? 0) > 0 },
           ].map((tile) => (
             <AdminMetricCard
               key={tile.label}
@@ -475,6 +475,28 @@ export default function AdminProducts() {
           ))
         )}
       </div>
+
+      {metrics && !metricsError ? (
+        <dl className="mb-6 grid grid-cols-1 divide-y divide-pf-border/70 rounded-lg border border-pf-border/80 bg-pf-card-soft/40 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {[
+            { label: "Archived", value: metrics.archived, hint: "Retired, order-safe" },
+            { label: "Unassigned", value: metrics.unassigned, hint: "No owner on draft/review", alert: (metrics.unassigned ?? 0) > 0 },
+            { label: "Blocked", value: metrics.blocked, hint: "Carrying blocking review flags", alert: (metrics.blocked ?? 0) > 0 },
+          ].map((tile) => (
+            <div key={tile.label} className="flex items-baseline justify-between gap-3 px-4 py-3 sm:block">
+              <dt className="font-ui text-[11px] font-medium uppercase tracking-[.1em] text-pf-muted">
+                {tile.label}
+              </dt>
+              <dd className="flex items-baseline gap-2 sm:mt-1">
+                <span className={`font-display text-[24px] leading-none tabular-nums ${tile.alert ? "text-pf-burgundy" : "text-pf-text"}`}>
+                  {tile.value ?? 0}
+                </span>
+                <span className="font-ui text-[11.5px] text-pf-muted">{tile.hint}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
 
       {notice ? (
         <div aria-live="polite" className="mb-5 border border-pf-border/80 bg-pf-card px-4 py-3 font-ui text-sm text-pf-text">
@@ -511,14 +533,14 @@ export default function AdminProducts() {
             />
           </label>
 
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <label htmlFor="admin-category-filter" className="sr-only">Filter by category</label>
             <select
               id="admin-category-filter"
               aria-label="Filter by category"
               value={category}
               onChange={(event) => { setCategory(event.target.value); setPage(1); }}
-              className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
+              className="min-w-0 max-w-full flex-1 border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep sm:flex-none"
             >
               <option value="ALL">All categories</option>
               {CATEGORY_OPTIONS.map((cat) => (
@@ -531,7 +553,7 @@ export default function AdminProducts() {
               aria-label="Sort products"
               value={sort}
               onChange={(event) => { setSort(event.target.value); setPage(1); }}
-              className="border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep"
+              className="min-w-0 max-w-full flex-1 border border-pf-border bg-pf-card px-3 py-2.5 font-ui text-xs text-pf-text outline-none focus:border-pf-gold-deep sm:flex-none"
             >
               {[
                 ["newest", "Newest"],

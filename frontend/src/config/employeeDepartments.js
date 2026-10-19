@@ -154,13 +154,22 @@ export const STORES = {
 export const DEPARTMENT_OPTIONS = Object.values(DEPARTMENT_DEFINITIONS);
 export const STORE_OPTIONS = Object.values(STORES);
 
-export const getDepartment = (id) =>
-  DEPARTMENT_DEFINITIONS[id] ?? {
-    id: id || "UNKNOWN",
-    label: "Unassigned department",
+export const getDepartment = (id) => {
+  const known = DEPARTMENT_DEFINITIONS[id];
+  if (known) return known;
+  /* The backend stores a free-text department on the employee profile
+     (e.g. "Retail Operations") alongside the local taxonomy id. Those
+     values have no definition here, but calling a real, server-supplied
+     department "Unassigned" is false; show the value the house recorded.
+     Only a genuinely empty assignment reads as unassigned. */
+  const raw = typeof id === "string" ? id.trim() : "";
+  return {
+    id: raw || "UNKNOWN",
+    label: raw || "Unassigned department",
     idPrefix: "EMP",
     sections: [],
   };
+};
 
 export const getDepartmentLabel = (id) => getDepartment(id).label;
 

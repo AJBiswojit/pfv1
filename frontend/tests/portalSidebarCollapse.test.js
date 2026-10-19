@@ -95,12 +95,15 @@ test("desktop collapse keeps icons, hides labels, and exposes an accessible cont
   assert.match(portal, /<RailTooltip/);
   assert.match(tooltip, /role="tooltip"/);
   assert.match(tooltip, /createPortal/);
-  assert.match(portal, /hidden w-full items-center[\s\S]*lg:flex/);
+  /* The label block is the thing that disappears in the rail; the
+     collapse control itself stays a `lg:flex` button. */
+  assert.match(portal, /min-w-0 flex-1", collapsed && "lg:hidden"/);
 });
 
 test("collapsed rail preserves active state and does not drop navigation items", () => {
   assert.match(portal, /aria-current=\{isActive \? "page" : undefined\}/);
-  assert.match(portal, /border-pf-gold bg-pf-wine text-pf-ivory/);
+  assert.match(portal, /isActive[\s\S]{0,80}bg-pf-wine-soft text-pf-ivory/);
+  assert.match(portal, /isActive \? "bg-pf-gold opacity-100"/);
   assert.match(portal, /showItems = open \|\| collapsed/);
   assert.doesNotMatch(portal, /filter\(\(item\) => !collapsed/);
 });
@@ -126,7 +129,7 @@ test("collapsed sidebar yields remaining width to main content without 100vw ove
   assert.match(shell, /collapsed \? collapsedWidthClass : expandedWidthClass/);
   assert.match(adminLayout, /collapsedWidthClass="lg:w-\[72px\]"/);
   assert.match(employeeLayout, /collapsedWidthClass="lg:w-\[72px\]"/);
-  assert.match(employeeLayout, /expandedWidthClass="lg:w-\[240px\]"/);
+  assert.match(employeeLayout, /expandedWidthClass="lg:w-\[252px\]"/);
   assert.doesNotMatch(shell, /100vw/);
   assert.doesNotMatch(adminLayout, /100vw/);
   assert.doesNotMatch(employeeLayout, /100vw/);

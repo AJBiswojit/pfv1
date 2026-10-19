@@ -15,6 +15,10 @@ export const resolveEmployeeLocation = (employee) => {
     preferWarehouse ? location.type === "WAREHOUSE" : location.type === "STORE"
   );
   const location = match || locations[0] || FALLBACK_LOCATION;
+  /* Only name a floor the profile actually records. `getStoreLabel("")`
+     returns the placeholder "Unassigned floor", which used to be spliced
+     into the caption as "assigned floor Unassigned floor". */
+  const floor = employee?.store ? ` · ${getStoreLabel(employee.store)}` : "";
   return {
     locationId: location.id,
     locationName: location.name,
@@ -22,8 +26,8 @@ export const resolveEmployeeLocation = (employee) => {
     assignedFloor: getStoreLabel(employee?.store),
     demo: Boolean(location.demo) || !match,
     caption: match
-      ? `${location.name} · assigned floor ${getStoreLabel(employee?.store)} · demo, not GPS`
-      : `${FALLBACK_LOCATION.name} · assigned floor ${getStoreLabel(employee?.store)} · demo fallback, not GPS`,
+      ? `${location.name}${floor} · demo, not GPS`
+      : `${FALLBACK_LOCATION.name}${floor} · demo fallback, not GPS`,
   };
 };
 

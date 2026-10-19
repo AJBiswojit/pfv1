@@ -21,8 +21,8 @@ export default function DataTable({
   }
 
   return (
-    <div className={cn("overflow-hidden rounded-xl border border-pf-border bg-pf-card shadow-[0_10px_40px_rgb(74_7_24/0.05)]", className)}>
-      <div className="hidden overflow-x-auto md:block">
+    <div className={cn("min-w-0 overflow-hidden rounded-xl border border-pf-border bg-pf-card shadow-[0_10px_40px_rgb(74_7_24/0.05)]", className)}>
+      <div className="hidden min-w-0 overflow-x-auto md:block">
         <table className="min-w-full text-left">
           <thead className="border-b border-pf-border bg-pf-ivory">
             <tr>

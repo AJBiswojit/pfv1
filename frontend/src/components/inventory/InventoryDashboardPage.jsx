@@ -206,7 +206,11 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
   return (
     <Page
       eyebrow={portal === "employee" ? "Retail operations / Inventory" : "Business / Inventory"}
-      title="Inventory Dashboard"
+      title={
+        <>
+          Inventory <span className="italic text-pf-burgundy">ledger.</span>
+        </>
+      }
       description={employeeWarehouseOnly
         ? "Warehouse stock, receiving and transfer handling. Store-only details remain outside this work queue."
         : availabilityOnly
@@ -385,21 +389,18 @@ export default function InventoryDashboardPage({ portal = "admin" }) {
             { id: "location", label: "Location", render: (row) => <div><p>{row.location?.name || "—"}</p><p className="mt-0.5 max-w-48 text-[10px] text-pf-muted">{row.placementLabel || "Placement not assigned"}</p></div> },
             { id: "onHand", label: "On hand", render: (row) => row.quantity.onHand },
             { id: "available", label: "Available", render: (row) => <strong>{row.quantity.available}</strong> },
-            { id: "reserved", label: "Reserved", render: (row) => row.quantity.reserved },
-            { id: "sold", label: "Sold", render: (row) => row.quantity.sold },
-            { id: "returned", label: "Returned", render: (row) => row.quantity.returned },
-            { id: "damaged", label: "Damaged", render: (row) => row.quantity.damaged },
-            { id: "threshold", label: "Threshold", render: (row) => row.lowStockThreshold },
+            { id: "reserved", label: "Reserved", render: (row) => <span className="tabular-nums">{row.quantity.reserved}</span> },
+            { id: "threshold", label: "Low at", render: (row) => <span className="tabular-nums">{row.lowStockThreshold}</span> },
             { id: "status", label: "Status", render: (row) => <InventoryStatusBadge status={row.status} /> },
             { id: "updated", label: "Last updated", render: (row) => <span className="whitespace-nowrap text-[11px] text-pf-muted">{formatEmployeeDateTime(row.updatedAt)}</span> },
             {
               id: "actions",
               label: "Actions",
               render: (row) => (
-                <div className="flex flex-col items-end gap-1 sm:items-start">
-                  {can(PERMISSIONS.INVENTORY_RECEIVE) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`}>Receive</Link> : null}
-                  {can(PERMISSIONS.INVENTORY_ADJUST) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/adjust?inventoryId=${encodeURIComponent(row.id)}`}>Adjust</Link> : null}
-                  {can(PERMISSIONS.INVENTORY_TRANSFER) ? <Link className="text-[11px] text-pf-gold-text hover:text-pf-burgundy" to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`}>Transfer</Link> : null}
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 whitespace-nowrap">
+                  {can(PERMISSIONS.INVENTORY_RECEIVE) ? <Link className="font-ui text-[11.5px] font-medium text-pf-gold-text underline-offset-2 hover:text-pf-burgundy hover:underline" to={`${root}/receive?productId=${encodeURIComponent(row.productId)}&locationId=${encodeURIComponent(row.locationId)}`}>Receive</Link> : null}
+                  {can(PERMISSIONS.INVENTORY_ADJUST) ? <Link className="font-ui text-[11.5px] font-medium text-pf-gold-text underline-offset-2 hover:text-pf-burgundy hover:underline" to={`${root}/adjust?inventoryId=${encodeURIComponent(row.id)}`}>Adjust</Link> : null}
+                  {can(PERMISSIONS.INVENTORY_TRANSFER) ? <Link className="font-ui text-[11.5px] font-medium text-pf-gold-text underline-offset-2 hover:text-pf-burgundy hover:underline" to={`${root}/transfers?inventoryId=${encodeURIComponent(row.id)}`}>Transfer</Link> : null}
                 </div>
               ),
             },

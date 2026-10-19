@@ -1,0 +1,6 @@
+# Phase 3 verification captures are workspace evidence, not source:
+# ~40 MB of JPEG/PNG screenshots plus per-run console dumps. Keep them out
+# of Git; the Markdown report and the JSON measurements remain tracked.
+*.jpg
+*.png
+*/console.json

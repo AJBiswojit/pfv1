@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -25,6 +25,13 @@ import RailTooltip from "./RailTooltip";
  *
  * `collapsed` is a desktop-only rail. Below `lg` the drawer always shows
  * full labels regardless of the persisted preference.
+ *
+ * SCROLLING (Phase 3): the `<nav>` is the ONE scroll owner in the rail and
+ * carries `.pf-scroll .pf-scroll--dark` (slim champagne thumb on a
+ * transparent track, strengthened on hover/focus). The identity block and
+ * the brand footer are flex children that never scroll, so they cannot
+ * overlap the navigation; the active destination is scrolled into view
+ * whenever the route changes.
  */
 export default function PortalSidebar({
   navId,
@@ -41,6 +48,7 @@ export default function PortalSidebar({
 }) {
   const location = useLocation();
   const pathname = location?.pathname ?? "";
+  const navRef = useRef(null);
 
   /* The navigation data contract: an array of groups, each with an items
      array. Both portals satisfy it, but a portal may hand over an empty or
@@ -98,6 +106,36 @@ export default function PortalSidebar({
     });
   }, [activeGroupId, pathname]);
 
+  /* Keep the active destination visible in the rail — deep links and lower
+     groups must never leave the current page hidden below the fold. */
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || typeof nav.querySelector !== "function") return undefined;
+    const reveal = () => {
+      try {
+        const active = nav.querySelector('[aria-current="page"]');
+        if (!active || typeof active.getBoundingClientRect !== "function") return;
+        const navBox = nav.getBoundingClientRect();
+        const itemBox = active.getBoundingClientRect();
+        /* Scroll ONLY the rail — never the page behind it. */
+        if (itemBox.top < navBox.top) {
+          nav.scrollTop -= navBox.top - itemBox.top + 8;
+        } else if (itemBox.bottom > navBox.bottom) {
+          nav.scrollTop += itemBox.bottom - navBox.bottom + 8;
+        }
+      } catch {
+        /* measurement unavailable in non-visual renderers */
+      }
+    };
+    const frame =
+      typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame(reveal)
+        : null;
+    return () => {
+      if (frame && typeof window !== "undefined") window.cancelAnimationFrame(frame);
+    };
+  }, [pathname, activeId, expanded, collapsed]);
+
   const toggleGroup = (groupId) => {
     setExpanded((current) => {
       const next = new Set(current);
@@ -118,91 +156,101 @@ export default function PortalSidebar({
   const collapseLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-gradient-to-b from-pf-burgundy via-pf-burgundy to-pf-wine">
+    <div className="flex h-full min-h-0 flex-col bg-pf-burgundy">
       {/* ------------------------------------------------ identity */}
-      <div className={cn("px-4 py-4", collapsed && "lg:px-2")}>
-        <div className={cn("flex items-center gap-3", collapsed && "lg:flex-col lg:gap-2")}>
+      <div className={cn("relative px-4 pb-3.5 pt-4", collapsed && "lg:px-2")}>
+        <div className={cn("flex items-center gap-3", collapsed && "lg:flex-col lg:gap-0")}>
           <RailTooltip label={`${displayName} · ${displayRole}`} enabled={collapsed} className="inline-flex shrink-0">
             {identity?.avatar ? (
               <img
                 src={identity.avatar}
                 alt=""
-                className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-pf-gold/30"
+                className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-pf-gold/40"
               />
             ) : (
               <span
                 aria-hidden="true"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pf-gold/15 font-display text-sm font-light text-pf-gold ring-1 ring-pf-gold/25"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-pf-gold/30 bg-pf-gold/12 font-display text-[15px] leading-none text-pf-gold"
               >
                 {displayInitials}
               </span>
             )}
           </RailTooltip>
           <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-            <p className="truncate font-display text-[18px] font-medium leading-tight text-pf-ivory">
+            <p className="truncate font-display text-[17px] leading-tight text-pf-ivory">
               {displayName}
             </p>
-            <p className="mt-0.5 font-ui text-[11px] font-semibold uppercase tracking-[.16em] text-pf-gold">
+            <p className="mt-1 truncate font-ui text-[10px] font-semibold uppercase tracking-[.2em] text-pf-gold/90">
               {displayRole}
             </p>
           </div>
+          {typeof onToggleCollapsed === "function" ? (
+            <RailTooltip label={collapseLabel} enabled={!collapsed}>
+              <button
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-label={collapseLabel}
+                aria-expanded={!collapsed}
+                className={cn(
+                  "hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-pf-ivory/12 text-pf-ivory/55 transition-colors duration-200 hover:border-pf-gold/45 hover:text-pf-ivory focus-visible:outline-pf-gold lg:flex",
+                  collapsed && "lg:mt-3"
+                )}
+              >
+                {collapsed ? (
+                  <PanelLeftOpen size={15} strokeWidth={1.5} aria-hidden="true" />
+                ) : (
+                  <PanelLeftClose size={15} strokeWidth={1.5} aria-hidden="true" />
+                )}
+              </button>
+            </RailTooltip>
+          ) : null}
         </div>
-        {typeof onToggleCollapsed === "function" ? (
-          <RailTooltip label={collapseLabel} enabled={collapsed}>
-            <button
-              type="button"
-              onClick={onToggleCollapsed}
-              aria-label={collapseLabel}
-              aria-expanded={!collapsed}
-              className={cn(
-                "mt-3 hidden w-full items-center gap-2 rounded-lg border border-pf-ivory/20 px-2.5 py-2 text-pf-ivory/75 transition-colors duration-200 hover:border-pf-gold/50 hover:text-pf-ivory lg:flex",
-                collapsed && "lg:justify-center lg:px-0"
-              )}
-            >
-              {collapsed ? (
-                <PanelLeftOpen size={14} strokeWidth={1.5} aria-hidden="true" />
-              ) : (
-                <PanelLeftClose size={14} strokeWidth={1.5} aria-hidden="true" />
-              )}
-              <span className={cn("font-ui text-[11px] font-semibold uppercase tracking-[.14em]", collapsed && "lg:sr-only")}>
-                {collapsed ? "Expand" : "Collapse"}
-              </span>
-            </button>
-          </RailTooltip>
-        ) : null}
       </div>
+
+      <span aria-hidden="true" className="mx-4 h-px shrink-0 bg-pf-ivory/10" />
 
       {/* ------------------------------------------------ navigation */}
       <nav
         id={navId}
+        ref={navRef}
         aria-label={ariaLabel}
-        className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-3", collapsed && "lg:px-1")}
+        tabIndex={0}
+        className={cn(
+          "pf-scroll pf-sidebar-scroll min-h-0 flex-1 px-2.5 pb-5 pt-3",
+          collapsed && "lg:px-1.5"
+        )}
       >
-        {navGroups.map((group) => {
+        {navGroups.map((group, groupIndex) => {
           const GroupIcon = resolveIcon(group.icon);
           const open = isOpen(group.id);
           const showItems = open || collapsed;
           return (
-            <section key={group.id} className="mb-3 last:mb-0">
-              <h2 className={cn("px-2", collapsed && "lg:px-0")}>
+            <section
+              key={group.id}
+              className={cn(
+                "pb-2.5",
+                groupIndex > 0 && "mt-1 border-t border-pf-ivory/[0.07] pt-2.5 last:pb-0"
+              )}
+            >
+              <h2 className={cn("px-1.5", collapsed && "lg:px-0")}>
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
                   aria-expanded={open}
                   aria-controls={`navgroup-${group.id}`}
                   className={cn(
-                    "group/heading flex w-full items-center justify-between gap-2 px-1 py-2 text-left",
+                    "group/heading flex w-full items-center justify-between gap-2 rounded-sm py-1.5 text-left focus-visible:outline-pf-gold",
                     collapsed && "lg:hidden"
                   )}
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <GroupIcon
-                      size={13}
-                      strokeWidth={1.5}
+                      size={12}
+                      strokeWidth={1.6}
                       aria-hidden="true"
                       className="shrink-0 text-pf-gold/70"
                     />
-                    <span className="truncate font-ui text-[11px] font-semibold uppercase tracking-[.18em] text-pf-ivory/70 group-hover/heading:text-pf-ivory">
+                    <span className="truncate font-ui text-[10px] font-semibold uppercase tracking-[.14em] text-pf-ivory/60 transition-colors group-hover/heading:text-pf-ivory/85">
                       {group.label}
                     </span>
                   </span>
@@ -216,11 +264,7 @@ export default function PortalSidebar({
                     )}
                     aria-hidden="true"
                   >
-                    <GroupIcon
-                      size={13}
-                      strokeWidth={1.5}
-                      className="shrink-0 text-pf-gold/70"
-                    />
+                    <GroupIcon size={13} strokeWidth={1.6} className="shrink-0 text-pf-gold/70" />
                   </span>
                 </RailTooltip>
               </h2>
@@ -228,7 +272,7 @@ export default function PortalSidebar({
               {showItems ? (
                 <ul
                   id={`navgroup-${group.id}`}
-                  className={cn("mt-0.5 space-y-0.5", !open && collapsed && "hidden lg:block")}
+                  className={cn("mt-1 space-y-0.5", !open && collapsed && "hidden lg:block")}
                 >
                   {group.items.map((item) => (
                     <GroupItems
@@ -252,11 +296,17 @@ export default function PortalSidebar({
           Brand signature only. Profile and Sign Out are intentionally
           ABSENT from the sidebar (approved design lock) — both live in
           the header account menu. */}
-      <div className={cn("border-t border-pf-ivory/10 px-4 py-4", collapsed && "lg:hidden")}>
-        <p className="font-display text-[13px] uppercase tracking-[0.22em] text-pf-ivory/70">
+      <div
+        className={cn(
+          "relative shrink-0 bg-pf-wine px-4 py-3.5",
+          "before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-pf-gold/45 before:via-pf-gold/20 before:to-transparent",
+          collapsed && "lg:hidden"
+        )}
+      >
+        <p className="font-display text-[12px] uppercase leading-tight tracking-[0.22em] text-pf-ivory/75">
           Pratikshya Fashion
         </p>
-        <p className="mt-1 font-ui text-[11px] uppercase tracking-[0.18em] text-pf-gold">
+        <p className="mt-1 font-ui text-[10px] uppercase tracking-[0.16em] text-pf-gold/80">
           The house of timeless fashion
         </p>
       </div>
@@ -269,10 +319,10 @@ function Chevron({ open, iconResolver }) {
   return (
     <ChevronDown
       aria-hidden="true"
-      size={14}
-      strokeWidth={1.5}
+      size={13}
+      strokeWidth={1.6}
       className={cn(
-        "shrink-0 text-pf-ivory/30 transition-transform duration-200",
+        "shrink-0 text-pf-ivory/35 transition-transform duration-200",
         open ? "rotate-180" : "rotate-0"
       )}
     />
@@ -293,25 +343,35 @@ function GroupItems({ item, activeId, badge, onNavigate, iconResolver, collapsed
           title={collapsed ? undefined : item.label}
           aria-current={isActive ? "page" : undefined}
           className={cn(
-            "relative flex min-w-0 items-center gap-3 rounded-lg border-l-2 py-2.5 pl-3 pr-2 font-ui text-[13.5px] font-medium leading-snug transition-colors duration-200",
-            collapsed && "lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5",
+            "group/item relative flex min-w-0 items-center gap-2.5 rounded-md py-2 pl-2.5 pr-2 font-ui text-[13px] font-medium leading-snug transition-colors duration-150",
+            collapsed && "lg:justify-center lg:gap-0 lg:px-0 lg:py-2",
             isActive
-              ? "border-pf-gold bg-pf-wine text-pf-ivory"
-              : "border-transparent text-pf-ivory/75 hover:bg-pf-ivory/8 hover:text-pf-ivory"
+              ? "bg-pf-wine-soft text-pf-ivory shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]"
+              : "text-pf-ivory/70 hover:bg-pf-ivory/[0.06] hover:text-pf-ivory"
           )}
         >
-          <Icon
-            size={17}
-            strokeWidth={isActive ? 2 : 1.5}
+          <span
             aria-hidden="true"
-            className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/80")}
+            className={cn(
+              "absolute inset-y-1.5 left-0 w-[2px] rounded-full transition-opacity",
+              isActive ? "bg-pf-gold opacity-100" : "opacity-0"
+            )}
+          />
+          <Icon
+            size={16}
+            strokeWidth={1.6}
+            aria-hidden="true"
+            className={cn(
+              "shrink-0 transition-colors",
+              isActive ? "text-pf-gold" : "text-pf-gold/65 group-hover/item:text-pf-gold/90"
+            )}
           />
           <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{item.label}</span>
           {badge > 0 ? (
             <>
               <span
                 className={cn(
-                  "shrink-0 rounded-full bg-pf-gold/20 px-1.5 py-0.5 font-ui text-[9px] font-medium leading-none text-pf-gold",
+                  "shrink-0 rounded-full bg-pf-gold/18 px-1.5 py-[3px] font-ui text-[10px] font-semibold leading-none tabular-nums text-pf-gold",
                   collapsed && "lg:hidden"
                 )}
               >
@@ -331,10 +391,17 @@ function GroupItems({ item, activeId, badge, onNavigate, iconResolver, collapsed
       {hasChildren ? (
         <ul
           className={cn(
-            "mt-0.5 space-y-0.5 border-l border-pf-ivory/10 pl-4",
-            collapsed && "lg:border-l-0 lg:pl-0"
+            "relative mt-0.5 space-y-0.5 pl-[22px]",
+            collapsed && "lg:pl-0"
           )}
         >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute bottom-1 left-[13px] top-1 w-px bg-pf-ivory/10",
+              collapsed && "lg:hidden"
+            )}
+          />
           {item.children.map((child) => (
             <li key={child.id}>
               <ChildLink
@@ -363,18 +430,21 @@ function ChildLink({ child, activeId, onNavigate, iconResolver, collapsed }) {
         title={collapsed ? undefined : child.label}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "relative flex min-w-0 items-center gap-2.5 rounded-lg border-l-2 py-2 pl-3 pr-2 font-ui text-[12.5px] font-medium leading-snug transition-colors duration-200",
+          "group/child relative flex min-w-0 items-center gap-2 rounded-md py-[7px] pl-2.5 pr-2 font-ui text-[12.5px] leading-snug transition-colors duration-150",
           collapsed && "lg:justify-center lg:gap-0 lg:px-0 lg:py-2",
           isActive
-            ? "border-pf-gold bg-pf-wine text-pf-ivory"
-            : "border-transparent text-pf-ivory/70 hover:bg-pf-ivory/8 hover:text-pf-ivory"
+            ? "bg-pf-wine-soft font-medium text-pf-ivory"
+            : "text-pf-ivory/60 hover:bg-pf-ivory/[0.05] hover:text-pf-ivory/90"
         )}
       >
         <Icon
-          size={15}
-          strokeWidth={isActive ? 2 : 1.5}
+          size={14}
+          strokeWidth={1.6}
           aria-hidden="true"
-          className={cn("shrink-0", isActive ? "text-pf-gold" : "text-pf-gold/75")}
+          className={cn(
+            "shrink-0",
+            isActive ? "text-pf-gold" : "text-pf-gold/55 group-hover/child:text-pf-gold/85"
+          )}
         />
         <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{child.label}</span>
       </Link>

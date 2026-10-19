@@ -9,6 +9,7 @@ import StaffDeskErrorBoundary from "../components/navigation/StaffDeskErrorBound
 import usePortalDrawer from "../components/navigation/usePortalDrawer";
 import usePortalSidebarCollapse from "../components/navigation/usePortalSidebarCollapse";
 import { useAdminAuth } from "../context/AdminAuthContext";
+import { useProducts } from "../hooks/useProducts";
 
 /**
  * The Admin shell.
@@ -24,6 +25,13 @@ export default function AdminLayout() {
   const { isSuperAdmin } = useAdminAuth();
   const { navOpen, toggleNav, closeNav, triggerRef, drawerRef } = usePortalDrawer();
   const { collapsed, toggleCollapsed } = usePortalSidebarCollapse("admin");
+
+  /* Warm the shared catalogue register once per admin session. Order,
+     inventory and analytics surfaces join their rows to this cache for
+     product names, SKUs and taxonomy; without it a desk opened before the
+     Products page showed "Unassigned" rows. The hook is single-flight, so
+     mounting it here costs one request at most. */
+  useProducts();
 
   useEffect(() => {
     const previous = document.title;
@@ -44,7 +52,7 @@ export default function AdminLayout() {
         navOpen={navOpen}
         onCloseNav={closeNav}
         drawerRef={drawerRef}
-        expandedWidthClass="lg:w-[248px]"
+        expandedWidthClass="lg:w-[260px]"
         collapsedWidthClass="lg:w-[72px]"
         overlayClassName="fixed inset-0 z-30 bg-ink/40 backdrop-blur-[1px] lg:hidden"
         asideZClass="z-40"

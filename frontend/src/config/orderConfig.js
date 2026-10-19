@@ -411,6 +411,13 @@ export const ORDER_PAYMENT_STATUS = {
   REFUND_INITIATED: "REFUND_PENDING",
 };
 
+/* Canonical, de-duplicated list of payable states. `ORDER_PAYMENT_STATUS`
+   keeps legacy aliases (PENDING → PENDING_PAYMENT, …) for compatibility, so
+   `Object.values()` yields the same string more than once; filtering and
+   `<option>` rendering must use this set instead, or React logs a
+   duplicate-key error for every alias. */
+export const ORDER_PAYMENT_STATUS_VALUES = [...new Set(Object.values(ORDER_PAYMENT_STATUS))];
+
 export const PAYMENT_TRANSACTION_STATUS = {
   CREATED: "CREATED",
   AUTHORIZED: "AUTHORIZED",

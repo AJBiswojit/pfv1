@@ -171,6 +171,18 @@ export const loadEmployees = () => {
       const stored = JSON.parse(localStorage.getItem("pratikshya_employee_auth") || "null");
       if (stored && typeof stored === "object" && stored.id) {
         const exists = serverEmployees.some((e) => String(e.id) === String(stored.id) || e.employeeId === stored.employeeId);
+        if (exists) {
+          /* The signed-in session snapshot is authoritative for this
+             employee's identity. A roster row seeded before the auth context
+             normalised the payload can carry the user UUID where the employee
+             code belongs, which makes month/leave lookups miss and every
+             dashboard KPI read zero until a reload. Sync the code only — no
+             role, department or permission is touched here. */
+          const row = serverEmployees.find((e) => String(e.id) === String(stored.id));
+          if (row && stored.employeeId && row.employeeId !== stored.employeeId) {
+            row.employeeId = stored.employeeId;
+          }
+        }
         if (!exists) {
           serverEmployees = [{
             ...stored,

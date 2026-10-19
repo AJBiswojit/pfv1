@@ -1,0 +1,29 @@
+{
+  "total": 4,
+  "perPage": [
+    {
+      "path": "/super-admin/orders",
+      "count": 1
+    },
+    {
+      "path": "/super-admin/orders",
+      "count": 1
+    },
+    {
+      "path": "/super-admin/settings",
+      "count": 1
+    }
+  ],
+  "groups": [
+    {
+      "text": "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+      "type": "error",
+      "count": 4,
+      "pages": [
+        "/login",
+        "/super-admin/orders",
+        "/super-admin/settings"
+      ]
+    }
+  ]
+}

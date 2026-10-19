@@ -1,0 +1,57 @@
+{
+  "nav": {
+    "id": "admin-navigation",
+    "clientHeight": 548,
+    "scrollHeight": 1397,
+    "scrollTop": 849,
+    "overflowY": "auto",
+    "overflowX": "hidden",
+    "scrollbarWidth": "thin",
+    "scrollbarColor": "rgba(214, 174, 112, 0.38) rgba(0, 0, 0, 0)",
+    "maskImage": "linear-gradient(rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 12px), rgba(0, 0, 0, 0) 100%)",
+    "scrollPaddingBlock": "10px",
+    "focusOutline": "rgb(53, 26, 27) 3px"
+  },
+  "railScrollerCount": 1,
+  "railScrollerIds": [
+    "admin-navigation"
+  ],
+  "pageScroll": {
+    "bodyOverflowY": "auto",
+    "documentScrollable": true,
+    "horizontal": false
+  },
+  "footer": {
+    "top": 691,
+    "bottom": 768,
+    "navBottom": 691,
+    "overlapsNav": false,
+    "insideViewport": true
+  },
+  "firstHeading": {
+    "text": "Overview",
+    "top": 161,
+    "navTop": 143,
+    "fullyInside": true,
+    "hitTarget": "Overview"
+  },
+  "deepLink": {
+    "label": "Settings",
+    "top": 638,
+    "bottom": 672,
+    "withinNav": true,
+    "focused": true
+  },
+  "focusRing": {
+    "outlineColor": "rgba(251, 244, 235, 0.7)",
+    "outlineWidth": "2px",
+    "outlineOffset": "2px",
+    "boxShadow": "rgba(214, 174, 112, 0.35) 0px 0px 0px 4px"
+  },
+  "focusRingSettled": {
+    "outlineColor": "rgb(214, 174, 112)",
+    "outlineWidth": "2px",
+    "outlineOffset": "2px",
+    "boxShadow": "rgba(214, 174, 112, 0.35) 0px 0px 0px 4px"
+  }
+}
