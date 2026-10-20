@@ -36,6 +36,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, Optional
+from urllib.parse import unquote as _url_unquote
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
@@ -114,12 +115,14 @@ def redact(url: str) -> str:
 
 
 def dsn_for(parts: Dict[str, str], database: str) -> str:
+    # libpq keyword-value DSNs do not interpret percent-encoding, so the
+    # password must be decoded here before being embedded in the DSN string.
     dsn = (
         f"host={parts['host']} port={parts['port']} "
         f"dbname={database} user={parts['user']}"
     )
     if parts["password"]:
-        dsn += f" password={parts['password']}"
+        dsn += f" password={_url_unquote(parts['password'])}"
     return dsn
 
 
