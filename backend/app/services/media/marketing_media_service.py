@@ -38,6 +38,18 @@ from app.storage import build_media_url, normalize_object_key
 from app.storage.base import InvalidObjectKeyError
 
 
+RETIRED_PLACEMENTS = frozenset({
+    "SAREE_SECTION", "BRIDAL_SECTION", "JEWELLERY_SECTION",
+    "PROMOTION", "GROOM_SECTION", "KIDS_SECTION",
+})
+RETIRED_PLACEMENT_MESSAGE = "This placement is retired. Homepage sections are managed under Homepage sections."
+
+
+def _reject_retired_write(placement: str) -> None:
+    if placement in RETIRED_PLACEMENTS:
+        raise BusinessLogicException(RETIRED_PLACEMENT_MESSAGE)
+
+
 def _validate_placement(placement: str) -> str:
     value = str(placement or "").strip().upper()
     if not value:
@@ -47,6 +59,17 @@ def _validate_placement(placement: str) -> str:
             f"Placement '{placement}' is not recognised. Allowed: {', '.join(MARKETING_PLACEMENT_VALUES)}"
         )
     return value
+
+
+def _validate_hero_mobile_asset(asset) -> None:
+    """Limit optional hero variants to the registered media namespaces."""
+    key = str(asset.object_key or "")
+    namespace_allowed = (
+        (asset.scope == "product" and key.startswith("products/"))
+        or (asset.scope == "marketing" and (key.startswith("hero/") or key.startswith("marketing/")))
+    )
+    if not namespace_allowed:
+        raise BusinessLogicException("Mobile image must be a registered image in an allowed media namespace.")
 
 
 def _validate_object_key(object_key: str) -> str:
@@ -74,6 +97,8 @@ def _to_response_dict(row: MarketingMediaModel) -> dict:
         "object_key": row.object_key,
         "mediaAssetId": row.media_asset_id,
         "media_asset_id": row.media_asset_id,
+        "mobileMediaAssetId": row.mobile_media_asset_id,
+        "mobile_media_asset_id": row.mobile_media_asset_id,
         "title": row.title,
         "subtitle": row.subtitle,
         "ctaLabel": row.cta_label,
@@ -138,6 +163,7 @@ class MarketingMediaService:
         self, payload: MarketingMediaCreate, *, actor_id: Optional[str] = None
     ) -> MarketingMediaModel:
         placement = _validate_placement(payload.placement)
+        _reject_retired_write(placement)
         object_key = _validate_object_key(payload.object_key)
 
         if placement == "HOME_HERO":
@@ -145,10 +171,20 @@ class MarketingMediaService:
             asset = await registered_asset(self.db, payload.media_asset_id, object_key)
             payload.media_asset_id = asset.id
 
+        mobile_asset_id = None
+        if payload.mobile_media_asset_id is not None and placement != HOME_HERO_PLACEMENT:
+            raise BusinessLogicException("Mobile image variants are supported only for HOME_HERO.")
+        if payload.mobile_media_asset_id is not None:
+            from app.services.media.homepage_content_service import registered_asset
+            mobile_asset = await registered_asset(self.db, payload.mobile_media_asset_id)
+            _validate_hero_mobile_asset(mobile_asset)
+            mobile_asset_id = mobile_asset.id
+
         row = MarketingMediaModel(
             placement=placement,
             object_key=object_key,
             media_asset_id=payload.media_asset_id,
+            mobile_media_asset_id=mobile_asset_id,
             title=payload.title,
             subtitle=payload.subtitle,
             cta_label=payload.cta_label,
@@ -188,6 +224,24 @@ class MarketingMediaService:
         row = await self.get_by_id(media_id)
 
         target_placement = _validate_placement(payload.placement) if payload.placement is not None else row.placement
+        deactivation_only = (payload.is_active is False and all(
+            getattr(payload, field) is None for field in (
+                "placement", "object_key", "media_asset_id", "mobile_media_asset_id", "title", "subtitle",
+                "cta_label", "cta_href", "alt_text", "sort_order",
+            )
+        ))
+        if target_placement in RETIRED_PLACEMENTS and not (
+            row.placement in RETIRED_PLACEMENTS and deactivation_only
+        ):
+            _reject_retired_write(target_placement)
+        if row.placement in RETIRED_PLACEMENTS and not deactivation_only:
+            _reject_retired_write(row.placement)
+        if payload.mobile_media_asset_id is not None and target_placement != HOME_HERO_PLACEMENT:
+            raise BusinessLogicException("Mobile image variants are supported only for HOME_HERO.")
+        if payload.mobile_media_asset_id is not None:
+            from app.services.media.homepage_content_service import registered_asset
+            mobile_asset = await registered_asset(self.db, payload.mobile_media_asset_id)
+            _validate_hero_mobile_asset(mobile_asset)
         changed_reference = (row.placement != "HOME_HERO" or
             (payload.object_key is not None and payload.object_key != row.object_key) or
             (payload.media_asset_id is not None and payload.media_asset_id != row.media_asset_id))
@@ -204,6 +258,8 @@ class MarketingMediaService:
             row.object_key = _validate_object_key(payload.object_key)
         if payload.media_asset_id is not None:
             row.media_asset_id = payload.media_asset_id
+        if "mobile_media_asset_id" in payload.model_fields_set:
+            row.mobile_media_asset_id = payload.mobile_media_asset_id
         if payload.title is not None:
             row.title = payload.title
         if payload.subtitle is not None:
@@ -253,6 +309,7 @@ class MarketingMediaService:
         self, placement: str, items: List[dict], *, actor_id: Optional[str] = None
     ) -> List[MarketingMediaModel]:
         placement = _validate_placement(placement)
+        _reject_retired_write(placement)
         # items: [{id, sort_order}, ...]
         # Validate all ids belong to placement
         ids = [str(i.get("id") or i.get("ID") or "") for i in items]

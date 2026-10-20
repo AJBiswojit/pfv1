@@ -33,14 +33,14 @@ export function employeeHeroAccess(actor) {
     edit: access.write && access.mediaAssign, delete: access.write && access.mediaDelete };
 }
 
-export async function employeeHeroRequest(actor, action, { id, draft, asset, ids } = {}) {
+export async function employeeHeroRequest(actor, action, { id, draft, asset, mobileAsset, mobileAssetTouched = false, ids } = {}) {
   const access = employeeHeroAccess(actor);
   const permission = action === 'read' ? 'view' : action === 'create' ? 'create' : action === 'delete' ? 'delete' : 'edit';
   if (!actor?.employee || actor.admin || !access[permission]) return { ok: false, status: 403, error: 'Employee hero permission denied.' };
   if (action === 'read') return homepageRequest(actor, '/hero/items');
   if (action === 'reorder') return homepageRequest(actor, '/hero/reorder', 'put', { itemIds: ids });
   if (action === 'delete') return homepageRequest(actor, `/hero/items/${encodeURIComponent(id)}`, 'delete');
-  const payload = { ...draft, ...(asset ? { mediaAssetId: asset.id } : {}) };
+  const payload = { ...draft, ...(asset ? { mediaAssetId: asset.id } : {}), ...(mobileAssetTouched ? { mobileMediaAssetId: mobileAsset?.id ?? null } : {}) };
   const result = await homepageRequest(actor, action === 'create' ? '/hero/items' : `/hero/items/${encodeURIComponent(id)}`, action === 'create' ? 'post' : 'patch', payload);
   return result.ok ? { ok: true, item: result } : result;
 }

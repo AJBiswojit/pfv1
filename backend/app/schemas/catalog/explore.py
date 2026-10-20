@@ -4,7 +4,10 @@ Explore Pydantic schemas.
 Covers:
   GET /explore        — paginated explore stream with interleaved promo/editorial cards
   GET /explore/offers — offer strip inside the stream
-  GET /home           — homepage assembly
+  GET /home           — homepage assembly (hero slides from active HOME_HERO
+                         marketing-media rows; other authored sections from
+                         homepageContent). HeroSlide exposes primary image,
+                         altText and optional mobileImage URLs.
 
 Envelope convention mirrors the rest of the application:
   { ok: true, ... }

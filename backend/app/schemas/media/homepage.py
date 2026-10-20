@@ -126,11 +126,13 @@ class HeroCopyDTO(StrictDTO):
 
 class HeroCreate(HeroCopyDTO):
     media_asset_id: str = Field(..., alias="mediaAssetId", min_length=1, max_length=36)
+    mobile_media_asset_id: Optional[str] = Field(None, alias="mobileMediaAssetId", min_length=1, max_length=36)
     is_active: bool = Field(False, alias="isActive")
 
 
 class HeroPatch(HeroCopyDTO):
     media_asset_id: Optional[str] = Field(None, alias="mediaAssetId", min_length=1, max_length=36)
+    mobile_media_asset_id: Optional[str] = Field(None, alias="mobileMediaAssetId", min_length=1, max_length=36)
     is_active: Optional[bool] = Field(None, alias="isActive")
 
 

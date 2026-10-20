@@ -31,6 +31,8 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(entryDraft());
   const [asset, setAsset] = useState(null);
+  const [mobileAsset, setMobileAsset] = useState(null);
+  const [mobileAssetTouched, setMobileAssetTouched] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
@@ -62,11 +64,11 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
   }, [admin, placement, access.view]);
   useEffect(() => { load(); }, [load]);
 
-  const resetForm = () => { setEditing(null); setAsset(null); setDraft(entryDraft()); setDirty(false); };
+  const resetForm = () => { setEditing(null); setAsset(null); setMobileAsset(null); setMobileAssetTouched(false); setDraft(entryDraft()); setDirty(false); };
   const discard = () => !dirty || window.confirm('Discard unsaved changes to this entry?');
   const beginEdit = (item = {}) => {
     if (busyRef.current || !discard()) return;
-    setEditing(item); setDraft(entryDraft(item)); setAsset(null); setDirty(false); setMessage(null);
+    setEditing(item); setDraft(entryDraft(item)); setAsset(null); setMobileAsset(null); setMobileAssetTouched(false); setDirty(false); setMessage(null);
   };
   const run = async (operation) => {
     if (busyRef.current) return;
@@ -89,7 +91,7 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
   const handleSave = (event) => {
     event.preventDefault();
     if (!(editing?.id ? access.edit : access.create)) return;
-    run(() => saveHomepageEntry(admin, { placement, id: editing?.id, draft, asset, sortOrder: Math.max(-1, ...state.items.map((item) => Number(item.sortOrder) || 0)) + 1 }));
+    run(() => saveHomepageEntry(admin, { placement, id: editing?.id, draft, asset, mobileAsset, mobileAssetTouched, sortOrder: Math.max(-1, ...state.items.map((item) => Number(item.sortOrder) || 0)) + 1 }));
   };
   const handleMove = (index, direction) => {
     if (!access.edit || dirty) return;
@@ -144,6 +146,11 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
       <h3 className="font-display text-xl">{editing.id ? 'Edit saved entry' : 'New inactive media entry'}</h3>
       <p role="status" className="text-xs">{dirty ? 'Pending — unsaved changes' : 'No pending changes'} · {placement}</p>
       {contentType === 'MEDIA' && <RegisteredMediaPicker admin={admin} value={asset} disabled={busy} onChange={(value) => { setAsset(value); setDirty(true); }} />}
+      {placement === 'HOME_HERO' && contentType === 'MEDIA' && <div className="space-y-2">
+        <p className="text-xs">Mobile image (optional) · current asset: {editing?.mobileMediaAssetId || 'none'}</p>
+        <RegisteredMediaPicker admin={admin} value={mobileAsset} disabled={busy} onChange={(value) => { setMobileAsset(value); setMobileAssetTouched(true); setDirty(true); }} />
+        <button type="button" className={button} disabled={busy || (!mobileAsset && !editing?.mobileMediaAssetId)} onClick={() => { setMobileAsset(null); setMobileAssetTouched(true); setDirty(true); }}>Clear mobile image</button>
+      </div>}
       <fieldset disabled={busy} className="grid gap-3 md:grid-cols-2">
         {fields.map(([key, label]) => <label key={key} className="text-xs">{label}
           <input className="mt-1 block w-full border border-pf-border bg-pf-ivory p-2 text-sm" value={draft[key]} onChange={(e) => { setDraft((old) => ({ ...old, [key]: e.target.value })); setDirty(true); }} />

@@ -5,9 +5,12 @@ The explicit, ordered association between a catalogue product and a registered
 source of truth for NEW product media; legacy product JSON columns stay
 dual-read for catalogue data that predates it.
 
-The table is created by the Alembic revision
-``b6b5dcfb675b_add_media_asset_and_product_media_tables``. PostgreSQL — not
-this class — enforces the referential rules:
+The table is introduced by Alembic revision
+``b6b5dcfb675b_add_media_asset_and_product_media_tables`` and remains the
+write/read association for newly registered product media. Legacy product
+image columns are still dual-read by the product media resolver; this table
+does not migrate or rewrite those values. The database migration installs
+these referential rules (the ORM declarations mirror them):
 
   · ``product_id`` → ``catalog_product.id``   NOT NULL, ON DELETE CASCADE
   · ``media_id``   → ``media_media_asset.id`` NOT NULL, ON DELETE CASCADE
