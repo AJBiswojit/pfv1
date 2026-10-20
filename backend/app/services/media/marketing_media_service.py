@@ -41,6 +41,8 @@ from app.storage.base import InvalidObjectKeyError
 RETIRED_PLACEMENTS = frozenset({
     "SAREE_SECTION", "BRIDAL_SECTION", "JEWELLERY_SECTION",
     "PROMOTION", "GROOM_SECTION", "KIDS_SECTION",
+    "WOMEN_SECTION", "LEHENGA_SECTION", "BANGLES_SECTION",
+    "FESTIVE_SECTION", "NEW_ARRIVALS", "EDITORIAL",
 })
 RETIRED_PLACEMENT_MESSAGE = "This placement is retired. Homepage sections are managed under Homepage sections."
 

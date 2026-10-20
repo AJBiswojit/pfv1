@@ -114,15 +114,25 @@ def redact(url: str) -> str:
     return re.sub(r"(://[^:/@]+):([^@/]+)@", r"\1:***@", url)
 
 
+def _escape_libpq_keyword_value(value: str) -> str:
+    # libpq keyword DSN: single-quote wrap, escape backslash and single-quote
+    # per libpq docs. Percent-decoding already done before this call.
+    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+    return f"'{escaped}'"
+
+
 def dsn_for(parts: Dict[str, str], database: str) -> str:
     # libpq keyword-value DSNs do not interpret percent-encoding, so the
     # password must be decoded here before being embedded in the DSN string.
+    # Passwords with spaces, quotes or backslashes are escaped per libpq
+    # keyword-DSN rules (wrap in single quotes, escape \\ and \').
     dsn = (
         f"host={parts['host']} port={parts['port']} "
         f"dbname={database} user={parts['user']}"
     )
     if parts["password"]:
-        dsn += f" password={_url_unquote(parts['password'])}"
+        decoded = _url_unquote(parts["password"])
+        dsn += f" password={_escape_libpq_keyword_value(decoded)}"
     return dsn
 
 

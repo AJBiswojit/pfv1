@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { readHomepageSection, writeHomepageSection, staffHomepageAccess } from '../../../services/api/homepageApi';
 import { hydrateCatalog } from '../../../services/catalog/catalogStore';
 import RegisteredMediaPicker from './RegisteredMediaPicker';
 import PublishedProductPicker from './PublishedProductPicker';
+import PreviewErrorBoundary from './PreviewErrorBoundary';
+
+const SectionPreview = lazy(() => import('./SectionPreview'));
 
 const fields = ['eyebrow', 'title', 'subtitle', 'ctaLabel', 'ctaHref', 'altText'];
 const empty = () => Object.fromEntries(fields.map((k) => [k, '']));
@@ -21,6 +25,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
   const [draft, setDraft] = useState(empty);
   const [asset, setAsset] = useState(null);
   const [product, setProduct] = useState(null);
+  const [tab, setTab] = useState('edit');
   const locked = useRef(false);
   const alive = useRef(true);
   const reset = () => { setEditing(null); setDraft(empty()); setAsset(null); setProduct(null); setDirty(false); };
@@ -78,6 +83,19 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
   if (!section) return <div>{error ? <p role="alert">{error}</p> : <p role="status">Loading section content…</p>}<button type="button" onClick={reload}>Retry section</button></div>;
   return <div className="space-y-4 border border-pf-border p-4">
     <p role="status">{section.configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · hidden on the storefront until configured and activated.'}</p>
+    <div role="tablist" className="flex gap-2">
+      <button role="tab" aria-selected={tab === 'edit'} type="button" className={button} onClick={() => setTab('edit')}>Edit</button>
+      <button role="tab" aria-selected={tab === 'preview'} type="button" className={button} onClick={() => setTab('preview')}>Preview</button>
+    </div>
+    {tab === 'preview' && (
+      <PreviewErrorBoundary>
+        <Suspense fallback={<p>Loading preview…</p>}>
+          <MemoryRouter>
+            <SectionPreview sectionKey={sectionKey} draft={draft} asset={asset} product={product} slot={slot || allowed[0]?.slotKey} contentType={contentType} section={section} />
+          </MemoryRouter>
+        </Suspense>
+      </PreviewErrorBoundary>
+    )}
     <button type="button" className={button} disabled={busy} onClick={reload}>Reload section and public content</button>
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
     {needsReload && <p>Reload and reconcile before another write; no automatic retry is performed.</p>}

@@ -51,7 +51,7 @@ export default function AdminMarketingMedia() {
           className={`block w-full border-l-2 px-3 py-3 text-left disabled:opacity-50 ${item.id === sectionId ? 'border-pf-gold-deep bg-pf-ivory' : 'border-transparent'}`}>
           <span className="mr-2 font-mono text-[10px] text-pf-muted">{String(index + 1).padStart(2, '0')}</span>
           <span className="text-sm">{item.title}</span>
-          <span className="mt-1 block pl-6 text-[10px] uppercase tracking-wider text-pf-muted">{item.live ? 'Live /home integration' : 'Section content'}</span>
+          <span className="mt-1 block pl-6 text-[10px] uppercase tracking-wider text-pf-muted">{item.live ? 'Live when activated' : 'Hidden until configured'}</span>
         </button>)}
       </nav>
       <div className="min-w-0 space-y-5">

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Film, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { AtelierButton } from "../../design-system";
 import { MEDIA_TYPES, UPLOAD_ACCEPT, UPLOAD_RULES } from "../../config/mediaTypes";
 import { cn } from "../../utils/cn";
@@ -79,7 +79,7 @@ export default function MediaUploadDropzone({
         onChange={handleChange}
         className="sr-only"
         id="media-file-input"
-        aria-label="Browse and upload images and videos"
+        aria-label="Browse and upload images"
       />
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
@@ -104,12 +104,6 @@ export default function MediaUploadDropzone({
               .map((ext) => ext.replace(".", "").toUpperCase())
               .join(", ")}{" "}
             (up to {UPLOAD_RULES[MEDIA_TYPES.IMAGE].maxLabel})
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Film size={13} className="text-cocoa" aria-hidden="true" />
-          <span>
-            <strong>Videos:</strong> MP4, WEBM (up to 100 MB)
           </span>
         </span>
         <span className="rounded bg-canvas px-2 py-0.5 text-[10px] uppercase tracking-wider text-taupe border border-mist">

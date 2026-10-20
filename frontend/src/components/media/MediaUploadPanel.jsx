@@ -81,6 +81,10 @@ export default function MediaUploadPanel({
         rejected.push(result.error);
         return;
       }
+      if (result.type === MEDIA_TYPES.VIDEO) {
+        rejected.push(`"${file.name}" is a video — video is not supported. Please select an image.`);
+        return;
+      }
       accepted.push({
         key: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 8)}`,
         file,
@@ -184,9 +188,7 @@ export default function MediaUploadPanel({
         <p className="mt-3 font-ui text-sm text-ink">Drop files here, or choose them.</p>
         <p className="mt-1 font-ui text-[11px] text-taupe">
           Images {UPLOAD_RULES[MEDIA_TYPES.IMAGE].extensions.join(" ")} up to{" "}
-          {UPLOAD_RULES[MEDIA_TYPES.IMAGE].maxLabel} · Video{" "}
-          {UPLOAD_RULES[MEDIA_TYPES.VIDEO].extensions.join(" ")} up to{" "}
-          {UPLOAD_RULES[MEDIA_TYPES.VIDEO].maxLabel}
+          {UPLOAD_RULES[MEDIA_TYPES.IMAGE].maxLabel} — video is not supported
         </p>
 
         <input

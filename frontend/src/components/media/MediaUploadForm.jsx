@@ -27,11 +27,7 @@ import {
   syncProductMediaFromServer,
   uploadAndRegisterProductImages,
 } from "../../services/media/productMediaService";
-import { getImage } from "../../data/mediaPlaceholder";
 import { cn } from "../../utils/cn";
-
-const SAMPLE_VIDEO =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
 
 
 export default function MediaUploadForm({
@@ -102,8 +98,12 @@ export default function MediaUploadForm({
           rejected.push(val.error);
           return;
         }
+        if (val.type === MEDIA_TYPES.VIDEO) {
+          rejected.push(`"${file.name}" is a video — video is not supported in this upload. Please select an image.`);
+          return;
+        }
 
-        const role = rolesForType(val.type)[0]?.id ?? (val.type === MEDIA_TYPES.VIDEO ? PRODUCT_MEDIA_ROLES.PRODUCT_VIDEO : PRODUCT_MEDIA_ROLES.GALLERY);
+        const role = rolesForType(val.type)[0]?.id ?? PRODUCT_MEDIA_ROLES.GALLERY;
         const previewUrl = URL.createObjectURL(file);
 
         accepted.push({
@@ -111,7 +111,7 @@ export default function MediaUploadForm({
           file,
           type: val.type,
           title: titleFromFileName(file.name),
-          alt: val.type === MEDIA_TYPES.IMAGE ? titleFromFileName(file.name) : "",
+          alt: titleFromFileName(file.name),
           caption: "",
           role,
           previewUrl,
@@ -153,7 +153,7 @@ export default function MediaUploadForm({
 
   const validateForm = () => {
     if (!queue.length) {
-      setFormError("Please select at least one image or video to upload.");
+      setFormError("Please select at least one image to upload.");
       return false;
     }
 

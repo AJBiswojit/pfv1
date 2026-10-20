@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { MARKETING_PLACEMENT_OPTIONS, PLACEMENT_MODES } from "../../config/mediaTypes";
+import { MARKETING_PLACEMENT_OPTIONS, PLACEMENT_MODES, RETIRED_PLACEMENTS } from "../../config/mediaTypes";
 import { cn } from "../../utils/cn";
 
 /**
@@ -9,7 +9,7 @@ import { cn } from "../../utils/cn";
  * record pointed at one would surface nowhere, so it is never offered.
  */
 const ARTWORK_PLACEMENT_OPTIONS = MARKETING_PLACEMENT_OPTIONS.filter(
-  (placement) => placement.mode === PLACEMENT_MODES.GENERIC
+  (placement) => placement.mode === PLACEMENT_MODES.GENERIC && !RETIRED_PLACEMENTS.has(placement.id)
 );
 
 export default function MediaPlacementSelector({
