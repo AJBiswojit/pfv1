@@ -20,6 +20,18 @@ export const HOMEPAGE_SECTIONS = Object.freeze([
   { id: 'trust', title: 'Trust strip' },
 ]);
 
+/* Staff-visible status for one non-hero section, derived ONLY from the persisted
+   backend read (GET /{scope}/homepage/sections). Missing/unavailable reads are
+   reported as such — never inferred as configured, and never as unconfigured. */
+export function sectionStatusLabel(section) {
+  if (!section || section.state === 'unavailable') return 'Status unavailable';
+  if (!section.configured || section.state === 'missing') return 'Hidden until configured';
+  if (section.state === 'inactive' || section.isActive === false) return 'Configured · inactive';
+  if (section.state === 'empty') return 'Active · no eligible content';
+  if (section.state === 'ready') return 'Active';
+  return 'Status unavailable';
+}
+
 export function homepageAccess({ admin = null, employee = null } = {}) {
   const view = hasAdminPermission(admin, 'media.view');
   return {

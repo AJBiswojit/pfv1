@@ -22,7 +22,7 @@ const fields = [
 ];
 const button = 'border border-pf-border bg-pf-card px-3 py-2 text-xs disabled:opacity-40';
 
-export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentType = 'MEDIA', onDirtyChange, actor }) {
+export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentType = 'MEDIA', onDirtyChange, onSaved, actor }) {
   const { admin: sessionAdmin } = useAdminAuth();
   const { pathname } = useLocation();
   const admin = pathname.startsWith('/employee') ? (actor?.employee ? actor : null) : sessionAdmin;
@@ -81,6 +81,7 @@ export default function BackendHomeHeroPanel({ placement = 'HOME_HERO', contentT
       setMessage({ type: 'success', text: 'Saved to backend. Reloading authoritative placement; public refresh requested.' });
       hydrateCatalog({ force: true }).catch(() => {});
       await load({ refreshPublic: false });
+      onSaved?.();
     } catch (error) {
       if (mounted.current) setMessage({ type: 'error', text: `Could not confirm save: ${error.message}. Refresh before retrying.` });
     } finally {

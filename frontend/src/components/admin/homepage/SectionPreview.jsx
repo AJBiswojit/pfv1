@@ -1,6 +1,8 @@
 import { MotionConfig } from 'framer-motion';
 import { adaptHomepageSection } from '../../storefront/home/homepageSectionModel';
 import { registeredImageUrl } from '../../../services/homepage/homepageContentModel';
+import { ShopProvider } from '../../customer/state/ShopContext.jsx';
+import { UIProvider } from '../../customer/state/UIContext.jsx';
 
 // LIVE storefront mapping — must match customer/pages/Home.jsx -> customer/components/sections/*
 // Home.jsx:14  categories -> CategoryCollage
@@ -121,12 +123,22 @@ export default function SectionPreview({ sectionKey, draft, asset, product, slot
   const Component = SECTION_COMPONENTS[sectionKey];
   if (!Component) return <p>Preview unavailable for {sectionKey}</p>;
 
+  /* Product-bearing sections render ProductCard → useShop()/useUI(), which the
+     customer storefront supplies via UIProvider > ShopProvider. The admin
+     workspace has no such providers (cart/wishlist underneath ARE app-level
+     via ShoppingProvider), so without them every product preview throws and
+     the boundary reports "Preview unavailable." Both providers are
+     effect-free (no fetches), and the preview stays inert. */
   return (
     <MotionConfig reducedMotion="always">
       <div>
         <p>Preview — not saved</p>
         <div inert style={{ pointerEvents: 'none' }} data-preview-body>
-          <Component content={adapted} />
+          <UIProvider>
+            <ShopProvider>
+              <Component content={adapted} />
+            </ShopProvider>
+          </UIProvider>
         </div>
       </div>
     </MotionConfig>

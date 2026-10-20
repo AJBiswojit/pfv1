@@ -78,6 +78,8 @@ beforeEach(() => {
     } else if (url.pathname === '/api/v1/media/register-placement' && method === 'POST') {
       if (fail.register) { status = 422; result = { detail: 'Only placement objects can be registered through this path' }; }
       else result = { ok: true, created: !register.existing, media: { id: 'asset-placement-1', objectKey: 'hero/batch-one.png', url: '/api/v1/media/objects/hero/batch-one.png', mimeType: 'image/png', status: 'uploaded' } };
+    } else if (url.pathname === '/api/v1/admin/homepage/sections' || url.pathname === '/api/v1/employee/homepage/sections') {
+      result = { ok: true, version: 1, status: 'ready', sections: [] };
     } else if (url.pathname.includes('/homepage/sections/')) {
       const key = decodeURIComponent(url.pathname.split('/').at(-1));
       result = { ok: true, section: { key, configured: false, state: 'missing', source: 'legacy', items: [], allowedSlots: [] } };
