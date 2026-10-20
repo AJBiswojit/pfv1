@@ -15,7 +15,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.schemas.media.homepage import safe_cta
 
 # ---------------------------------------------------------------------------
 # Allowed placements — derived from frontend's MARKETING_PLACEMENTS
@@ -65,6 +67,11 @@ class MarketingMediaBase(BaseModel):
 class MarketingMediaCreate(MarketingMediaBase):
     """POST /admin/marketing/media — create one entry."""
 
+    # B-13: the SAME site-relative CTA validation the homepage sections use
+    # (`homepage.safe_cta`). Applies on WRITE only — existing rows are never
+    # re-validated, rejected or rewritten when read back.
+    _safe_cta = field_validator("cta_href")(safe_cta)
+
 
 class MarketingMediaUpdate(BaseModel):
     """PATCH /admin/marketing/media/{id} — partial update."""
@@ -81,6 +88,9 @@ class MarketingMediaUpdate(BaseModel):
     alt_text: Optional[str] = Field(None, alias="altText")
     sort_order: Optional[int] = Field(None, alias="sortOrder")
     is_active: Optional[bool] = Field(None, alias="isActive")
+
+    # B-13: same write-only CTA validation on the patch lane.
+    _safe_cta = field_validator("cta_href")(safe_cta)
 
 
 class MarketingMediaResponse(MarketingMediaBase):

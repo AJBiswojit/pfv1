@@ -201,7 +201,11 @@ export function normalizeHeroSlides(slides = [], heroMedia = null) {
       label: title || `Campaign ${index + 1}`,
       image: {
         src: primarySrc,
-        alt: readAlt(raw.image, registeredPlate),
+        /** B-07: the authored alt text carried by /home (`altText`) renders as
+         * the img alt; object-shaped image alt or the legacy register keep
+         * their precedence, and an absent/empty altText falls back to the
+         * previous behavior exactly (alt=""). */
+        alt: readAlt(raw.image, registeredPlate) || String(raw.altText ?? "").trim(),
         position: position || "50% center",
       },
       portrait: portraitSrc

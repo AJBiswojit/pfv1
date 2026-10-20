@@ -100,82 +100,6 @@ export default function useMediaActions() {
   );
 
   /* ---------------------------------------------------------------- */
-  /* Review & Approval                                                 */
-  /* ---------------------------------------------------------------- */
-
-  const approve = useCallback(
-    (mediaId) => {
-      const reviewer = admin
-        ? { name: admin.name || "Administrator", id: admin.adminId }
-        : { name: [employee?.firstName, employee?.lastName].filter(Boolean).join(" ") || "Manager", id: employee?.employeeId };
-
-      const next = mediaRepository.approve(mediaId, reviewer);
-      if (next) {
-        note(
-          ACTIVITY_ACTIONS.MEDIA_APPROVED,
-          `Approved ${nameOf(next)}${next.productId ? ` for ${next.productId}` : ""}.`
-        );
-      }
-      return next;
-    },
-    [admin, employee, note]
-  );
-
-  const reject = useCallback(
-    (mediaId, reason = "") => {
-      const reviewer = admin
-        ? { name: admin.name || "Administrator", id: admin.adminId }
-        : { name: [employee?.firstName, employee?.lastName].filter(Boolean).join(" ") || "Manager", id: employee?.employeeId };
-
-      const next = mediaRepository.reject(mediaId, reason, reviewer);
-      if (next) {
-        note(
-          ACTIVITY_ACTIONS.MEDIA_REJECTED,
-          `Rejected ${nameOf(next)}${reason ? `: "${reason}"` : ""}.`
-        );
-      }
-      return next;
-    },
-    [admin, employee, note]
-  );
-
-  const approveMany = useCallback(
-    (mediaIds = []) => {
-      const reviewer = admin
-        ? { name: admin.name || "Administrator", id: admin.adminId }
-        : { name: [employee?.firstName, employee?.lastName].filter(Boolean).join(" ") || "Manager", id: employee?.employeeId };
-
-      const approved = mediaRepository.approveMany(mediaIds, reviewer);
-      if (approved.length) {
-        note(
-          ACTIVITY_ACTIONS.MEDIA_APPROVED,
-          `Approved ${approved.length} media assets.`
-        );
-      }
-      return approved;
-    },
-    [admin, employee, note]
-  );
-
-  const rejectMany = useCallback(
-    (mediaIds = [], reason = "") => {
-      const reviewer = admin
-        ? { name: admin.name || "Administrator", id: admin.adminId }
-        : { name: [employee?.firstName, employee?.lastName].filter(Boolean).join(" ") || "Manager", id: employee?.employeeId };
-
-      const rejected = mediaRepository.rejectMany(mediaIds, reason, reviewer);
-      if (rejected.length) {
-        note(
-          ACTIVITY_ACTIONS.MEDIA_REJECTED,
-          `Rejected ${rejected.length} media assets${reason ? `: "${reason}"` : ""}.`
-        );
-      }
-      return rejected;
-    },
-    [admin, employee, note]
-  );
-
-  /* ---------------------------------------------------------------- */
   /* Editing                                                           */
   /* ---------------------------------------------------------------- */
 
@@ -328,10 +252,6 @@ export default function useMediaActions() {
       edit,
       activate,
       archive,
-      approve,
-      reject,
-      approveMany,
-      rejectMany,
       setStatus,
       remove,
       removeMany,
@@ -348,10 +268,6 @@ export default function useMediaActions() {
       edit,
       activate,
       archive,
-      approve,
-      reject,
-      approveMany,
-      rejectMany,
       setStatus,
       remove,
       removeMany,

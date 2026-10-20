@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.storage.keys import ALLOWED_NAMESPACES
+from app.storage.keys import ALLOWED_NAMESPACES, NAMESPACE_HERO, NAMESPACE_MARKETING
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +27,21 @@ MEDIA_ASSET_STATUS_UPLOADED = "uploaded"
 
 #: Declared scope values for MediaAssetModel.scope
 MEDIA_ASSET_SCOPE_PRODUCT = "product"
+
+#: Scope recorded for hero/marketing placement assets registered through
+#: ``POST /media/register-placement``. Placement art is NOT product media:
+#: it must never carry the product scope (ownership for product-scoped
+#: paths — product-media assignment, the legacy-image backfill — keys off
+#: this vocabulary).
+MEDIA_ASSET_SCOPE_MARKETING = "marketing"
+
+#: The ONLY object namespaces that may be registered as placement assets
+#: through ``POST /media/register-placement``. Deliberately narrower than
+#: the upload vocabulary: ``products/`` objects have their own upload and
+#: registration paths, and ``collections/``/``uploads/`` are not storefront
+#: placement art. Registration derives the namespace from the normalised
+#: object key itself — the caller can never declare one.
+PLACEMENT_ASSET_NAMESPACES: Tuple[str, ...] = (NAMESPACE_HERO, NAMESPACE_MARKETING)
 
 # ---------------------------------------------------------------------------
 # Declared vocabularies (plan §24 step 9 — API-085/086/125/126/132/133/140)
@@ -209,6 +224,22 @@ class MediaRegistrationResponse(BaseModel):
     assignment: Optional[MediaRegistrationAssignment]
 
 
+class PlacementAssetRegistrationResponse(BaseModel):
+    """Successful wire shape for ``POST /media/register-placement``.
+
+    Idempotent by object key: ``created`` is ``false`` when the object was
+    already registered and the existing row is returned unchanged (a
+    duplicate registration is a no-op, never a second row and never an
+    error).
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool
+    created: bool
+    media: MediaRegistrationAsset
+
+
 class MediaAssetListItem(BaseModel):
     """One item in the unpaginated registered media library."""
 
@@ -219,6 +250,13 @@ class MediaAssetListItem(BaseModel):
     url: str
     status: str
     mime_type: str = Field(..., alias="mimeType")
+    # Batch 2 (B-11): picker context — the asset's declared scope plus the
+    # owning product's identity when the existing product_media mapping
+    # records one (additive; null when the asset is not product-mapped).
+    scope: str = MEDIA_ASSET_SCOPE_PRODUCT
+    product_id: Optional[str] = Field(None, alias="productId")
+    product_name: Optional[str] = Field(None, alias="productName")
+    product_sku: Optional[str] = Field(None, alias="productSku")
 
 
 class MediaAssetListResponse(BaseModel):

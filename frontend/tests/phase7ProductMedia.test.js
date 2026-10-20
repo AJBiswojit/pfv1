@@ -22,6 +22,8 @@
  */
 
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 
 import {
@@ -541,4 +543,213 @@ test("marketing media assignment is still an explicit gap, stated precisely", ()
   assert.match(MARKETING_MEDIA_BLOCKER, /Product-media registration is live/);
   assert.match(MARKETING_MEDIA_BLOCKER, /never silently promoted/i);
   assert.doesNotMatch(MARKETING_MEDIA_BLOCKER, /no business columns/);
+});
+
+// ===========================================================================
+// 9. Batch 1 · Track C — employee-scoped product media routes
+// ===========================================================================
+
+const employeeRegistrar = (url) => {
+  const path = new URL(String(url), "https://frontend.invalid").pathname;
+  if (path === "/api/v1/employee/media/products/PF-W-NEW-0001/objects") {
+    return jsonResponse(
+      { ok: true, object: { key: "products/PF-W-NEW-0001/team.png", url: "/api/v1/media/objects/products/PF-W-NEW-0001/team.png" }, status: 201 },
+      201,
+    );
+  }
+  if (path === "/api/v1/employee/media/register") {
+    return jsonResponse(
+      {
+        ok: true,
+        media: { id: "media-emp-1", objectKey: "products/PF-W-NEW-0001/team.png", url: "/api/v1/media/objects/products/PF-W-NEW-0001/team.png", mimeType: "image/png", status: "uploaded" },
+        assigned: true,
+        assignment: { productId: "PF-W-NEW-0001", mediaId: "media-emp-1", role: "gallery", sortOrder: 0, isPrimary: false },
+      },
+      201,
+    );
+  }
+  return new Response(JSON.stringify({ detail: "not mocked" }), { status: 404, headers: { "content-type": "application/json" } });
+};
+
+test("scope 'employee' uploads and registers through the employee routes only", async () => {
+  const calls = mockFetch(employeeRegistrar);
+  const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
+  assert.ok(result.ok, result.error);
+  assert.equal(result.media?.id, "media-emp-1");
+  const paths = calls.map((call) => new URL(String(call.url), "https://frontend.invalid").pathname);
+  assert.ok(paths.includes("/api/v1/employee/media/products/PF-W-NEW-0001/objects"), paths.join(","));
+  assert.ok(paths.includes("/api/v1/employee/media/register"), paths.join(","));
+  // The admin media surface is untouched by an employee session.
+  assert.ok(!paths.includes("/api/v1/media/products/PF-W-NEW-0001/objects"), paths.join(","));
+  assert.ok(!paths.includes("/api/v1/media/register"), paths.join(","));
+});
+
+test("employee upload failure surfaces the server message and stops the pipeline", async () => {
+  const calls = mockFetch((url) => {
+    const path = new URL(String(url), "https://frontend.invalid").pathname;
+    if (path === "/api/v1/employee/media/products/PF-W-NEW-0001/objects") {
+      return jsonResponse({ detail: "You do not have permission to perform this action. Missing required permission: media.upload" }, 403);
+    }
+    return employeeRegistrar(url);
+  });
+  const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
+  assert.equal(result.ok, false);
+  assert.match(String(result.error), /media\.upload/);
+  // Nothing reaches registration when the upload itself was denied.
+  const paths = calls.map((call) => new URL(String(call.url), "https://frontend.invalid").pathname);
+  assert.equal(paths.includes("/api/v1/employee/media/register"), false);
+});
+
+test("employee register-by-key denial keeps the server message verbatim", async () => {
+  mockFetch((url) => {
+    const path = new URL(String(url), "https://frontend.invalid").pathname;
+    if (path === "/api/v1/employee/media/products/PF-W-NEW-0001/objects") {
+      return jsonResponse({ ok: true, object: { key: "products/PF-W-NEW-0001/team.png" }, status: 201 }, 201);
+    }
+    if (path === "/api/v1/employee/media/register") {
+      return jsonResponse({ detail: "Archived products cannot receive new media." }, 422);
+    }
+    return employeeRegistrar(url);
+  });
+  const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
+  assert.equal(result.ok, false);
+  assert.match(String(result.error), /Archived products cannot receive new media/);
+});
+
+test("employee sync reads the public media-set only — never the admin product DTO", async () => {
+  const calls = mockFetch((url) => {
+    const path = new URL(String(url), "https://frontend.invalid").pathname;
+    if (path === "/api/v1/media/products/PF-W-NEW-0001/media-set") return jsonResponse(MEDIA_SET);
+    return new Response(JSON.stringify({ detail: "admin product routes stay closed" }), { status: 403, headers: { "content-type": "application/json" } });
+  });
+  const sync = await syncProductMediaFromServer("PF-W-NEW-0001", { scope: "employee" });
+  assert.ok(sync.ok, sync.error);
+  const paths = calls.map((call) => new URL(String(call.url), "https://frontend.invalid").pathname);
+  assert.ok(paths.includes("/api/v1/media/products/PF-W-NEW-0001/media-set"));
+  assert.equal(paths.some((p) => p.startsWith("/api/v1/admin/")), false, paths.join(","));
+});
+
+// ===========================================================================
+// 10. Batch 1 · Track D — mock media review workflow removed
+// ===========================================================================
+
+const ROOT = new URL("..", import.meta.url).pathname;
+
+test("approving or rejecting media is not a real operation on the media surface", async () => {
+  const { default: repo } = await import("../src/services/media/mediaRepository.js");
+  for (const key of ["approve", "reject", "approveMany", "rejectMany", "getPendingReview"]) {
+    assert.equal(repo[key], undefined, `mediaRepository.${key} must not exist once the mock workflow is removed`);
+  }
+  const actions = readFileSync(join(ROOT, "src/hooks/useMediaActions.js"), "utf8");
+  assert.ok(!/mediaRepository\.(approve|reject)/.test(actions), "no hook may mint APPROVED/REJECTED records");
+});
+
+test("mock review copy is gone from the admin library and employee surfaces", () => {
+  const library = readFileSync(join(ROOT, "src/pages/admin/media/AdminMediaLibrary.jsx"), "utf8");
+  assert.ok(!library.includes("Approve (Make Active)"));
+  assert.ok(!library.includes("Quick approve"));
+  assert.ok(!library.includes("session-local"));
+  assert.ok(!library.includes("requires approval"));
+  assert.ok(!library.includes("waiting for approval"));
+
+  const dashboard = readFileSync(join(ROOT, "src/pages/employee/EmployeeMediaDashboard.jsx"), "utf8");
+  assert.ok(!dashboard.includes("Waiting for manager review"));
+  assert.ok(!dashboard.includes("Approval Workflow"));
+  assert.ok(!dashboard.includes("Live on storefront"));
+
+  const upload = readFileSync(join(ROOT, "src/pages/employee/EmployeeMediaUpload.jsx"), "utf8");
+  assert.ok(!upload.includes("review queue for store manager approval"));
+
+  const detail = readFileSync(join(ROOT, "src/pages/admin/media/AdminMediaDetail.jsx"), "utf8");
+  assert.ok(!detail.includes("Approve (Publish)"));
+  assert.ok(!detail.includes("Rejection Reason"));
+});
+
+// ---------------------------------------------------------------------------
+// Batch 2 / 1A — the media-set read forwards the caller's session scope
+// ---------------------------------------------------------------------------
+
+const withStoredTokens = (entries, run) => {
+  const store = new Map(Object.entries(entries));
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => store.set(key, value),
+    removeItem: (key) => store.delete(key),
+    clear: () => store.clear(),
+  };
+  return Promise.resolve()
+    .then(run)
+    .finally(() => {
+      delete globalThis.localStorage;
+    });
+};
+
+test("1A: getRegisteredProductMedia sends the employee session token for staff reads", async () => {
+  await withStoredTokens({ pf_employee_access_token: "emp-token-123" }, async () => {
+    const calls = mockFetch(MEDIA_SET);
+    const result = await getRegisteredProductMedia("PF-W-NEW-0001", { scope: "employee" });
+    assert.equal(result.ok, true);
+    assert.match(calls[0].url, /\/media\/products\/PF-W-NEW-0001\/media-set$/);
+    assert.equal(
+      calls[0].options.headers.Authorization,
+      "Bearer emp-token-123",
+      "staff reads must carry the scope token so draft media-sets stay visible (1A)"
+    );
+  });
+});
+
+test("1A: getRegisteredProductMedia stays unauthenticated for the default public read", async () => {
+  await withStoredTokens(
+    { pf_employee_access_token: "emp-token-123", pf_admin_access_token: "admin-token-456" },
+    async () => {
+      const calls = mockFetch(MEDIA_SET);
+      const result = await getRegisteredProductMedia("PF-W-NEW-0001");
+      assert.equal(result.ok, true);
+      assert.equal(
+        calls[0].options.headers.Authorization,
+        undefined,
+        "the default read is the storefront/public contract — no staff token is attached (1A)"
+      );
+    }
+  );
+});
+
+test("1A: syncProductMediaFromServer forwards an employee session to the media-set only", async () => {
+  await withStoredTokens({ pf_employee_access_token: "emp-token-123" }, async () => {
+    const calls = mockFetch((url) => {
+      if (String(url).endsWith("/media-set")) return MEDIA_SET;
+      throw new Error(`unexpected ${url} — employees must never hit the admin product DTO`);
+    });
+    const result = await syncProductMediaFromServer("PF-W-NEW-0001", { scope: "employee" });
+    assert.equal(result.ok, true);
+    assert.equal(calls.length, 1, "employee refresh reads the media-set only");
+    assert.equal(calls[0].options.headers.Authorization, "Bearer emp-token-123");
+  });
+});
+
+test("1A: syncProductMediaFromServer sends the admin token on both refresh reads", async () => {
+  await withStoredTokens({ pf_admin_access_token: "admin-token-456" }, async () => {
+    const calls = mockFetch((url) => {
+      if (String(url).endsWith("/media-set")) return MEDIA_SET;
+      if (String(url).match(/\/admin\/products\/PF-W-NEW-0001/)) {
+        return { id: "PF-W-NEW-0001", name: "New Sari", image: MEDIA_SET.primary.url };
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    replaceServerProducts([]);
+    const result = await syncProductMediaFromServer("PF-W-NEW-0001", { scope: "admin" });
+    assert.equal(result.ok, true);
+    const auth = calls.map((call) => call.options.headers.Authorization);
+    assert.deepEqual(auth, ["Bearer admin-token-456", "Bearer admin-token-456"]);
+    replaceServerProducts([]);
+  });
+});
+
+test("1A: apiListProductMedia forwards its scope to the media-set read", async () => {
+  await withStoredTokens({ pf_admin_access_token: "admin-token-456" }, async () => {
+    const calls = mockFetch(MEDIA_SET);
+    const result = await apiListProductMedia("PF-W-NEW-0001", { scope: "admin" });
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].options.headers.Authorization, "Bearer admin-token-456");
+  });
 });

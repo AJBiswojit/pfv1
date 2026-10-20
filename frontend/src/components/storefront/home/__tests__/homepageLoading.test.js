@@ -43,8 +43,22 @@ test('idle/in-flight shimmer transitions preserve hidden, ready and error states
   assert.equal(render(React.createElement(Hero)), '');
   globalThis.fetch = async (input) => Response.json(String(input).endsWith('/home') ? { homepageContent: { version: 1, status: 'unavailable', sections: [] } } : { items: [], offers: [], total: 0 });
   await store.refreshCatalog();
-  assert.match(render(section('categories')), /Homepage content is unavailable\./);
-  assert.match(render(section('categories')), /Retry homepage content<\/button>/);
+  // B-09: an unavailable homepage-content contract hides the affected
+  // sections (no more one-error-wall-per-section) and logs the outage once,
+  // while the hero keeps its own single error surface below.
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (message) => warnings.push(String(message));
+  try {
+    assert.equal(render(section('categories')), '', 'unavailable section renders nothing');
+    assert.equal(render(section('sarees')), '', 'every affected section renders nothing, not a wall each');
+    await store.refreshCatalog();
+    assert.equal(render(section('bridal')), '');
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.filter((m) => /homepage content is unavailable/i.test(m)).length, 1,
+    'the outage is logged exactly once, not once per section or per refresh');
   globalThis.fetch = async () => { throw new Error('offline'); };
   await store.refreshCatalog();
   assert.match(render(React.createElement(Hero)), /Featured campaigns could not be loaded\./);

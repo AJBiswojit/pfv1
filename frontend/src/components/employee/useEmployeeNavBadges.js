@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useOrder } from "../../context/OrderContext";
 import { useInventory } from "../../context/InventoryContext";
 import { pendingLeaveCount } from "../../services/workforce/leaveService";
-import { getPendingReview } from "../../services/media/mediaRepository";
 
 /**
  * PRATIKSHYA FASHION — Sidebar badges from REAL data.
@@ -32,7 +31,6 @@ export function useEmployeeNavBadges(employee) {
     return {
       orders: activeOrders,
       inventory: Number(metrics?.lowStock) || 0,
-      media: getPendingReview().length,
       leave: employee ? pendingLeaveCount(employee) : 0,
     };
   }, [allOrders, metrics, employee]);

@@ -189,9 +189,11 @@ export default function MediaUploadForm({
     event.preventDefault();
     if (!validateForm()) return;
 
-    /* Marketing placements stay an honest gap: the backend exposes no
-       marketing assignment API, so the blocker is stated verbatim and
-       NOTHING is written anywhere (server or browser). */
+    /* Marketing placements are registered through the Admin Media Library's
+       placement action, never from this form: an upload made here is never
+       silently promoted to a marketing slot. The blocker copy (shared
+       MARKETING_MEDIA_BLOCKER) is stated verbatim and NOTHING is written
+       anywhere (server or browser). */
     if (scope === MEDIA_SCOPES.MARKETING) {
       setFormError(MARKETING_MEDIA_BLOCKER);
       return;
@@ -220,7 +222,7 @@ export default function MediaUploadForm({
       productId,
       activeItems.map((item) => ({ file: item.file, role: item.role, title: item.title })),
       {
-        scope: "admin",
+        scope: isEmployeeSession ? "employee" : "admin",
         firstIsPrimary: true,
         onStage: (file, stage, payload = {}) =>
           setQueue((prev) =>
@@ -254,7 +256,7 @@ export default function MediaUploadForm({
        and product DTO so the success view reflects server truth; this is a
        read-only refresh, not a product-contract save. */
     setUploadState("refreshing");
-    const sync = await syncProductMediaFromServer(productId, { scope: "admin" });
+    const sync = await syncProductMediaFromServer(productId, { scope: isEmployeeSession ? "employee" : "admin" });
 
     setUploadedResults(
       result.results.map((entry, index) => ({

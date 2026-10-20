@@ -191,12 +191,6 @@ export const getUnassignedMedia = () => {
   return cachedAll.filter((item) => item.scope === MEDIA_SCOPES.UNASSIGNED).sort(byRecency);
 };
 
-/** Media awaiting manager / admin approval. */
-export const getPendingReview = () => {
-  ensureCache();
-  return cachedAll.filter((item) => item.status === MEDIA_STATUS.PENDING_REVIEW).sort(byRecency);
-};
-
 /** Media submitted by a specific employee. */
 export const getByEmployee = (employeeId) => {
   if (!employeeId) return [];
@@ -395,49 +389,10 @@ export const setStatus = (mediaId, status) =>
 export const activate = (mediaId) => setStatus(mediaId, MEDIA_STATUS.ACTIVE);
 export const archive = (mediaId) => setStatus(mediaId, MEDIA_STATUS.ARCHIVED);
 
-/**
- * Approves a pending media asset, making it ACTIVE.
- */
-export const approve = (mediaId, reviewerInfo = {}) => {
-  const reviewer =
-    typeof reviewerInfo === "string"
-      ? reviewerInfo
-      : reviewerInfo.actorName || reviewerInfo.name || reviewerInfo.employeeId || "Administrator";
-
-  return update(mediaId, {
-    status: MEDIA_STATUS.ACTIVE,
-    reviewStatus: "APPROVED",
-    reviewedBy: reviewer,
-    reviewedAt: nowIso(),
-    rejectionReason: null,
-  });
-};
-
-/**
- * Rejects a pending media asset, with optional rejection reason.
- */
-export const reject = (mediaId, reason = "", reviewerInfo = {}) => {
-  const reviewer =
-    typeof reviewerInfo === "string"
-      ? reviewerInfo
-      : reviewerInfo.actorName || reviewerInfo.name || reviewerInfo.employeeId || "Administrator";
-
-  return update(mediaId, {
-    status: MEDIA_STATUS.REJECTED,
-    reviewStatus: "REJECTED",
-    rejectionReason: reason || "Asset does not meet quality or catalogue standards.",
-    reviewedBy: reviewer,
-    reviewedAt: nowIso(),
-  });
-};
-
-export const approveMany = (mediaIds = [], reviewerInfo = {}) =>
-  (Array.isArray(mediaIds) ? mediaIds : []).map((id) => approve(id, reviewerInfo)).filter(Boolean);
-
-export const rejectMany = (mediaIds = [], reason = "", reviewerInfo = {}) =>
-  (Array.isArray(mediaIds) ? mediaIds : [])
-    .map((id) => reject(id, reason, reviewerInfo))
-    .filter(Boolean);
+/* Review-and-approval actions were removed (mock review workflow, Batch 1
+   Track D): there is no durable backend review queue, so the UI must not
+   mint APPROVED/REJECTED records. Lifecycle status changes stay with
+   `activate`/`archive` above. */
 
 /**
  * Deletes a record.
@@ -802,7 +757,6 @@ const mediaRepository = {
   getProductMedia,
   getMarketingMedia,
   getUnassignedMedia,
-  getPendingReview,
   getByEmployee,
   getUnmappedMedia,
   getDuplicateMedia,
@@ -816,10 +770,6 @@ const mediaRepository = {
   setStatus,
   activate,
   archive,
-  approve,
-  reject,
-  approveMany,
-  rejectMany,
   remove,
   removeMany,
   reorder,

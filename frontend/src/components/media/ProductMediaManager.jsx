@@ -82,7 +82,9 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
   const reload = useCallback(async () => {
     if (!productId) return;
     setLoading(true);
-    const result = await getRegisteredProductMedia(productId);
+    // Staff scope: the media-set is public for PUBLISHED products only; a
+    // draft product's set needs this session's token (1A).
+    const result = await getRegisteredProductMedia(productId, { scope });
     if (result.ok) {
       setItems(result.items ?? []);
       setLoadError(null);
@@ -90,7 +92,7 @@ export default function ProductMediaManager({ productId, scope = "admin", onChan
       setLoadError(result.error ?? "The product's registered media could not be loaded.");
     }
     setLoading(false);
-  }, [productId]);
+  }, [productId, scope]);
 
   useEffect(() => {
     reload();

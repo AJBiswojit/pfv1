@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, Database, Film, Image as ImageIcon, Layers, Plus, Search, Sparkles, Star, Tag } from "lucide-react";
+import { Database, Film, Image as ImageIcon, Layers, Plus, Search, Sparkles, Star, Tag } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
 import AdminPanel from "../../../components/admin/AdminPanel";
 import AdminMetricCard from "../../../components/admin/AdminMetricCard";
+import PlacementAssetPanel from "../../../components/admin/media/PlacementAssetPanel";
 import MediaThumb from "../../../components/media/MediaThumb";
 import StatusBadge from "../../../components/employee/StatusBadge";
 import { AtelierButton } from "../../../design-system";
@@ -102,11 +103,11 @@ const assignmentLine = (media) => {
 
 /* Phase 7 — the durable registry: media assets that actually live in the
    database (uploaded to object storage and persisted via the register API),
-   distinct from the local review register staged on this page. Read-only
+   distinct from the session-mirror register staged on this page. Read-only
    here — uploads and assignments happen on the product media surface. */
 const DURABLE_PAGE_SIZE = 24;
 
-function DurableAssetsPanel() {
+function DurableAssetsPanel({ refreshToken = 0 }) {
   const [state, setState] = useState({ status: "loading", items: [], error: null, total: 0, page: 1 });
   const [page, setPage] = useState(1);
 
@@ -131,7 +132,7 @@ function DurableAssetsPanel() {
     return () => {
       alive = false;
     };
-  }, [page]);
+  }, [page, refreshToken]);
 
   if (state.status === "loading") {
     return (
@@ -242,6 +243,7 @@ export default function AdminMediaLibrary() {
   const [category, setCategory] = useState("ALL");
   const [usage, setUsage] = useState("ALL");
   const [selected, setSelected] = useState([]);
+  const [registryRefresh, setRegistryRefresh] = useState(0);
   const categories = useMemo(() => taxonomyRepository.activeCategories(), []);
 
   /* Phase 3F — owner status lookup for the Orphaned / Archived Product
@@ -309,15 +311,6 @@ export default function AdminMediaLibrary() {
       description="Manage product and marketing media across PRATIKSHYA FASHION."
       actions={
         <div className="flex flex-wrap items-center gap-2.5">
-          {metrics.pendingReview > 0 ? (
-            <span
-              title="The dedicated media review queue is deferred until a durable backend review workflow exists. Approvals made here are session-local."
-              className="border border-amber-700 bg-amber-800 px-3 py-2 font-ui text-[10px] uppercase tracking-[.14em] text-pf-ivory"
-            >
-              <Clock size={12} className="mr-1 inline-block" />
-              Pending review ({metrics.pendingReview}) · session-local
-            </span>
-          ) : null}
           <AtelierButton as={Link} to={`${prefix}/media/marketing`} size="chip" variant="outline">
             Marketing Media
           </AtelierButton>
@@ -335,8 +328,14 @@ export default function AdminMediaLibrary() {
         </div>
       }
     >
+      {/* Homepage placement art — upload+register / register-existing for
+          hero/ and marketing/ objects (renders for media.upload holders). */}
+      {actions.access.canUpload ? (
+        <PlacementAssetPanel onRegistered={() => setRegistryRefresh((value) => value + 1)} />
+      ) : null}
+
       {/* Phase 7 — durable registry (server truth) above the staging desks. */}
-      <DurableAssetsPanel />
+      <DurableAssetsPanel refreshToken={registryRefresh} />
 
       {/* Metrics Row — exactly matching Section 3:
           Total Media, Images, Videos, Product Media, Marketing Media, Unassigned, Pending Review, Active */}
@@ -347,13 +346,6 @@ export default function AdminMediaLibrary() {
         <AdminMetricCard label="Product Media" value={metrics.productMedia} icon={Sparkles} hint="Assigned to products" />
         <AdminMetricCard label="Marketing Media" value={metrics.marketingMedia} icon={Tag} hint="Placement artwork" />
         <AdminMetricCard label="Unassigned" value={metrics.unassigned} hint="In library buffer" />
-        <AdminMetricCard
-          label="Pending Review"
-          value={metrics.pendingReview}
-          icon={Clock}
-          tone={metrics.pendingReview > 0 ? "alert" : "default"}
-          hint="Requires approval"
-        />
         <AdminMetricCard label="Active" value={metrics.active} icon={Star} hint="Visible to customers" />
       </div>
 
@@ -369,26 +361,6 @@ export default function AdminMediaLibrary() {
         <AdminMetricCard label="Large files" value={metrics.large ?? 0} hint="Originals ≥ 1.5 MB" />
         <AdminMetricCard label="Optimized" value={metrics.optimized ?? 0} hint="Application-ready" />
       </div>
-
-      {/* Review Queue Alert Banner */}
-      {metrics.pendingReview > 0 ? (
-        <div className="mb-6 flex flex-col gap-3 border border-amber-400/80 bg-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Clock className="text-amber-800 shrink-0" size={20} />
-            <div>
-              <p className="font-ui text-xs font-semibold uppercase tracking-wider text-amber-900">
-                {metrics.pendingReview} {metrics.pendingReview === 1 ? "asset requires" : "assets require"} review
-              </p>
-              <p className="font-ui text-xs text-amber-800/90">
-                Employee submissions waiting for approval before appearing on the storefront.
-              </p>
-            </div>
-          </div>
-          <span className="self-start font-ui text-[10px] uppercase tracking-[.14em] text-amber-900 sm:self-center">
-            Approve or reject inline below — the dedicated queue is deferred.
-          </span>
-        </div>
-      ) : null}
 
       <AdminPanel eyebrow="Register" title="All Media">
         {/* Tabs ---------------------------------------------------- */}
@@ -411,11 +383,6 @@ export default function AdminMediaLibrary() {
               )}
             >
               {entry.label}
-              {entry.id === "PENDING_REVIEW" && metrics.pendingReview > 0 ? (
-                <span className="ml-1.5 rounded-full bg-amber-600 px-1.5 py-0.2 text-[8px] text-white">
-                  {metrics.pendingReview}
-                </span>
-              ) : null}
               {entry.id === "UNMAPPED" && (metrics.unmapped ?? 0) > 0 ? (
                 <span className="ml-1.5 rounded-full bg-amber-600 px-1.5 py-0.2 text-[8px] text-white">
                   {metrics.unmapped}
@@ -497,9 +464,6 @@ export default function AdminMediaLibrary() {
             </p>
             {actions.access.canEdit ? (
               <>
-                <AtelierButton size="chip" variant="outline" onClick={() => bulk(actions.approve)}>
-                  Approve (Make Active)
-                </AtelierButton>
                 <AtelierButton size="chip" variant="outline" onClick={() => bulk(actions.activate)}>
                   Activate
                 </AtelierButton>
@@ -583,33 +547,12 @@ export default function AdminMediaLibrary() {
 
                     {/* Quick action buttons */}
                     <div className="flex flex-wrap gap-1 pt-1 border-t border-pf-border/50">
-                      {item.status === MEDIA_STATUS.PENDING_REVIEW && actions.access.canEdit ? (
-                        <>
-                          <AtelierButton
-                            size="chip"
-                            variant="outline"
-                            onClick={() => actions.approve(item.id)}
-                            className="text-emerald-800 border-emerald-300 hover:bg-emerald-50"
-                          >
-                            Approve
-                          </AtelierButton>
-                          <AtelierButton
-                            size="chip"
-                            variant="outline"
-                            className="text-pf-burgundy"
-                            onClick={() => actions.approve(item.id)}
-                          >
-                            Quick approve
-                          </AtelierButton>
-                        </>
-                      ) : (
-                        <span
-                          title="Standalone media detail is deferred with the session register — durable assets live on their product's media manager."
-                          className="inline-block border border-pf-border/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted"
-                        >
-                          Session record
-                        </span>
-                      )}
+                      <span
+                        title="Standalone media detail is deferred with the session register — durable assets live on their product's media manager."
+                        className="inline-block border border-pf-border/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted"
+                      >
+                        Session record
+                      </span>
                       {item.scope === MEDIA_SCOPES.PRODUCT && item.productId && ownerStatusOf(item.productId) !== null ? (
                         <AtelierButton
                           as={Link}
@@ -637,8 +580,8 @@ export default function AdminMediaLibrary() {
         </div>
 
         <p className="mt-5 font-ui text-[11px] text-pf-muted" aria-live="polite">
-          Showing {filtered.length} of {media.length} records · {metrics.pendingReview} pending review ·{" "}
-          {metrics.draft} draft · {metrics.archived} archived · only {MEDIA_STATUS.ACTIVE.toLowerCase()} media reaches customers.
+          Showing {filtered.length} of {media.length} records · {metrics.draft} draft ·{" "}
+          {metrics.archived} archived · only {MEDIA_STATUS.ACTIVE.toLowerCase()} media reaches customers.
         </p>
       </AdminPanel>
     </AdminPage>

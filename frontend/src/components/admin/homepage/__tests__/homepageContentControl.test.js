@@ -12,12 +12,15 @@ const original = { fetch: globalThis.fetch, storage: globalThis.localStorage, wi
 const owner = { adminId: 'owner', accountLevel: 'SUPER_ADMIN', status: 'ACTIVE', permissions: [] };
 const reader = { adminId: 'reader', accountLevel: 'ADMIN', status: 'ACTIVE', permissions: ['media.view'] };
 const manager = { ...reader, permissions: ['media.view', 'media.manage'] };
+// Mirrors the built-in ADMIN grant set relevant here (Track A adds marketing.*);
+// the frontend reads the session snapshot — capability expansion resolves the rest.
+const hpAdmin = { adminId: 'hp-admin', accountLevel: 'ADMIN', status: 'ACTIVE', permissions: ['media.view', 'media.upload', 'marketing.view', 'marketing.manage'] };
 const employee = { employeeId: 'employee', status: 'ACTIVE', permissions: ['media.view', 'media.manage', 'media.delete'] };
 const image = { id: 'asset-1', objectKey: 'hero/registered.avif', url: '/api/v1/media/objects/hero/registered.avif', mimeType: 'image/avif', status: 'uploaded' };
 const product = { id: 'PF-W-SAR-SIL-0001', name: 'Published silk', status: 'PUBLISHED', published: true, image: '/api/v1/media/objects/products/PF-W-SAR-SIL-0001/primary.avif' };
 const legacy = JSON.stringify([{ id: 'PF-CUST-LEGACY', image: 'data:image/png;base64,old', price: 123 }]);
-let vite, model, service, Panel, Page, Products, Picker, AdminContext, EmployeeContext, store;
-let rows, assets, products, requests, fail, gate, writeGate, renderers, storage;
+let vite, model, service, Panel, Page, Products, Picker, PlacementPanel, AdminContext, EmployeeContext, store;
+let rows, assets, products, requests, fail, gate, writeGate, renderers, storage, register;
 const source = (path) => readFileSync(`${root}${path}`, 'utf8');
 const row = () => ({ id: 'entry-1', placement: 'HOME_HERO', objectKey: image.objectKey, mediaAssetId: image.id, url: image.url, title: 'Saved campaign', subtitle: 'Backend copy', ctaLabel: 'Shop', ctaHref: '/shop', sortOrder: 0, isActive: true });
 const flush = () => act(async () => { await new Promise((resolve) => setImmediate(resolve)); });
@@ -49,6 +52,7 @@ before(async () => {
   Page = (await load('pages/admin/media/AdminMarketingMedia.jsx')).default;
   Products = (await load('components/admin/homepage/PublishedProductPicker.jsx')).default;
   Picker = (await load('components/admin/homepage/RegisteredMediaPicker.jsx')).default;
+  PlacementPanel = (await load('components/admin/media/PlacementAssetPanel.jsx')).default;
   AdminContext = (await load('context/AdminAuthContext.jsx')).default;
   EmployeeContext = (await load('context/EmployeeAuthContext.jsx')).default;
   store = await load('services/catalog/catalogStore.js');
@@ -56,17 +60,28 @@ before(async () => {
 
 beforeEach(() => {
   rows = [row()]; assets = [image]; products = [product]; requests = []; fail = {}; gate = null; writeGate = null; renderers = [];
+  register = { existing: false };
   storage = new Map([['pratikshya_custom_products', legacy], ['guest-cart', 'preserved'], ['pf_admin_access_token', 'admin-token'], ['pf_employee_access_token', 'employee-token']]);
   globalThis.localStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) };
   globalThis.window = { localStorage: globalThis.localStorage, addEventListener() {}, removeEventListener() {}, dispatchEvent() {}, confirm: () => true };
   globalThis.fetch = async (input, options = {}) => {
     const url = new URL(String(input), 'https://frontend.invalid');
     const method = options.method ?? 'GET';
-    const body = options.body ? JSON.parse(options.body) : null;
+    // JSON bodies are parsed; multipart FormData (upload/registration) is not a string.
+    const body = typeof options.body === 'string' ? JSON.parse(options.body) : null;
     if (writeGate && ['POST', 'PATCH'].includes(method)) await writeGate;
     requests.push({ path: url.pathname, query: url.searchParams, method, body, auth: options.headers?.Authorization });
     let result = { ok: true }, status = 200;
-    if (url.pathname === '/api/v1/admin/marketing/media' && method === 'GET') {
+    if (url.pathname === '/api/v1/media/objects' && method === 'POST') {
+      if (fail.upload) { status = 422; result = { detail: 'Upload rejected' }; }
+      else result = { ok: true, object: { key: 'hero/batch-one.png', url: '/api/v1/media/objects/hero/batch-one.png' }, status: 201 };
+    } else if (url.pathname === '/api/v1/media/register-placement' && method === 'POST') {
+      if (fail.register) { status = 422; result = { detail: 'Only placement objects can be registered through this path' }; }
+      else result = { ok: true, created: !register.existing, media: { id: 'asset-placement-1', objectKey: 'hero/batch-one.png', url: '/api/v1/media/objects/hero/batch-one.png', mimeType: 'image/png', status: 'uploaded' } };
+    } else if (url.pathname.includes('/homepage/sections/')) {
+      const key = decodeURIComponent(url.pathname.split('/').at(-1));
+      result = { ok: true, section: { key, configured: false, state: 'missing', source: 'legacy', items: [], allowedSlots: [] } };
+    } else if (url.pathname === '/api/v1/admin/marketing/media' && method === 'GET') {
       if (gate) await gate;
       if (fail.list) { result = { detail: 'Marketing unavailable' }; status = 503; }
       else result = { items: rows.filter((r) => r.placement === url.searchParams.get('placement')), total: rows.length };
@@ -260,14 +275,30 @@ test('registered media picker handles load failure, retry, empty and safe select
   await click(next, image.objectKey); assert.equal(selected.id, image.id);
 });
 
-test('product selection is unsaved and clears when unpublishing disappears on a public reload', async () => {
+test('product selection is never auto-cleared by paging/retry/refresh and is never saved (B-10)', async () => {
   const actor = { admin: owner };
+  products = [product, ...Array.from({ length: 24 }, (_, i) => ({ ...product, id: `PF-PAGE-${i}` }))];
   const tree = await mount(Products, { actor });
-  await act(async () => tree.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
+  await act(async () => tree.root.findAllByProps({ type: 'checkbox' })[0].props.onChange({ target: { checked: true } }));
   assert.match(text(tree.root), /1 selected · not saved/);
+  await click(tree, 'Next products');
+  assert.match(text(tree.root), /1 selected · not saved/, 'paging must not clear the selection');
   products = []; await click(tree, 'Refresh published catalogue');
-  assert.match(text(tree.root), /0 selected · not saved/);
+  assert.match(text(tree.root), /1 selected · not saved/, 'a catalogue refresh must not clear the selection either');
   assert.match(text(tree.root), /No eligible published products/);
+  assert.equal(requests.every((r) => r.method === 'GET'), true);
+});
+
+test('picker search is server-side: typing issues a debounced filtered catalogue request (B-10)', async () => {
+  const tree = await mount(Products, { actor: { admin: owner } });
+  requests = [];
+  const input = tree.root.findByProps({ className: 'ml-2 border border-pf-border bg-pf-card p-2' });
+  await act(async () => { input.props.onChange({ target: { value: 'silk' } }); });
+  assert.equal(requests.some((r) => r.query?.get('q') === 'silk'), false,
+    'no request before the debounce fires (typing is not a request-per-keypress)');
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 400)); });
+  assert.equal(requests.filter((r) => r.query?.get('q') === 'silk').length, 1,
+    'exactly one catalogue request carries the trimmed search term');
   assert.equal(requests.every((r) => r.method === 'GET'), true);
 });
 
@@ -359,4 +390,114 @@ test('manual placement refresh also refreshes the shared public home snapshot', 
   await flush();
   assert.match(text(tree.root), /Changed by another operator/);
   assert.equal(store.getHome().heroSlides[0].title, 'Changed by another operator');
+});
+
+
+/* ── Batch 1 · Track A — homepage RBAC reaches real controls ───────────── */
+
+const navClick = async (tree, label) => {
+  const button = tree.root.findAllByType('button').find((item) => text(item).includes(label));
+  assert.ok(button, `nav button exists: ${label}`);
+  await act(async () => { button.props.onClick(); });
+  await flush();
+};
+
+test('an ADMIN holding homepage capabilities sees usable section controls', async () => {
+  const tree = await mount(Page, {}, hpAdmin, '/admin/media/marketing');
+  assert.match(text(tree.root), /Homepage Content Control Center/);
+  await navClick(tree, 'Category collage');
+  const body = text(tree.root);
+  assert.doesNotMatch(body, /control unavailable/);
+  assert.match(body, /Not configured · hidden on the storefront until configured and activated/);
+  const configure = tree.root.findAllByType('button').find((b) => text(b) === 'Configure section (initially hidden)');
+  assert.ok(configure, 'the configure control renders for a homepage-capable ADMIN');
+  assert.ok(requests.some((r) => r.method === 'GET' && r.path === '/api/v1/admin/homepage/sections/categories'));
+});
+
+test('an ADMIN without marketing grants still sees the controls unavailable', async () => {
+  const tree = await mount(Page, {}, reader, '/admin/media/marketing');
+  await navClick(tree, 'Category collage');
+  assert.match(text(tree.root), /control unavailable/);
+  assert.equal(
+    requests.some((r) => r.path.includes('/homepage/sections/')), false,
+    'no homepage request is sent when the capability is missing'
+  );
+});
+
+
+/* ── Batch 1 · Track B — placement art upload + registration ───────────── */
+
+const mountPlacement = async (onRegistered = null) => {
+  let tree;
+  await act(async () => { tree = create(React.createElement(PlacementPanel, { onRegistered })); });
+  renderers.push(tree);
+  await flush();
+  return tree;
+};
+
+const chooseFile = async (tree, name = 'batch-one.png') => act(async () => {
+  const input = tree.root.findAllByProps({ type: 'file' })[0];
+  assert.ok(input, 'file input exists');
+  input.props.onChange({ target: { files: [{ name }] } });
+});
+
+test('upload and register pairs the two real calls and reports the registered key', async () => {
+  let notified = 0;
+  const tree = await mountPlacement(() => { notified += 1; });
+  await chooseFile(tree);
+  await click(tree, 'Upload and register');
+  assert.equal(
+    requests.filter((r) => r.method === 'POST' && r.path === '/api/v1/media/objects').length, 1,
+    'the object is uploaded through the existing upload contract'
+  );
+  assert.equal(
+    requests.filter((r) => r.method === 'POST' && r.path === '/api/v1/media/register-placement').length, 1,
+    'the object key is registered through the placement contract'
+  );
+  assert.match(text(tree.root), /Uploaded and registered hero\/batch-one\.png/);
+  assert.match(text(tree.root), /newly registered/);
+  assert.equal(notified, 1, 'the registry refresh signal fires');
+});
+
+test('idempotent duplicate registration is reported truthfully', async () => {
+  register.existing = true;
+  const tree = await mountPlacement();
+  await chooseFile(tree);
+  await click(tree, 'Upload and register');
+  assert.match(text(tree.root), /already registered \(no duplicate created\)/);
+});
+
+test('upload success plus registration failure stays visible and actionable', async () => {
+  fail.register = true;
+  const tree = await mountPlacement();
+  await chooseFile(tree);
+  await click(tree, 'Upload and register');
+  const body = text(tree.root);
+  assert.match(body, /registration failed: Only placement objects can be registered through this path/);
+  assert.match(body, /Register it below with the object key/);
+  // The uploaded key is pre-filled in the register-by-key form for recovery.
+  const keyInput = tree.root.findAllByProps({ 'aria-label': 'Existing object key' })[0];
+  assert.equal(keyInput.props.value, 'hero/batch-one.png');
+});
+
+test('register-by-key validates input and surfaces server errors', async () => {
+  const tree = await mountPlacement();
+  await click(tree, 'Register');
+  assert.match(text(tree.root), /Enter the full object key/);
+  await act(async () => {
+    const keyInput = tree.root.findAllByProps({ 'aria-label': 'Existing object key' })[0];
+    keyInput.props.onChange({ target: { value: 'hero/hero006.avif' } });
+  });
+  fail.register = true;
+  await click(tree, 'Register');
+  assert.match(text(tree.root), /Only placement objects can be registered through this path/);
+});
+
+test('the namespace choice is hero or marketing only and no upload without a file', async () => {
+  const tree = await mountPlacement();
+  const options = tree.root.findByProps({ 'aria-label': 'Placement namespace' }).findAllByType('option').map((item) => item.props.value);
+  assert.deepEqual(options, ['hero', 'marketing']);
+  await click(tree, 'Upload and register');
+  assert.match(text(tree.root), /Choose an image file first/);
+  assert.equal(requests.filter((r) => r.path === '/api/v1/media/objects').length, 0);
 });

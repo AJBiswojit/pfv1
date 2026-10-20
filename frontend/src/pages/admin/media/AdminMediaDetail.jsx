@@ -171,9 +171,6 @@ export default function AdminMediaDetail() {
                 ["Size", media.fileSize ? formatFileSize(media.fileSize) : "—"],
                 ["Uploaded By", media.uploadedBy ? `${media.uploadedBy}${media.uploadedByEmployeeId ? ` (${media.uploadedByEmployeeId})` : ""}` : "System Admin"],
                 ["Uploaded Type", media.uploadedByType || "ADMIN"],
-                ["Review Status", media.reviewStatus || (media.status === "ACTIVE" ? "APPROVED" : media.status)],
-                ...(media.reviewedBy ? [["Reviewed By", media.reviewedBy]] : []),
-                ...(media.reviewedAt ? [["Reviewed At", formatEmployeeDateTime(media.reviewedAt)]] : []),
                 ["Sort order", media.sortOrder],
                 ["Created", formatEmployeeDateTime(media.createdAt)],
                 ["Updated", formatEmployeeDateTime(media.updatedAt)],
@@ -194,17 +191,6 @@ export default function AdminMediaDetail() {
                 </div>
               ))}
             </dl>
-
-            {media.status === "REJECTED" && media.rejectionReason ? (
-              <div className="mt-3 border border-accent/40 bg-accent/[0.06] p-3">
-                <p className="font-ui text-[10px] uppercase tracking-wider font-semibold text-accent">
-                  Rejection Reason
-                </p>
-                <p className="mt-1 font-ui text-xs text-accent">
-                  {media.rejectionReason}
-                </p>
-              </div>
-            ) : null}
 
             {media.demoPlaceholder ? (
               <p className="mt-3 border border-accent/30 bg-accent/[0.04] px-3 py-2 font-ui text-[11px] text-taupe">
@@ -438,27 +424,6 @@ export default function AdminMediaDetail() {
           {/* Status ------------------------------------------------ */}
           <AdminPanel eyebrow="Lifecycle" title="Status and removal">
             <div className="flex flex-wrap gap-2">
-              {media.status === "PENDING_REVIEW" ? (
-                <>
-                  <AtelierButton
-                    size="chip"
-                    disabled={!actions.access.canEdit}
-                    onClick={() => actions.approve(media.id)}
-                    className="bg-emerald-800 text-ivory hover:bg-emerald-900 border border-emerald-700"
-                  >
-                    Approve (Publish)
-                  </AtelierButton>
-                  <AtelierButton
-                    size="chip"
-                    variant="outline"
-                    disabled={!actions.access.canEdit}
-                    onClick={() => actions.reject(media.id, "Rejected by administrator.")}
-                    className="text-accent border-accent/40 hover:bg-accent/[0.06]"
-                  >
-                    Reject
-                  </AtelierButton>
-                </>
-              ) : null}
               <AtelierButton
                 size="chip"
                 variant="outline"

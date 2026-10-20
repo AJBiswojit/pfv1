@@ -66,3 +66,22 @@ for (const [key, , mediaSlot, productSlot] of sections) {
     assert.doesNotMatch(html, /pcard__name/);
   });
 }
+
+test('kurtis: the initial mood is the first CONFIGURED slot, never a hardcoded key (B-15)', () => {
+  /* Previously `active` started hardcoded as 'anarkalis'; when that slot was
+     unconfigured the hero image rendered blank until a mood was clicked. The
+     same resolution expression now backs both the initial default and the
+     re-save recovery (a disappeared selection falls back to the first
+     configured mood), so this static render pins both paths. */
+  const items = [
+    { id: 'copy', contentType: 'TEXT', slotKey: 'intro', text: { title: 'KURTI SERVER TITLE' } },
+    { id: 'm1', contentType: 'MEDIA', slotKey: 'festive-kurtis', media: { title: 'FESTIVE SERVER ART', url: '/api/v1/media/objects/hero/festive.avif', altText: 'festive alt' } },
+    { id: 'm2', contentType: 'MEDIA', slotKey: 'everyday-kurtis', media: { title: 'EVERYDAY SERVER ART', url: '/api/v1/media/objects/hero/everyday.avif', altText: 'everyday alt' } },
+  ];
+  const html = render('kurtis', items);
+  assert.match(html, /\/api\/v1\/media\/objects\/hero\/festive\.avif/,
+    'with `anarkalis` unconfigured, the first configured mood renders immediately');
+  assert.doesNotMatch(html, /src=""/, 'the mood image must never render blank');
+  assert.match(html, /aria-selected="true"[^>]*><sup>01<\/sup><span>FESTIVE SERVER ART/,
+    'the first configured mood tab is marked active');
+});

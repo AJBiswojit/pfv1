@@ -90,35 +90,6 @@ export default function EmployeeMediaDetail() {
               {media.demoPlaceholder ? <StatusBadge label="Demo" tone="muted" /> : null}
             </div>
           </div>
-
-          {/* Rejection notice if rejected */}
-          {media.status === "REJECTED" ? (
-            <div className="border border-pf-gold-deep/40 bg-pf-burgundy/[0.06] p-4 space-y-1.5">
-              <p className="font-ui text-[10px] uppercase tracking-widest font-semibold text-pf-burgundy">
-                Rejection Feedback
-              </p>
-              <p className="font-ui text-xs text-pf-burgundy leading-relaxed">
-                {media.rejectionReason || "This asset did not meet catalogue publication standards."}
-              </p>
-              {media.reviewedBy ? (
-                <p className="font-ui text-[10px] text-pf-muted pt-1">
-                  Reviewed by {media.reviewedBy} on {formatEmployeeDateTime(media.reviewedAt)}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* Approval notice if active */}
-          {media.status === "ACTIVE" ? (
-            <div className="border border-emerald-300 bg-emerald-50/60 p-4 space-y-1 font-ui text-xs text-emerald-900">
-              <p className="font-semibold uppercase tracking-wider text-[10px]">
-                Approved & Active
-              </p>
-              <p className="text-[11px] text-emerald-800">
-                This asset is published and visible on the PRATIKSHYA FASHION customer storefront.
-              </p>
-            </div>
-          ) : null}
         </div>
 
         {/* Details and Product info */}

@@ -119,6 +119,10 @@ class HeroSlide(BaseModel):
     cta: str = ""
     href: str = ""
     image: str = ""
+    # Batch 2 (B-07): the authored alt text of the slide's image. Additive
+    # and backward compatible — an empty value keeps the previous behavior
+    # (the storefront renders alt="").
+    alt_text: str = Field("", alias="altText")
     mobile_image: str = Field("", alias="mobileImage")
     media_id: Optional[str] = Field(None, alias="mediaId")
 

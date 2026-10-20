@@ -1,4 +1,6 @@
 """Explicit workspace-bound homepage routes; existing admin guards stay intact."""
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
@@ -81,9 +83,28 @@ async def hero_row(service, identity):
 
 
 @employee.get("/media-assets")
-async def assets(page: int = Query(1, ge=1), page_size: int = Query(24, alias="pageSize", ge=1, le=100), db: AsyncSession = Depends(get_db), actor=Depends(get_current_employee)):
+async def assets(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(24, alias="pageSize", ge=1, le=100),
+    q: Optional[str] = Query(None),
+    scope: Optional[str] = Query(None),
+    mime: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    actor=Depends(get_current_employee),
+):
+    """The employee registered-media picker page.
+
+    Batch 2 (B-11): optional `q` (key/filename + owning product name/SKU),
+    `scope` (product/hero/marketing) and `mime` filters; pagination and the
+    unfiltered default are unchanged.
+
+    INTENTIONAL: as a staff authoring surface this lists registered assets
+    of products in ANY status and shows the owning product's name/SKU as
+    authoring context — it never reaches the public contract (see
+    `employee_asset_page` for the full policy note).
+    """
     await hero_access(actor, db)
-    return await employee_asset_page(db, page, page_size)
+    return await employee_asset_page(db, page, page_size, q=q, scope=scope, mime=mime)
 
 
 @employee.get("/hero/items")

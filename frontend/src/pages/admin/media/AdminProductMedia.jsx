@@ -47,7 +47,7 @@ const AdminProductMedia = () => {
     fetchAdminProduct(productId).then(() => {
       if (!cancelled) setProductVersion((value) => value + 1);
     });
-    getRegisteredProductMedia(productId).then((result) => {
+    getRegisteredProductMedia(productId, { scope: "admin" }).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setServerMedia(result.items ?? []);

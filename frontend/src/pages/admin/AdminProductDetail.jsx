@@ -103,7 +103,7 @@ export default function AdminProductDetail() {
   useEffect(() => {
     let alive = true;
     setRegistered({ status: "loading", count: 0 });
-    getRegisteredProductMedia(productId).then((result) => {
+    getRegisteredProductMedia(productId, { scope: "admin" }).then((result) => {
       if (!alive) return;
       if (result.ok) {
         setRegistered({ status: "ready", count: result.items.length });

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Clock, Eye, Layers, Plus, Search, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Eye, Layers, Plus, Search } from "lucide-react";
 import EmployeePage from "../../components/employee/EmployeePage";
 import MetricCard from "../../components/employee/MetricCard";
 import StatusBadge from "../../components/employee/StatusBadge";
@@ -43,21 +43,14 @@ export default function EmployeeMediaDashboard() {
   const metrics = useMemo(() => {
     return {
       uploaded: employeeSubmissions.length,
-      pending: employeeSubmissions.filter((item) => item.status === MEDIA_STATUS.PENDING_REVIEW).length,
-      approved: employeeSubmissions.filter((item) => item.status === MEDIA_STATUS.ACTIVE).length,
-      rejected: employeeSubmissions.filter((item) => item.status === MEDIA_STATUS.REJECTED).length,
       totalHouse: allMedia.length,
-      pendingHouse: allMedia.filter((item) => item.status === MEDIA_STATUS.PENDING_REVIEW).length,
+      active: employeeSubmissions.filter((item) => item.status === MEDIA_STATUS.ACTIVE).length,
     };
   }, [employeeSubmissions, allMedia]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return activeMediaPool.filter((item) => {
-      if (tab === "PENDING" && item.status !== MEDIA_STATUS.PENDING_REVIEW) return false;
-      if (tab === "APPROVED" && item.status !== MEDIA_STATUS.ACTIVE) return false;
-      if (tab === "REJECTED" && item.status !== MEDIA_STATUS.REJECTED) return false;
-
       if (!needle) return true;
       return [
         item.title,
@@ -76,9 +69,6 @@ export default function EmployeeMediaDashboard() {
 
   const tabs = [
     { id: "MY_MEDIA", label: "My Media", count: employeeSubmissions.length },
-    { id: "PENDING", label: "Pending Review", count: metrics.pending },
-    { id: "APPROVED", label: "Approved", count: metrics.approved },
-    { id: "REJECTED", label: "Rejected", count: metrics.rejected },
     ...(canManage ? [{ id: "ALL_MEDIA", label: "All House Media", count: allMedia.length }] : []),
   ];
 
@@ -109,7 +99,7 @@ export default function EmployeeMediaDashboard() {
       }
     >
       {/* Metrics Row — matching Section 17 */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <MetricCard
           label="Uploaded Assets"
           value={metrics.uploaded}
@@ -117,24 +107,16 @@ export default function EmployeeMediaDashboard() {
           icon={Layers}
         />
         <MetricCard
-          label="Pending Review"
-          value={metrics.pending}
-          hint="Waiting for manager review"
-          tone={metrics.pending > 0 ? "alert" : "default"}
-          icon={Clock}
-        />
-        <MetricCard
-          label="Approved (Active)"
-          value={metrics.approved}
-          hint="Live on storefront"
+          label="Active records"
+          value={metrics.active}
+          hint="Activated in this portal"
           icon={CheckCircle2}
         />
         <MetricCard
-          label="Rejected"
-          value={metrics.rejected}
-          hint="Action required"
-          tone={metrics.rejected > 0 ? "danger" : "default"}
-          icon={XCircle}
+          label="All house records"
+          value={metrics.totalHouse}
+          hint="Every media record in this portal"
+          icon={Clock}
         />
       </div>
 
@@ -151,10 +133,13 @@ export default function EmployeeMediaDashboard() {
       {/* Workflow guide note */}
       <div className="mb-6 border border-pf-border/80 bg-pf-card p-4 font-ui text-xs text-pf-muted space-y-1">
         <p className="font-semibold text-pf-text uppercase tracking-wider text-[10px]">
-          Atelier Media Approval Workflow
+          How media reaches the storefront
         </p>
         <p className="leading-relaxed">
-          Uploaded media assets enter <strong>Pending Review</strong> and are audited for resolution, lighting and SKU accuracy. Once approved by management, assets automatically become <strong>Active</strong> and visible on customer product pages.
+          With the <strong>media.upload</strong> grant, uploads are stored and registered onto the
+          target product through the real backend pipeline — there is no approval queue in this
+          portal, and no record is published from this browser-side view. Catalogue visibility is
+          decided by an administrator on the durable media registry.
         </p>
       </div>
 
@@ -248,13 +233,6 @@ export default function EmployeeMediaDashboard() {
                           <StatusBadge label="Demo" tone="muted" />
                         ) : null}
                       </div>
-
-                      {/* Rejection Note */}
-                      {item.status === MEDIA_STATUS.REJECTED && item.rejectionReason ? (
-                        <div className="mt-2 border border-pf-gold-deep/40 bg-pf-burgundy/[0.06] p-2 text-[10px] font-ui text-pf-burgundy">
-                          <strong>Note:</strong> {item.rejectionReason}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
@@ -278,11 +256,7 @@ export default function EmployeeMediaDashboard() {
             <p className="font-ui text-xs text-pf-muted">
               {query
                 ? `No submissions found matching "${query}".`
-                : tab === "PENDING"
-                  ? "No media records yet — the backend media service is not active in this phase currently pending review."
-                  : tab === "REJECTED"
-                    ? "No rejected media submissions."
-                    : "No media records yet — the backend media service is not active in this phase assets found in this view."}
+                : "No media records yet. Product uploads go through the backend media pipeline once your account holds the media.upload grant."}
             </p>
             {canUpload ? (
               <div className="pt-2">

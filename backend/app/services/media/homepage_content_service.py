@@ -285,10 +285,144 @@ class HomepageContentService:
             raise
 
 
-async def employee_asset_page(db, page, page_size):
-    eligible = (MediaAssetModel.status == "uploaded", MediaAssetModel.media_type == "image", MediaAssetModel.mime_type.in_(IMAGE_MIMES))
+# ---------------------------------------------------------------------------
+# Registered-media library filters (Batch 2 / B-11 picker search)
+# ---------------------------------------------------------------------------
+
+#: Maximum length of the free-text asset query ``q``. The cap keeps the
+#: LIKE bind value bounded; longer input is a client error, not a silent
+#: truncation.
+ASSET_QUERY_MAX_LEN = 120
+
+#: Valid values for the optional ``scope`` list filter. The stored scope
+#: vocabulary is only {product, marketing}; placement art splits by object
+#: namespace, so ``hero`` is the hero/ namespace and ``marketing`` the
+#: marketing/ namespace of the marketing scope.
+ASSET_SCOPE_FILTERS = ("product", "hero", "marketing")
+
+
+def escape_like_literal(text):
+    """Escape the LIKE meta characters in a free-text search term.
+
+    The user-facing ``q`` is meant to match literals: an unescaped ``%`` or
+    ``_`` would silently widen the match (``%`` matches everything, so a
+    product name search for "100%" would return every registered asset).
+    Backslash is the escape character both here and in the SQL ``ESCAPE``
+    clause, so it is escaped first.
+    """
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def normalize_asset_page_filters(q, scope, mime):
+    """Validate + normalize the optional registered-asset list filters.
+
+    Shared by the admin registry list (``GET /media/assets``) and the
+    employee picker page (``employee_asset_page``). With all three inputs
+    empty the returned condition list is empty and the endpoints behave
+    exactly as before (unfiltered newest-first page). ``q`` matches
+    LITERALLY — LIKE wildcards are escaped (`escape_like_literal` +
+    ``ESCAPE '\\'``), never interpreted.
+    """
+    from app.models.catalog.product import ProductModel
+    from app.models.media.product_media import ProductMediaModel
+
+    conditions = []
+    text = (q or "").strip()
+    if text:
+        if len(text) > ASSET_QUERY_MAX_LEN:
+            raise BusinessLogicException(
+                f"The search text is limited to {ASSET_QUERY_MAX_LEN} characters."
+            )
+        like = f"%{escape_like_literal(text)}%"
+        # Product-name / SKU matching goes through the existing product_media
+        # mapping as an EXISTS subquery — assets stay one-row-per-asset (no
+        # join fan-out) and the count stays truthful.
+        product_match = (
+            select(ProductMediaModel.id)
+            .join(ProductModel, ProductModel.id == ProductMediaModel.product_id)
+            .where(ProductMediaModel.media_id == MediaAssetModel.id)
+            .where(
+                ProductModel.name.ilike(like, escape="\\")
+                | ProductModel.sku.ilike(like, escape="\\")
+            )
+            .exists()
+        )
+        conditions.append(MediaAssetModel.object_key.ilike(like, escape="\\") | product_match)
+    if scope is not None and str(scope).strip():
+        scope_text = str(scope).strip().lower()
+        if scope_text not in ASSET_SCOPE_FILTERS:
+            raise BusinessLogicException(
+                "Unknown scope filter. Valid values: product, hero, marketing."
+            )
+        if scope_text == "hero":
+            conditions.append(MediaAssetModel.scope == "marketing")
+            conditions.append(MediaAssetModel.object_key.like("hero/%"))
+        elif scope_text == "marketing":
+            conditions.append(MediaAssetModel.scope == "marketing")
+            conditions.append(MediaAssetModel.object_key.not_like("hero/%"))
+        else:
+            conditions.append(MediaAssetModel.scope == scope_text)
+    if mime is not None and str(mime).strip():
+        conditions.append(MediaAssetModel.mime_type == str(mime).strip().lower())
+    return conditions
+
+
+async def product_context_map(db, media_ids):
+    """{media_id: {productId, productName, productSku}} from the existing
+    media_product_media mapping — the picker shows the owning product's
+    name/SKU for product-scoped assets. One row per asset (lowest product
+    id wins when an asset is mapped to more than one product)."""
+    from app.models.catalog.product import ProductModel
+    from app.models.media.product_media import ProductMediaModel
+
+    if not media_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(ProductMediaModel, ProductModel)
+            .join(ProductModel, ProductModel.id == ProductMediaModel.product_id)
+            .where(ProductMediaModel.media_id.in_(media_ids))
+            .order_by(ProductModel.id)
+        )
+    ).all()
+    context = {}
+    for mapping, product in rows:
+        context.setdefault(
+            mapping.media_id,
+            {"productId": product.id, "productName": product.name, "productSku": product.sku},
+        )
+    return context
+
+
+async def employee_asset_page(db, page, page_size, q=None, scope=None, mime=None):
+    """The employee homepage media-picker page.
+
+    STATUS POLICY (intentional): this is a STAFF authoring surface
+    (marketing.view + media.view, enforced by the route's `hero_access`),
+    not a public read — so it deliberately lists registered assets of
+    products in ANY lifecycle status (DRAFT / PENDING_REVIEW / PUBLISHED /
+    ARCHIVED), because draft product art must be assignable to homepage
+    sections before the product is published. The returned product context
+    (name + SKU, via the existing product_media mapping) is intentional
+    authoring context so the operator can tell draft assets apart from
+    live ones. This endpoint does not widen any public surface: the public
+    product media-set gates non-PUBLISHED products to a 404 that is
+    indistinguishable from a missing product.
+    """
+    eligible = [MediaAssetModel.status == "uploaded", MediaAssetModel.media_type == "image", MediaAssetModel.mime_type.in_(IMAGE_MIMES)]
+    eligible.extend(normalize_asset_page_filters(q, scope, mime))
     total = (await db.execute(select(func.count()).select_from(MediaAssetModel).where(*eligible))).scalar() or 0
     rows = (await db.execute(select(MediaAssetModel).where(*eligible).order_by(MediaAssetModel.created_at.desc(), MediaAssetModel.id.desc()).offset((page-1)*page_size).limit(page_size))).scalars().all()
     # Verify objects in this bounded page; total counts metadata-eligible rows.
     items = [item for row in rows if (item := await asset_projection(db, row))]
+    scope_by_id = {row.id: row.scope for row in rows}
+    context = await product_context_map(db, [item["id"] for item in items])
+    for item in items:
+        product = context.get(item["id"]) or {}
+        item.update({
+            "scope": scope_by_id.get(item["id"]),
+            "productId": product.get("productId"),
+            "productName": product.get("productName"),
+            "productSku": product.get("productSku"),
+        })
     return {"ok": True, "items": items, "total": total, "page": page, "pageSize": page_size}

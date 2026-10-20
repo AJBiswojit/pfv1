@@ -84,12 +84,20 @@ export async function apiGetMediaObjectMeta(objectKey) {
   }
 }
 
-/** The resolved media set for a product, from the product's own columns. */
-export async function apiGetProductMediaSet(productId) {
+/**
+ * The resolved media set for a product, from the product's own columns.
+ *
+ * Batch 2 / 1A: the backend serves the set for PUBLISHED products to
+ * anonymous callers only. Staff surfaces (admin / employee) MUST pass their
+ * session `scope` so draft product media stays visible to them — the token
+ * is what unlocks the staff read; without it a DRAFT product answers 404,
+ * exactly like a missing one.
+ */
+export async function apiGetProductMediaSet(productId, { scope = "none" } = {}) {
   const id = String(productId || "").trim();
   if (!id) return { ok: false, error: "No product id supplied." };
   try {
-    const data = await apiClient.get(`/media/products/${encodeURIComponent(id)}/media-set`, { scope: "none" });
+    const data = await apiClient.get(`/media/products/${encodeURIComponent(id)}/media-set`, { scope });
     return { ok: true, data };
   } catch (error) {
     return handleError(error, "Product media set unavailable.");
@@ -120,16 +128,21 @@ export async function apiUploadMediaObject(file, { productId = null, namespace =
 }
 
 /** Upload scoped to one product — the key namespace cannot be spoofed. */
-export async function apiUploadProductMediaObject(productId, file) {
+export async function apiUploadProductMediaObject(productId, file, { scope = "admin" } = {}) {
   const id = String(productId || "").trim();
   if (!id) return { ok: false, error: "No product id supplied." };
   if (!file) return { ok: false, error: "No file selected." };
   const form = new FormData();
   form.append("file", file);
+  // Employee sessions use the dedicated employee product-media route (the
+  // admin surface refuses their tokens by design); the server enforces the
+  // media.upload grant, a non-archived product and the products/ namespace.
+  const path =
+    scope === "employee"
+      ? `/employee/media/products/${encodeURIComponent(id)}/objects`
+      : `/media/products/${encodeURIComponent(id)}/objects`;
   try {
-    const data = await apiClient.upload(`/media/products/${encodeURIComponent(id)}/objects`, form, {
-      scope: "admin",
-    });
+    const data = await apiClient.upload(path, form, { scope });
     return { ok: true, data, object: data?.object ?? null };
   } catch (error) {
     return handleError(error, "Upload failed.");
@@ -198,8 +211,11 @@ export async function apiRegisterMediaObject(
   if (isPrimary) form.append("is_primary", "true");
   if (title) form.append("title", String(title));
   if (altText) form.append("alt_text", String(altText));
+  // Employee registration is pinned server-side to the product's own
+  // products/{id}/ namespace (hero/marketing registration stays admin-only);
+  // the admin route keeps its broader product-media semantics.
   try {
-    const data = await apiClient.upload("/media/register", form, { scope });
+    const data = await apiClient.upload(scope === "employee" ? "/employee/media/register" : "/media/register", form, { scope });
     return {
       ok: true,
       media: data?.media ?? null,
@@ -212,9 +228,15 @@ export async function apiRegisterMediaObject(
 }
 
 /** The durable registered asset library (admin). */
-export async function apiListMediaAssets({ scope = "admin", page = 1, pageSize = 50 } = {}) {
+export async function apiListMediaAssets({ scope = "admin", page = 1, pageSize = 50, q = "", scopeFilter = "", mime = "" } = {}) {
   try {
-    const data = await apiClient.get(`/media/assets?page=${page}&pageSize=${pageSize}`, { scope });
+    // Batch 2 (B-11): optional server-side filters. Empty values are omitted
+    // so the default page is byte-identical to the pre-filter contract.
+    const params = [`page=${page}`, `pageSize=${pageSize}`];
+    if (String(q || "").trim()) params.push(`q=${encodeURIComponent(String(q).trim())}`);
+    if (String(scopeFilter || "").trim()) params.push(`scope=${encodeURIComponent(String(scopeFilter).trim())}`);
+    if (String(mime || "").trim()) params.push(`mime=${encodeURIComponent(String(mime).trim())}`);
+    const data = await apiClient.get(`/media/assets?${params.join("&")}`, { scope });
     return {
       ok: true,
       items: data?.items ?? [],
@@ -253,7 +275,9 @@ export const apiAssignMediaToProduct = (mediaOrKey, productId, options = {}) =>
  * Shape: [{ mediaId, objectKey, url, role, sortOrder, isPrimary, mimeType, … }]
  */
 export async function apiListProductMedia(productId, { scope = "none" } = {}) {
-  const result = await apiGetProductMediaSet(productId);
+  // `scope` is live again (1A): staff callers keep draft product media in
+  // view; the previous revision accepted the option but dropped it.
+  const result = await apiGetProductMediaSet(productId, { scope });
   if (!result.ok) return result;
   const data = result.data ?? {};
   return {
@@ -266,16 +290,39 @@ export async function apiListProductMedia(productId, { scope = "none" } = {}) {
 }
 
 /* ------------------------------------------------------------------------ */
-/* Marketing media — STILL a separate, honest backend gap.                   */
-/* Registering PRODUCT media is live; converting it to marketing placements   */
-/* is a distinct explicit assignment the backend does not expose yet.         */
+/* Placement (hero/marketing) asset registration — LIVE through              */
+/* POST /media/register-placement (allowlisted hero/ and marketing/          */
+/* namespaces, admin `media.upload`). Marketing placement entries now have a  */
+/* real API (`/admin/marketing/media` — see marketingMediaApi.js); the stubs */
+/* below remain only for the retired review-assign surface.                   */
 /* ------------------------------------------------------------------------ */
 
+/**
+ * Register an existing hero/ or marketing/ object as a durable placement
+ * asset (admin only). Idempotent by object key — repeats return the existing
+ * row with `created: false`. The server validates the key, the namespace
+ * allowlist, object existence and sniffed image content.
+ */
+export async function apiRegisterPlacementAsset(objectKey, { title = null, altText = null, scope = "admin" } = {}) {
+  const key = String(objectKey || "").trim();
+  if (!key) return { ok: false, error: "No media object key supplied.", status: 0 };
+  const form = new FormData();
+  form.append("object_key", key);
+  if (title) form.append("title", String(title));
+  if (altText) form.append("alt_text", String(altText));
+  try {
+    const data = await apiClient.upload("/media/register-placement", form, { scope });
+    return { ok: true, created: Boolean(data?.created), media: data?.media ?? null };
+  } catch (error) {
+    return handleError(error, "Placement asset registration failed.");
+  }
+}
+
 const MARKETING_REGISTER_BLOCKER =
-  "Product-media registration is live (Phase 7), but marketing placements " +
-  "are a separate explicit assignment the backend does not expose yet — " +
-  "(media_marketing_media / media_media_review have no API). A product " +
-  "upload is never silently promoted to a marketing slot; choose Product " +
+  "Product-media registration is live, and hero/marketing placement art " +
+  "registers through the Admin Media Library's placement action " +
+  "(hero/ and marketing/ objects; admin media.upload). An upload made " +
+  "here is never silently promoted to a marketing slot — choose Product " +
   "Media scope to register media against a product.";
 
 function marketingUnavailable() {
@@ -300,6 +347,7 @@ export default {
   apiUploadMediaObject,
   apiUploadProductMediaObject,
   apiRegisterMediaObject,
+  apiRegisterPlacementAsset,
   apiListMediaAssets,
   apiListProductMedia,
   apiDeleteMediaObject,

@@ -87,7 +87,7 @@ class PassThroughCacheBackend(Backend):
 
 importlib.import_module("app.models")  # noqa: E402  registers every mapped class
 from app.config import settings  # noqa: E402
-from app.dependencies import get_current_user, get_db  # noqa: E402
+from app.dependencies import get_current_user, get_db, get_optional_user  # noqa: E402
 from app.models.auth.user import UserModel  # noqa: E402
 from app.models.base import Base  # noqa: E402
 from app.models.catalog.category import CategoryModel, SubcategoryModel  # noqa: E402
@@ -369,7 +369,18 @@ class Phase7LifecycleCase(unittest.IsolatedAsyncioTestCase):
                     await session.execute(select(UserModel).where(UserModel.id == user_id))
                 ).scalars().first()
 
+        # Both auth dependencies: routes that REQUIRE a session and routes
+        # that optionally read one (the public media-set staff gate) must see
+        # the same simulated actor.
         app.dependency_overrides[get_current_user] = _dep
+        app.dependency_overrides[get_optional_user] = _dep
+
+    def as_anonymous(self):
+        """No session at all — both auth dependencies fall back to real
+
+        behaviour (no Authorization header ⇒ no current user)."""
+        self.app.dependency_overrides.pop(get_current_user, None)
+        self.app.dependency_overrides.pop(get_optional_user, None)
 
     # -- actors ---------------------------------------------------------------
 
@@ -655,7 +666,13 @@ class MediaAuthorizationTests(Phase7LifecycleCase):
         self.assertEqual(denied.status_code, 403, denied.text)
         denied_upload = self.upload(SEED_PRODUCT_ID, "denied.png", PNG_BYTES, "image/png")
         self.assertEqual(denied_upload.status_code, 403, denied_upload.text)
-        self.assertEqual(self.asset_rows(), [])
+        # The privileged admin's upload auto-registered exactly one asset
+        # (the /products/.../objects route uploads + registers atomically).
+        # The viewer's denied attempts must have added NOTHING — neither to
+        # the asset table nor to the product-media mapping table.
+        remaining_keys = [row.object_key for row in self.asset_rows()]
+        self.assertEqual(remaining_keys, [key])
+        self.assertEqual(len(self.mapping_rows(SEED_PRODUCT_ID)), 1)
         # Reads moved to the least-privilege media.view grant (admin
         # consolidation): this viewer HAS media.view, so the register is
         # listable — but writes stay denied.
@@ -895,5 +912,1400 @@ class FullNewProductLifecycleTests(Phase7LifecycleCase):
         self.assertEqual(self.client.get(cover_url).content, AVIF_BYTES)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# BATCH 1 — homepage RBAC (Track A), placement registration (Track B)
+# and legacy-column image registration (Track E)
+#
+# Same harness philosophy as the rest of this module: the REAL routers,
+# guards, services and object store on a disposable SQLite file + temp media
+# root. The homepage, marketing and explore routers are mounted alongside
+# the media/products routers so the public /home contract is exercised for
+# real.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@unittest.skipUnless(
+    HAS_AIOSQLITE, "aiosqlite is not installed (pip install -r requirements.txt)"
+)
+class _HomepageBatchCase(Phase7LifecycleCase):
+    """Phase 7 fixtures + homepage authority actors and routers.
+
+    Extra actors (server-side truth, never frontend claims):
+      · hp_admin        — admin carrying a bare built-in ADMIN role row with
+                          NO permission rows, i.e. exactly the role-mode
+                          fallback path production ADMIN accounts use.
+      · hp_super        — admin with account_level SUPER_ADMIN (wildcard).
+      · hp_custom       — custom-mode admin holding media.view+media.upload
+                          only: proves custom accounts are NOT silently
+                          elevated by the built-in ADMIN change.
+      · hp_employee_*   — employees with no grant / marketing.view only /
+                          marketing.view+manage (homepage stays opt-in).
+    """
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self._mount_batch_routers()
+
+    async def _seed(self):
+        await super()._seed()
+        async with self.Session() as session:
+            builtin_admin_role = RoleModel(
+                name="ADMIN", description="built-in role row (fallback source)", is_system=True
+            )
+            session.add(builtin_admin_role)
+            await session.flush()
+
+            def _user(email, name, user_type, **extra):
+                user = UserModel(
+                    email=email,
+                    full_name=name,
+                    hashed_password="x",
+                    user_type=user_type,
+                    status="ACTIVE",
+                    is_verified=True,
+                    force_password_change=False,
+                    **extra,
+                )
+                session.add(user)
+                return user
+
+            hp_admin = _user("p7-hp-admin@pratikshya.test", "Homepage Admin", "admin")
+            hp_super = _user(
+                "p7-hp-super@pratikshya.test", "Homepage Super", "admin",
+                account_level="SUPER_ADMIN",
+            )
+            hp_custom = _user(
+                "p7-hp-custom@pratikshya.test", "Custom Admin", "admin",
+                permission_mode="custom",
+                custom_permissions=["media.view", "media.upload"],
+            )
+            hp_plain = _user("p7-hp-plain@pratikshya.test", "Plain Employee", "employee")
+            hp_view = _user(
+                "p7-hp-view@pratikshya.test", "View Employee", "employee",
+                permission_mode="custom", custom_permissions=["marketing.view"],
+            )
+            hp_editor = _user(
+                "p7-hp-editor@pratikshya.test", "Editor Employee", "employee",
+                permission_mode="custom",
+                custom_permissions=["marketing.view", "marketing.manage"],
+            )
+            hp_uploader = _user(
+                "p7-hp-uploader@pratikshya.test", "Uploader Employee", "employee",
+                permission_mode="custom",
+                custom_permissions=["media.upload"],
+            )
+            await session.flush()
+            session.add(UserRoleModel(user_id=hp_admin.id, role_id=builtin_admin_role.id))
+            await session.commit()
+
+            self.hp_admin_id = hp_admin.id
+            self.hp_super_id = hp_super.id
+            self.hp_custom_id = hp_custom.id
+            self.hp_plain_id = hp_plain.id
+            self.hp_view_id = hp_view.id
+            self.hp_editor_id = hp_editor.id
+            self.hp_uploader_id = hp_uploader.id
+
+    def _mount_batch_routers(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from app.api.v1.explore import router as explore_router
+        from app.api.v1.homepage import router as homepage_router
+        from app.api.v1.marketing_media import router as marketing_router
+        from app.api.v1.media import employee_router as employee_media_router
+        from app.api.v1.media import router as media_router
+        from app.api.v1.products import router as products_router
+        from app.core.error_handlers import register_error_handlers
+
+        app = FastAPI()
+        register_error_handlers(app)
+        FastAPICache.init(backend=PassThroughCacheBackend(), prefix="pf7-batch1-test")
+        for router in (products_router, media_router, employee_media_router, homepage_router, marketing_router, explore_router):
+            app.include_router(router, prefix="/api/v1")
+
+        Session = self.Session
+
+        async def _override_get_db():
+            async with Session() as session:
+                try:
+                    yield session
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+                    raise
+
+        app.dependency_overrides[get_db] = _override_get_db
+        self.app = app
+        self.client = TestClient(app)
+        self.as_hp_admin()
+
+    # -- batch actors -----------------------------------------------------------
+
+    def as_hp_admin(self):
+        self._set_current_user(self.app, self.hp_admin_id)
+
+    def as_hp_super(self):
+        self._set_current_user(self.app, self.hp_super_id)
+
+    def as_hp_custom(self):
+        self._set_current_user(self.app, self.hp_custom_id)
+
+    def as_hp_plain_employee(self):
+        self._set_current_user(self.app, self.hp_plain_id)
+
+    def as_hp_view_employee(self):
+        self._set_current_user(self.app, self.hp_view_id)
+
+    def as_hp_editor_employee(self):
+        self._set_current_user(self.app, self.hp_editor_id)
+
+    def as_hp_uploader_employee(self):
+        self._set_current_user(self.app, self.hp_uploader_id)
+
+    # -- batch helpers -----------------------------------------------------------
+
+    def employee_upload(self, product_id, name, data, content_type, **form):
+        return self.client.post(
+            f"/api/v1/employee/media/products/{product_id}/objects",
+            files={"file": (name, data, content_type)},
+            data=form,
+        )
+
+    def employee_register(self, object_key, product_id, **form):
+        return self.client.post(
+            "/api/v1/employee/media/register",
+            data={"object_key": object_key, "product_id": product_id, **form},
+        )
+
+    def upload_namespace(self, name, data, content_type, namespace, **form):
+        return self.client.post(
+            "/api/v1/media/objects",
+            files={"file": (name, data, content_type)},
+            data={"namespace": namespace, **form},
+        )
+
+    def register_placement(self, object_key, **form):
+        return self.client.post(
+            "/api/v1/media/register-placement",
+            data={"object_key": object_key, **form},
+        )
+
+    def plant_object(self, object_key, data):
+        """Put bytes straight into the temp media root (the local provider's
+        storage), bypassing the upload route — how pre-existing art arrives."""
+        path = os.path.join(self.media_root, *object_key.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as handle:
+            handle.write(data)
+        return object_key
+
+    def configure_trust(self, workspace, expected_revision, active=True):
+        return self.client.put(
+            f"/api/v1/{workspace}/homepage/sections/trust",
+            json={"expectedRevision": expected_revision, "isActive": active},
+        )
+
+    def marketing_rows(self):
+        async def _read():
+            from app.models.media.marketing_media import MarketingMediaModel
+
+            async with self.Session() as session:
+                return (await session.execute(select(MarketingMediaModel))).scalars().all()
+
+        return self._run(_read())
+
+    def _set_product_status(self, status, published=False):
+        async def _go():
+            async with self.Session() as session:
+                product = (
+                    await session.execute(select(ProductModel).where(ProductModel.id == SEED_PRODUCT_ID))
+                ).scalars().first()
+                product.status = status
+                product.published = published
+                await session.commit()
+
+        self._run(_go())
+
+    def _draft(self):
+        self._set_product_status("DRAFT", published=False)
+
+
+class HomepageRbacTests(_HomepageBatchCase):
+    """Track A — ADMIN manages the homepage; employees stay opt-in."""
+
+    def test_builtin_admin_reads_and_manages_homepage_sections(self):
+        self.as_hp_admin()
+        listing = self.client.get("/api/v1/admin/homepage/sections")
+        self.assertEqual(listing.status_code, 200, listing.text)
+
+        created = self.configure_trust("admin", 0)
+        self.assertEqual(created.status_code, 201, created.text)
+
+        updated = self.configure_trust("admin", 1)
+        self.assertEqual(updated.status_code, 200, updated.text)
+
+    def test_super_admin_retains_full_homepage_control(self):
+        self.as_hp_super()
+        self.assertEqual(self.client.get("/api/v1/admin/homepage/sections").status_code, 200)
+        self.assertEqual(self.configure_trust("admin", 0).status_code, 201)
+
+    def test_employee_without_marketing_grant_cannot_read_or_write(self):
+        self.as_hp_plain_employee()
+        read = self.client.get("/api/v1/employee/homepage/sections")
+        self.assertEqual(read.status_code, 403, read.text)
+        detail = self.client.get("/api/v1/employee/homepage/sections/trust")
+        self.assertEqual(detail.status_code, 403, detail.text)
+        write = self.configure_trust("employee", 0)
+        self.assertEqual(write.status_code, 403, write.text)
+
+    def test_employee_view_grant_reads_but_cannot_manage(self):
+        self.as_hp_view_employee()
+        self.assertEqual(self.client.get("/api/v1/employee/homepage/sections").status_code, 200)
+        write = self.configure_trust("employee", 0)
+        self.assertEqual(write.status_code, 403, write.text)
+
+    def test_employee_with_view_and_manage_grant_can_write(self):
+        self.as_hp_editor_employee()
+        self.assertEqual(self.client.get("/api/v1/employee/homepage/sections").status_code, 200)
+        self.assertEqual(self.configure_trust("employee", 0).status_code, 201)
+
+    def test_custom_mode_admin_is_not_silently_elevated(self):
+        self.as_hp_custom()
+        read = self.client.get("/api/v1/admin/homepage/sections")
+        self.assertEqual(read.status_code, 403, read.text)
+        write = self.configure_trust("admin", 0)
+        self.assertEqual(write.status_code, 403, write.text)
+        # …but their explicit media grants keep working (view-only in picker).
+        self.assertEqual(self.client.get("/api/v1/media/assets").status_code, 200)
+
+
+class PlacementAssetRegistrationTests(_HomepageBatchCase):
+    """Track B — the allowlisted hero/marketing registration path."""
+
+    def test_admin_uploads_and_registers_a_hero_object(self):
+        self.as_admin()
+        uploaded = self.upload_namespace("hero-extra.png", PNG_BYTES, "image/png", "hero")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+
+        registered = self.register_placement(key)
+        self.assertEqual(registered.status_code, 201, registered.text)
+        self.assertTrue(registered.json()["created"])
+        self.assertEqual(registered.json()["media"]["objectKey"], key)
+
+        asset = [row for row in self.asset_rows() if row.object_key == key]
+        self.assertEqual(len(asset), 1)
+        self.assertEqual(asset[0].scope, "marketing")
+        self.assertEqual(asset[0].mime_type, "image/png")
+
+    def test_a_registered_placement_asset_appears_in_the_picker_library(self):
+        # RegisteredMediaPicker lists GET /media/assets — placement art must
+        # surface there alongside product art (that is the picker every
+        # homepage MEDIA slot and the hero editor reads).
+        self.as_admin()
+        self.plant_object("hero/hero-picker.avif", AVIF_BYTES)
+        registered = self.register_placement("hero/hero-picker.avif")
+        self.assertEqual(registered.status_code, 201, registered.text)
+        listing = self.client.get("/api/v1/media/assets")
+        self.assertEqual(listing.status_code, 200, listing.text)
+        keys = [item["objectKey"] for item in listing.json()["items"]]
+        self.assertIn("hero/hero-picker.avif", keys)
+
+    def test_duplicate_registration_is_an_idempotent_noop(self):
+        self.as_admin()
+        self.plant_object("hero/hero-dup.avif", AVIF_BYTES)
+        first = self.register_placement("hero/hero-dup.avif")
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertTrue(first.json()["created"])
+
+        second = self.register_placement("hero/hero-dup.avif")
+        self.assertEqual(second.status_code, 201, second.text)
+        self.assertFalse(second.json()["created"])
+        self.assertEqual(
+            [row.id for row in self.asset_rows() if row.object_key == "hero/hero-dup.avif"].__len__(), 1
+        )
+
+    def test_the_allowlist_rejects_products_and_uploads_namespaces(self):
+        self.as_admin()
+        product_object = self.upload_namespace(
+            "cover.png", PNG_BYTES, "image/png", "products", productId=SEED_PRODUCT_ID
+        )
+        self.assertEqual(product_object.status_code, 201, product_object.text)
+        rejected = self.register_placement(product_object.json()["object"]["key"])
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+
+        uploads_object = self.upload_namespace("loose.png", PNG_BYTES, "image/png", "uploads")
+        self.assertEqual(uploads_object.status_code, 201, uploads_object.text)
+        rejected_uploads = self.register_placement(uploads_object.json()["object"]["key"])
+        self.assertEqual(rejected_uploads.status_code, 422, rejected_uploads.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_employees_are_rejected_regardless_of_grants(self):
+        # Track C policy: the placement registry is ADMIN-only. Employees may
+        # never register hero/marketing assets — not with media.upload, not
+        # with media.upload + marketing.manage. The employee upload scope is
+        # strictly products/ (existing non-archived products), so this pin
+        # must survive every future employee-permission broadening.
+        self._run(self._grant_employee_upload())
+        self.as_hp_editor_employee()  # marketing.view+manage + media.upload now
+        self.plant_object("hero/employee-attempt.avif", AVIF_BYTES)
+        denied = self.register_placement("hero/employee-attempt.avif")
+        self.assertEqual(denied.status_code, 403, denied.text)
+        # No write happened through any fallback.
+        self.assertEqual(self.asset_rows(), [])
+
+    async def _grant_employee_upload(self):
+        async with self.Session() as session:
+            editor = (
+                await session.execute(select(UserModel).where(UserModel.id == self.hp_editor_id))
+            ).scalars().first()
+            editor.custom_permissions = ["marketing.view", "marketing.manage", "media.upload"]
+            await session.commit()
+
+    def test_registering_a_missing_object_is_404(self):
+        self.as_admin()
+        response = self.register_placement("hero/definitely-missing.avif")
+        self.assertEqual(response.status_code, 404, response.text)
+
+    def test_non_image_content_is_rejected(self):
+        self.as_admin()
+        self.plant_object("hero/notes.txt", b"definitely not an image")
+        rejected = self.register_placement("hero/notes.txt")
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_mislabelled_extension_registers_the_true_content_type(self):
+        # Real seed art is mislabelled (.avif name, JPEG/PNG bytes) — the
+        # sniffed content type, never the extension, is what gets stored.
+        self.as_admin()
+        self.plant_object("hero/hero001.avif", PNG_BYTES)
+        registered = self.register_placement("hero/hero001.avif")
+        self.assertEqual(registered.status_code, 201, registered.text)
+        self.assertEqual(registered.json()["media"]["mimeType"], "image/png")
+
+    def test_view_only_admin_cannot_register_placement(self):
+        self.as_view_only_admin()
+        response = self.register_placement("hero/whatever.avif")
+        self.assertEqual(response.status_code, 403, response.text)
+
+    def test_employee_token_cannot_reach_the_placement_route(self):
+        self.as_hp_plain_employee()
+        response = self.register_placement("hero/whatever.avif")
+        self.assertEqual(response.status_code, 403, response.text)
+
+
+class HeroPipelineTests(_HomepageBatchCase):
+    """Track B — registered art flows into hero creation AND the public /home."""
+
+    def _registered_hero_asset(self):
+        uploaded = self.upload_namespace("hero-live.png", PNG_BYTES, "image/png", "hero")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+        registered = self.register_placement(key)
+        self.assertEqual(registered.status_code, 201, registered.text)
+        return key, registered.json()["media"]["id"]
+
+    def test_create_activate_and_read_back_through_home(self):
+        self.as_admin()
+        key, asset_id = self._registered_hero_asset()
+
+        created = self.client.post(
+            "/api/v1/admin/marketing/media",
+            json={
+                "placement": "HOME_HERO",
+                "objectKey": key,
+                "mediaAssetId": asset_id,
+                "title": "Batch One Hero",
+                "subtitle": "Registered placement art",
+                "ctaLabel": "Shop",
+                "ctaHref": "/shop",
+                "sortOrder": 0,
+                "isActive": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.status_code, 200, home.text)
+        slides = home.json()["heroSlides"]
+        self.assertEqual(len(slides), 1)
+        self.assertIn(key, slides[0]["image"])
+        self.assertEqual(slides[0]["title"], "Batch One Hero")
+        self.assertEqual(home.json()["homepageContent"]["status"], "ready")
+
+    def test_authored_hero_alt_text_is_exposed_through_home(self):
+        """B-07 (partial): the authored altText rides /home; an unauthored
+        slide still carries the field, empty — backward compatible."""
+        self.as_admin()
+        key, asset_id = self._registered_hero_asset()
+        created = self.client.post(
+            "/api/v1/admin/marketing/media",
+            json={
+                "placement": "HOME_HERO",
+                "objectKey": key,
+                "mediaAssetId": asset_id,
+                "title": "Alt Hero",
+                "ctaHref": "/shop",
+                "altText": "Banarasi campaign plate",
+                "sortOrder": 0,
+                "isActive": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        plain_uploaded = self.upload_namespace("hero-plain.png", PNG_BYTES, "image/png", "hero")
+        plain = self.register_placement(plain_uploaded.json()["object"]["key"])
+        self.assertEqual(plain.status_code, 201, plain.text)
+        created_plain = self.client.post(
+            "/api/v1/admin/marketing/media",
+            json={
+                "placement": "HOME_HERO",
+                "objectKey": plain_uploaded.json()["object"]["key"],
+                "mediaAssetId": plain.json()["media"]["id"],
+                "title": "Plain Hero",
+                "ctaHref": "/shop",
+                "sortOrder": 1,
+                "isActive": True,
+            },
+        )
+        self.assertEqual(created_plain.status_code, 201, created_plain.text)
+
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.status_code, 200, home.text)
+        slides = home.json()["heroSlides"]
+        self.assertEqual(len(slides), 2)
+        self.assertEqual(slides[0]["altText"], "Banarasi campaign plate")
+        self.assertEqual(slides[1]["altText"], "", "unauthored slides keep the empty-alt contract")
+
+    def test_hero_creation_without_a_registered_asset_fails_safely(self):
+        self.as_admin()
+        uploaded = self.upload_namespace("hero-unregistered.png", PNG_BYTES, "image/png", "hero")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+
+        rejected = self.client.post(
+            "/api/v1/admin/marketing/media",
+            json={"placement": "HOME_HERO", "objectKey": key, "title": "No asset", "sortOrder": 0},
+        )
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        self.assertEqual(self.marketing_rows(), [])
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.json()["heroSlides"], [])
+
+
+class SeedMarketingHeroScriptTests(_HomepageBatchCase):
+    """Track B — the repaired seeder: registration first, truthful counts."""
+
+    def _load_script(self):
+        import importlib.util
+        from pathlib import Path
+
+        path = Path(__file__).parents[2] / "scripts" / "seed_marketing_hero.py"
+        spec = importlib.util.spec_from_file_location("seed_marketing_hero_script", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_dry_run_registers_nothing_and_reports_failures_accurately(self):
+        module = self._load_script()
+        self.plant_object("hero/hero001.avif", PNG_BYTES)
+        # hero/hero999.avif deliberately NOT planted → must count as FAILED.
+        entries = [
+            ("hero/hero001.avif", "One", "", "", "/shop", 0),
+            ("hero/hero999.avif", "Missing", "", "", "/shop", 1),
+        ]
+        lines = []
+
+        async def _run():
+            async with self.Session() as session:
+                return await module.seed_hero_entries(session, entries=entries, apply=False, out=lines.append)
+
+        summary = self._run(_run())
+        self.assertEqual(summary["mode"], "DRY-RUN")
+        self.assertEqual(summary["would_create"], 1)
+        self.assertEqual(summary["assets_registered"], 1)
+        self.assertEqual(summary["failed"], 1)
+        self.assertEqual(summary["failures"][0][0], "hero/hero999.avif")
+        # A dry run persists nothing at all.
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.marketing_rows(), [])
+        self.assertTrue(any("DRY-RUN" in line for line in lines))
+
+    def test_apply_creates_entries_and_reruns_idempotently(self):
+        module = self._load_script()
+        self.plant_object("hero/hero001.avif", PNG_BYTES)
+        self.plant_object("hero/hero002.avif", PNG_BYTES)
+        entries = [
+            ("hero/hero001.avif", "One", "", "", "/shop", 0),
+            ("hero/hero002.avif", "Two", "", "", "/shop", 1),
+        ]
+
+        async def _run_apply():
+            async with self.Session() as session:
+                return await module.seed_hero_entries(session, entries=entries, apply=True, out=lambda line: None)
+
+        first = self._run(_run_apply())
+        self.assertEqual(first["created"], 2)
+        self.assertEqual(first["failed"], 0)
+        rows = self.marketing_rows()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(sorted(row.sort_order for row in rows), [0, 1])
+        self.assertEqual(len(self.asset_rows()), 2)
+
+        second = self._run(_run_apply())
+        self.assertEqual(second["created"], 0)
+        self.assertEqual(second["skipped_existing"], 2)
+        self.assertEqual(len(self.marketing_rows()), 2)
+        self.assertEqual(len(self.asset_rows()), 2)  # no duplicate assets either
+
+
+class LegacyImageRegistrationTests(_HomepageBatchCase):
+    """Track E — legacy column references become registered product media."""
+
+    async def _write_reference(self, product_id, **columns):
+        async with self.Session() as session:
+            product = (
+                await session.execute(select(ProductModel).where(ProductModel.id == product_id))
+            ).scalars().first()
+            for column, value in columns.items():
+                setattr(product, column, value)
+            await session.commit()
+
+    def _run_registration(self, apply, product_limit=None):
+        from app.services.media.legacy_image_registration import register_legacy_product_images
+
+        async def _go():
+            async with self.Session() as session:
+                report = await register_legacy_product_images(session, apply=apply, product_limit=product_limit)
+                if apply:
+                    await session.commit()
+                return report
+
+        return self._run(_go())
+
+    def _fixtures(self):
+        # The seeded legacy product references /images/products/<id>/primary.avif
+        # in BOTH `image` and `additional_images` (dedup check). One planted
+        # object is verifiable; the rest exercise every skip reason.
+        self.plant_object(f"products/{SEED_PRODUCT_ID}/primary.avif", PNG_BYTES)
+        self.plant_object(f"products/{SEED_PRODUCT_ID}/gallery02.png", PNG_BYTES)
+        self._run(
+            self._write_reference(
+                SEED_PRODUCT_ID,
+                image=f"/images/products/{SEED_PRODUCT_ID}/primary.avif",
+                hover_image="https://cdn.example.com/stolen.jpg",
+                additional_images=["products/NOPE/missing.png", f"products/{SEED_PRODUCT_ID}/gallery02.png"],
+            )
+        )
+
+    def test_a_legacy_registered_image_flows_picker_section_and_home(self):
+        # The acceptance chain, API level: register the legacy column image →
+        # it appears in the homepage media picker (GET /media/assets) → it
+        # saves into a section MEDIA slot → it renders in /home homepageContent.
+        key = f"products/{SEED_PRODUCT_ID}/collage.avif"
+        self.plant_object(key, PNG_BYTES)
+        self._run(self._write_reference(SEED_PRODUCT_ID, image=f"/images/products/{SEED_PRODUCT_ID}/collage.avif"))
+        report = self._run_registration(apply=True)
+        self.assertEqual(report["registered"], 1, report)
+        asset = [row for row in self.asset_rows() if row.object_key == key]
+        self.assertEqual(len(asset), 1)
+        asset_id = asset[0].id
+
+        # 1. The registered-media picker (every homepage MEDIA slot reads it).
+        self.as_hp_admin()
+        listing = self.client.get("/api/v1/media/assets")
+        self.assertEqual(listing.status_code, 200, listing.text)
+        self.assertIn(key, {item["objectKey"] for item in listing.json()["items"]})
+
+        # 2. Save it into the categories collage "women" MEDIA slot.
+        configured = self.client.put(
+            "/api/v1/admin/homepage/sections/categories",
+            json={"expectedRevision": 0, "isActive": True},
+        )
+        self.assertEqual(configured.status_code, 201, configured.text)
+        created = self.client.post(
+            "/api/v1/admin/homepage/sections/categories/items",
+            json={
+                "slotKey": "women",
+                "contentType": "MEDIA",
+                "mediaAssetId": asset_id,
+                "expectedRevision": 1,
+                "isActive": True,
+                "altText": "Legacy collage image",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+        # 3. The public assembled homepage carries the project item + media.
+        self.as_customer()
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.status_code, 200, home.text)
+        sections = {s["key"]: s for s in home.json()["homepageContent"]["sections"]}
+        categories = sections["categories"]
+        self.assertEqual(categories["state"], "ready")
+        media = [i for i in categories["items"] if i["slotKey"] == "women" and i["contentType"] == "MEDIA"]
+        self.assertEqual(len(media), 1, categories["items"])
+        self.assertEqual(media[0]["media"]["objectKey"], key)
+        self.assertEqual(media[0]["media"]["altText"], "Legacy collage image")
+
+    def test_dry_run_registers_nothing_but_reports_the_plan(self):
+        self._fixtures()
+        report = self._run_registration(apply=False)
+        self.assertEqual(report["mode"], "DRY-RUN")
+        self.assertEqual(report["would_register"], 2, report)
+        self.assertEqual(report["skipped"]["external-url"], 1)
+        self.assertEqual(report["skipped"]["missing-object"], 1, report)
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.mapping_rows(), [])
+        self.assertTrue(any(s["objectKey"] == f"products/{SEED_PRODUCT_ID}/primary.avif" for s in report["samples"]))
+
+    def test_apply_registers_additively_and_is_idempotent(self):
+        self._fixtures()
+        before = self.product_row(SEED_PRODUCT_ID)
+        report = self._run_registration(apply=True)
+        self.assertEqual(report["registered"], 2, report)
+        self.assertEqual(report["assets_created"], 2)
+        self.assertEqual(report["mappings_created"], 2)
+
+        assets = {row.object_key: row for row in self.asset_rows()}
+        self.assertIn(f"products/{SEED_PRODUCT_ID}/primary.avif", assets)
+        mapping = self.mapping_rows(SEED_PRODUCT_ID)
+        self.assertEqual(len(mapping), 2)
+        for row in mapping:
+            self.assertFalse(row.is_primary, "Track E never claims primacy")
+            self.assertEqual(row.role, "GALLERY")
+        for asset in assets.values():
+            self.assertEqual(asset.scope, "product")
+
+        # Product columns are never rewritten.
+        after = self.product_row(SEED_PRODUCT_ID)
+        self.assertEqual(after.image, before.image)
+        self.assertEqual(after.additional_images, before.additional_images)
+
+        again = self._run_registration(apply=True)
+        self.assertEqual(again["registered"], 0, again)
+        self.assertEqual(again["skipped"]["already-registered"], 2)
+        self.assertEqual(len(self.asset_rows()), 2)
+        self.assertEqual(len(self.mapping_rows()), 2)
+
+    def test_unmapped_references_are_skipped_not_guessed(self):
+        self._run(
+            self._write_reference(
+                SEED_PRODUCT_ID,
+                image="/static/non-catalog/file.png",   # absolute server path: not ours
+                hover_image="",
+                additional_images=["/9ppt/../escape.png"],  # traversal → no usable key
+            )
+        )
+        report = self._run_registration(apply=True)
+        self.assertEqual(report["registered"], 0, report)
+        self.assertEqual(report["skipped"]["not-an-object-reference"], 2, report)
+        self.assertEqual(self.asset_rows(), [])
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class EmployeeProductMediaTests(_HomepageBatchCase):
+    """Track C — employee upload/register: products/ only, explicit media.upload.
+
+    Employee-lane writes are further hardened: DRAFT / PENDING_REVIEW only
+    (PUBLISHED and ARCHIVED are admin territory), never primary.
+    """
+
+    def test_employee_without_media_upload_is_403_on_both_routes(self):
+        self.as_hp_plain_employee()
+        denied_upload = self.employee_upload(SEED_PRODUCT_ID, "x.png", PNG_BYTES, "image/png")
+        self.assertEqual(denied_upload.status_code, 403, denied_upload.text)
+        self.plant_object(f"products/{SEED_PRODUCT_ID}/plain.png", PNG_BYTES)
+        denied_register = self.employee_register(f"products/{SEED_PRODUCT_ID}/plain.png", SEED_PRODUCT_ID)
+        self.assertEqual(denied_register.status_code, 403, denied_register.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_upload_with_grant_registers_and_maps_the_product(self):
+        self._draft()  # employee lane: only DRAFT / PENDING_REVIEW is writable
+        self.as_hp_uploader_employee()
+        uploaded = self.employee_upload(
+            SEED_PRODUCT_ID, "team-shot.png", PNG_BYTES, "image/png", role="gallery"
+        )
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+        self.assertTrue(key.startswith(f"products/{SEED_PRODUCT_ID}/"), key)
+
+        assets = [row for row in self.asset_rows() if row.object_key == key]
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0].scope, "product")
+        self.assertEqual(assets[0].uploaded_by, self.hp_uploader_id)
+        mappings = self.mapping_rows(SEED_PRODUCT_ID)
+        self.assertEqual(len(mappings), 1)
+        self.assertEqual(mappings[0].media_id, assets[0].id)
+
+        # Registered product media is immediately listable in the picker.
+        listing = self.client.get("/api/v1/media/assets")
+        self.assertEqual(listing.status_code, 403, listing.text)  # admin surface stays closed
+        # …but the STAFF read model resolves the assignment: the media-set is
+        # public for PUBLISHED products only, so this DRAFT read rides on the
+        # employee's own media.upload session (1A staff gate).
+        media_set = self.client.get(f"/api/v1/media/products/{SEED_PRODUCT_ID}/media-set")
+        self.assertEqual(media_set.status_code, 200, media_set.text)
+        keys = {item["objectKey"] for item in media_set.json()["mediaItems"]}
+        self.assertIn(key, keys)
+
+    def test_register_by_key_is_idempotent_and_never_reshapes_the_mapping(self):
+        self._draft()
+        self.as_hp_uploader_employee()
+        key = f"products/{SEED_PRODUCT_ID}/reuse.png"
+        self.plant_object(key, PNG_BYTES)
+        first = self.employee_register(key, SEED_PRODUCT_ID, role="gallery")
+        self.assertEqual(first.status_code, 201, first.text)
+        media_id = first.json()["media"]["id"]
+        # Re-registering the same key is idempotent — and MUST NOT touch the
+        # existing mapping's role / sort order / primary flag.
+        second = self.employee_register(key, SEED_PRODUCT_ID, role="detail", sort_order=9)
+        self.assertEqual(second.status_code, 201, second.text)
+        self.assertEqual(second.json()["media"]["id"], media_id)
+        self.assertEqual(len([row for row in self.asset_rows() if row.object_key == key]), 1)
+        mapping = self.mapping_rows(SEED_PRODUCT_ID)[0]
+        self.assertEqual(mapping.role, "gallery")  # caller's own casing, unchanged
+        self.assertEqual(mapping.sort_order, 0)
+        self.assertFalse(mapping.is_primary)
+
+    def test_register_only_binds_keys_inside_the_product_namespace(self):
+        self._draft()
+        self.as_hp_uploader_employee()
+        outside = [
+            "hero/hero001.avif",
+            "marketing/campaign.avif",
+            f"products/OTHER-PRODUCT/{SEED_PRODUCT_ID}.png",
+            "uploads/loose.png",
+        ]
+        for index, key in enumerate(outside):
+            self.plant_object(key, PNG_BYTES)
+            denied = self.employee_register(key, SEED_PRODUCT_ID)
+            self.assertEqual(denied.status_code, 422, (key, denied.text))
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_archived_products_reject_employee_upload_and_register(self):
+        async def _archive():
+            async with self.Session() as session:
+                product = (
+                    await session.execute(select(ProductModel).where(ProductModel.id == SEED_PRODUCT_ID))
+                ).scalars().first()
+                product.status = "ARCHIVED"
+                await session.commit()
+
+        self._run(_archive())
+        self.as_hp_uploader_employee()
+        denied_upload = self.employee_upload(SEED_PRODUCT_ID, "dead.png", PNG_BYTES, "image/png")
+        self.assertEqual(denied_upload.status_code, 422, denied_upload.text)
+        self.plant_object(f"products/{SEED_PRODUCT_ID}/dead.png", PNG_BYTES)
+        denied_register = self.employee_register(f"products/{SEED_PRODUCT_ID}/dead.png", SEED_PRODUCT_ID)
+        self.assertEqual(denied_register.status_code, 422, denied_register.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_unknown_product_is_a_clean_404(self):
+        self.as_hp_uploader_employee()
+        missing_upload = self.employee_upload("PF-LONG-GONE-0001", "x.png", PNG_BYTES, "image/png")
+        self.assertEqual(missing_upload.status_code, 404, missing_upload.text)
+        missing_register = self.employee_register(f"products/PF-LONG-GONE-0001/x.png", "PF-LONG-GONE-0001")
+        self.assertEqual(missing_register.status_code, 404, missing_register.text)
+
+    def test_media_upload_grant_does_not_extend_to_homepage_or_placements(self):
+        # Decision pin: media.upload ≠ homepage editing AND ≠ placement
+        # registration, even for employees who upload all day.
+        self.as_hp_uploader_employee()
+        placement = self.register_placement("hero/nope.avif")
+        self.assertEqual(placement.status_code, 403, placement.text)
+        homepage_write = self.configure_trust("employee", 0)
+        self.assertEqual(homepage_write.status_code, 403, homepage_write.text)
+
+    def test_employee_routes_still_validate_role_and_key(self):
+        self._draft()
+        self.as_hp_uploader_employee()
+        key = f"products/{SEED_PRODUCT_ID}/role-check.png"
+        self.plant_object(key, PNG_BYTES)
+        bad_role = self.employee_register(key, SEED_PRODUCT_ID, role="definitely-not-a-role")
+        self.assertEqual(bad_role.status_code, 422, bad_role.text)
+        missing = self.employee_register(f"products/{SEED_PRODUCT_ID}/not-there.png", SEED_PRODUCT_ID)
+        self.assertEqual(missing.status_code, 404, missing.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_admin_surface_still_rejects_employee_tokens(self):
+        # No route migration leaked: the admin upload/register paths keep
+        # their hard employee denial.
+        self.as_hp_uploader_employee()
+        admin_upload = self.upload(SEED_PRODUCT_ID, "nope.png", PNG_BYTES, "image/png")
+        self.assertEqual(admin_upload.status_code, 403, admin_upload.text)
+        admin_register = self.register(f"products/{SEED_PRODUCT_ID}/nope.png")
+        self.assertEqual(admin_register.status_code, 403, admin_register.text)
+
+
+    # ── Employee write hardening: DRAFT/PENDING_REVIEW only, never primary,
+    #    and the employee lane never reshapes an existing mapping. ──────────
+
+    def test_employee_primary_flag_is_rejected_on_both_routes(self):
+        self._draft()
+        self.as_hp_uploader_employee()
+        denied_upload = self.employee_upload(
+            SEED_PRODUCT_ID, "cover-grab.png", PNG_BYTES, "image/png",
+            is_primary="true", role="cover",
+        )
+        self.assertEqual(denied_upload.status_code, 422, denied_upload.text)
+        key = f"products/{SEED_PRODUCT_ID}/planted.png"
+        self.plant_object(key, PNG_BYTES)
+        denied_register = self.employee_register(key, SEED_PRODUCT_ID, is_primary="true")
+        self.assertEqual(denied_register.status_code, 422, denied_register.text)
+        for response in (denied_upload, denied_register):
+            self.assertIn("administrator sets the primary image", response.text)
+        # Nothing reached storage registration or mapping tables.
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.mapping_rows(SEED_PRODUCT_ID), [])
+
+    def test_published_products_reject_employee_upload_and_register(self):
+        # The seeded product is PUBLISHED — the hardening blocks BOTH routes.
+        product = self.product_row(SEED_PRODUCT_ID)
+        self.assertEqual(product.status, "PUBLISHED")
+        self.as_hp_uploader_employee()
+        denied_upload = self.employee_upload(SEED_PRODUCT_ID, "live.png", PNG_BYTES, "image/png")
+        self.assertEqual(denied_upload.status_code, 422, denied_upload.text)
+        key = f"products/{SEED_PRODUCT_ID}/live.png"
+        self.plant_object(key, PNG_BYTES)
+        denied_register = self.employee_register(key, SEED_PRODUCT_ID)
+        self.assertEqual(denied_register.status_code, 422, denied_register.text)
+        for response in (denied_upload, denied_register):
+            self.assertIn("DRAFT or PENDING_REVIEW", response.text)
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_draft_and_pending_review_products_accept_employee_writes(self):
+        self.as_hp_uploader_employee()
+        for status in ("DRAFT", "PENDING_REVIEW"):
+            self._set_product_status(status, published=False)
+            uploaded = self.employee_upload(
+                SEED_PRODUCT_ID, f"{status.lower().replace('_', '-')}.png", PNG_BYTES, "image/png"
+            )
+            self.assertEqual(uploaded.status_code, 201, (status, uploaded.text))
+            key = uploaded.json()["object"]["key"]
+            # Register-by-key of an existing object works in both states too.
+            planted = f"products/{SEED_PRODUCT_ID}/again-{status.lower()}.png"
+            self.plant_object(planted, PNG_BYTES)
+            registered = self.employee_register(planted, SEED_PRODUCT_ID)
+            self.assertEqual(registered.status_code, 201, (status, registered.text))
+
+    def test_employee_re_register_leaves_admin_primary_and_flags_untouched(self):
+        self._draft()
+        # Admin lane: two images, the first explicitly PRIMARY.
+        self.as_admin()
+        first = self.client.post(
+            f"/api/v1/media/products/{SEED_PRODUCT_ID}/objects",
+            files={"file": ("admin-cover.png", PNG_BYTES, "image/png")},
+            data={"role": "cover", "is_primary": "true", "sort_order": "2"},
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        cover_key = first.json()["object"]["key"]
+        second_upload = self.client.post(
+            f"/api/v1/media/products/{SEED_PRODUCT_ID}/objects",
+            files={"file": ("admin-side.png", PNG_BYTES, "image/png")},
+            data={"role": "gallery", "sort_order": "5"},
+        )
+        self.assertEqual(second_upload.status_code, 201, second_upload.text)
+        side_key = second_upload.json()["object"]["key"]
+        before = {m.media_id: (m.role, m.sort_order, m.is_primary) for m in self.mapping_rows(SEED_PRODUCT_ID)}
+
+        # Employee re-registers the SAME keys trying to reshape them.
+        self.as_hp_uploader_employee()
+        self.assertTrue(cover_key.startswith(f"products/{SEED_PRODUCT_ID}/"))
+        reshaped = self.employee_register(cover_key, SEED_PRODUCT_ID, role="detail", sort_order=99)
+        self.assertEqual(reshaped.status_code, 201, reshaped.text)
+        reshaped_side = self.employee_register(side_key, SEED_PRODUCT_ID, role="detail", sort_order=1)
+        self.assertEqual(reshaped_side.status_code, 201, reshaped_side.text)
+
+        after = {m.media_id: (m.role, m.sort_order, m.is_primary) for m in self.mapping_rows(SEED_PRODUCT_ID)}
+        self.assertEqual(after, before, "employee re-register must not change role/sort_order/is_primary")
+        primaries = [m for m in self.mapping_rows(SEED_PRODUCT_ID) if m.is_primary]
+        self.assertEqual(len(primaries), 1)
+
+    def test_admin_still_sets_rotates_and_reshapes_primary_unchanged(self):
+        # Pin the unchanged admin contract in the same revision: the admin
+        # register route keeps demoting + updating mappings in place.
+        self._draft()
+        self.as_admin()
+        first = self.client.post(
+            f"/api/v1/media/products/{SEED_PRODUCT_ID}/objects",
+            files={"file": ("a.png", PNG_BYTES, "image/png")},
+            data={"is_primary": "true"},
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        key_a = first.json()["object"]["key"]
+        second = self.client.post(
+            f"/api/v1/media/products/{SEED_PRODUCT_ID}/objects",
+            files={"file": ("b.png", PNG_BYTES, "image/png")},
+            data={"role": "gallery"},
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        key_b = second.json()["object"]["key"]
+
+        rotated = self.register(key_b, SEED_PRODUCT_ID, role="cover", is_primary=True)
+        self.assertEqual(rotated.status_code, 201, rotated.text)
+        mappings = self.mapping_rows(SEED_PRODUCT_ID)
+        by_key = {}
+        for row in self.asset_rows():
+            mapping = next((m for m in mappings if m.media_id == row.id), None)
+            if mapping:
+                by_key[row.object_key] = mapping
+        self.assertFalse(by_key[key_a].is_primary, "old primary must be demoted by the admin register")
+        self.assertTrue(by_key[key_b].is_primary, "admin-set primary must win")
+        self.assertEqual(by_key[key_b].role, "cover")
+
+
+class ProductMediaSetVisibilityTests(_HomepageBatchCase):
+    """Batch 2 / 1A — the public media-set never leaks unpublished product media.
+
+    Anonymous and customer callers see the set for PUBLISHED products only;
+    any other status answers exactly like a missing product (same 404
+    envelope, no existence leak). Staff holding a server-side session —
+    any admin, or an employee granted media.view / media.upload — may read
+    the set for any product status.
+    """
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        # An employee whose ONLY media grant is media.view (read-only lane).
+        async with self.Session() as session:
+            viewer_emp = UserModel(
+                email="p7-mediaview@pratikshya.test",
+                full_name="Media View Stylist",
+                hashed_password="x",
+                user_type="employee",
+                status="ACTIVE",
+                is_verified=True,
+                force_password_change=False,
+                permission_mode="custom",
+                custom_permissions=["media.view"],
+            )
+            session.add(viewer_emp)
+            await session.commit()
+            self.media_view_employee_id = viewer_emp.id
+        # One registered item on the seed product (PUBLISHED at this point)
+        # so every successful read carries a non-empty mediaItems list.
+        self.as_admin()
+        self.vis_key = f"products/{SEED_PRODUCT_ID}/vis-gate.png"
+        self.plant_object(self.vis_key, PNG_BYTES)
+        registered = self.register(self.vis_key, SEED_PRODUCT_ID, role="GALLERY")
+        assert registered.status_code == 201, registered.text
+
+    def _media_set(self):
+        return self.client.get(f"/api/v1/media/products/{SEED_PRODUCT_ID}/media-set")
+
+    def _assert_404_hides_everything(self, response):
+        self.assertEqual(response.status_code, 404, response.text)
+        self.assertNotIn("mediaItems", response.text)
+        self.assertNotIn(self.vis_key, response.text)
+
+    # ── public contract ───────────────────────────────────────────────────
+
+    def test_anonymous_gets_the_set_for_a_published_product(self):
+        self.as_anonymous()  # seed product is PUBLISHED + published=True
+        response = self._media_set()
+        self.assertEqual(response.status_code, 200, response.text)
+        keys = {item["objectKey"] for item in response.json()["mediaItems"]}
+        self.assertIn(self.vis_key, keys)
+
+    def test_anonymous_draft_is_indistinguishable_from_a_missing_product(self):
+        self._draft()
+        self.as_anonymous()
+        draft = self._media_set()
+        missing = self.client.get("/api/v1/media/products/NOSUCH-NOPE-0000/media-set")
+        self.assertEqual(missing.status_code, 404)
+        self._assert_404_hides_everything(draft)
+        # Same envelope, same message template — existence is not leaked.
+        self.assertEqual(
+            draft.text.replace(SEED_PRODUCT_ID, "NOSUCH-NOPE-0000"), missing.text
+        )
+
+    def test_anonymous_404_for_pending_review_and_archived_products(self):
+        self.as_anonymous()
+        self._set_product_status("PENDING_REVIEW", published=False)
+        self._assert_404_hides_everything(self._media_set())
+        self._set_product_status("ARCHIVED", published=False)
+        self._assert_404_hides_everything(self._media_set())
+
+    def test_published_flag_off_hides_the_set_even_at_status_published(self):
+        # The storefront DTO gate is status AND the published flag — the
+        # media-set mirrors both halves.
+        self._set_product_status("PUBLISHED", published=False)
+        self.as_anonymous()
+        self._assert_404_hides_everything(self._media_set())
+
+    def test_customer_session_gets_the_public_contract(self):
+        self._draft()
+        self.as_customer()  # a session, but not staff
+        self._assert_404_hides_everything(self._media_set())
+        self._set_product_status("PUBLISHED", published=True)
+        self.assertEqual(self._media_set().status_code, 200)
+
+    # ── staff lane (server-side session only) ─────────────────────────────
+
+    def test_employee_with_media_upload_reads_the_draft_set(self):
+        self._draft()
+        self.as_hp_uploader_employee()
+        response = self._media_set()
+        self.assertEqual(response.status_code, 200, response.text)
+        keys = {item["objectKey"] for item in response.json()["mediaItems"]}
+        self.assertIn(self.vis_key, keys)
+
+    def test_employee_with_media_view_reads_the_draft_set(self):
+        self._draft()
+        self._set_current_user(self.app, self.media_view_employee_id)
+        response = self._media_set()
+        self.assertEqual(response.status_code, 200, response.text)
+        keys = {item["objectKey"] for item in response.json()["mediaItems"]}
+        self.assertIn(self.vis_key, keys)
+
+    def test_employee_without_any_media_grant_gets_404_for_draft(self):
+        self._draft()
+        self.as_hp_plain_employee()  # employee session, zero media grants
+        self._assert_404_hides_everything(self._media_set())
+
+    def test_any_admin_reads_the_set_for_any_status(self):
+        self._draft()
+        self.as_admin()
+        response = self._media_set()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn(
+            self.vis_key, {item["objectKey"] for item in response.json()["mediaItems"]}
+        )
+        # A read-only admin (media.view only) and ARCHIVED status included.
+        self.as_view_only_admin()
+        self._set_product_status("ARCHIVED", published=False)
+        self.assertEqual(self._media_set().status_code, 200)
+
+
+class RegisteredAssetFilterTests(_HomepageBatchCase):
+    """Batch 2 / 1B (B-11) — registered-media library search, scope and mime
+    filters for the admin list and the employee picker page.
+
+    Scope vocabulary truth: stored scope is {product, marketing}; ``hero``
+    is the hero/ namespace of the marketing scope. Defaults stay byte-
+    identical to the pre-filter page (no params ⇒ unfiltered newest-first).
+    """
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        # An employee able to open the picker: marketing.view + media.view.
+        async with self.Session() as session:
+            picker_emp = UserModel(
+                email="p7-picker@pratikshya.test",
+                full_name="Picker Stylist",
+                hashed_password="x",
+                user_type="employee",
+                status="ACTIVE",
+                is_verified=True,
+                force_password_change=False,
+                permission_mode="custom",
+                custom_permissions=["marketing.view", "media.view"],
+            )
+            session.add(picker_emp)
+            await session.commit()
+            self.picker_employee_id = picker_emp.id
+        self.as_admin()
+        self.product_keys = []
+        for name, data in (("cover-photo.png", PNG_BYTES), ("detail-weave.avif", AVIF_BYTES)):
+            key = f"products/{SEED_PRODUCT_ID}/{name}"
+            self.plant_object(key, data)
+            registered = self.register(key, SEED_PRODUCT_ID, role="GALLERY")
+            assert registered.status_code == 201, registered.text
+            self.product_keys.append(key)
+        self.hero_key = "hero/summer-launch.png"
+        self.plant_object(self.hero_key, PNG_BYTES)
+        hero = self.register_placement(self.hero_key)
+        assert hero.status_code == 201, hero.text
+        self.marketing_key = "marketing/festive-edit.webp"
+        self.plant_object(self.marketing_key, WEBP_BYTES)
+        placement = self.register_placement(self.marketing_key)
+        assert placement.status_code == 201, placement.text
+
+    # ── admin list (GET /media/assets) ────────────────────────────────────
+
+    def test_default_page_is_unchanged_and_carries_picker_context(self):
+        self.as_admin()
+        listing = self.client.get("/api/v1/media/assets")
+        self.assertEqual(listing.status_code, 200, listing.text)
+        body = listing.json()
+        self.assertEqual(body["total"], 4)
+        self.assertEqual(len(body["items"]), 4)
+        by_key = {item["objectKey"]: item for item in body["items"]}
+        self.assertEqual(by_key[self.product_keys[0]]["scope"], "product")
+        self.assertEqual(by_key[self.product_keys[0]]["productName"], "Banarasi Silk Saree")
+        self.assertEqual(by_key[self.product_keys[0]]["productSku"], SEED_PRODUCT_ID)
+        self.assertEqual(by_key[self.hero_key]["scope"], "marketing")
+        self.assertIsNone(by_key[self.hero_key]["productName"])
+        self.assertIsNone(by_key[self.marketing_key]["productSku"])
+
+    def test_q_matches_object_key_and_filename(self):
+        self.as_admin()
+        listing = self.client.get("/api/v1/media/assets", params={"q": "detail-weave"})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        self.assertEqual([item["objectKey"] for item in listing.json()["items"]], [self.product_keys[1]])
+        self.assertEqual(listing.json()["total"], 1)
+
+    def test_q_matches_owning_product_name_and_sku(self):
+        self.as_admin()
+        by_name = self.client.get("/api/v1/media/assets", params={"q": "Banarasi"})
+        self.assertEqual(by_name.status_code, 200, by_name.text)
+        self.assertEqual(
+            {item["objectKey"] for item in by_name.json()["items"]}, set(self.product_keys)
+        )
+        by_sku = self.client.get("/api/v1/media/assets", params={"q": SEED_PRODUCT_ID})
+        self.assertEqual(
+            {item["objectKey"] for item in by_sku.json()["items"]}, set(self.product_keys)
+        )
+
+    def test_scope_filter_separates_product_hero_and_marketing_art(self):
+        self.as_admin()
+        product = self.client.get("/api/v1/media/assets", params={"scope": "product"})
+        self.assertEqual(product.status_code, 200, product.text)
+        self.assertEqual({item["objectKey"] for item in product.json()["items"]}, set(self.product_keys))
+        hero = self.client.get("/api/v1/media/assets", params={"scope": "hero"})
+        self.assertEqual([item["objectKey"] for item in hero.json()["items"]], [self.hero_key])
+        marketing = self.client.get("/api/v1/media/assets", params={"scope": "marketing"})
+        self.assertEqual([item["objectKey"] for item in marketing.json()["items"]], [self.marketing_key])
+
+    def test_mime_filter_matches_exactly(self):
+        self.as_admin()
+        listing = self.client.get("/api/v1/media/assets", params={"mime": "image/png"})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        self.assertEqual(
+            {item["objectKey"] for item in listing.json()["items"]},
+            {self.product_keys[0], self.hero_key},
+        )
+
+    def test_empty_result_is_a_clean_page_not_an_error(self):
+        self.as_admin()
+        listing = self.client.get("/api/v1/media/assets", params={"q": "no-such-thing-anywhere"})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        self.assertEqual(listing.json()["items"], [])
+        self.assertEqual(listing.json()["total"], 0)
+
+    def test_unknown_scope_is_a_canonical_422(self):
+        self.as_admin()
+        rejected = self.client.get("/api/v1/media/assets", params={"scope": "banner"})
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        self.assertIn("scope", rejected.text)
+        self.assertIn("marketing", rejected.text)
+
+    def test_q_length_is_capped(self):
+        self.as_admin()
+        rejected = self.client.get("/api/v1/media/assets", params={"q": "x" * 121})
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        accepted = self.client.get("/api/v1/media/assets", params={"q": "x" * 120})
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+
+    def test_like_wildcards_in_q_match_literally(self):
+        """'%' and '_' in the search text are LITERALS (ESCAPE '\\'), never
+        LIKE wildcards — otherwise "100%" would return the whole library."""
+        async def _rename_other_product():
+            async with self.Session() as session:
+                product = (
+                    await session.execute(
+                        select(ProductModel).where(ProductModel.id == "PF-W-TST-OTH-0002")
+                    )
+                ).scalars().first()
+                product.name = "100% Silk_Kurta Wonder"
+                await session.commit()
+
+        self._run(_rename_other_product())
+        key = "products/PF-W-TST-OTH-0002/percent-cover.png"
+        self.plant_object(key, PNG_BYTES)
+        self.as_admin()
+        registered = self.register(key, "PF-W-TST-OTH-0002", role="GALLERY")
+        self.assertEqual(registered.status_code, 201, registered.text)
+
+        for query in ("_", "%", "100%", "Silk_K"):
+            listing = self.client.get("/api/v1/media/assets", params={"q": query})
+            self.assertEqual(listing.status_code, 200, listing.text)
+            self.assertEqual(
+                [item["objectKey"] for item in listing.json()["items"]],
+                [key],
+                f"q={query!r} must match the literal product name only",
+            )
+
+    def test_pagination_survives_filtering(self):
+        self.as_admin()
+        listing = self.client.get("/api/v1/media/assets", params={"q": SEED_PRODUCT_ID, "pageSize": 1, "page": 2})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        body = listing.json()
+        self.assertEqual(body["total"], 2)
+        self.assertEqual(len(body["items"]), 1)
+        self.assertEqual(body["page"], 2)
+
+    def test_read_stays_on_media_view_and_employees_stay_off_the_admin_list(self):
+        self.as_view_only_admin()  # media.view grant only
+        self.assertEqual(self.client.get("/api/v1/media/assets", params={"q": "Banarasi"}).status_code, 200)
+        self.as_hp_plain_employee()
+        self.assertEqual(self.client.get("/api/v1/media/assets").status_code, 403)
+
+    # ── employee picker page (GET /employee/homepage/media-assets) ───────
+
+    def test_employee_picker_supports_the_same_filters_and_context(self):
+        self._set_current_user(self.app, self.picker_employee_id)
+        everything = self.client.get("/api/v1/employee/homepage/media-assets")
+        self.assertEqual(everything.status_code, 200, everything.text)
+        self.assertEqual(everything.json()["total"], 4)
+        by_name = self.client.get("/api/v1/employee/homepage/media-assets", params={"q": "Banarasi"})
+        self.assertEqual(by_name.status_code, 200, by_name.text)
+        items = by_name.json()["items"]
+        self.assertEqual({item["objectKey"] for item in items}, set(self.product_keys))
+        self.assertEqual(items[0]["scope"], "product")
+        self.assertEqual(items[0]["productName"], "Banarasi Silk Saree")
+        self.assertEqual(items[0]["productSku"], SEED_PRODUCT_ID)
+        hero = self.client.get("/api/v1/employee/homepage/media-assets", params={"scope": "hero"})
+        self.assertEqual([item["objectKey"] for item in hero.json()["items"]], [self.hero_key])
+        rejected = self.client.get("/api/v1/employee/homepage/media-assets", params={"scope": "banner"})
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+
+    def test_employee_picker_keeps_its_permission_gate(self):
+        self.as_hp_plain_employee()
+        denied = self.client.get("/api/v1/employee/homepage/media-assets")
+        self.assertEqual(denied.status_code, 403, denied.text)
+
+    def test_searching_a_product_name_finds_a_legacy_registered_image(self):
+        """End-to-end (1B): register the product's legacy column image through
+        the legacy registration script, then the picker search by product
+        name finds that image."""
+        from app.services.media.legacy_image_registration import register_legacy_product_images
+
+        key = f"products/{SEED_PRODUCT_ID}/legacy-cover.avif"
+        self.plant_object(key, PNG_BYTES)
+
+        async def _write_reference():
+            async with self.Session() as session:
+                product = (
+                    await session.execute(select(ProductModel).where(ProductModel.id == SEED_PRODUCT_ID))
+                ).scalars().first()
+                product.image = f"/images/products/{SEED_PRODUCT_ID}/legacy-cover.avif"
+                await session.commit()
+
+        self._run(_write_reference())
+
+        async def _register():
+            async with self.Session() as session:
+                report = await register_legacy_product_images(session, apply=True)
+                await session.commit()
+                return report
+
+        report = self._run(_register())
+        self.assertEqual(report["registered"], 1, report)
+
+        self.as_admin()
+        found = self.client.get("/api/v1/media/assets", params={"q": "Banarasi"})
+        self.assertEqual(found.status_code, 200, found.text)
+        keys = {item["objectKey"] for item in found.json()["items"]}
+        self.assertIn(key, keys)
+
+
+class MarketingCtaWriteValidationTests(_HomepageBatchCase):
+    """Batch 2 / 2D (B-13) — site-relative-only CTAs on marketing-media writes.
+
+    The write lanes (create AND update) enforce the same `safe_cta` rule the
+    homepage sections use. Existing rows are never re-validated, rejected or
+    rewritten on read — the rule is write-only.
+    """
+
+    def _seed_legacy_row_with_external_cta(self):
+        """A pre-B-13 row, inserted directly (bypassing write validation),
+        exactly like a row that pre-dates the rule."""
+        async def _go():
+            from app.models.media.marketing_media import MarketingMediaModel
+
+            async with self.Session() as session:
+                row = MarketingMediaModel(
+                    placement="HOME_HERO",
+                    object_key="hero/legacy-external.png",
+                    title="Legacy external CTA",
+                    cta_label="Old campaign",
+                    cta_href="https://external.example/landing",
+                    sort_order=99,
+                    is_active=False,
+                )
+                session.add(row)
+                await session.commit()
+                return row.id
+
+        return self._run(_go())
+
+    def test_create_with_an_external_cta_is_rejected(self):
+        self.as_admin()
+        for bad in ("https://external.example/x", "//external.example", "https://example.shop/ok-looking"):
+            rejected = self.client.post(
+                "/api/v1/admin/marketing/media",
+                json={
+                    "placement": "HOME_HERO",
+                    "objectKey": "hero/whatever.png",
+                    "ctaLabel": "Go",
+                    "ctaHref": bad,
+                },
+            )
+            self.assertEqual(rejected.status_code, 422, f"{bad}: {rejected.text}")
+        self.assertEqual(self.marketing_rows(), [], "a rejected CTA must persist nothing")
+
+    def test_create_with_a_site_relative_cta_still_passes(self):
+        self.as_admin()
+        key, asset_id = self._hoisted_hero_asset() if False else (None, None)
+        uploaded = self.upload_namespace("cta-ok.png", PNG_BYTES, "image/png", "hero")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+        registered = self.register_placement(key)
+        self.assertEqual(registered.status_code, 201, registered.text)
+        created = self.client.post(
+            "/api/v1/admin/marketing/media",
+            json={
+                "placement": "HOME_HERO",
+                "objectKey": key,
+                "mediaAssetId": registered.json()["media"]["id"],
+                "ctaLabel": "Shop",
+                "ctaHref": "/shop?silk=1",
+                "isActive": False,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+    def test_update_with_an_external_cta_is_rejected_but_the_row_is_untouched(self):
+        row_id = self._seed_legacy_row_with_external_cta()
+        self.as_admin()
+        rejected = self.client.patch(
+            f"/api/v1/admin/marketing/media/{row_id}",
+            json={"ctaHref": "https://new-external.example/promo"},
+        )
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        rows = self.marketing_rows()
+        self.assertEqual(rows[0].cta_href, "https://external.example/landing",
+                         "a rejected update must not rewrite the row")
+
+    def test_existing_invalid_rows_are_still_served_on_read(self):
+        """Write-only enforcement: pre-existing invalid CTAs are neither
+        rejected nor rewritten when read back (list + /home projection)."""
+        row_id = self._seed_legacy_row_with_external_cta()
+        # Put the object in storage so the /home builder accepts the row, and
+        # activate it so it projects.
+        self.plant_object("hero/legacy-external.png", PNG_BYTES)
+
+        async def _activate():
+            from app.models.media.marketing_media import MarketingMediaModel
+
+            async with self.Session() as session:
+                row = (await session.execute(select(MarketingMediaModel).where(MarketingMediaModel.id == row_id))).scalars().first()
+                row.is_active = True
+                await session.commit()
+
+        self._run(_activate())
+        self.as_admin()
+        listing = self.client.get("/api/v1/admin/marketing/media", params={"placement": "HOME_HERO"})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        item = next(row for row in listing.json()["items"] if row["id"] == row_id)
+        self.assertEqual(item["ctaHref"], "https://external.example/landing",
+                         "reads never rewrite existing rows")
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.status_code, 200, home.text)
+        self.assertTrue(any(slide["href"] == "https://external.example/landing" for slide in home.json()["heroSlides"]),
+                        "the /home projection serves pre-existing rows as stored")
