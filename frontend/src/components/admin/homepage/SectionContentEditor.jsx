@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useInRouterContext } from 'react-router-dom';
 import { readHomepageSection, writeHomepageSection, staffHomepageAccess } from '../../../services/api/homepageApi';
 import { hydrateCatalog } from '../../../services/catalog/catalogStore';
 import RegisteredMediaPicker from './RegisteredMediaPicker';
@@ -12,7 +12,16 @@ const fields = ['eyebrow', 'title', 'subtitle', 'ctaLabel', 'ctaHref', 'altText'
 const empty = () => Object.fromEntries(fields.map((k) => [k, '']));
 const button = 'border border-pf-border px-3 py-2 text-xs disabled:opacity-40';
 
-export default function SectionContentEditor({ actor, sectionKey, contentType, onDirtyChange }) {
+/* The editor always mounts inside the workspace <Router>, so an unconditional
+   <MemoryRouter> around the preview throws ("You cannot render a <Router>
+   inside another <Router>") and the boundary reports "Preview unavailable."
+   for every section. Only supply a router when none exists (isolated mounts). */
+function PreviewRouter({ children }) {
+  const inRouter = useInRouterContext();
+  return inRouter ? children : <MemoryRouter>{children}</MemoryRouter>;
+}
+
+export default function SectionContentEditor({ actor, sectionKey, contentType, onDirtyChange, onSaved }) {
   const access = staffHomepageAccess(actor);
   const [section, setSection] = useState(null);
   const [error, setError] = useState('');
@@ -28,7 +37,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
   const [tab, setTab] = useState('edit');
   const locked = useRef(false);
   const alive = useRef(true);
-  const reset = () => { setEditing(null); setDraft(empty()); setAsset(null); setProduct(null); setDirty(false); };
+  const reset = () => { setEditing(null); setSlot(''); setDraft(empty()); setAsset(null); setProduct(null); setDirty(false); };
   const load = useCallback(async () => {
     if (!access.view) return;
     const result = await readHomepageSection(actor, sectionKey);
@@ -46,8 +55,18 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
   const allowed = (section?.allowedSlots ?? []).filter((s) => s.contentType === contentType);
-  const currentSlot = slot || allowed[0]?.slotKey || '';
   const entries = (section?.items ?? []).filter((r) => r.contentType === contentType);
+  /* Slot occupancy from the authoritative section read. A create against a
+     full slot is a guaranteed backend 409 that forces a reload and discards
+     the draft — so full slots are disabled up front and the form defaults to
+     the first slot with room instead of always allowed[0]. */
+  const usedIn = (slotKey) => entries.filter((r) => r.slotKey === slotKey).length;
+  const remainingIn = (spec) => Math.max(0, (spec.capacity ?? 1) - usedIn(spec.slotKey));
+  const firstOpen = allowed.find((s) => remainingIn(s) > 0)?.slotKey || '';
+  const currentSlot = editing?.slotKey || slot || firstOpen;
+  const currentSpec = allowed.find((s) => s.slotKey === currentSlot);
+  const currentFull = !editing && Boolean(currentSpec) && remainingIn(currentSpec) <= 0;
+  const allFull = !editing && allowed.length > 0 && allowed.every((s) => remainingIn(s) <= 0);
   const canWrite = access.write && (contentType !== 'MEDIA' || access.mediaAssign);
   const revision = section?.revision ?? 0;
 
@@ -70,6 +89,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
       const snapshot = await publicRefresh;
       if (!alive.current) return;
       setMessage(!fresh?.ok ? 'Saved; staff reload failed. Retry reload before editing.' : snapshot.homeStatus === 'error' || !snapshot.home?.homepageContent || snapshot.home.homepageContent.status !== 'ready' ? 'Saved; public refresh failed. Retry refresh.' : 'Saved; authoritative content reloaded and public refresh completed.');
+      onSaved?.(fresh?.ok ? fresh.section : result.section);
     } catch (failure) {
       if (alive.current) { setError(`Could not confirm save/refresh: ${failure.message}. Reload before retrying.`); setNeedsReload(true); }
     } finally { locked.current = false; if (alive.current) setBusy(false); }
@@ -90,9 +110,9 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
     {tab === 'preview' && (
       <PreviewErrorBoundary>
         <Suspense fallback={<p>Loading preview…</p>}>
-          <MemoryRouter>
-            <SectionPreview sectionKey={sectionKey} draft={draft} asset={asset} product={product} slot={slot || allowed[0]?.slotKey} contentType={contentType} section={section} />
-          </MemoryRouter>
+          <PreviewRouter>
+            <SectionPreview sectionKey={sectionKey} draft={draft} asset={asset} product={product} slot={slot || firstOpen || allowed[0]?.slotKey} contentType={contentType} section={section} />
+          </PreviewRouter>
         </Suspense>
       </PreviewErrorBoundary>
     )}
@@ -123,8 +143,9 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
             }}>Move entry up</button>;
           })()}
         </li>)}</ul>
-        {canWrite && <form className="space-y-3" onSubmit={(event) => {
+        {canWrite && (allFull ? <p role="status">All {contentType} slots are filled ({entries.length} saved). Edit or remove an entry above to make room — no further {contentType} entry can be saved here.</p> : <form className="space-y-3" onSubmit={(event) => {
           event.preventDefault();
+          if (!editing && (!currentSpec || currentFull)) return;
           const body = { expectedRevision: revision };
           if (!editing) Object.assign(body, { contentType, slotKey: currentSlot, isActive: false });
           if (contentType !== 'PRODUCT') for (const key of fields) body[key] = draft[key] || null;
@@ -133,14 +154,15 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
           run(editing ? `/items/${encodeURIComponent(editing.id)}` : '/items', editing ? 'patch' : 'post', body);
         }}>
           <h3>{editing ? 'Edit saved entry' : 'New inactive entry'}</h3>
-          <label>Slot <select value={editing?.slotKey || currentSlot} disabled={busy || Boolean(editing)} onChange={(event) => { setSlot(event.target.value); setDirty(true); }}>{allowed.map((s) => <option key={s.slotKey} value={s.slotKey}>{s.slotKey} (max {s.capacity})</option>)}</select></label>
+          <label>Slot <select value={editing?.slotKey || currentSlot} disabled={busy || Boolean(editing)} onChange={(event) => { setSlot(event.target.value); setDirty(true); }}>{allowed.map((s) => <option key={s.slotKey} value={s.slotKey} disabled={remainingIn(s) <= 0}>{s.slotKey} ({usedIn(s.slotKey)}/{s.capacity} filled{remainingIn(s) <= 0 ? ' — full' : ''})</option>)}</select></label>
+          {currentFull && <p role="status">This slot is full — choose a slot with room before saving.</p>}
           {contentType !== 'PRODUCT' && fields.map((field) => <label key={field} className="block text-xs">{field}<input className="ml-2 border border-pf-border p-2" value={draft[field]} disabled={busy} onChange={(event) => { setDraft((v) => ({ ...v, [field]: event.target.value })); setDirty(true); }} /></label>)}
           {contentType === 'MEDIA' && <RegisteredMediaPicker admin={actor.employee ? actor : actor.admin} disabled={busy || !access.mediaView} value={asset} onChange={(value) => { setAsset(value); setDirty(true); }} />}
           {contentType === 'PRODUCT' && <PublishedProductPicker actor={actor} selectedId={product?.id} disabled={busy} onSelect={(value) => { setProduct(value); setDirty(true); }} />}
-          <button type="submit" className={button} disabled={busy || needsReload || (!dirty && !editing) || (!editing && contentType === 'MEDIA' && !asset) || (!editing && contentType === 'PRODUCT' && !product)}>{busy ? 'Saving…' : 'Save section entry'}</button>
+          <button type="submit" className={button} disabled={busy || needsReload || currentFull || (!dirty && !editing) || (!editing && contentType === 'MEDIA' && !asset) || (!editing && contentType === 'PRODUCT' && !product)}>{busy ? 'Saving…' : 'Save section entry'}</button>
           <button type="button" className={button} disabled={busy} onClick={reset}>Cancel entry changes</button>
           <p role="status">{dirty ? 'Pending changes — not saved.' : 'No unsaved entry changes.'}</p>
-        </form>}
+        </form>)}
       </>}
     </>}
     {sectionKey === 'newsletter' && <p>Content only. Newsletter subscription is unavailable; no sign-up is simulated.</p>}
