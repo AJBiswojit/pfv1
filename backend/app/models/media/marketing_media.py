@@ -53,9 +53,16 @@ class MarketingMediaModel(Base):
     # (hero/ and marketing/ objects, admin `media.upload`);
     # `scripts/seed_marketing_hero.py` registers the canonical seed art
     # before creating entries. The column stays nullable for rows that
-    # pre-date the enforcement and for the non-hero placements, whose
-    # key-based contract is unchanged.
+    # pre-date enforcement. Non-retired non-hero placements retain their
+    # existing key-based contract; the six retired placements are read/cleanup
+    # only and accept no create, content update, activation or reorder writes.
     media_asset_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("media_media_asset.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    mobile_media_asset_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("media_media_asset.id", ondelete="SET NULL"),
         nullable=True,

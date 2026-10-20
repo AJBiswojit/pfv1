@@ -55,6 +55,7 @@ class MarketingMediaBase(BaseModel):
     placement: str = Field(default=HOME_HERO_PLACEMENT, description="Marketing placement, e.g. HOME_HERO")
     object_key: str = Field(..., alias="objectKey", description="Storage object key, e.g. hero/hero001.avif")
     media_asset_id: Optional[str] = Field(None, alias="mediaAssetId")
+    mobile_media_asset_id: Optional[str] = Field(None, alias="mobileMediaAssetId")
     title: Optional[str] = None
     subtitle: Optional[str] = None
     cta_label: Optional[str] = Field(None, alias="ctaLabel")
@@ -81,6 +82,7 @@ class MarketingMediaUpdate(BaseModel):
     placement: Optional[str] = None
     object_key: Optional[str] = Field(None, alias="objectKey")
     media_asset_id: Optional[str] = Field(None, alias="mediaAssetId")
+    mobile_media_asset_id: Optional[str] = Field(None, alias="mobileMediaAssetId")
     title: Optional[str] = None
     subtitle: Optional[str] = None
     cta_label: Optional[str] = Field(None, alias="ctaLabel")

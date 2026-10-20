@@ -434,6 +434,20 @@ class ExploreService:
                 used_media_ids.add(row.object_key)
                 used_media_ids.add(image_url)
 
+                mobile_image_url = ""
+                if row.mobile_media_asset_id:
+                    try:
+                        from app.models.media.media_asset import MediaAssetModel
+                        from app.services.media.homepage_content_service import asset_projection
+                        mobile_asset = (await self.db.execute(
+                            select(MediaAssetModel).where(MediaAssetModel.id == row.mobile_media_asset_id)
+                        )).scalars().first()
+                        projection = await asset_projection(self.db, mobile_asset) if mobile_asset else None
+                        if projection:
+                            mobile_image_url = projection["url"]
+                    except Exception:
+                        mobile_image_url = ""
+
                 slides.append(
                     HeroSlide(
                         id=row.id,
@@ -446,6 +460,7 @@ class ExploreService:
                         # never exposed). Empty stays "" — the storefront
                         # alt="" fallback is unchanged.
                         alt_text=row.alt_text or "",
+                        mobile_image=mobile_image_url,
                         media_id=row.object_key,
                     )
                 )

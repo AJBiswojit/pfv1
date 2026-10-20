@@ -1295,6 +1295,68 @@ class PlacementAssetRegistrationTests(_HomepageBatchCase):
         self.assertEqual(response.status_code, 403, response.text)
 
 
+class RetiredMarketingPlacementTests(_HomepageBatchCase):
+    """B-06: retired placement writes are closed without disturbing reads/cleanup."""
+    RETIRED = ("SAREE_SECTION", "BRIDAL_SECTION", "JEWELLERY_SECTION", "PROMOTION", "GROOM_SECTION", "KIDS_SECTION")
+    MESSAGE = "This placement is retired. Homepage sections are managed under Homepage sections."
+
+    def _seed_retired_row(self, placement, n):
+        async def _seed():
+            from app.models.media.marketing_media import MarketingMediaModel
+            async with self.Session() as session:
+                row = MarketingMediaModel(placement=placement, object_key=f"marketing/retired-{n}.png", title="Existing", is_active=True)
+                session.add(row); await session.commit(); return row.id
+        return self._run(_seed())
+
+    def test_every_retired_placement_rejects_create_edit_and_activation_but_allows_deactivate_delete(self):
+        self.as_admin()
+        for n, placement in enumerate(self.RETIRED):
+            created = self.client.post("/api/v1/admin/marketing/media", json={
+                "placement": placement, "objectKey": f"marketing/new-retired-{n}.png", "title": "x"})
+            self.assertEqual(created.status_code, 422, created.text)
+            self.assertEqual(created.json()["error"]["message"], self.MESSAGE)
+
+            row_id = self._seed_retired_row(placement, n)
+            listed = self.client.get("/api/v1/admin/marketing/media", params={"placement": placement})
+            self.assertEqual(listed.status_code, 200, listed.text)
+            self.assertEqual([item["id"] for item in listed.json()["items"]], [row_id])
+            reorder = self.client.put("/api/v1/admin/marketing/media/reorder", json={"placement": placement, "items": [{"id": row_id, "sortOrder": 9}]})
+            self.assertEqual(reorder.status_code, 422, reorder.text)
+            self.assertEqual(reorder.json()["error"]["message"], self.MESSAGE)
+            for payload in ({"title": "changed"}, {"isActive": True}, {"isActive": False, "title": "changed"}):
+                rejected = self.client.patch(f"/api/v1/admin/marketing/media/{row_id}", json=payload)
+                self.assertEqual(rejected.status_code, 422, rejected.text)
+                self.assertEqual(rejected.json()["error"]["message"], self.MESSAGE)
+            deactivated = self.client.patch(f"/api/v1/admin/marketing/media/{row_id}", json={"isActive": False})
+            self.assertEqual(deactivated.status_code, 200, deactivated.text)
+            self.assertFalse(deactivated.json()["isActive"])
+            deleted = self.client.delete(f"/api/v1/admin/marketing/media/{row_id}")
+            self.assertIn(deleted.status_code, (200, 204), deleted.text)
+            self.assertEqual(self.client.get("/api/v1/admin/marketing/media", params={"placement": placement}).json()["items"], [])
+
+    def test_home_hero_crud_reorder_and_public_reads_remain_unchanged(self):
+        self.as_admin()
+        uploaded = self.upload_namespace("hero-b06-unchanged.png", PNG_BYTES, "image/png", "hero")
+        key = uploaded.json()["object"]["key"]
+        asset = self.register_placement(key).json()["media"]["id"]
+        made = self.client.post("/api/v1/admin/marketing/media", json={
+            "placement": "HOME_HERO", "objectKey": key, "mediaAssetId": asset, "title": "Hero unchanged", "ctaHref": "/shop"})
+        self.assertEqual(made.status_code, 201, made.text)
+        row = made.json()
+        edited = self.client.patch(f"/api/v1/admin/marketing/media/{row['id']}", json={"title": "Edited"})
+        self.assertEqual(edited.status_code, 200, edited.text)
+        self.assertEqual(edited.json()["title"], "Edited")
+        active = self.client.patch(f"/api/v1/admin/marketing/media/{row['id']}", json={"isActive": True})
+        self.assertEqual(active.status_code, 200, active.text)
+        reorder = self.client.put("/api/v1/admin/marketing/media/reorder", json={"placement": "HOME_HERO", "items": [{"id": row['id'], "sortOrder": 7}]})
+        self.assertEqual(reorder.status_code, 200, reorder.text)
+        public = self.client.get("/api/v1/marketing/placements/HOME_HERO")
+        self.assertEqual(public.status_code, 200, public.text)
+        self.assertEqual([item["id"] for item in public.json()["items"]], [row["id"]])
+        self.assertIn(key, public.json()["items"][0]["url"])
+        self.assertIn(self.client.delete(f"/api/v1/admin/marketing/media/{row['id']}").status_code, (200, 204))
+
+
 class HeroPipelineTests(_HomepageBatchCase):
     """Track B — registered art flows into hero creation AND the public /home."""
 
@@ -1376,6 +1438,58 @@ class HeroPipelineTests(_HomepageBatchCase):
         self.assertEqual(len(slides), 2)
         self.assertEqual(slides[0]["altText"], "Banarasi campaign plate")
         self.assertEqual(slides[1]["altText"], "", "unauthored slides keep the empty-alt contract")
+        self.assertEqual(slides[0]["mobileImage"], "")
+        self.assertEqual(slides[1]["mobileImage"], "")
+
+    def test_mobile_variant_create_update_clear_and_home_projection(self):
+        self.as_admin()
+        hero_key, hero_asset = self._registered_hero_asset()
+        mobile_upload = self.upload_namespace("hero-mobile.png", PNG_BYTES, "image/png", "hero")
+        mobile_key = mobile_upload.json()["object"]["key"]
+        mobile_asset = self.register_placement(mobile_key).json()["media"]["id"]
+        created = self.client.post("/api/v1/admin/marketing/media", json={
+            "placement": "HOME_HERO", "objectKey": hero_key, "mediaAssetId": hero_asset,
+            "mobileMediaAssetId": mobile_asset, "title": "Mobile hero", "ctaHref": "/shop", "isActive": True})
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(created.json()["mobileMediaAssetId"], mobile_asset)
+        changed = self.client.patch(f"/api/v1/admin/marketing/media/{created.json()['id']}", json={"mobileMediaAssetId": mobile_asset})
+        self.assertEqual(changed.status_code, 200, changed.text)
+        self.assertEqual(changed.json()["mobileMediaAssetId"], mobile_asset)
+        home = self.client.get("/api/v1/home")
+        self.assertEqual(home.status_code, 200, home.text)
+        self.assertIn(mobile_key, home.json()["heroSlides"][0]["mobileImage"])
+
+        cleared = self.client.patch(f"/api/v1/admin/marketing/media/{created.json()['id']}", json={"mobileMediaAssetId": None})
+        self.assertEqual(cleared.status_code, 200, cleared.text)
+        home_without_variant = self.client.get("/api/v1/home")
+        self.assertEqual(home_without_variant.json()["heroSlides"][0]["mobileImage"], "")
+
+    def test_mobile_variant_rejects_unregistered_and_wrong_namespace_assets(self):
+        self.as_admin()
+        hero_key, hero_asset = self._registered_hero_asset()
+        unregistered = self.client.post("/api/v1/admin/marketing/media", json={
+            "placement": "HOME_HERO", "objectKey": hero_key, "mediaAssetId": hero_asset,
+            "mobileMediaAssetId": "not-a-registered-id", "ctaHref": "/shop"})
+        self.assertEqual(unregistered.status_code, 422, unregistered.text)
+
+        self.plant_object("uploads/mobile-wrong-namespace.png", PNG_BYTES)
+        async def _seed_wrong_namespace():
+            from app.models.media.media_asset import MediaAssetModel
+            async with self.Session() as session:
+                asset = MediaAssetModel(object_key="uploads/mobile-wrong-namespace.png", storage_provider="local",
+                    media_type="image", mime_type="image/png", original_filename="mobile.png", file_size=len(PNG_BYTES),
+                    checksum_sha256="a" * 64, status="uploaded", scope="marketing")
+                session.add(asset); await session.commit(); return asset.id
+        wrong_asset = self._run(_seed_wrong_namespace())
+        wrong_namespace = self.client.post("/api/v1/admin/marketing/media", json={
+            "placement": "HOME_HERO", "objectKey": hero_key, "mediaAssetId": hero_asset,
+            "mobileMediaAssetId": wrong_asset, "ctaHref": "/shop"})
+        self.assertEqual(wrong_namespace.status_code, 422, wrong_namespace.text)
+        normal = self.client.post("/api/v1/admin/marketing/media", json={
+            "placement": "HOME_HERO", "objectKey": hero_key, "mediaAssetId": hero_asset, "ctaHref": "/shop"})
+        self.assertEqual(normal.status_code, 201, normal.text)
+        wrong_update = self.client.patch(f"/api/v1/admin/marketing/media/{normal.json()['id']}", json={"mobileMediaAssetId": wrong_asset})
+        self.assertEqual(wrong_update.status_code, 422, wrong_update.text)
 
     def test_hero_creation_without_a_registered_asset_fails_safely(self):
         self.as_admin()

@@ -38,6 +38,7 @@ from app.schemas.media.marketing import (
     MARKETING_PLACEMENT_VALUES,
     HOME_HERO_PLACEMENT,
     MarketingMediaCreate,
+    MarketingMediaUpdate,
 )
 from app.services.media.marketing_media_service import MarketingMediaService
 
@@ -214,6 +215,51 @@ class TestMarketingMediaServiceSQLite(unittest.IsolatedAsyncioTestCase):
             )
             resp = svc.to_response(row)
             self.assertIn("/api/v1/media/objects/hero/hero001.avif", resp["url"])
+
+    async def test_retired_placements_reject_writes_but_allow_read_deactivate_delete(self):
+        from app.core.exceptions import BusinessLogicException
+        from app.services.media.marketing_media_service import RETIRED_PLACEMENTS, RETIRED_PLACEMENT_MESSAGE
+
+        for index, placement in enumerate(sorted(RETIRED_PLACEMENTS)):
+            async with self.Session() as session:
+                svc = MarketingMediaService(session)
+                with self.assertRaisesRegex(BusinessLogicException, RETIRED_PLACEMENT_MESSAGE):
+                    await svc.create(MarketingMediaCreate(
+                        placement=placement, objectKey=f"marketing/retired-{index}.png"))
+
+                # Preserve a pre-existing row as if it predates retirement.
+                row = MarketingMediaModel(placement=placement,
+                    object_key=f"marketing/existing-{index}.png", is_active=True, sort_order=index)
+                session.add(row)
+                await session.commit()
+                rows = await svc.list(placement=placement)
+                self.assertEqual([entry.id for entry in rows], [row.id])
+                with self.assertRaisesRegex(BusinessLogicException, RETIRED_PLACEMENT_MESSAGE):
+                    await svc.update(row.id, MarketingMediaUpdate(title="changed"))
+                with self.assertRaisesRegex(BusinessLogicException, RETIRED_PLACEMENT_MESSAGE):
+                    await svc.update(row.id, MarketingMediaUpdate(is_active=True))
+                with self.assertRaisesRegex(BusinessLogicException, RETIRED_PLACEMENT_MESSAGE):
+                    await svc.update(row.id, MarketingMediaUpdate(is_active=False, title="changed"))
+                disabled = await svc.update(row.id, MarketingMediaUpdate(is_active=False))
+                self.assertFalse(disabled.is_active)
+                await svc.delete(row.id)
+                self.assertEqual(await svc.list(placement=placement), [])
+
+    async def test_home_hero_crud_and_reads_remain_supported(self):
+        async with self.Session() as session:
+            svc = MarketingMediaService(session)
+            row = await svc.create(MarketingMediaCreate(
+                placement="HOME_HERO", objectKey="hero/hero001.avif", title="Original", isActive=False))
+            updated = await svc.update(row.id, MarketingMediaUpdate(title="Changed", is_active=True))
+            self.assertEqual(updated.title, "Changed")
+            self.assertTrue(updated.is_active)
+            self.assertEqual(len(await svc.list_active_home_hero()), 1)
+            reordered = await svc.reorder("HOME_HERO", [{"id": row.id, "sort_order": 4}])
+            self.assertEqual(reordered[0].sort_order, 4)
+            await svc.update(row.id, MarketingMediaUpdate(is_active=False))
+            self.assertEqual(await svc.list_active_home_hero(), [])
+            await svc.delete(row.id)
+            self.assertEqual(await svc.list(placement="HOME_HERO"), [])
 
     async def test_empty_home_hero(self):
         async with self.Session() as session:

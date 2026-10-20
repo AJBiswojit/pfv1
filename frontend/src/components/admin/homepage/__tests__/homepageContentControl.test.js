@@ -86,7 +86,9 @@ beforeEach(() => {
       if (fail.list) { result = { detail: 'Marketing unavailable' }; status = 503; }
       else result = { items: rows.filter((r) => r.placement === url.searchParams.get('placement')), total: rows.length };
     } else if (url.pathname === '/api/v1/admin/marketing/media' && method === 'POST') {
-      if (fail.write) { result = { detail: 'Backend permission denied' }; status = 403; }
+      if (['SAREE_SECTION', 'BRIDAL_SECTION', 'JEWELLERY_SECTION', 'PROMOTION', 'GROOM_SECTION', 'KIDS_SECTION'].includes(body?.placement)) {
+        result = { detail: 'This placement is retired. Homepage sections are managed under Homepage sections.' }; status = 422;
+      } else if (fail.write) { result = { detail: 'Backend permission denied' }; status = 403; }
       else { result = { ...body, id: `entry-${rows.length + 1}`, url: `/api/v1/media/objects/${body.objectKey}` }; rows.push(result); }
     } else if (url.pathname === '/api/v1/admin/marketing/media/reorder' && method === 'PUT') {
       body.items.forEach((item) => { rows.find((r) => r.id === item.id).sortOrder = item.sortOrder; });
@@ -94,7 +96,12 @@ beforeEach(() => {
     } else if (url.pathname.startsWith('/api/v1/admin/marketing/media/')) {
       const id = decodeURIComponent(url.pathname.split('/').at(-1));
       if (fail.write) { result = { detail: 'Backend permission denied' }; status = 403; }
-      else if (method === 'PATCH') { result = Object.assign(rows.find((r) => r.id === id), body); }
+      else if (method === 'PATCH') {
+        const existing = rows.find((r) => r.id === id);
+        if (['SAREE_SECTION', 'BRIDAL_SECTION', 'JEWELLERY_SECTION', 'PROMOTION', 'GROOM_SECTION', 'KIDS_SECTION'].includes(existing?.placement) && !(body?.isActive === false && Object.keys(body).length === 1)) {
+          result = { detail: 'This placement is retired. Homepage sections are managed under Homepage sections.' }; status = 422;
+        } else result = Object.assign(existing, body);
+      }
       else if (method === 'DELETE') { rows = rows.filter((r) => r.id !== id); }
       else assert.fail('Unexpected marketing method');
     } else if (url.pathname === '/api/v1/media/assets') {
@@ -202,15 +209,25 @@ test('unsafe media and CTA values cannot be saved; payload accepts no fabricated
   for (const key of ['price', 'productId', 'published', 'contentType']) assert.equal(key in requests[0].body, false);
 });
 
-test('MEDIA creation and TEXT update survive fresh loads via the existing durable API contract', async () => {
-  const saved = await service.saveHomepageEntry(owner, { placement: 'SAREE_SECTION', asset: image, draft: { title: 'Registered saree artwork' } });
-  const first = await service.loadHomepagePlacement(owner, 'SAREE_SECTION');
-  assert.equal(first.items[0].id, saved.item.id);
-  await service.saveHomepageEntry(owner, { placement: 'SAREE_SECTION', id: saved.item.id, draft: { title: 'Updated text', subtitle: 'Persisted copy' } });
-  const second = await service.loadHomepagePlacement(owner, 'SAREE_SECTION');
-  assert.equal(second.items[0].title, 'Updated text');
-  const patch = requests.find((r) => r.method === 'PATCH');
-  assert.equal('objectKey' in patch.body, false, 'text edit preserves registered media identity');
+test('retired SAREE_SECTION writes are rejected while reads remain available', async () => {
+  const saved = await service.saveHomepageEntry(owner, { placement: 'SAREE_SECTION', asset: image, draft: { title: 'Retired artwork' } });
+  assert.equal(saved.ok, false);
+  assert.equal(saved.status, 422);
+  assert.equal(saved.error, 'This placement is retired. Homepage sections are managed under Homepage sections.');
+  const read = await service.loadHomepagePlacement(owner, 'SAREE_SECTION');
+  assert.equal(read.ok, true);
+  assert.deepEqual(read.items, []);
+  assert.equal(rows.length, 1, 'no retired placement row is created');
+});
+
+test('hero form save sends mobileMediaAssetId only when selected or explicitly cleared', async () => {
+  await service.saveHomepageEntry(owner, { placement: 'HOME_HERO', asset: image, draft: { title: 'No variant' } });
+  assert.equal('mobileMediaAssetId' in requests.at(-1).body, false);
+  const mobile = { ...image, id: 'mobile-asset', objectKey: 'hero/mobile.avif' };
+  await service.saveHomepageEntry(owner, { placement: 'HOME_HERO', id: 'entry-1', draft: { title: 'With variant' }, mobileAsset: mobile, mobileAssetTouched: true });
+  assert.equal(requests.at(-1).body.mobileMediaAssetId, 'mobile-asset');
+  await service.saveHomepageEntry(owner, { placement: 'HOME_HERO', id: 'entry-1', draft: { title: 'Cleared' }, mobileAsset: null, mobileAssetTouched: true });
+  assert.equal(requests.at(-1).body.mobileMediaAssetId, null);
 });
 
 test('backend write denial remains a failure rather than a simulated save', async () => {

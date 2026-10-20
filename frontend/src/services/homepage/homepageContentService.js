@@ -44,8 +44,8 @@ export async function loadPublishedHomepageProducts(actor, page = 1, { q = "" } 
   return result.ok ? { ...result, items: (result.items ?? []).filter(eligibleHomepageProduct) } : result;
 }
 
-export function saveHomepageEntry(admin, { placement, id, draft, asset, sortOrder = 0 }) {
-  if (admin?.employee) return employeeHeroRequest(admin, id ? "patch" : "create", { id, draft: id ? entryDraft(draft) : { ...entryDraft(draft), isActive: false }, asset });
+export function saveHomepageEntry(admin, { placement, id, draft, asset, mobileAsset, mobileAssetTouched = false, sortOrder = 0 }) {
+  if (admin?.employee) return employeeHeroRequest(admin, id ? "patch" : "create", { id, draft: id ? entryDraft(draft) : { ...entryDraft(draft), isActive: false }, asset, mobileAsset, mobileAssetTouched });
   const access = homepageAccess({ admin });
   if (!(id ? access.edit : access.create)) return Promise.resolve(denied());
   if (!validPlacement(placement)) return Promise.resolve({ ok: false, error: 'Unsupported placement.' });
@@ -56,6 +56,7 @@ export function saveHomepageEntry(admin, { placement, id, draft, asset, sortOrde
   // Only schema-supported copy fields; never accept product/pricing/lifecycle keys.
   const payload = entryDraft(draft);
   if (asset) Object.assign(payload, { objectKey: asset.objectKey, mediaAssetId: asset.id });
+  if (mobileAssetTouched) payload.mobileMediaAssetId = mobileAsset?.id ?? null;
   if (id) return apiUpdateMarketingMedia(id, payload);
   return apiCreateMarketingMedia({ ...payload, placement, sortOrder, isActive: false });
 }
