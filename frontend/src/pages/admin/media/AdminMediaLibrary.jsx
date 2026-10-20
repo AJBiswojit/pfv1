@@ -35,7 +35,6 @@ const TABS = [
   { id: "PRODUCT", label: "Product" },
   { id: "MARKETING", label: "Marketing" },
   { id: "UNASSIGNED", label: "Unassigned" },
-  { id: "PENDING_REVIEW", label: "Pending Review" },
   { id: "UNMAPPED", label: "Unmapped" },
   { id: "DUPLICATE", label: "Duplicates" },
   { id: "NEEDS_REVIEW", label: "Needs Review" },
@@ -58,8 +57,6 @@ const matchesTab = (media, tab, ownerStatusOf) => {
       return media.scope === MEDIA_SCOPES.MARKETING;
     case "UNASSIGNED":
       return media.scope === MEDIA_SCOPES.UNASSIGNED;
-    case "PENDING_REVIEW":
-      return media.status === MEDIA_STATUS.PENDING_REVIEW;
     case "UNMAPPED":
       return media.mappingStatus === "UNMAPPED";
     case "DUPLICATE":
@@ -338,9 +335,9 @@ export default function AdminMediaLibrary() {
       <DurableAssetsPanel refreshToken={registryRefresh} />
 
       {/* Metrics Row — exactly matching Section 3:
-          Total Media, Images, Videos, Product Media, Marketing Media, Unassigned, Pending Review, Active */}
+          Total Media (Local session), Images, Videos, Product Media, Marketing Media, Unassigned, Active */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
-        <AdminMetricCard label="Total Media" value={metrics.total} icon={Layers} hint="All media assets" />
+        <AdminMetricCard label="Total Media" value={metrics.total} icon={Layers} hint="Local only — not saved on the server" />
         <AdminMetricCard label="Images" value={metrics.images} icon={ImageIcon} hint="Still imagery" />
         <AdminMetricCard label="Videos" value={metrics.videos} icon={Film} hint="Video content" />
         <AdminMetricCard label="Product Media" value={metrics.productMedia} icon={Sparkles} hint="Assigned to products" />
@@ -348,6 +345,8 @@ export default function AdminMediaLibrary() {
         <AdminMetricCard label="Unassigned" value={metrics.unassigned} hint="In library buffer" />
         <AdminMetricCard label="Active" value={metrics.active} icon={Star} hint="Visible to customers" />
       </div>
+
+      <p className="mb-2 text-xs text-pf-muted">Local only — not saved on the server. Counts below reflect this browser session; the durable list above shows what is saved on the server.</p>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <AdminMetricCard
@@ -484,6 +483,7 @@ export default function AdminMediaLibrary() {
                 Remove
               </AtelierButton>
             ) : null}
+            <span className="font-ui text-[10px] text-pf-muted">Bulk actions affect this browser session only</span>
             <button
               type="button"
               onClick={clearSelection}
@@ -551,7 +551,7 @@ export default function AdminMediaLibrary() {
                         title="Standalone media detail is deferred with the session register — durable assets live on their product's media manager."
                         className="inline-block border border-pf-border/80 px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] text-pf-muted"
                       >
-                        Session record
+                        Local only — not saved on the server
                       </span>
                       {item.scope === MEDIA_SCOPES.PRODUCT && item.productId && ownerStatusOf(item.productId) !== null ? (
                         <AtelierButton

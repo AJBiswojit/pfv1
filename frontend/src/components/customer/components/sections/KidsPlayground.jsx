@@ -8,11 +8,6 @@ import { inView } from '../../utils/motion.js';
 import { InView } from '../ui/InView.jsx';
 
 const spring = { type: 'spring', stiffness: 160, damping: 16 };
-const chips = [
-  { label: 'Girls', note: '2–11Y', to: '/shop/girls' },
-  { label: 'Boys', note: '2–11Y', to: '/shop/boys' },
-  { label: 'Festive', note: 'Twirl-ready', to: '/shop/kids-festive' },
-];
 
 export default function KidsPlayground({ content }) {
   /* Database-driven only: without authored content this section renders nothing. */

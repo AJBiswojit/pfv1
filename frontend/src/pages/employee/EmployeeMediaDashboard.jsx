@@ -98,6 +98,8 @@ export default function EmployeeMediaDashboard() {
         </div>
       }
     >
+      <p className="mb-2 text-xs text-pf-muted">Local only — not saved on the server. Counts reflect this browser session; use the upload flow to save on the server.</p>
+
       {/* Metrics Row — matching Section 17 */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <MetricCard
@@ -115,7 +117,7 @@ export default function EmployeeMediaDashboard() {
         <MetricCard
           label="All house records"
           value={metrics.totalHouse}
-          hint="Every media record in this portal"
+          hint="Local only — not saved on the server"
           icon={Clock}
         />
       </div>
@@ -136,10 +138,7 @@ export default function EmployeeMediaDashboard() {
           How media reaches the storefront
         </p>
         <p className="leading-relaxed">
-          With the <strong>media.upload</strong> grant, uploads are stored and registered onto the
-          target product through the real backend pipeline — there is no approval queue in this
-          portal, and no record is published from this browser-side view. Catalogue visibility is
-          decided by an administrator on the durable media registry.
+          This shows this browser session only — not what is saved on the server. With the <strong>media.upload</strong> grant, use the upload flow to store and register onto the target product through the real backend pipeline.
         </p>
       </div>
 
@@ -232,6 +231,7 @@ export default function EmployeeMediaDashboard() {
                         {item.demoPlaceholder ? (
                           <StatusBadge label="Demo" tone="muted" />
                         ) : null}
+                        <StatusBadge label="Local only — not saved on the server" tone="quiet" />
                       </div>
                     </div>
                   </div>

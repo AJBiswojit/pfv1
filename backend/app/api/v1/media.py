@@ -219,6 +219,21 @@ async def _commit_and_invalidate_product_media(db, product_id):
             await ProductService(db).invalidate_product_cache(product.id, product.slug)
     except Exception:
         logger.warning("Product media cache invalidation skipped", exc_info=True)
+    # B-14: best-effort invalidation of public asset_projection cache for this product's assets
+    try:
+        from app.services.media.homepage_content_service import invalidate_asset_projection_cache
+        from app.models.media.product_media import ProductMediaModel as _PMM
+
+        rows = (
+            await db.execute(select(_PMM).where(_PMM.product_id == product_id))
+        ).scalars().all()
+        for mapping in rows:
+            try:
+                invalidate_asset_projection_cache(asset_id=mapping.media_id)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 async def _require_writable_product(db, product_id):
@@ -761,6 +776,15 @@ async def register_placement_media_object(
         db, object_key, uploaded_by=current_user.id, title=title, alt_text=alt_text
     )
     await db.commit()
+    # B-14: invalidate public cache for this placement asset
+    try:
+        from app.services.media.homepage_content_service import invalidate_asset_projection_cache
+
+        invalidate_asset_projection_cache(asset=row)
+        # also by object_key in case id changed
+        invalidate_asset_projection_cache(object_key=row.object_key)
+    except Exception:
+        pass
 
     return {
         "ok": True,
@@ -901,6 +925,23 @@ async def delete_media_object(
         # Unreferenced register row goes with the object (or cleans up an
         # object that vanished from storage ahead of this call).
         await db.delete(asset)
+        await db.commit()
+        # B-14: invalidate cache for deleted asset
+        try:
+            from app.services.media.homepage_content_service import invalidate_asset_projection_cache
+
+            invalidate_asset_projection_cache(asset=asset)
+            invalidate_asset_projection_cache(object_key=key)
+        except Exception:
+            pass
+    else:
+        # Even if no asset row, clear any negative cache for this key
+        try:
+            from app.services.media.homepage_content_service import invalidate_asset_projection_cache
+
+            invalidate_asset_projection_cache(object_key=key)
+        except Exception:
+            pass
     if not deleted and asset is None:
         raise NotFoundException("Media object not found.")
     return {"ok": True, "deleted": True, "key": key}

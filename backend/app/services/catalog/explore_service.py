@@ -442,7 +442,7 @@ class ExploreService:
                         mobile_asset = (await self.db.execute(
                             select(MediaAssetModel).where(MediaAssetModel.id == row.mobile_media_asset_id)
                         )).scalars().first()
-                        projection = await asset_projection(self.db, mobile_asset) if mobile_asset else None
+                        projection = await asset_projection(self.db, mobile_asset, use_cache=True) if mobile_asset else None
                         if projection:
                             mobile_image_url = projection["url"]
                     except Exception:

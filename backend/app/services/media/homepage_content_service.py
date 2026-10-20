@@ -37,20 +37,117 @@ async def registered_asset(db, asset_id=None, object_key=None):
     return asset
 
 
-async def asset_projection(db, asset):
+# ---------------------------------------------------------------------------
+# B-14: per-process in-memory TTL cache for public asset_projection
+# ---------------------------------------------------------------------------
+# Per-process cache only; no Redis, no new dependency. Positive hits cached
+# 60s, negative (not found / not eligible) cached at most 5s. Bounded LRU
+# (1024 entries, simple eviction). Staff editor reads (public=False) never
+# use the cache so draft/preview checks remain live. Invalidation is best-
+# effort — failures never fail the write.
+import time as _time
+
+_ASSET_PROJECTION_CACHE: dict = {}
+_ASSET_CACHE_MAX = 1024
+_ASSET_POSITIVE_TTL = 60.0
+_ASSET_NEGATIVE_TTL = 5.0
+
+
+def _asset_cache_key(asset) -> str:
+    # asset id + object key + updated timestamp if available distinguishes
+    # a mutated row from a stale cached entry.
+    ts = getattr(asset, "updated_at", None) or getattr(asset, "created_at", None) or ""
+    # SQLAlchemy DateTime may be datetime; strify
+    return f"{getattr(asset, 'id', '')}:{getattr(asset, 'object_key', '')}:{ts}"
+
+
+def _now() -> float:
+    # Monotonic wall for TTL; tests may monkeypatch this symbol with a fake clock.
+    return _time.monotonic()
+
+
+def _cache_get(cache_key: str, now: float):
+    entry = _ASSET_PROJECTION_CACHE.get(cache_key)
+    if entry is None:
+        return None, False
+    value, expires_at = entry
+    if now >= expires_at:
+        _ASSET_PROJECTION_CACHE.pop(cache_key, None)
+        return None, False
+    return value, True
+
+
+def _cache_set(cache_key: str, value, now: float, is_positive: bool):
+    ttl = _ASSET_POSITIVE_TTL if is_positive else _ASSET_NEGATIVE_TTL
+    # Simple LRU/evict: if over max, drop oldest inserted (dict preserves insertion order on 3.7+)
+    if len(_ASSET_PROJECTION_CACHE) >= _ASSET_CACHE_MAX:
+        # pop first key
+        try:
+            first_key = next(iter(_ASSET_PROJECTION_CACHE))
+            _ASSET_PROJECTION_CACHE.pop(first_key, None)
+        except StopIteration:
+            pass
+    _ASSET_PROJECTION_CACHE[cache_key] = (value, now + ttl)
+
+
+def invalidate_asset_projection_cache(*, asset=None, asset_id: str | None = None, object_key: str | None = None):
+    """Best-effort invalidation; never raises."""
+    try:
+        if asset is not None:
+            key = _asset_cache_key(asset)
+            _ASSET_PROJECTION_CACHE.pop(key, None)
+            # Also clear by id prefix in case updated_at changed and old key differs
+            prefix = f"{getattr(asset, 'id', '')}:"
+            for k in list(_ASSET_PROJECTION_CACHE.keys()):
+                if k.startswith(prefix):
+                    _ASSET_PROJECTION_CACHE.pop(k, None)
+        elif asset_id is not None:
+            prefix = f"{asset_id}:"
+            for k in list(_ASSET_PROJECTION_CACHE.keys()):
+                if k.startswith(prefix):
+                    _ASSET_PROJECTION_CACHE.pop(k, None)
+        elif object_key is not None:
+            # object_key without id: remove any entry containing it
+            for k in list(_ASSET_PROJECTION_CACHE.keys()):
+                if object_key in k:
+                    _ASSET_PROJECTION_CACHE.pop(k, None)
+    except Exception:
+        pass
+
+
+def clear_asset_projection_cache():
+    """For tests only."""
+    _ASSET_PROJECTION_CACHE.clear()
+
+
+async def asset_projection(db, asset, use_cache: bool = False):
     if not asset or asset.status != "uploaded" or asset.mime_type not in IMAGE_MIMES or asset.media_type != "image":
         return None
     try:
         key = normalize_object_key(asset.object_key)
     except InvalidObjectKeyError:
         return None
+    # Cache only for public path (content(public=True)); staff reads stay live.
+    cache_key = None
+    now = None
+    if use_cache:
+        cache_key = _asset_cache_key(asset)
+        now = _now()
+        cached_val, hit = _cache_get(cache_key, now)
+        if hit:
+            return cached_val
     try:
         exists = await run_in_threadpool(MediaService(db).object_exists, key)
     except Exception as exc:
         raise AppException("Media storage unavailable; retry later.", 503, "STORAGE_UNAVAILABLE") from exc
     if not exists:
+        if use_cache and cache_key is not None:
+            _cache_set(cache_key, None, now, is_positive=False)
         return None
-    return {"id": asset.id, "objectKey": key, "url": build_media_url(key), "status": asset.status, "mimeType": asset.mime_type}
+    result = {"id": asset.id, "objectKey": key, "url": build_media_url(key), "status": asset.status, "mimeType": asset.mime_type}
+    if use_cache and cache_key is not None:
+        _cache_set(cache_key, result, now, is_positive=True)
+    return result
 
 
 def copy_projection(row):
@@ -112,7 +209,7 @@ class HomepageContentService:
         if asset_ids:
             rows = (await self.db.execute(select(MediaAssetModel).where(MediaAssetModel.id.in_(asset_ids)))).scalars().all()
             for row in rows:
-                assets[row.id] = await asset_projection(self.db, row)
+                assets[row.id] = await asset_projection(self.db, row, use_cache=public)
         result = [{"key": "hero", "source": "heroSlides", "state": "delegated"}]
         for key, slots in REGISTRY.items():
             section = by_key.get(key)
@@ -273,6 +370,23 @@ class HomepageContentService:
             # rolls back rather than reporting an ambiguous partial success.
             response = {"ok": True, "section": await self.get(key)}
             await self.db.commit()
+            # B-14: invalidate any media asset that was referenced in this write
+            try:
+                touched = set()
+                if operation == "create" and payload.content_type == "MEDIA":
+                    touched.add(getattr(payload, "media_asset_id", None))
+                elif operation == "patch":
+                    mid = getattr(payload, "media_asset_id", None)
+                    if mid is not None:
+                        touched.add(mid)
+                for mid in touched:
+                    if mid:
+                        try:
+                            invalidate_asset_projection_cache(asset_id=mid)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
             return response
         except (IntegrityError, StaleDataError) as exc:
             await self.db.rollback()

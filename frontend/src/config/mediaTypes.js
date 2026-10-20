@@ -312,6 +312,24 @@ export const MARKETING_PLACEMENTS = {
   PROMOTION: "PROMOTION",
 };
 
+// Retired placements – backend is source of truth (see backend/app/services/media/marketing_media_service.py)
+export const RETIRED_PLACEMENTS = Object.freeze(
+  new Set([
+    "SAREE_SECTION",
+    "BRIDAL_SECTION",
+    "JEWELLERY_SECTION",
+    "PROMOTION",
+    "GROOM_SECTION",
+    "KIDS_SECTION",
+    "WOMEN_SECTION",
+    "LEHENGA_SECTION",
+    "BANGLES_SECTION",
+    "FESTIVE_SECTION",
+    "NEW_ARRIVALS",
+    "EDITORIAL",
+  ])
+);
+
 export const MARKETING_PLACEMENT_OPTIONS = [
   {
     id: MARKETING_PLACEMENTS.HOME_HERO,
@@ -462,12 +480,12 @@ export const UPLOAD_RULES = {
   },
 };
 
-/** The `accept` attribute for the demo file input. */
+/** The `accept` attribute for uploads that feed the image-only pipeline (B-05).
+ * Video types are intentionally excluded — the backend validator rejects them.
+ * Existing video display paths remain for data that might already exist. */
 export const UPLOAD_ACCEPT = [
   ...UPLOAD_RULES[MEDIA_TYPES.IMAGE].extensions,
   ...UPLOAD_RULES[MEDIA_TYPES.IMAGE].mimeTypes,
-  ...UPLOAD_RULES[MEDIA_TYPES.VIDEO].extensions,
-  ...UPLOAD_RULES[MEDIA_TYPES.VIDEO].mimeTypes,
 ].join(",");
 
 /** True when the file's extension or MIME type is a house-supported image/video. */
@@ -508,6 +526,7 @@ export default {
   PRODUCT_ROLE_OPTIONS,
   MARKETING_PLACEMENTS,
   MARKETING_PLACEMENT_OPTIONS,
+  RETIRED_PLACEMENTS,
   UPLOAD_RULES,
   UPLOAD_ACCEPT,
   isAllowedUploadFormat,
