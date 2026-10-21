@@ -71,7 +71,6 @@ export default function EmployeeHeader({ navOpen, onToggleNav, menuButtonRef }) 
           </button>
           <Brand
             to={EMPLOYEE_BRAND.home}
-            size="default"
             variant="lockup"
             theme="dark"
             size="compact"
