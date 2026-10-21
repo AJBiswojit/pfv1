@@ -142,13 +142,29 @@ export const resolveMediaUrl = (value) => {
  * Build a canonical media URL from an object key the backend returned
  * (e.g. `products/PF-W-SAR-SIL-0001/primary.avif`).
  *
+ * Two shapes, matching the backend's `build_media_url()` exactly:
+ *
+ *   no media origin configured → `{MEDIA_URL_PREFIX}/{key}`
+ *       /api/v1/media/objects/products/PF-…/primary.avif
+ *
+ *   VITE_MEDIA_ORIGIN set     → `{origin}/{key}`
+ *       https://cdn.pratikshyafashion.com/products/PF-…/primary.avif
+ *
+ * The second shape is the CloudFront + S3 Origin Access Control deployment:
+ * the distribution fronts the bucket at its ROOT, so the CDN path is the
+ * object key itself, not the API route. The previous implementation produced
+ * `{origin}{MEDIA_URL_PREFIX}/{key}`, which is only correct when the CDN
+ * proxies the backend route instead of the bucket.
+ *
  * The key must already have been validated and issued by the backend — this
  * helper only formats it, it never guesses a location.
  */
 export const mediaObjectUrl = (objectKey) => {
   const key = String(objectKey || "").trim().replace(/^\/+/, "");
   if (!key) return "";
-  return `${mediaOrigin()}${MEDIA_URL_PREFIX}/${key}`;
+  const origin = mediaOrigin();
+  if (origin) return `${origin}/${key}`;
+  return `${MEDIA_URL_PREFIX}/${key}`;
 };
 
 export const isCanonicalMediaUrl = (value) => {

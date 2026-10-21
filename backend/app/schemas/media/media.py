@@ -298,6 +298,46 @@ class MediaStorageStatusResponse(BaseModel):
     cdn_configured: bool = Field(False, alias="cdnConfigured")
     namespaces: List[str] = []
     resolve_product_images: bool = Field(True, alias="resolveProductImages")
+    # Added by the S3/CDN production-readiness work. Both default to the
+    # pre-existing values so an older client sees an unchanged payload.
+    environment: str = "development"
+    assets_present: bool = Field(False, alias="assetsPresent")
+    identifiers_included: bool = Field(False, alias="identifiersIncluded")
+    warnings: List[Dict[str, Any]] = []
+
+
+class MediaStorageReadinessResponse(BaseModel):
+    """Full storage configuration validation, for operators."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool = True
+    environment: str = "development"
+    provider: str = "local"
+    cdn_configured: bool = Field(False, alias="cdnConfigured")
+    #: Admin-only: the unredacted provider description (bucket, region, SSE).
+    detail: Dict[str, Any] = {}
+    issues: List[Dict[str, Any]] = []
+    fatal_count: int = Field(0, alias="fatalCount")
+    warning_count: int = Field(0, alias="warningCount")
+
+
+class MediaOrphanReportResponse(BaseModel):
+    """Dry-run orphan report. `deletion_performed` is always False."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool = True
+    mode: str = "dry-run"
+    deletion_performed: bool = Field(False, alias="deletionPerformed")
+    assets_without_references: List[Dict[str, Any]] = Field(
+        [], alias="assetsWithoutReferences"
+    )
+    objects_without_asset_rows: List[Dict[str, Any]] = Field(
+        [], alias="objectsWithoutAssetRows"
+    )
+    counts: Dict[str, Any] = {}
+    note: str = ""
 
 
 class MediaReferenceResolveRequest(BaseModel):

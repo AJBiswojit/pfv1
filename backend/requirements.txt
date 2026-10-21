@@ -32,6 +32,13 @@ google-auth==2.29.0
 aiofiles==23.2.1
 Pillow==10.3.0
 python-magic==0.4.27
+# AVIF codec for Pillow. AVIF is the storefront's dominant product-image
+# format, and Pillow cannot decode it out of the box, so without this wheel
+# the upload geometry guard silently skipped every AVIF file. The wheel is
+# self-contained (libavif is bundled) and needs no Pillow upgrade at 10.3.0.
+# Requires an explicit `import pillow_avif` to register — see
+# app/services/media/media_validation.py::ensure_avif_support.
+pillow-avif-plugin==1.6.0
 
 # --- AWS / S3 Storage ---
 boto3==1.34.96

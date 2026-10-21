@@ -180,6 +180,70 @@ def product_object_key(product_id: str, filename: str) -> str:
     return f"{NAMESPACE_PRODUCTS}/{pid}/{sanitize_filename(filename)}"
 
 
+#: Number of hex characters of the SHA-256 that identify a replacement's bytes.
+CONTENT_HASH_LENGTH = 12
+
+
+def content_addressed_filename(filename: str, checksum_sha256: str) -> str:
+    """
+    `{stem}-{sha256[:12]}.{ext}` — one stable leaf per distinct byte content.
+
+    Used when an existing product image is REPLACED. Writing the new bytes to
+    a content-addressed key instead of overwriting the old one means:
+
+      · a browser or CDN cache entry for the old key can never serve the new
+        art (and vice versa) — the key changes whenever the bytes do, so the
+        object is genuinely immutable and can be cached "forever";
+      · the previous object stays in the bucket as a recovery copy.
+    """
+    digest = (checksum_sha256 or "").strip().lower()
+    if len(digest) < CONTENT_HASH_LENGTH or any(ch not in "0123456789abcdef" for ch in digest):
+        raise InvalidObjectKeyError("A content-addressed key needs a SHA-256 hex digest.")
+    stem, extension = split_extension(str(filename or ""))
+    stem = sanitize_filename(stem or "image", max_length=FILENAME_MAX_LENGTH)
+    if not stem:
+        raise InvalidObjectKeyError("Filename contains no usable characters.")
+    budget = FILENAME_MAX_LENGTH - (CONTENT_HASH_LENGTH + 1 + (len(extension) + 1 if extension else 0))
+    if budget < 1:
+        raise InvalidObjectKeyError("Filename is too long.")
+    stem = stem[:budget].rstrip("._-") or "image"
+    return f"{stem}-{digest[:CONTENT_HASH_LENGTH]}.{extension}" if extension else (
+        f"{stem}-{digest[:CONTENT_HASH_LENGTH]}"
+    )
+
+
+def content_addressed_product_key(
+    product_id: str, filename: str, checksum_sha256: str
+) -> str:
+    """
+    `products/{PRODUCT_ID}/{stem}-{sha256[:12]}.{ext}` — the immutable
+    replacement key for product media.
+    """
+    pid = validate_product_id(product_id)
+    return (
+        f"{NAMESPACE_PRODUCTS}/{pid}/"
+        f"{content_addressed_filename(filename, checksum_sha256)}"
+    )
+
+
+def is_content_addressed_key(key: str) -> bool:
+    """
+    True when `key`'s leaf carries a 12-hex content suffix.
+
+    Used to decide the cache policy: content-addressed objects are immutable,
+    mutable keys are not (see `app.storage.urls.cache_control_for_key`).
+    """
+    try:
+        normalized = normalize_object_key(key)
+    except InvalidObjectKeyError:
+        return False
+    stem, _extension = split_extension(normalized.rsplit("/", 1)[-1])
+    if len(stem) <= CONTENT_HASH_LENGTH + 1 or stem[-13] != "-":
+        return False
+    suffix = stem[-CONTENT_HASH_LENGTH:]
+    return all(ch in "0123456789abcdef" for ch in suffix)
+
+
 def object_key_for_namespace(namespace: str, *segments: str, filename: str) -> str:
     """Build `{namespace}/{seg}/{seg}/{filename}` with every part sanitised."""
     if namespace not in ALLOWED_NAMESPACES:

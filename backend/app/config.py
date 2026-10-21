@@ -83,7 +83,17 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: Optional[str] = "your-secret-key"
     AWS_REGION: str = "ap-south-1"
     AWS_BUCKET_NAME: str = "pratikshya-fashion-media"
-    CDN_BASE_URL: str = "https://cdn.pratikshyafashion.com"
+    # Optional custom/VPC endpoint (S3-compatible gateway). Left unset for real
+    # AWS. NOTE: `CDN_BASE_URL` used to sit here — it was never read by any
+    # code path and has been removed. `MEDIA_CDN_BASE_URL` below is the single
+    # source of truth for CDN delivery (see
+    # docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md §5.2).
+    AWS_ENDPOINT_URL: Optional[str] = None
+    # Server-side encryption applied to every object the S3 provider writes.
+    # "AES256" = SSE-S3 (default, no extra resource required).
+    # "aws:kms" = SSE-KMS, and then AWS_S3_SSE_KMS_KEY_ID must be set.
+    AWS_S3_SSE_ALGORITHM: str = "AES256"
+    AWS_S3_SSE_KMS_KEY_ID: Optional[str] = None
 
     # --- Local object storage (Phase 6) ---
     # Root of the local object store. Relative paths resolve against the
@@ -110,10 +120,28 @@ class Settings(BaseSettings):
     # the pre-Phase-6 behaviour (references passed through verbatim).
     MEDIA_RESOLVE_PRODUCT_IMAGES: bool = True
 
+    # --- Storage safety guards (S3 + CDN production readiness) --------------
+    # Comma-separated bucket names that may ONLY ever be used when
+    # APP_ENV=production. Listing the production bucket here makes it
+    # impossible for a staging or test environment to be pointed at it by
+    # mistake: `app/storage/environment.py` refuses to start instead.
+    MEDIA_PROTECTED_BUCKETS: str = ""
+    # Automated tests must never touch a real bucket. Set to "1" ONLY for a
+    # deliberate remote soak test (e.g. staging verification by hand).
+    MEDIA_TEST_ALLOW_REMOTE_STORAGE: bool = False
+    # The local-media importer copies the DEVELOPMENT MOCK asset library.
+    # It must never write it to S3. This stays False in every real
+    # deployment; flipping it to True is what allows the mock library to be
+    # seeded into a remote bucket, which the product owner has forbidden.
+    MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE: bool = False
+
     # --- Local media import (Phase 6 migration tool) ---
-    # Read-only source of the real product assets. The importer only ever
-    # copies FROM here; it never writes, moves or deletes inside it.
-    LOCAL_MEDIA_IMPORT_SOURCE: str = "../../frontend/pratikshya-frontend/public/images"
+    # Read-only source of the development/mock product assets. The importer
+    # only ever copies FROM here; it never writes, moves or deletes inside it.
+    # Relative values resolve against the backend directory. The old default
+    # (`../../frontend/pratikshya-frontend/public/images`) pointed outside the
+    # repository at a path that has never existed in this project.
+    LOCAL_MEDIA_IMPORT_SOURCE: str = "../frontend/public/images"
 
     # --- Payment (Razorpay) ---
     RAZORPAY_KEY_ID: Optional[str] = "your-razorpay-key-id"
@@ -154,6 +182,14 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE_MB: int = 100
     ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp,image/avif"
     ALLOWED_VIDEO_TYPES: str = "video/mp4,video/webm"
+    # Decompression-bomb / dimension guard, applied on top of the size ceiling.
+    # Only enforced for formats Pillow can actually DECODE — a file Pillow
+    # cannot open (AVIF without pillow-avif-plugin) is still validated by its
+    # content signature and the size ceiling, and the dimension check is
+    # skipped rather than rejecting a legitimate house-format upload.
+    # 0 disables the respective check.
+    MAX_IMAGE_PIXELS: int = 50_000_000
+    MAX_IMAGE_DIMENSION_PX: int = 8_000
 
     # --- Pagination ---
     DEFAULT_PAGE_SIZE: int = 20
@@ -209,6 +245,18 @@ class Settings(BaseSettings):
     # ── Media / object storage accessors ─────────────────────────────────────
 
     @property
+    def app_environment(self) -> str:
+        """Normalised deployment environment: `development|test|staging|production`."""
+        # `app.storage.environment.classify_environment` is the authority (it also
+        # detects pytest); this accessor is the plain, config-only view used by
+        # validators and by callers that must not depend on the storage package.
+        return (self.APP_ENV or "development").strip().lower() or "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_environment == "production"
+
+    @property
     def storage_provider_name(self) -> str:
         """Normalised storage provider id (`local` | `s3`)."""
         return (self.STORAGE_PROVIDER or "local").strip().lower()
@@ -262,6 +310,22 @@ class Settings(BaseSettings):
         if not candidate.is_absolute():
             candidate = backend_dir / candidate
         return candidate.resolve()
+
+    @property
+    def protected_media_buckets(self) -> List[str]:
+        """Bucket names that may only be used when APP_ENV=production."""
+        return [
+            item.strip()
+            for item in (_split_csv(self.MEDIA_PROTECTED_BUCKETS) or [])
+            if item.strip()
+        ]
+
+    @property
+    def repository_root(self):
+        """Absolute path of the repository root (the parent of `backend/`)."""
+        from pathlib import Path
+
+        return Path(__file__).resolve().parent.parent.parent
 
     # ── Production safety guards ──────────────────────────────────────────────
 

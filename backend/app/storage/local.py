@@ -198,6 +198,7 @@ class LocalStorageProvider(StorageProvider):
         data: bytes,
         content_type: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
+        cache_control: Optional[str] = None,
     ) -> StoredObject:
         if data is None:
             raise InvalidObjectKeyError("Cannot store an empty payload.", key=key)
@@ -297,9 +298,16 @@ class LocalStorageProvider(StorageProvider):
     def url_for(self, key: str) -> str:
         return build_media_url(key)
 
-    def list_objects(self, prefix: str = "") -> Iterator[str]:
-        """Yield every object key under `prefix`, in stable sorted order."""
+    def list_objects(self, prefix: str = "", limit: Optional[int] = None) -> Iterator[str]:
+        """
+        Yield object keys under `prefix`, in stable sorted order.
+
+        `limit=None` (the historical default) yields everything; a positive
+        limit stops after that many keys.
+        """
         if not self._root.exists():
+            return
+        if limit is not None and limit <= 0:
             return
         normalized_prefix = ""
         if prefix:
@@ -310,13 +318,17 @@ class LocalStorageProvider(StorageProvider):
         base = self._root.joinpath(*normalized_prefix.split("/")) if normalized_prefix else self._root
         if not base.exists():
             return
+        emitted = 0
         for path in sorted(p for p in base.rglob("*") if p.is_file()):
             relative = str(path.relative_to(self._root)).replace(os.sep, "/")
             if relative.startswith("."):
                 continue
             yield relative
+            emitted += 1
+            if limit is not None and emitted >= limit:
+                return
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, *, include_identifiers: bool = False) -> Dict[str, Any]:
         """
         Non-secret provider description.
 
