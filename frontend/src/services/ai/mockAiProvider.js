@@ -11,7 +11,6 @@
  * (see `aiProvider.js`) and switch the import in `aiService.js`.
  */
 
-import { getAnalyticsSnapshot } from "../analytics/analyticsService.js";
 import {
   extractPeriodPreset,
   normaliseText,
@@ -20,10 +19,6 @@ import { answerShoppingQuestion } from "./shopping/aiShoppingService.js";
 import {
   AI_SHOPPING_STAGES,
 } from "./shopping/aiShoppingMockData.js";
-import {
-  AI_BUSINESS_STAGES,
-} from "./business/aiBusinessMockData.js";
-import { buildBusinessAnswer } from "./business/aiBusinessService.js";
 
 const wait = (duration, signal) =>
   new Promise((resolve, reject) => {
@@ -118,6 +113,16 @@ export const mockAiProvider = {
     onStage,
     signal,
   } = {}) {
+    const [
+      { AI_BUSINESS_STAGES },
+      { getAnalyticsSnapshot },
+      { buildBusinessAnswer },
+    ] = await Promise.all([
+      import("./business/aiBusinessMockData.js"),
+      import("../analytics/analyticsService.js"),
+      import("./business/aiBusinessService.js"),
+    ]);
+
     await playStages(AI_BUSINESS_STAGES, onStage, signal, 0);
 
     /* A question like "this month" re-scopes the existing Phase 19 period. */

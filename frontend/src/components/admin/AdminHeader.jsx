@@ -70,7 +70,6 @@ export default function AdminHeader({ navOpen, onToggleNav, menuButtonRef }) {
           </button>
           <Brand
             to={workspacePrefix}
-            size="default"
             variant="lockup"
             theme="dark"
             size="compact"

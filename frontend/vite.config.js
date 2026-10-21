@@ -8,6 +8,19 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const OPTIMIZE_DEPS = [
+  "react",
+  "react-dom",
+  "react-dom/client",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-router-dom",
+  "clsx",
+  "tailwind-merge",
+  "framer-motion",
+  "lucide-react",
+];
+
 // https://vite.dev/config/
 export default defineConfig({
   server: {
@@ -23,6 +36,10 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  optimizeDeps: {
+    entries: [],
+    include: OPTIMIZE_DEPS,
   },
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {

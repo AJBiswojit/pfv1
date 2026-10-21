@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { LoadingState } from "./design-system";
+import LoadingState from "./design-system/components/LoadingState";
 import { hydrateCatalog, getCatalogState } from "./services/catalog/catalogStore";
 import { AuthProvider } from "./context/AuthContext";
 import { AccountProvider } from "./context/AccountContext";
@@ -12,13 +12,14 @@ import { EmployeeAuthProvider } from "./context/EmployeeAuthContext";
 import { EmployeeManagementProvider } from "./context/EmployeeManagementContext";
 import { AdminAuthProvider } from "./context/AdminAuthContext";
 import { WorkforceProvider } from "./context/WorkforceContext";
-import EmployeeProtectedRoute from "./components/employee/EmployeeProtectedRoute";
-import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
-import AdminEmployeeManagementRoute from "./components/admin/AdminEmployeeManagementRoute";
-import SuperAdminProtectedRoute from "./components/admin/SuperAdminProtectedRoute";
 import CustomerLayout from "./layouts/CustomerLayout";
-import EmployeeLayout from "./layouts/EmployeeLayout";
-import AdminLayout from "./layouts/AdminLayout";
+
+const EmployeeProtectedRoute = lazy(() => import("./components/employee/EmployeeProtectedRoute"));
+const AdminProtectedRoute = lazy(() => import("./components/admin/AdminProtectedRoute"));
+const AdminEmployeeManagementRoute = lazy(() => import("./components/admin/AdminEmployeeManagementRoute"));
+const SuperAdminProtectedRoute = lazy(() => import("./components/admin/SuperAdminProtectedRoute"));
+const EmployeeLayout = lazy(() => import("./layouts/EmployeeLayout"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 
 // ONE canonical staff login for all three account levels (SUPER_ADMIN, ADMIN,
 // EMPLOYEE). The former Admin/Employee login routes now

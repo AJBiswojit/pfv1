@@ -84,7 +84,7 @@ function buildSyntheticSection(sectionKey, draft, asset, product, slot, contentT
       // Also ensure intro if trust missing — trust has no intro, but add one text for intro slot is not in registry, so skip
     } else if (contentType === 'MEDIA') {
       const url = asset ? (registeredImageUrl(asset) || asset.url || asset.objectKey || '') : '';
-      const mediaObj = { url, altText: draft?.altText || '', title: draft?.title || '', subtitle: draft?.subtitle || '', eyebrow: draft?.eyebrow || '', ctaLabel: draft?.ctaLabel || '', ctaHref: draft?.ctaHref || '', altText: draft?.altText || '' };
+      const mediaObj = { url, altText: draft?.altText || '', title: draft?.title || '', subtitle: draft?.subtitle || '', eyebrow: draft?.eyebrow || '', ctaLabel: draft?.ctaLabel || '', ctaHref: draft?.ctaHref || '' };
       synthetic.items.push({ id: 'preview-draft', slotKey, contentType, media: mediaObj });
       // For sections requiring multiple MEDIA slots, provide fallback for required slots
       // e.g., bridal needs bride/groom/couple, promotion needs campaign, etc — add missing with same url
