@@ -52,6 +52,28 @@ from app.storage.local import _HASH_CHUNK_SIZE
 
 logger = get_logger("app.services.media.migration")
 
+
+#: Directories under the source root that are NOT product media.
+#:
+#: `auth/` holds the cinematic authentication-screen art
+#: (`pratikshya-auth-desktop.webp`, `pratikshya-auth-mobile.webp`). It lives in
+#: Vite's `public/` folder, is consumed directly by the auth screens, and is in
+#: no served media namespace (ALLOWED_NAMESPACES = products / collections /
+#: hero / marketing / uploads). Importing it into the object store therefore
+#: always failed with INVALID, and — more importantly — it must stay where it
+#: is: it is application chrome, not catalogue media.
+NON_MEDIA_SOURCE_DIRECTORIES = frozenset({"auth"})
+
+
+class RemoteImportRefused(RuntimeError):
+    """
+    Raised when the importer is pointed at a non-local provider.
+
+    This tool copies the DEVELOPMENT MOCK asset library. Uploading it to a
+    real S3 bucket is exactly what the product owner has forbidden: the first
+    objects in the production bucket must be deliberate, genuine uploads.
+    """
+
 # ---------------------------------------------------------------------------
 # Statuses — every migrated file gets exactly one
 # ---------------------------------------------------------------------------
@@ -101,6 +123,11 @@ SUMMARY_KEYS = (
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _remote_import_enabled() -> bool:
+    """`MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE` — off by default, on purpose."""
+    return bool(getattr(settings, "MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE", False))
 
 
 def sha256_of_file(path: Path) -> str:
@@ -238,11 +265,25 @@ class MigrationReport:
 # ---------------------------------------------------------------------------
 
 def discover_source_files(source_root: Path) -> List[Path]:
-    """Every regular file under `source_root`, in a stable sorted order."""
+    """
+    Every importable media file under `source_root`, in a stable sorted order.
+
+    Files inside `NON_MEDIA_SOURCE_DIRECTORIES` are excluded: they are
+    application chrome served straight out of Vite's `public/` folder (the
+    authentication screens), they belong to no served media namespace, and
+    importing them could only ever fail — or, worse, turn UI art into
+    catalogue media. They are never read, moved or modified.
+    """
     root = Path(source_root)
     if not root.exists():
         return []
-    return sorted(p for p in root.rglob("*") if p.is_file())
+    files = []
+    for path in sorted(p for p in root.rglob("*") if p.is_file()):
+        parts = path.relative_to(root).parts
+        if any(part.lower() in NON_MEDIA_SOURCE_DIRECTORIES for part in parts[:-1]):
+            continue
+        files.append(path)
+    return files
 
 
 def relative_source_path(source_root: Path, path: Path) -> str:
@@ -323,19 +364,39 @@ def run_migration(
     allowed_mime_types: Optional[Iterable[str]] = None,
     max_bytes: Optional[int] = None,
     progress: Optional[Any] = None,
+    allow_remote: bool = False,
 ) -> MigrationReport:
     """
     Copy the source asset library into `storage`.
 
     Never writes when `dry_run` is True. Never deletes or modifies a source
     file in either mode.
+
+    `allow_remote` is the guard rail for the S3/CDN rollout: this importer
+    copies the DEVELOPMENT MOCK asset library, and the mock library must never
+    be seeded into a staging or production bucket. Any provider whose `name`
+    is not `local` is refused unless BOTH `allow_remote=True` is passed and
+    `settings.MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE` is enabled. See
+    docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md §4.3.
     """
     root = Path(source_root).expanduser().resolve()
+    provider_name = getattr(storage, "name", "unknown")
+    if provider_name != "local" and not (allow_remote and _remote_import_enabled()):
+        raise RemoteImportRefused(
+            f"The configured storage provider is '{provider_name}'. The "
+            "local-media importer copies the DEVELOPMENT MOCK asset library and "
+            "must never write it to a remote bucket: the first objects in a "
+            "production bucket have to be deliberate, genuine uploads. See "
+            "docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md §4.3. To seed a "
+            "bucket with the mock library anyway (not a normal deployment "
+            "step), pass allow_remote=True together with "
+            "MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE=1."
+        )
     started = _now_iso()
     report = MigrationReport(
         dry_run=dry_run,
         source_root=relative_source_label(root),
-        provider=getattr(storage, "name", "unknown"),
+        provider=provider_name,
         started_at=started,
     )
 
@@ -587,4 +648,6 @@ __all__ = [
     "verify_source_integrity",
     "verify_migration",
     "sha256_of_file",
+    "NON_MEDIA_SOURCE_DIRECTORIES",
+    "RemoteImportRefused",
 ]

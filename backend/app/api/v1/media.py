@@ -7,6 +7,8 @@ URL mapping:
   ─────────────────────────────────────────────────────────────────────────
   GET    /media/health                              ← module health
   GET    /media/storage/status                      ← provider summary, no secrets
+                                                       (bucket identity redacted
+                                                       unless a staff session)
   GET    /media/objects/{object_key}                ← serve one object (bytes)
   HEAD   /media/objects/{object_key}                ← headers only
   GET    /media/object-meta/{object_key}            ← size / type / SHA-256
@@ -18,6 +20,10 @@ URL mapping:
   POST   /media/objects                             ← upload (media.upload)
   POST   /media/products/{product_id}/objects       ← upload for a product (media.upload)
   DELETE /media/objects/{object_key}                ← delete one object (media.delete)
+  GET    /media/storage/readiness                   ← full storage config validation
+                                                       (media.view)
+  GET    /media/audit/orphans                       ← orphan report, DRY RUN only
+                                                       (media.view)
 
 Security notes
 --------------
@@ -78,9 +84,11 @@ from app.schemas.media.media import (
     MediaAssetListResponse,
     MediaObjectMetaResponse,
     MediaObjectResponse,
+    MediaOrphanReportResponse,
     MediaReferenceResolveRequest,
     MediaReferenceResolveResponse,
     MediaRegistrationResponse,
+    MediaStorageReadinessResponse,
     MediaStorageStatusResponse,
     PlacementAssetRegistrationResponse,
     ProductMediaSetResponse,
@@ -96,6 +104,10 @@ from app.services.media.placement_asset_service import (
 from app.api.v1.response_docs import canonical_error_responses
 from app.services.media.media_service import MediaService
 from app.services.media.media_validation import MediaValidationError
+from app.services.media.media_reference_audit import (
+    audit_object_references,
+    orphan_report,
+)
 from app.services.media.product_media_records import (
     primary_item,
     registered_media_for_product,
@@ -106,7 +118,34 @@ from app.services.media.product_media_resolver import (
     resolve_product_image_reference,
 )
 from app.services.media.upload_service import UploadService
-from app.storage import InvalidObjectKeyError, ObjectCollisionError, ObjectNotFoundError
+from app.storage import (
+    InvalidObjectKeyError,
+    ObjectCollisionError,
+    ObjectNotFoundError,
+    StorageError,
+)
+from app.storage.environment import (
+    classify_environment,
+    fatal_issues,
+    validate_storage_environment,
+)
+from app.storage.urls import cache_control_for_key
+
+def _storage_error_text(exc: BaseException) -> str:
+    """
+    Operator-safe text for a storage error surfaced by the readiness endpoint.
+
+    The storage layer translates every driver exception into one of its own
+    types, whose messages are written by us and name nothing sensitive.
+    Anything else — a botocore error, an OSError — can carry an endpoint host,
+    an STS ARN, a request id, a filesystem path or a credential, so for those
+    only the exception class survives and the detail goes to the log.
+    """
+    if isinstance(exc, StorageError):
+        return str(exc)
+    logger.warning("Storage error surfaced by an admin endpoint: %s", type(exc).__name__)
+    return f"{type(exc).__name__} — see the server log for details."
+
 
 logger = get_logger("app.api.v1.media")
 
@@ -346,8 +385,78 @@ async def storage_status():
     Which provider is active, the application-level media URL prefix, and
     whether a CDN is configured. Credentials and filesystem paths are never
     part of this payload.
+
+    This endpoint is unauthenticated and must stay dependency-free (no database
+    round-trip), so the S3 bucket name is ALWAYS redacted here. Operators who
+    need the full picture — bucket, region, SSE mode — read
+    `GET /media/storage/readiness`, which is admin-only.
     """
-    return MediaService.storage_status()
+    return MediaService.storage_status(include_identifiers=False)
+
+
+@router.get(
+    "/storage/readiness",
+    response_model=MediaStorageReadinessResponse,
+    summary="Storage configuration readiness (admin) — full issue list",
+    responses=canonical_error_responses(401, 403, 500),
+)
+async def storage_readiness(
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """
+    Every storage configuration problem the backend can detect, with an
+    actionable message for each.
+
+    This is the same validation the process runs at startup, exposed without a
+    restart. `ok` is false when any issue is fatal (`level: "error"`) — the
+    application will refuse to start with that configuration.
+
+    Being admin-only, this is the ONE endpoint that names the bucket and the
+    region. The public `/media/storage/status` redacts them.
+    """
+    await require_admin_permission(current_user, db, "media.view")
+    issues = validate_storage_environment()
+    fatal = fatal_issues(issues)
+    try:
+        detail = get_storage_provider().describe(include_identifiers=True)
+    except Exception as exc:  # noqa: BLE001 - a broken provider must not 500 here
+        # An administrator may see the bucket name; they may not see a raw
+        # driver message, which can carry an endpoint, an ARN or a request id.
+        detail = {"error": _storage_error_text(exc)}
+    return {
+        "ok": not fatal,
+        "environment": classify_environment(),
+        "provider": settings.storage_provider_name,
+        "cdnConfigured": bool(settings.media_cdn_base_url),
+        "detail": detail,
+        "issues": [issue.as_dict() for issue in issues],
+        "fatalCount": len(fatal),
+        "warningCount": len(issues) - len(fatal),
+    }
+
+
+@router.get(
+    "/audit/orphans",
+    response_model=MediaOrphanReportResponse,
+    summary="Orphaned media report — DRY RUN, deletes nothing",
+    responses=canonical_error_responses(401, 403, 500),
+)
+async def media_orphan_report(
+    limit: int = Query(default=500, ge=1, le=2000),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """
+    Report — never repair.
+
+    Lists registered assets that nothing references, and stored objects with no
+    asset row at all (typically an upload that succeeded but whose database
+    write failed). No automatic garbage collection is performed here: deleting
+    anything reported requires a separate, explicitly authorised operation.
+    """
+    await require_admin_permission(current_user, db, "media.view")
+    return await orphan_report(db, object_limit=limit)
 
 
 @router.post(
@@ -392,9 +501,12 @@ async def get_media_object(object_key: str, request: Request):
         "ETag": f'"{metadata.etag or metadata.checksum_sha256}"',
         "Last-Modified": metadata.last_modified or "",
         "X-Content-Type-Options": "nosniff",
-        # Objects are cacheable but not immutable: a key can legitimately be
-        # replaced by an admin, so a long immutable TTL would serve stale art.
-        "Cache-Control": "public, max-age=3600",
+        # A content-addressed key (…-{sha256[:12]}.ext) can never change: if
+        # the bytes change, the key changes. Those objects are immutable and
+        # may be cached for a year. Every other key is replaceable by an admin,
+        # so it keeps a short revalidating TTL — and an admin replacement
+        # writes to a NEW content-addressed key rather than overwriting it.
+        "Cache-Control": cache_control_for_key(key),
     }
     if not headers["Last-Modified"]:
         headers.pop("Last-Modified")
@@ -607,6 +719,17 @@ async def upload_product_media_object(
     sort_order: int = Form(0),
     title: Optional[str] = Form(None),
     alt_text: Optional[str] = Form(None),
+    replace_existing: bool = Form(
+        False,
+        description=(
+            "Allow replacing an existing object that holds DIFFERENT bytes at "
+            "the deterministic key. The new bytes are written to a NEW "
+            "content-addressed key (products/{ID}/{stem}-{sha256[:12]}.{ext}) "
+            "rather than overwriting the old one, so no browser or CDN cache "
+            "can serve the new art under the old URL. Identical bytes are "
+            "always reported as already-present and are never rewritten."
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
 ):
@@ -618,6 +741,10 @@ async def upload_product_media_object(
     association atomically — no separate POST /media/register call required.
     The generic POST /media/objects path still exists for non-product namespaces
     but requires a manual register step afterwards.
+
+    If the database half fails after the object was written, the just-written
+    object is removed again (best-effort compensation) so a failed upload can
+    never leave an unmanaged object behind.
     """
     await require_admin_permission(current_user, db, "media.upload")
 
@@ -640,6 +767,7 @@ async def upload_product_media_object(
             declared_content_type=file.content_type,
             namespace="products",
             product_id=product_id,
+            replace_existing=replace_existing,
         )
     except MediaValidationError as exc:
         raise BusinessLogicException(str(exc)) from exc
@@ -650,10 +778,14 @@ async def upload_product_media_object(
 
     # Auto-register: create the MediaAssetModel row and ProductMediaModel
     # association in the same request so no DB record is ever left orphaned.
-    await _register_product_asset(
-        db, current_user, stored["key"], product_id, role, sort_order, is_primary, title, alt_text
-    )
-    await _commit_and_invalidate_product_media(db, product_id)
+    try:
+        await _register_product_asset(
+            db, current_user, stored["key"], product_id, role, sort_order, is_primary, title, alt_text
+        )
+        await _commit_and_invalidate_product_media(db, product_id)
+    except Exception:
+        await _compensate_failed_registration(db, stored)
+        raise
     return {"ok": True, "object": stored, "status": 201}
 
 
@@ -883,68 +1015,107 @@ async def delete_media_object(
     Delete exactly one explicitly named object.
 
     There is no cascade and no garbage collection: an object is only removed
-    when an administrator names it AND nothing references it (audit S-9).
-    Usage is checked against the asset register, product media rows and
-    marketing placements; a referenced object returns 409 with the counts so
-    the caller can un-link it first. When the asset row is unreferenced it is
-    removed with the object, so the register can never hold a dangling key.
-    The original `frontend/public/images` assets are outside the storage root
-    and can never be reached from here.
+    when an administrator names it AND nothing references it.
+
+    The reference check is complete (audit S-9/D-1/D-2/D-3):
+
+      · registered `media_product_media` mappings;
+      · LEGACY product image columns — `image`, `hover_image`,
+        `additional_images`, `media_ids`, `primary_media_id`,
+        `gallery_media_ids` (previously not checked at all);
+      · `homepage_section_item.media_asset_id` — whose FK is
+        `ON DELETE CASCADE`, so removing the asset row would silently delete
+        live homepage content;
+      · `media_marketing_media` by object key AND by `media_asset_id` /
+        `mobile_media_asset_id` (previously only the key was counted).
+
+    Anything referenced answers 409 with the per-family counts so the caller
+    can un-link it first. The asset row is committed away BEFORE the object is
+    removed, so the register can never point at a deleted object; if the
+    object delete then fails, the leftover is reported by
+    `GET /media/audit/orphans` instead of being hidden.
+
+    The original `frontend/public/images` mock assets live outside the storage
+    root and can never be reached from here.
     """
     await require_admin_permission(current_user, db, "media.delete")
 
     media = _get_media_service(db)
     key = _safe_key(media, object_key)
 
-    from app.models.media.marketing_media import MarketingMediaModel
-
     asset = (
         await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
     ).scalars().first()
-    product_refs = 0
-    if asset is not None:
-        product_refs = (
-            await db.execute(
-                select(func.count()).select_from(ProductMediaModel).where(ProductMediaModel.media_id == asset.id)
-            )
-        ).scalar() or 0
-    marketing_refs = (
-        await db.execute(
-            select(func.count()).select_from(MarketingMediaModel).where(MarketingMediaModel.object_key == key)
-        )
-    ).scalar() or 0
-    if product_refs or marketing_refs:
+
+    audit = await audit_object_references(db, key, asset=asset)
+    if audit["isReferenced"]:
         raise ConflictException(
-            "Media object is in use: "
-            f"{product_refs} product media reference(s), {marketing_refs} marketing placement(s). "
+            "Media object is in use: " + "; ".join(audit["blocking"]) + ". "
             "Remove the references first."
         )
 
-    deleted = await run_in_threadpool(media.delete_object, key)
+    # Row first, object second: a failed object delete leaves an orphan that
+    # the audit reports, whereas a failed row delete would leave the register
+    # pointing at bytes that no longer exist.
     if asset is not None:
-        # Unreferenced register row goes with the object (or cleans up an
-        # object that vanished from storage ahead of this call).
         await db.delete(asset)
         await db.commit()
-        # B-14: invalidate cache for deleted asset
-        try:
-            from app.services.media.homepage_content_service import invalidate_asset_projection_cache
-
-            invalidate_asset_projection_cache(asset=asset)
-            invalidate_asset_projection_cache(object_key=key)
-        except Exception:
-            pass
+        _invalidate_asset_caches(asset=asset, object_key=key)
     else:
-        # Even if no asset row, clear any negative cache for this key
-        try:
-            from app.services.media.homepage_content_service import invalidate_asset_projection_cache
+        _invalidate_asset_caches(asset=None, object_key=key)
 
-            invalidate_asset_projection_cache(object_key=key)
-        except Exception:
-            pass
+    deleted = await run_in_threadpool(media.delete_object, key)
     if not deleted and asset is None:
         raise NotFoundException("Media object not found.")
-    return {"ok": True, "deleted": True, "key": key}
+    if not deleted:
+        logger.warning(
+            "Media asset row removed but the object was already absent from the "
+            "store key=%s",
+            key,
+        )
+    return {"ok": True, "deleted": True, "key": key, "audit": audit["references"]}
+
+
+async def _compensate_failed_registration(db, stored: Optional[Dict[str, Any]]) -> None:
+    """
+    Remove an object whose database registration failed.
+
+    Storage is written BEFORE the database rows, so a DB failure would
+    otherwise leave a live object that no asset row points at — invisible to
+    the product, billed for, and only findable by a manual bucket sweep. This
+    undoes the storage half of a failed upload.
+
+    Best-effort by design: if the cleanup also fails, the object is reported by
+    `GET /media/audit/orphans` (`objectsWithoutAssetRows`) rather than
+    disappearing silently.
+    """
+    if not stored or not stored.get("created") or not stored.get("key"):
+        return
+    key = stored["key"]
+    try:
+        await run_in_threadpool(_get_media_service(db).delete_object, key)
+        logger.warning("Rolled back orphaned media object after a failed registration key=%s", key)
+    except Exception:
+        logger.error(
+            "Could not roll back orphaned media object key=%s — it will appear in "
+            "GET /media/audit/orphans",
+            key,
+            exc_info=True,
+        )
+
+
+def _invalidate_asset_caches(*, asset, object_key: str) -> None:
+    """Best-effort projection-cache invalidation. Never fails the request."""
+    try:
+        from app.services.media.homepage_content_service import (
+            invalidate_asset_projection_cache,
+        )
+
+        if asset is not None:
+            invalidate_asset_projection_cache(asset=asset)
+        invalidate_asset_projection_cache(object_key=object_key)
+    except Exception:
+        logger.debug("Asset projection cache invalidation skipped", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1006,10 +1177,14 @@ async def employee_upload_product_media_object(
         raise ConflictException(str(exc)) from exc
     except InvalidObjectKeyError as exc:
         raise _invalid_key(str(exc)) from exc
-    await _register_product_asset(
-        db, current_user, stored["key"], product_id, role, sort_order, is_primary, title, alt_text
-    )
-    await _commit_and_invalidate_product_media(db, product_id)
+    try:
+        await _register_product_asset(
+            db, current_user, stored["key"], product_id, role, sort_order, is_primary, title, alt_text
+        )
+        await _commit_and_invalidate_product_media(db, product_id)
+    except Exception:
+        await _compensate_failed_registration(db, stored)
+        raise
     return {"ok": True, "object": stored, "status": 201}
 
 

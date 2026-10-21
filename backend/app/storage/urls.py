@@ -39,6 +39,35 @@ def cdn_base_url() -> Optional[str]:
     return settings.media_cdn_base_url
 
 
+#: One year — used for content-addressed (immutable) objects only.
+IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable"
+#: One hour with revalidation — used for mutable keys an admin may replace.
+MUTABLE_CACHE_CONTROL = "public, max-age=3600, must-revalidate"
+
+
+def cache_control_for_key(object_key: str) -> str:
+    """
+    `Cache-Control` value for an object key.
+
+    A content-addressed key (`…-0123456789ab.ext`) can never change: if the
+    bytes change, the key changes. That is exactly the condition under which a
+    CDN and a browser may cache it indefinitely, and it is what stops a
+    replaced product image from being served stale.
+
+    A mutable key (the normal `products/{ID}/{filename}` form) keeps a short
+    TTL with revalidation, because an administrator may legitimately replace
+    it (in which case the writer switches to a content-addressed key anyway).
+    """
+    from app.storage.keys import is_content_addressed_key
+
+    try:
+        if is_content_addressed_key(object_key):
+            return IMMUTABLE_CACHE_CONTROL
+    except Exception:  # pragma: no cover - defensive; never fail a response
+        pass
+    return MUTABLE_CACHE_CONTROL
+
+
 def build_media_url(object_key: str) -> str:
     """
     Canonical URL for a validated object key.

@@ -41,6 +41,7 @@ if str(BACKEND_DIR) not in sys.path:
 from app.config import settings  # noqa: E402
 from app.services.media.local_media_migration import (  # noqa: E402
     MigrationReport,
+    RemoteImportRefused,
     relative_source_label,
     run_migration,
     verify_migration,
@@ -101,6 +102,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="as_json",
         help="Print the machine-readable report instead of the summary.",
+    )
+    parser.add_argument(
+        "--allow-remote-store",
+        action="store_true",
+        dest="allow_remote_store",
+        help=(
+            "Permit the import when the configured provider is NOT local. "
+            "This tool copies the DEVELOPMENT MOCK asset library, which must "
+            "never be seeded into a staging or production S3 bucket; this flag "
+            "additionally requires MEDIA_MIGRATION_ALLOW_REMOTE_STORAGE=1. "
+            "See docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md §4.3."
+        ),
     )
     return parser
 
@@ -199,7 +212,17 @@ def main(argv: Optional[list] = None) -> int:
             print(f"ERROR: source folder not found: {source}", file=sys.stderr)
             return 2
 
-        report = run_migration(source, storage, dry_run=args.dry_run, limit=args.limit)
+        try:
+            report = run_migration(
+                source,
+                storage,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                allow_remote=bool(args.allow_remote_store),
+            )
+        except RemoteImportRefused as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
 
         manifest_path = Path(args.manifest).expanduser()
         if not manifest_path.is_absolute():

@@ -101,6 +101,25 @@ async def lifespan(app: FastAPI):
     # --- Migration guard: abort startup if any ORM table is missing ---
     await _check_pending_migrations()
 
+    # --- Storage guard: refuse to start on an invalid storage configuration ---
+    # Production must never silently fall back to ephemeral local storage, and
+    # a non-production environment must never point at the production bucket.
+    # See app/storage/environment.py and
+    # docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md §8.3.
+    from app.storage import enforce_storage_environment
+
+    storage_issues = enforce_storage_environment()
+    if storage_issues:
+        for issue in storage_issues:
+            logger.warning(
+                "Storage configuration warning [%s]: %s", issue.code, issue.message
+            )
+    logger.info(
+        "Storage configuration validated (provider=%s, cdn=%s)",
+        settings.storage_provider_name,
+        "configured" if settings.media_cdn_base_url else "not configured",
+    )
+
     # --- In-process LRU cache store ---
     await init_redis()
     logger.info("Redis connection initialised")

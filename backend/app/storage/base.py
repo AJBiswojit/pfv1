@@ -138,8 +138,15 @@ class StorageProvider(ABC):
         data: bytes,
         content_type: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
+        cache_control: Optional[str] = None,
     ) -> StoredObject:
-        """Write bytes at `key` and return the stored-object descriptor."""
+        """
+        Write bytes at `key` and return the stored-object descriptor.
+
+        `cache_control` is advisory and provider-dependent: S3 stores it as
+        object metadata so CloudFront can honour it, and the local provider
+        ignores it (the media route sets the response header directly).
+        """
 
     @abstractmethod
     def get_object(self, key: str) -> bytes:
@@ -176,17 +183,25 @@ class StorageProvider(ABC):
         `/api/v1/media/objects/products/PF-.../primary.avif`.
         """
 
-    def list_objects(self, prefix: str = "") -> Iterator[str]:
-        """Yield object keys under `prefix`. Optional; local provider only."""
+    def list_objects(self, prefix: str = "", limit: Optional[int] = None) -> Iterator[str]:
+        """
+        Yield at most `limit` object keys under `prefix`.
+
+        `limit` matters operationally: the storage status endpoint only needs
+        to know whether the store holds ANY object, and an unbounded listing of
+        a production bucket on every status probe is both slow and costly.
+        """
         raise StorageProviderNotConfigured(
             f"Provider '{self.name}' does not support listing."
         )
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, *, include_identifiers: bool = False) -> Dict[str, Any]:
         """
         Non-secret description of the provider, safe to return over the API.
 
         Implementations must NOT include credentials, bucket secrets or
-        absolute filesystem paths.
+        absolute filesystem paths, and must redact bucket identifiers unless
+        `include_identifiers` is set (which only an authenticated
+        administrator-facing call path may do).
         """
         return {"provider": self.name}

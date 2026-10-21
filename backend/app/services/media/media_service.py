@@ -29,6 +29,8 @@ from app.storage import (
     ObjectNotFoundError,
     StorageProvider,
     StoredObject,
+    cache_control_for_key,
+    content_addressed_product_key,
     content_type_for_key,
     get_storage_provider,
     is_safe_object_key,
@@ -44,6 +46,22 @@ from app.services.media.media_validation import (
 )
 
 logger = get_logger("app.services.media")
+
+
+def _content_addressed_variant(object_key: str, checksum_sha256: str) -> str:
+    """
+    Content-addressed sibling of an existing object key.
+
+    `hero/banner.avif` → `hero/banner-0123456789ab.avif`. Used for
+    non-product namespaces, where the deterministic key has no product id to
+    derive from.
+    """
+    from app.storage.keys import content_addressed_filename, normalize_object_key
+
+    safe_key = normalize_object_key(object_key)
+    head, _, leaf = safe_key.rpartition("/")
+    leaf = content_addressed_filename(leaf, checksum_sha256)
+    return f"{head}/{leaf}" if head else leaf
 
 
 class MediaService:
@@ -174,9 +192,18 @@ class MediaService:
         Collision policy (never a silent overwrite):
           · an existing object with IDENTICAL bytes → reported as already
             present, nothing is written (this is what makes re-runs safe);
-          · an existing object with DIFFERENT bytes → `ObjectCollisionError`.
-            The caller must pass `replace_existing=True` to replace it, and
-            no route in this phase does so implicitly.
+          · an existing object with DIFFERENT bytes and `replace_existing`
+            False → `ObjectCollisionError` (HTTP 409). Nothing is written;
+          · an existing object with DIFFERENT bytes and `replace_existing`
+            True → the new bytes are written to a NEW CONTENT-ADDRESSED key
+            (`products/{ID}/{stem}-{sha256[:12]}.{ext}`), never onto the old
+            one. The old object and its asset row survive as history, and no
+            browser or CDN cache can serve the new art under the old URL.
+            The response then carries `replacedKey` / `replacedFromKey`.
+
+        Cache policy: a content-addressed key is immutable and is stored with
+        `Cache-Control: public, max-age=31536000, immutable`; every other key
+        keeps a short revalidating TTL because an administrator may replace it.
         """
         validated = validate_image_bytes(filename, data)
         safe_key = (
@@ -189,6 +216,7 @@ class MediaService:
                 group=group,
             )
         )
+        replaced_from: Optional[str] = None
 
         if self.storage.object_exists(safe_key):
             existing = self.storage.get_metadata(safe_key)
@@ -201,6 +229,7 @@ class MediaService:
                     "size": validated.size,
                     "contentType": validated.content_type,
                     "checksumSha256": validated.checksum_sha256,
+                    "cacheControl": cache_control_for_key(safe_key),
                 }
             if not replace_existing:
                 raise ObjectCollisionError(
@@ -208,16 +237,26 @@ class MediaService:
                     "overwritten.",
                     key=safe_key,
                 )
+            replaced_from = safe_key
+            safe_key = (
+                content_addressed_product_key(product_id, filename, validated.checksum_sha256)
+                if namespace == "products" and product_id
+                else _content_addressed_variant(safe_key, validated.checksum_sha256)
+            )
 
         stored: StoredObject = self.storage.put_object(
-            safe_key, data, content_type=validated.content_type
+            safe_key,
+            data,
+            content_type=validated.content_type,
+            cache_control=cache_control_for_key(safe_key),
         )
         logger.info(
-            "Media object stored provider=%s key=%s size=%s sha256=%s",
+            "Media object stored provider=%s key=%s size=%s sha256=%s%s",
             getattr(self.storage, "name", "unknown"),
             safe_key,
             validated.size,
             validated.checksum_sha256[:12],
+            f" replaced_from={replaced_from}" if replaced_from else "",
         )
         return {
             "key": stored.key,
@@ -227,6 +266,10 @@ class MediaService:
             "size": validated.size,
             "contentType": validated.content_type,
             "checksumSha256": validated.checksum_sha256,
+            "cacheControl": cache_control_for_key(stored.key),
+            "replaced": replaced_from is not None,
+            "replacedKey": stored.key if replaced_from else None,
+            "replacedFromKey": replaced_from,
         }
 
     def delete_object(self, key: str) -> bool:
@@ -247,11 +290,17 @@ class MediaService:
     # -- status --------------------------------------------------------------
 
     @staticmethod
-    def storage_status() -> Dict[str, Any]:
-        """Non-secret provider summary (see `app.storage.storage_status`)."""
+    def storage_status(*, include_identifiers: bool = False) -> Dict[str, Any]:
+        """
+        Non-secret provider summary (see `app.storage.storage_status`).
+
+        `include_identifiers` un-redacts the S3 bucket name; only an
+        authenticated staff-facing call path may set it, because the public
+        status payload must not disclose a private bucket's identity.
+        """
         from app.storage import storage_status as _status
 
-        return _status()
+        return _status(include_identifiers=include_identifiers)
 
 
 __all__ = [
