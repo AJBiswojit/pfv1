@@ -890,17 +890,22 @@ Backend (`python -m pytest tests -q --ignore=tests/unit/test_unified_rbac_consol
 
 | | Baseline | After |
 |---|---|---|
-| Collected | 881 | 977 |
+| Collected | 881 | 978 |
 | Passed | 845 | 942 |
 | Failed | 13 | **12** |
 | Skipped | 24 | 24 |
+
+*(Corrected by the review: the "After" column is 978 collected, not 977, and 97
+backend tests were added, not 96. The review then added 45 more — see
+`docs/PRODUCT_MEDIA_S3_CDN_SECURITY_REVIEW.md` §5 for the final measured
+numbers: 1023 collected, 987 passed.)*
 
 The failure set is **identical except for one that this change fixes**:
 `test_phase6_image_formats.py::RealSourceDryRunTests` (the two `auth/` files that
 were counted `INVALID` on every migration run). The other twelve are pre-existing
 SQLite-session-isolation and Alembic-head assertions unrelated to media storage.
 
-New tests: **96 added, 96 passing.**
+New tests: **97 backend + 10 frontend added, all passing.**
 
 Frontend (`npm test`):
 

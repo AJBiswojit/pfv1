@@ -296,14 +296,16 @@ excluded identically at the baseline, so the comparison is like-for-like.
 
 | | Baseline `57c4e84` | Current |
 |---|---|---|
-| Collected | 881 | **1020** |
-| Passed | 845 | **984** |
+| Collected | 881 | **1023** |
+| Passed | 845 | **987** |
 | Failed | 13 | **12** |
 | Skipped | 24 | 24 |
 
 The baseline row was produced by exporting `57c4e84` with `git archive` into a
 clean tree and running the same command there — not copied from a previous
-report.
+report. The current row was re-measured after the sandbox was rebuilt from
+scratch (new virtualenv, `pip install -r requirements.txt`), so it also
+confirms the `pillow-avif-plugin` pin resolves on a cold environment.
 
 **The 12 current failures are a strict subset of the baseline's 13.** The one
 that disappeared is
@@ -331,12 +333,15 @@ tests/unit/test_workforce_api_wiring.py::RouterRegistrationTests::test_legacy_no
 
 **No new failure was introduced by this review.**
 
-### New tests added by this review — 42, all passing
+### New tests added by this review — 45, all passing
 
 | File | Tests |
 |---|---|
 | `backend/tests/unit/test_media_storage_security_regressions.py` | 25 |
-| `backend/tests/unit/test_media_avif_validation.py` | 17 |
+| `backend/tests/unit/test_media_avif_validation.py` | 20 |
+
+(The S3/CDN work itself added 97 more: 29 S3 adapter, 30 CDN/replacement,
+19 environment isolation, 19 reference audit.)
 
 (Reminder: `backend/.gitignore` contains a bare `tests/`, so new test files
 need `git add -f`. Both were added that way.)
@@ -396,7 +401,7 @@ guard was exercised directly, and the media routes were served through
 | `backend/app/services/media/media_validation.py` | `ensure_avif_support()`, `avif_decoder_available()`, `DIMENSION_AVIF_DECODER_MISSING`; AVIF geometry now measured |
 | `backend/requirements.txt` | `pillow-avif-plugin==1.6.0` |
 | `backend/tests/unit/test_media_storage_security_regressions.py` | **new**, 25 tests |
-| `backend/tests/unit/test_media_avif_validation.py` | **new**, 17 tests |
+| `backend/tests/unit/test_media_avif_validation.py` | **new**, 20 tests |
 | `backend/tests/unit/test_media_cdn_and_replacement.py` | one stale docstring corrected (AVIF *is* decodable now; that case is a malformed file) |
 | `docs/PRODUCT_MEDIA_S3_CDN_IMPLEMENTATION_PLAN.md` | §15.3 / §15.4 corrected, §16 added |
 
