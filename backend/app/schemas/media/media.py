@@ -277,6 +277,101 @@ class MediaAssetListResponse(BaseModel):
     pageSize: int = 50
 
 
+class MediaAssetSameByteCopies(BaseModel):
+    """Same-byte copies (approved plan R1), grouped by the stored SHA-256.
+
+    ``assets`` counts every asset whose checksum belongs to a group of two or
+    more; ``groups`` counts the checksum values themselves. Grouping runs
+    across ALL scopes, and a matching filename is never evidence of identical
+    bytes.
+
+    Digests are compared case-insensitively after trimming surrounding
+    whitespace, so one checksum written in two casings is one group.
+
+    ``unknown_checksums`` counts rows whose checksum is unusable (NULL, blank,
+    or not a valid 64-character hexadecimal SHA-256). Those rows are **never**
+    grouped together — two unknown values are not "the same bytes".
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    assets: int = 0
+    groups: int = 0
+    unknown_checksums: int = Field(0, alias="unknownChecksums")
+
+
+class MediaAssetNamespaceClassification(BaseModel):
+    """Declared ``scope`` versus the class implied by the object-key namespace.
+
+    Read-only diagnostic for R4. A ``mismatch`` changes NO count and NO stored
+    row: every card is calculated from the database's declared ``scope``.
+
+    ``matches``       ``hero/``/``marketing/`` with ``scope=marketing``,
+                      or ``products/`` with ``scope=product``.
+    ``mismatches``    one of those namespaces disagreeing with ``scope``.
+    ``undetermined``  a namespace the model does not classify (for example
+                      ``uploads/`` or ``collections/``); reported, never
+                      forced into a bucket.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    matches: int = 0
+    mismatches: int = 0
+    undetermined: int = 0
+
+
+class MediaAssetSummaryResponse(BaseModel):
+    """Successful wire shape for ``GET /media/assets/summary`` (Batch 1).
+
+    One read-only snapshot of the durable registry, derived in a single SQL
+    statement so the cards can never disagree with each other.
+
+    Counting scope is explicitly the WHOLE registry — every row in
+    ``media_media_asset`` — regardless of page, filter or search. The summary
+    takes no parameters.
+
+    Definitions (all from the database, never from browser state):
+
+      · ``images`` / ``videos`` — ``mime_type`` prefixed ``image/`` /
+        ``video/``. That is the sniffed content type the upload policy
+        actually produced; ``media_type`` is a duplicate column whose default
+        is always ``image``.
+      · ``other_mime_types`` — neither prefix. Disclosed so the three MIME
+        buckets always sum to ``total``.
+      · ``product_mapped`` — ``scope='product'`` AND a real
+        ``media_product_media`` row exists.
+      · ``unassigned`` — ``scope='product'`` AND no mapping.
+      · ``marketing`` — ``scope='marketing'``; includes both the ``hero/`` and
+        ``marketing/`` namespaces (R5).
+      · ``large_files`` — ``file_size >= largeFileThresholdBytes``.
+      · ``unknown_file_size`` — rows without a usable byte size (NULL or <= 0).
+        They can never satisfy the large-file threshold, and they are not
+        treated as zero-byte files.
+      · ``same_byte_copies`` — see :class:`MediaAssetSameByteCopies`.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool = True
+    counting_scope: str = Field(..., alias="countingScope")
+    large_file_threshold_bytes: int = Field(..., alias="largeFileThresholdBytes")
+    total: int
+    images: int
+    videos: int
+    other_mime_types: int = Field(0, alias="otherMimeTypes")
+    product_mapped: int = Field(..., alias="productMapped")
+    marketing: int
+    unassigned: int
+    large_files: int = Field(..., alias="largeFiles")
+    unknown_file_size: int = Field(0, alias="unknownFileSize")
+    same_byte_copies: MediaAssetSameByteCopies = Field(..., alias="sameByteCopies")
+    namespace_classification: MediaAssetNamespaceClassification = Field(
+        ..., alias="namespaceClassification"
+    )
+    generated_at: str = Field(..., alias="generatedAt")
+
+
 class MediaObjectMetaResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

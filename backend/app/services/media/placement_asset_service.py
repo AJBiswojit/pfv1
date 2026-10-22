@@ -35,9 +35,13 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 
 from app.config import settings
-from app.core.exceptions import BusinessLogicException, NotFoundException
+from app.core.exceptions import BusinessLogicException, ConflictException, NotFoundException
 from app.models.media.media_asset import MediaAssetModel
 from app.schemas.media.homepage import IMAGE_MIMES
+from app.services.media.media_integrity import (
+    CHECKSUM_MISMATCH_MESSAGE,
+    checksum_conflict,
+)
 from app.schemas.media.media import (
     MEDIA_ASSET_SCOPE_MARKETING,
     MEDIA_ASSET_STATUS_UPLOADED,
@@ -96,6 +100,11 @@ async def register_placement_asset(
         await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
     ).scalars().first()
     if existing is not None:
+        # A-15 / S-06: same rule as the product path — an idempotent re-register
+        # is only safe while the stored bytes still match the row's snapshot.
+        # A disagreement is a 409 and changes nothing (row and object intact).
+        if checksum_conflict(meta.checksum_sha256, existing.checksum_sha256):
+            raise ConflictException(CHECKSUM_MISMATCH_MESSAGE)
         return existing, False
 
     row = MediaAssetModel(
