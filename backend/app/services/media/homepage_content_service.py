@@ -414,6 +414,14 @@ ASSET_QUERY_MAX_LEN = 120
 #: marketing/ namespace of the marketing scope.
 ASSET_SCOPE_FILTERS = ("product", "hero", "marketing")
 
+#: Valid values for the optional ``type`` list filter (Batch 2). Classified by
+#: the SNIFFED ``mime_type`` prefix — the same rule the media summary cards
+#: use — because ``media_type`` is a duplicated column that every writer
+#: hardcodes to "image" (product registration, placement registration, legacy
+#: import). Filtering on it would list every video as an image and make
+#: ``type=video`` permanently empty.
+ASSET_MEDIA_TYPE_FILTERS = ("image", "video")
+
 
 def escape_like_literal(text):
     """Escape the LIKE meta characters in a free-text search term.
@@ -427,15 +435,42 @@ def escape_like_literal(text):
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def normalize_asset_page_filters(q, scope, mime):
+def normalize_asset_page_filters(
+    q,
+    scope,
+    mime,
+    *,
+    media_type=None,
+    assigned=None,
+    unassigned=None,
+    placement=None,
+):
     """Validate + normalize the optional registered-asset list filters.
 
     Shared by the admin registry list (``GET /media/assets``) and the
-    employee picker page (``employee_asset_page``). With all three inputs
-    empty the returned condition list is empty and the endpoints behave
-    exactly as before (unfiltered newest-first page). ``q`` matches
-    LITERALLY — LIKE wildcards are escaped (`escape_like_literal` +
+    employee picker page (``employee_asset_page``). With every input empty
+    the returned condition list is empty and the endpoints behave exactly as
+    before (unfiltered newest-first page). ``q`` matches LITERALLY — LIKE
+    wildcards are escaped (`escape_like_literal` +
     ``ESCAPE '\\'``), never interpreted.
+
+    Batch 2 adds four optional filters. They are keyword-only with an empty
+    default, so the employee picker (which passes none of them) is
+    byte-compatible with its previous behaviour:
+
+      · ``media_type`` (wire name ``type``) — ``image`` or ``video``, matched
+        on the sniffed ``mime_type`` prefix (see
+        ``ASSET_MEDIA_TYPE_FILTERS``). Any other value is a 422.
+      · ``assigned`` — product-scope assets that HAVE a ``media_product_media``
+        row.
+      · ``unassigned`` — product-scope assets that have NONE.
+      · ``placement`` — the whole marketing scope, i.e. ``hero/`` AND
+        ``marketing/`` placement art. No namespace test: declared scope is the
+        truth (R4), and no row is reclassified.
+
+    ``assigned`` and ``unassigned`` partition the product scope, so asking for
+    both at once is contradictory and rejected with a 422 rather than silently
+    returning an empty page.
     """
     from app.models.catalog.product import ProductModel
     from app.models.media.product_media import ProductMediaModel
@@ -478,6 +513,35 @@ def normalize_asset_page_filters(q, scope, mime):
             conditions.append(MediaAssetModel.scope == scope_text)
     if mime is not None and str(mime).strip():
         conditions.append(MediaAssetModel.mime_type == str(mime).strip().lower())
+    if media_type is not None and str(media_type).strip():
+        type_text = str(media_type).strip().lower()
+        if type_text not in ASSET_MEDIA_TYPE_FILTERS:
+            raise BusinessLogicException(
+                "Unknown media type filter. Valid values: image, video."
+            )
+        conditions.append(MediaAssetModel.mime_type.ilike(f"{type_text}/%"))
+    if assigned and unassigned:
+        raise BusinessLogicException(
+            "assigned=true and unassigned=true cannot be combined; "
+            "product media is either mapped to a product or it is not."
+        )
+    if assigned:
+        conditions.append(MediaAssetModel.scope == "product")
+        conditions.append(
+            select(ProductMediaModel.id)
+            .where(ProductMediaModel.media_id == MediaAssetModel.id)
+            .exists()
+        )
+    if unassigned:
+        conditions.append(MediaAssetModel.scope == "product")
+        conditions.append(
+            ~select(ProductMediaModel.id)
+            .where(ProductMediaModel.media_id == MediaAssetModel.id)
+            .exists()
+        )
+    if placement:
+        # Placement art = the entire marketing scope: hero/ AND marketing/.
+        conditions.append(MediaAssetModel.scope == "marketing")
     return conditions
 
 

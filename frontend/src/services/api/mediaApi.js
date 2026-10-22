@@ -12,6 +12,7 @@
  *   POST   /media/products/{id}/objects             apiUploadProductMediaObject
  *   POST   /media/register                          apiRegisterMediaObject
  *   GET    /media/assets                            apiListMediaAssets
+ *   GET    /media/assets/summary                    apiGetMediaAssetSummary
  *   GET    /media/products/{id}/media-set           apiGetProductMediaSet
  *   DELETE /media/objects/{key}                     apiDeleteMediaObject
  *
@@ -227,8 +228,36 @@ export async function apiRegisterMediaObject(
   }
 }
 
-/** The durable registered asset library (admin). */
-export async function apiListMediaAssets({ scope = "admin", page = 1, pageSize = 50, q = "", scopeFilter = "", mime = "" } = {}) {
+/**
+ * The durable registered-asset library (admin).
+ *
+ * Every parameter is optional; the defaults reproduce the pre-filter request
+ * exactly (`?page=1&pageSize=50`, no other keys), so existing callers — the
+ * employee picker, the product-media desk, older panels — are untouched.
+ *
+ * Batch 2 filters are sent ONLY when actually set:
+ *   · `mediaType: "image" | "video"` → `type=` (the backend classifies by the
+ *     sniffed MIME type; its `media_type` column is hardcoded to "image").
+ *   · `assigned: true` / `unassigned: true` → the two halves of the product
+ *     scope. They are mutually exclusive server-side (both → 422); passing
+ *     `false` omits the key, which the backend treats as "no filter".
+ *   · `placement: true` → the whole marketing scope (hero/ + marketing/).
+ *
+ * `scopeFilter` keeps its existing name and meaning (`scope=product|hero|
+ * marketing`); it is NOT the auth scope, which is `scope`.
+ */
+export async function apiListMediaAssets({
+  scope = "admin",
+  page = 1,
+  pageSize = 50,
+  q = "",
+  scopeFilter = "",
+  mime = "",
+  mediaType = "",
+  assigned = false,
+  unassigned = false,
+  placement = false,
+} = {}) {
   try {
     // Batch 2 (B-11): optional server-side filters. Empty values are omitted
     // so the default page is byte-identical to the pre-filter contract.
@@ -236,16 +265,51 @@ export async function apiListMediaAssets({ scope = "admin", page = 1, pageSize =
     if (String(q || "").trim()) params.push(`q=${encodeURIComponent(String(q).trim())}`);
     if (String(scopeFilter || "").trim()) params.push(`scope=${encodeURIComponent(String(scopeFilter).trim())}`);
     if (String(mime || "").trim()) params.push(`mime=${encodeURIComponent(String(mime).trim())}`);
+    // Batch 3: `type` is the wire name; the JS option stays `mediaType`.
+    if (String(mediaType || "").trim()) params.push(`type=${encodeURIComponent(String(mediaType).trim())}`);
+    // Boolean filters are sent only when enabled. `false` is a no-op on the
+    // backend, so omitting it keeps the URL identical to the default request.
+    if (assigned === true) params.push("assigned=true");
+    if (unassigned === true) params.push("unassigned=true");
+    if (placement === true) params.push("placement=true");
     const data = await apiClient.get(`/media/assets?${params.join("&")}`, { scope });
     return {
       ok: true,
       items: data?.items ?? [],
+      // Legacy numeric total — unchanged for every existing consumer. It
+      // substitutes the page length when the server omits `total`; see `data`.
       total: data?.total ?? (data?.items?.length ?? 0),
       page: data?.page ?? page,
       pageSize: data?.pageSize ?? pageSize,
+      // Batch 5 — the raw response body, additive and read-only. The registry
+      // normalises THIS (via normaliseMediaAssetPage) so a missing `total`
+      // stays unknown (`null`) instead of becoming `items.length`. Nothing
+      // else in the file or in existing callers reads it.
+      data: data ?? null,
     };
   } catch (error) {
     return handleError(error, "The media asset library could not be loaded.");
+  }
+}
+
+/**
+ * The registry KPI snapshot (admin, read only).
+ *
+ *   GET /media/assets/summary
+ *
+ * Returns the backend's own counts for the whole registry — never a
+ * page-scoped figure and never a client-side derivation. `data` is returned
+ * verbatim so the caller decides how to treat unknown fields; this module
+ * does not fill gaps with zeroes. A failure returns the canonical
+ * `handleError` shape (`ok: false`, `status`, `code`, `isNetworkError`),
+ * which callers must render as an error state — never as an empty summary.
+ */
+export async function apiGetMediaAssetSummary({ scope = "admin" } = {}) {
+  try {
+    const data = await apiClient.get("/media/assets/summary", { scope });
+    return { ok: true, data };
+  } catch (error) {
+    return handleError(error, "The media summary could not be loaded.");
   }
 }
 
@@ -349,6 +413,7 @@ export default {
   apiRegisterMediaObject,
   apiRegisterPlacementAsset,
   apiListMediaAssets,
+  apiGetMediaAssetSummary,
   apiListProductMedia,
   apiDeleteMediaObject,
   encodeMediaKey,

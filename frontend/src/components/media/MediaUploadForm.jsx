@@ -44,7 +44,15 @@ export default function MediaUploadForm({
   const actions = useMediaActions();
 
   const isEmployeeSession = portalType === "employee" || (portalType === "auto" && !admin && Boolean(employee));
-  const canManageMarketing = admin ? true : Boolean(hasPermission?.(PERMISSIONS.MEDIA_MANAGE) || hasPermission?.("media.manage"));
+  /* Media authority is resolved from the session's grants, never from the
+     workspace it happens to be signed into. The built-in ADMIN holds
+     `media.upload`, which expands to `media.manage`, so its behaviour here is
+     unchanged; a custom-permission admin whose resolved grants carry no media
+     code no longer sees a marketing destination it cannot use. The employee
+     rule is untouched. */
+  const canManageMarketing = isEmployeeSession
+    ? Boolean(hasPermission?.(PERMISSIONS.MEDIA_MANAGE) || hasPermission?.("media.manage"))
+    : Boolean(actions.access?.canManageMarketing);
   const isAuthorizedToUpload = isEmployeeSession
     ? Boolean(hasPermission?.(PERMISSIONS.MEDIA_UPLOAD) || hasPermission?.("media.upload"))
     : actions.access?.canUpload ?? true;
@@ -375,7 +383,7 @@ export default function MediaUploadForm({
             <p className="font-ui text-xs leading-relaxed text-amber-900/80">
               {UPLOAD_NOTICE_COPY}
               {scope === MEDIA_SCOPES.MARKETING
-                ? " Marketing placements remain a separate explicit assignment with no backend API yet — submitting in this scope reports the gap instead of persisting anything."
+                ? " Marketing placement art is registered from the Homepage placement art panel on the Media Management page; it is a separate explicit assignment and is never promoted automatically from a product upload."
                 : ""}
             </p>
           </div>

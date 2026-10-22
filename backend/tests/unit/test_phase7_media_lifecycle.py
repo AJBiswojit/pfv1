@@ -2423,3 +2423,754 @@ class MarketingCtaWriteValidationTests(_HomepageBatchCase):
         self.assertEqual(home.status_code, 200, home.text)
         self.assertTrue(any(slide["href"] == "https://external.example/landing" for slide in home.json()["heroSlides"]),
                         "the /home projection serves pre-existing rows as stored")
+
+
+# ===========================================================================
+# Batch 1 — registered-media summary endpoint (read only)
+# ===========================================================================
+
+class MediaAssetSummaryTests(_HomepageBatchCase):
+    """`GET /api/v1/media/assets/summary` — the eight admin cards.
+
+    Every expectation is derived from rows this suite created through the real
+    routes, or from rows planted directly when the *schema* (not the API) is
+    what the assertion is about. No value is copied from the audit export and
+    no frontend store is involved.
+    """
+
+    SUMMARY_URL = "/api/v1/media/assets/summary"
+
+    # -- helpers --------------------------------------------------------------
+
+    def summary(self):
+        return self.client.get(self.SUMMARY_URL)
+
+    def summary_json(self):
+        response = self.summary()
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def insert_asset(
+        self,
+        *,
+        object_key,
+        scope,
+        mime_type="image/avif",
+        media_type="image",
+        file_size=1024,
+        checksum=None,
+        status="uploaded",
+    ):
+        """Insert a MediaAsset row directly.
+
+        Used ONLY for states the HTTP surface cannot produce — a legacy row
+        whose size/checksum was never recovered, or a deliberately
+        mis-declared scope. Everything else goes through the real routes.
+        """
+        import uuid
+
+        value = checksum if checksum is not None else uuid.uuid4().hex.ljust(64, "0")[:64]
+
+        async def _write():
+            async with self.Session() as session:
+                session.add(
+                    MediaAssetModel(
+                        object_key=object_key,
+                        storage_provider="local",
+                        media_type=media_type,
+                        mime_type=mime_type,
+                        original_filename=object_key.rsplit("/", 1)[-1],
+                        file_size=file_size,
+                        checksum_sha256=value,
+                        status=status,
+                        scope=scope,
+                    )
+                )
+                await session.commit()
+
+        self._run(_write())
+
+    # -- empty ----------------------------------------------------------------
+
+    def test_empty_registry_returns_zeroes_not_errors(self):
+        self.as_admin()
+        body = self.summary_json()
+
+        self.assertTrue(body["ok"])
+        for key in (
+            "total",
+            "images",
+            "videos",
+            "otherMimeTypes",
+            "productMapped",
+            "marketing",
+            "unassigned",
+            "largeFiles",
+            "unknownFileSize",
+        ):
+            self.assertEqual(body[key], 0, key)
+        self.assertEqual(
+            body["sameByteCopies"], {"assets": 0, "groups": 0, "unknownChecksums": 0}
+        )
+        self.assertEqual(
+            body["namespaceClassification"], {"matches": 0, "mismatches": 0, "undetermined": 0}
+        )
+        self.assertEqual(body["largeFileThresholdBytes"], 1572864)
+        self.assertEqual(
+            body["countingScope"], "all registered media assets (media_media_asset)"
+        )
+        # ISO-8601 with a timezone, not an empty placeholder.
+        self.assertIn("T", body["generatedAt"])
+        self.assertIn("+00:00", body["generatedAt"])
+
+    # -- scopes and mapping ---------------------------------------------------
+
+    def test_mixed_product_and_marketing_scopes(self):
+        self.as_admin()
+
+        # product scope + real product mapping (upload auto-registers/assigns)
+        upload = self.upload(SEED_PRODUCT_ID, "summary-cover.png", PNG_BYTES, "image/png")
+        self.assertEqual(upload.status_code, 201, upload.text)
+
+        # product scope, deliberately NOT mapped
+        loose = f"products/{SEED_PRODUCT_ID}/loose.avif"
+        self.plant_object(loose, AVIF_BYTES)
+        self.assertEqual(self.register(loose).status_code, 201)
+
+        # marketing scope through BOTH placement namespaces (R5)
+        for key in ("hero/summary-hero.avif", "marketing/summary-promo.avif"):
+            self.plant_object(key, AVIF_BYTES + key.encode())
+            response = self.register_placement(key)
+            self.assertEqual(response.status_code, 201, key)
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 4)
+        self.assertEqual(body["images"], 4)
+        self.assertEqual(body["videos"], 0)
+        self.assertEqual(body["productMapped"], 1)
+        self.assertEqual(body["unassigned"], 1)
+        self.assertEqual(body["marketing"], 2)
+        self.assertEqual(body["namespaceClassification"]["matches"], 4)
+        self.assertEqual(body["namespaceClassification"]["mismatches"], 0)
+        self.assertEqual(body["namespaceClassification"]["undetermined"], 0)
+
+        # Both placement namespaces really are stored as marketing scope.
+        scopes = {row.object_key: row.scope for row in self.asset_rows()}
+        self.assertEqual(scopes["hero/summary-hero.avif"], "marketing")
+        self.assertEqual(scopes["marketing/summary-promo.avif"], "marketing")
+
+    def test_product_mapping_counts_each_asset_once_across_products(self):
+        """One asset mapped to two products is one asset, not two."""
+        self.as_admin()
+        key = f"products/{SEED_PRODUCT_ID}/shared.avif"
+        self.plant_object(key, AVIF_BYTES)
+        first = self.register(key, product_id=SEED_PRODUCT_ID)
+        self.assertEqual(first.status_code, 201, first.text)
+        second = self.register(key, product_id="PF-W-TST-OTH-0002")
+        self.assertEqual(second.status_code, 201, second.text)
+        self.assertEqual(len(self.mapping_rows()), 2)
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["productMapped"], 1)
+        self.assertEqual(body["unassigned"], 0)
+
+    # -- MIME classification --------------------------------------------------
+
+    def test_image_video_and_other_mime_types_partition_the_total(self):
+        self.as_admin()
+        before = self.summary_json()
+
+        self.insert_asset(
+            object_key="uploads/legacy-reel.mp4", scope="product",
+            mime_type="video/mp4", media_type="video",
+        )
+        self.insert_asset(
+            object_key="uploads/legacy-sheet.pdf", scope="product",
+            mime_type="application/pdf", media_type="image",
+        )
+        self.insert_asset(
+            object_key=f"products/{SEED_PRODUCT_ID}/still.avif", scope="product",
+            mime_type="image/avif",
+        )
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], before["total"] + 3)
+        self.assertEqual(body["images"], before["images"] + 1)
+        self.assertEqual(body["videos"], before["videos"] + 1)
+        self.assertEqual(body["otherMimeTypes"], before["otherMimeTypes"] + 1)
+        # The three MIME buckets are a partition of the registry.
+        self.assertEqual(
+            body["images"] + body["videos"] + body["otherMimeTypes"], body["total"]
+        )
+        # A video row is not an image, even though `media_type` defaults to image.
+        self.assertEqual(body["videos"], 1)
+
+    # -- large files ----------------------------------------------------------
+
+    def test_large_file_boundary_is_exactly_1_5_mib(self):
+        from app.api.v1.media import LARGE_MEDIA_FILE_BYTES
+
+        self.as_admin()
+        threshold = LARGE_MEDIA_FILE_BYTES
+        self.assertEqual(threshold, 1_572_864)
+
+        below = AVIF_BYTES + b"\x00" * (threshold - 1 - len(AVIF_BYTES))
+        exact = AVIF_BYTES + b"\x00" * (threshold - len(AVIF_BYTES))
+        self.assertEqual(len(below), threshold - 1)
+        self.assertEqual(len(exact), threshold)
+
+        self.plant_object("hero/below-threshold.avif", below)
+        self.plant_object("hero/at-threshold.avif", exact)
+        self.assertEqual(self.register_placement("hero/below-threshold.avif").status_code, 201)
+        self.assertEqual(self.register_placement("hero/at-threshold.avif").status_code, 201)
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 2)
+        self.assertEqual(body["largeFiles"], 1)
+        self.assertEqual(body["unknownFileSize"], 0)
+        # Different byte lengths ⇒ different digests ⇒ no duplicate group.
+        self.assertEqual(body["sameByteCopies"]["assets"], 0)
+
+    # -- duplicates -----------------------------------------------------------
+
+    def test_same_byte_copies_count_assets_and_groups_across_scopes(self):
+        self.as_admin()
+        shared = AVIF_BYTES  # identical bytes, two different scopes
+
+        self.plant_object("hero/copy-a.avif", shared)
+        self.plant_object(f"products/{SEED_PRODUCT_ID}/copy-b.avif", shared)
+        self.plant_object("marketing/unique-c.avif", AVIF_BYTES + b"\x00" * 8)
+        self.assertEqual(self.register_placement("hero/copy-a.avif").status_code, 201)
+        self.assertEqual(self.register(f"products/{SEED_PRODUCT_ID}/copy-b.avif").status_code, 201)
+        self.assertEqual(self.register_placement("marketing/unique-c.avif").status_code, 201)
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 3)
+        self.assertEqual(body["sameByteCopies"]["assets"], 2)
+        self.assertEqual(body["sameByteCopies"]["groups"], 1)
+        self.assertEqual(body["sameByteCopies"]["unknownChecksums"], 0)
+
+    def test_unknown_checksums_are_never_grouped_as_duplicates(self):
+        """Two unrecovered checksums are not 'the same bytes'."""
+        self.as_admin()
+        self.insert_asset(object_key="uploads/legacy-one.avif", scope="product", file_size=0, checksum="")
+        self.insert_asset(object_key="uploads/legacy-two.avif", scope="product", file_size=0, checksum="")
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 2)
+        self.assertEqual(
+            body["sameByteCopies"], {"assets": 0, "groups": 0, "unknownChecksums": 2}
+        )
+        # A missing size is disclosed, never treated as a zero-byte file.
+        self.assertEqual(body["unknownFileSize"], 2)
+        self.assertEqual(body["largeFiles"], 0)
+
+    def test_checksum_validation_is_hex_strict_and_case_insensitive(self):
+        """Only a valid 64-char hex SHA-256 is duplicate evidence (review fix).
+
+        Three regressions are pinned here:
+          · a 64-character NON-hex value is unknown — it never forms a
+            duplicate group, even when two rows carry the same string;
+          · the same digest in mixed casing is ONE group;
+          · surrounding whitespace is trimmed before validation AND grouping,
+            so a padded digest joins the same group.
+
+        The padded row is a legacy-import shape: the column is String(64), so
+        PostgreSQL would reject it at write time, but SQLite stores it
+        verbatim and the endpoint must still not split the digest.
+        """
+        self.as_admin()
+        digest = "ab" * 32               # valid lowercase 64-hex
+        upper = digest.upper()           # same bytes, different casing
+        padded = f"  {digest}  "         # same bytes, surrounding whitespace
+        non_hex = "z" * 64               # 64 chars, NOT hexadecimal
+
+        self.insert_asset(object_key="products/P1/case-a.avif", scope="product", checksum=digest)
+        self.insert_asset(object_key="products/P1/case-b.avif", scope="product", checksum=upper)
+        self.insert_asset(object_key="products/P1/case-c.avif", scope="product", checksum=padded)
+        self.insert_asset(object_key="products/P1/nonhex-a.avif", scope="product", checksum=non_hex)
+        self.insert_asset(object_key="products/P1/nonhex-b.avif", scope="product", checksum=non_hex)
+
+        body = self.summary_json()
+        self.assertEqual(body["total"], 5)
+        self.assertEqual(
+            body["sameByteCopies"],
+            {"assets": 3, "groups": 1, "unknownChecksums": 2},
+            "mixed case and padding collapse into one group; the non-hex pair is unknown",
+        )
+
+    def test_sha256_predicate_renders_a_regex_on_postgresql(self):
+        """The PostgreSQL branch validates hex, not just length.
+
+        This suite runs on SQLite, so the `~ '^[0-9a-f]{64}$'` predicate would
+        otherwise never be exercised. Compiling it proves the production
+        dialect gets a real hexadecimal test instead of the length-only check
+        the review rejected.
+        """
+        from sqlalchemy import func
+        from sqlalchemy.dialects import postgresql
+
+        from app.api.v1.media import _is_sha256_hex
+
+        class _Bind:
+            dialect = postgresql.dialect()
+
+        class _Session:
+            def get_bind(self):
+                return _Bind()
+
+        normalized = func.lower(
+            func.trim(func.coalesce(MediaAssetModel.checksum_sha256, ""))
+        )
+        sql = str(
+            _is_sha256_hex(_Session(), normalized).compile(
+                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+            )
+        )
+        self.assertIn("~", sql)
+        self.assertIn("^[0-9a-f]{64}$", sql)
+        self.assertIn("lower(trim(coalesce(", sql)
+
+    # -- namespace classification --------------------------------------------
+
+    def test_namespace_mismatch_is_reported_and_never_reclassified(self):
+        self.as_admin()
+        # Declared scope disagrees with the namespace …
+        self.insert_asset(object_key="hero/misdeclared.avif", scope="product")
+        # … and a namespace the model does not classify at all.
+        self.insert_asset(object_key="uploads/loose.avif", scope="product")
+
+        body = self.summary_json()
+        self.assertEqual(body["namespaceClassification"]["mismatches"], 1)
+        self.assertEqual(body["namespaceClassification"]["undetermined"], 1)
+        self.assertEqual(body["namespaceClassification"]["matches"], 0)
+
+        # Counts follow the DECLARED scope (R4), so neither is marketing.
+        self.assertEqual(body["marketing"], 0)
+        self.assertEqual(body["productMapped"], 0)
+        self.assertEqual(body["unassigned"], 2)
+
+        # Nothing was rewritten to make the namespaces agree.
+        scopes = {row.object_key: row.scope for row in self.asset_rows()}
+        self.assertEqual(scopes["hero/misdeclared.avif"], "product")
+        self.assertEqual(scopes["uploads/loose.avif"], "product")
+
+    # -- authorization --------------------------------------------------------
+
+    def test_authorization_matches_the_registry_list(self):
+        self.as_anonymous()
+        self.assertEqual(self.summary().status_code, 401)
+
+        for actor in (self.as_customer, self.as_employee1):
+            actor()
+            self.assertEqual(self.summary().status_code, 403, actor.__name__)
+
+        # An admin holding media.view reads the summary (same grant as the list).
+        self.as_view_only_admin()
+        response = self.summary()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get("/api/v1/media/assets").status_code, 200)
+
+        self.as_admin()
+        self.assertEqual(self.summary().status_code, 200)
+
+    # -- failure behaviour ----------------------------------------------------
+
+    def test_database_failure_is_not_a_zero_valued_summary(self):
+        """A broken database must never look like an empty registry.
+
+        The isolated app points at a second SQLite file that HAS the RBAC
+        tables (so authorization genuinely succeeds) but NOT the media tables,
+        so the summary's own query is what fails. The caller must see the
+        canonical database error, never an all-zero success payload.
+        """
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+        from app.api.v1.media import router as media_router
+        from app.core.error_handlers import register_error_handlers
+        from app.dependencies import get_current_user, get_db, get_optional_user
+        from app.models.rbac.permission import PermissionModel
+        from app.models.rbac.role import RoleModel
+        from app.models.rbac.role_permission import RolePermissionModel
+        from app.models.rbac.user_role import UserRoleModel
+
+        absent = os.path.join(self.root, "media-schema-absent.sqlite")
+        broken_engine = create_async_engine(f"sqlite+aiosqlite:///{absent}")
+        # The models live in the `pratikshya` schema (the suite's ATTACH shim);
+        # this file gets the RBAC tables only — no media tables.
+        schema_absent = os.path.join(self.root, "media-schema-absent-schema.sqlite")
+
+        @event.listens_for(broken_engine.sync_engine, "connect")
+        def _attach_absent(dbapi_conn, _record):  # pragma: no cover - driver hook
+            cursor = dbapi_conn.cursor()
+            cursor.execute(f"ATTACH DATABASE '{schema_absent}' AS pratikshya")
+            cursor.close()
+
+        BrokenSession = async_sessionmaker(broken_engine, expire_on_commit=False)
+
+        rbac_tables = [
+            UserModel.__table__,
+            RoleModel.__table__,
+            PermissionModel.__table__,
+            RolePermissionModel.__table__,
+            UserRoleModel.__table__,
+        ]
+
+        async def _prepare():
+            async with broken_engine.begin() as conn:
+                await conn.run_sync(
+                    lambda sync_conn: Base.metadata.create_all(sync_conn, tables=rbac_tables)
+                )
+
+        self._run(_prepare())
+
+        super_admin = UserModel(
+            id="summary-super-admin",
+            email="summary-super@pratikshya.test",
+            full_name="Summary Super",
+            hashed_password="x",
+            user_type="admin",
+            account_level="SUPER_ADMIN",
+            status="ACTIVE",
+            is_verified=True,
+            force_password_change=False,
+        )
+
+        app = FastAPI()
+        register_error_handlers(app)
+        app.include_router(media_router, prefix="/api/v1")
+
+        async def _broken_db():
+            async with BrokenSession() as session:
+                yield session
+
+        async def _actor():
+            return super_admin
+
+        app.dependency_overrides[get_db] = _broken_db
+        app.dependency_overrides[get_current_user] = _actor
+        app.dependency_overrides[get_optional_user] = _actor
+
+        client = TestClient(app, raise_server_exceptions=False)
+        try:
+            response = client.get(self.SUMMARY_URL)
+        finally:
+            self._run(broken_engine.dispose())
+
+        self.assertGreaterEqual(response.status_code, 500, response.text)
+        body = response.json()
+        self.assertFalse(body.get("success", True))
+        # Crucially, no zero-valued success payload leaked through.
+        for key in ("total", "sameByteCopies", "namespaceClassification", "images"):
+            self.assertNotIn(key, body)
+
+        # Control: the same client against the real session returns 200.
+        self.as_admin()
+        self.assertEqual(self.summary().status_code, 200)
+
+    # -- read-only guarantee --------------------------------------------------
+
+    def test_summary_issues_no_write_statements_and_changes_no_rows(self):
+        self.as_admin()
+        upload = self.upload(SEED_PRODUCT_ID, "readonly.png", PNG_BYTES, "image/png")
+        self.assertEqual(upload.status_code, 201, upload.text)
+
+        def snapshot():
+            assets = sorted(
+                (r.id, r.object_key, r.scope, r.status, r.file_size, r.checksum_sha256, r.updated_at)
+                for r in self.asset_rows()
+            )
+            mappings = sorted(
+                (m.product_id, m.media_id, m.role, m.sort_order, m.is_primary)
+                for m in self.mapping_rows()
+            )
+            return assets, mappings
+
+        before = snapshot()
+        statements = []
+
+        def _capture(conn, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        event.listen(self.engine.sync_engine, "before_cursor_execute", _capture)
+        try:
+            body = self.summary_json()
+        finally:
+            event.remove(self.engine.sync_engine, "before_cursor_execute", _capture)
+
+        after = snapshot()
+        self.assertEqual(before, after, "the summary must not mutate any row")
+
+        self.assertTrue(statements, "the summary must actually query the database")
+        write_heads = {
+            "INSERT", "UPDATE", "DELETE", "REPLACE",
+            "CREATE", "DROP", "ALTER", "TRUNCATE", "MERGE",
+        }
+        for statement in statements:
+            head = statement.lstrip().split(None, 1)[0].upper() if statement.strip() else ""
+            self.assertNotIn(head, write_heads, statement)
+
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["productMapped"], 1)
+
+
+# ===========================================================================
+# Batch 2 — optional registered-media list filters (type/assigned/unassigned/
+# placement). Additive: no existing test was changed.
+# ===========================================================================
+
+class RegisteredAssetBatch2FilterTests(_HomepageBatchCase):
+    """`GET /api/v1/media/assets` Batch 2 filters.
+
+    Fixture (5 assets):
+      · product scope + product mapping   → ``assigned_key`` (image/png)
+      · product scope, no mapping         → ``unassigned_key`` (image/avif)
+      · product scope, video bytes        → ``video_key`` (video/mp4, no mapping)
+      · marketing scope, hero/ namespace  → ``hero_key``
+      · marketing scope, marketing/       → ``marketing_key``
+
+    The video row is created through the real register-by-key route, so its
+    ``mime_type`` is the SNIFFED ``video/mp4``; its ``media_type`` column is
+    still the writer's hardcoded "image" — which is exactly why the filter
+    classifies by MIME (same rule as the summary cards).
+    """
+
+    MP4_BYTES = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 12
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.as_admin()
+
+        uploaded = self.upload(SEED_PRODUCT_ID, "batch2-assigned.png", PNG_BYTES, "image/png")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        self.assigned_key = uploaded.json()["object"]["key"]
+
+        self.unassigned_key = f"products/{SEED_PRODUCT_ID}/batch2-unassigned.avif"
+        self.plant_object(self.unassigned_key, AVIF_BYTES)
+        self.assertEqual(self.register(self.unassigned_key).status_code, 201)
+
+        self.hero_key = "hero/batch2-hero.png"
+        self.plant_object(self.hero_key, PNG_BYTES)
+        self.assertEqual(self.register_placement(self.hero_key).status_code, 201)
+
+        self.marketing_key = "marketing/batch2-promo.webp"
+        self.plant_object(self.marketing_key, WEBP_BYTES)
+        self.assertEqual(self.register_placement(self.marketing_key).status_code, 201)
+
+        self.video_key = f"products/{SEED_PRODUCT_ID}/batch2-reel.mp4"
+        self.plant_object(self.video_key, self.MP4_BYTES)
+        video = self.register(self.video_key)
+        self.assertEqual(video.status_code, 201, video.text)
+        self.assertEqual(video.json()["media"]["mimeType"], "video/mp4")
+
+    # -- helpers --------------------------------------------------------------
+
+    def list_assets(self, **params):
+        response = self.client.get("/api/v1/media/assets", params=params)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def keys(self, **params):
+        body = self.list_assets(**params)
+        return {item["objectKey"] for item in body["items"]}, body["total"]
+
+    # -- defaults -------------------------------------------------------------
+
+    def test_default_page_is_unchanged_by_the_new_params(self):
+        baseline = self.list_assets()
+        self.assertEqual(baseline["total"], 5)
+        self.assertEqual(len(baseline["items"]), 5)
+        self.assertEqual(baseline["page"], 1)
+        self.assertEqual(baseline["pageSize"], 50)
+        self.assertEqual(
+            set(baseline["items"][0].keys()),
+            {"id", "objectKey", "url", "status", "mimeType", "scope",
+             "productId", "productName", "productSku"},
+        )
+
+        # Explicit false values are a no-op: same items, same order, same total.
+        explicit_off = self.list_assets(assigned="false", unassigned="false", placement="false")
+        self.assertEqual(explicit_off["total"], baseline["total"])
+        self.assertEqual(
+            [item["objectKey"] for item in explicit_off["items"]],
+            [item["objectKey"] for item in baseline["items"]],
+        )
+
+    # -- type -----------------------------------------------------------------
+
+    def test_type_filter_separates_images_and_videos(self):
+        images, image_total = self.keys(type="image")
+        self.assertEqual(image_total, 4)
+        self.assertIn(self.assigned_key, images)
+        self.assertIn(self.hero_key, images)
+        self.assertNotIn(self.video_key, images)
+
+        videos, video_total = self.keys(type="video")
+        self.assertEqual(videos, {self.video_key})
+        self.assertEqual(video_total, 1)
+
+        # Value matching is case-insensitive and trimmed.
+        self.assertEqual(self.keys(type="VIDEO"), ({self.video_key}, 1))
+        self.assertEqual(self.keys(type=" image "), (images, 4))
+
+    def test_type_filter_rejects_unknown_values(self):
+        for value in ("audio", "images", "video/mp4"):
+            rejected = self.client.get("/api/v1/media/assets", params={"type": value})
+            self.assertEqual(rejected.status_code, 422, value)
+            body = rejected.json()
+            self.assertFalse(body["success"], value)
+            self.assertEqual(body["error"]["code"], "BUSINESS_RULE_VIOLATION", value)
+            self.assertIn("image, video", body["error"]["message"], value)
+
+    # -- assigned / unassigned -----------------------------------------------
+
+    def test_assigned_and_unassigned_partition_the_product_scope(self):
+        assigned, assigned_total = self.keys(assigned="true")
+        unassigned, unassigned_total = self.keys(unassigned="true")
+        product, product_total = self.keys(scope="product")
+
+        self.assertEqual(assigned, {self.assigned_key})
+        self.assertEqual(unassigned, {self.unassigned_key, self.video_key})
+        self.assertEqual(assigned & unassigned, set())
+        self.assertEqual(assigned | unassigned, product)
+        self.assertEqual(assigned_total + unassigned_total, product_total)
+        self.assertEqual(product_total, 3)
+
+    def test_assigned_and_unassigned_together_are_a_canonical_422(self):
+        rejected = self.client.get(
+            "/api/v1/media/assets", params={"assigned": "true", "unassigned": "true"}
+        )
+        self.assertEqual(rejected.status_code, 422, rejected.text)
+        body = rejected.json()
+        self.assertFalse(body["success"])
+        self.assertEqual(body["error"]["code"], "BUSINESS_RULE_VIOLATION")
+        self.assertIn("cannot be combined", body["error"]["message"])
+
+        # One true + one false is not a conflict.
+        self.assertEqual(self.keys(assigned="true", unassigned="false"), ({self.assigned_key}, 1))
+        self.assertEqual(
+            self.keys(assigned="false", unassigned="true"),
+            ({self.unassigned_key, self.video_key}, 2),
+        )
+
+    # -- placement + existing scope filters ----------------------------------
+
+    def test_placement_includes_hero_and_marketing_and_scope_filters_are_unchanged(self):
+        placement, placement_total = self.keys(placement="true")
+        self.assertEqual(placement, {self.hero_key, self.marketing_key})
+        self.assertEqual(placement_total, 2)
+
+        # Existing behaviour: scope=hero → only hero/, scope=marketing → only
+        # marketing/ (the hero/ exclusion is preserved), scope=product → 3.
+        self.assertEqual(self.keys(scope="hero"), ({self.hero_key}, 1))
+        self.assertEqual(self.keys(scope="marketing"), ({self.marketing_key}, 1))
+        self.assertEqual(len(self.keys(scope="product")[0]), 3)
+
+    def test_combined_filters_narrow_truthfully(self):
+        self.assertEqual(self.keys(scope="product", assigned="true"), ({self.assigned_key}, 1))
+        self.assertEqual(self.keys(scope="hero", placement="true"), ({self.hero_key}, 1))
+        self.assertEqual(self.keys(type="video", unassigned="true"), ({self.video_key}, 1))
+        self.assertEqual(
+            self.keys(type="image", placement="true"),
+            ({self.hero_key, self.marketing_key}, 2),
+        )
+        # Filters intersect: scope=marketing + placement narrows to marketing/.
+        self.assertEqual(self.keys(scope="marketing", placement="true"), ({self.marketing_key}, 1))
+        # q still composes with the new filters.
+        self.assertEqual(self.keys(q=SEED_PRODUCT_ID, type="video"), ({self.video_key}, 1))
+
+    # -- empty / pagination ---------------------------------------------------
+
+    def test_empty_result_is_a_clean_page_not_an_error(self):
+        body = self.list_assets(type="video", assigned="true")  # the video is unassigned
+        self.assertEqual(body["items"], [])
+        self.assertEqual(body["total"], 0)
+        self.assertEqual(body["page"], 1)
+
+        nothing = self.list_assets(placement="true", q="no-such-art")
+        self.assertEqual(nothing["items"], [])
+        self.assertEqual(nothing["total"], 0)
+
+    def test_filters_paginate_with_the_filtered_total(self):
+        first = self.list_assets(placement="true", pageSize=1, page=1)
+        second = self.list_assets(placement="true", pageSize=1, page=2)
+        self.assertEqual(first["total"], 2)
+        self.assertEqual(second["total"], 2)
+        self.assertEqual(len(first["items"]), 1)
+        self.assertEqual(len(second["items"]), 1)
+        self.assertEqual(second["page"], 2)
+        self.assertNotEqual(first["items"][0]["objectKey"], second["items"][0]["objectKey"])
+
+        # A filtered total is the count, never the page length.
+        paged = self.list_assets(type="image", pageSize=1)
+        self.assertEqual(paged["total"], 4)
+        self.assertEqual(len(paged["items"]), 1)
+
+    # -- invalid input / auth -------------------------------------------------
+
+    def test_invalid_boolean_values_are_canonical_422s(self):
+        for param in ("assigned", "unassigned", "placement"):
+            rejected = self.client.get("/api/v1/media/assets", params={param: "maybe"})
+            self.assertEqual(rejected.status_code, 422, f"{param}: {rejected.text}")
+            body = rejected.json()
+            self.assertFalse(body["success"], param)
+            self.assertEqual(body["error"]["code"], "VALIDATION_ERROR", param)
+
+    def test_new_filters_keep_the_existing_authorization(self):
+        self.as_anonymous()
+        self.assertEqual(
+            self.client.get("/api/v1/media/assets", params={"placement": "true"}).status_code,
+            401,
+        )
+
+        for actor in (self.as_customer, self.as_employee1):
+            actor()
+            self.assertEqual(
+                self.client.get("/api/v1/media/assets", params={"type": "video"}).status_code,
+                403,
+                actor.__name__,
+            )
+
+        self.as_view_only_admin()
+        self.assertEqual(
+            self.client.get("/api/v1/media/assets", params={"unassigned": "true"}).status_code,
+            200,
+        )
+
+        self.as_admin()
+        self.assertEqual(
+            self.client.get("/api/v1/media/assets", params={"placement": "true"}).status_code,
+            200,
+        )
+
+    # -- read-only ------------------------------------------------------------
+
+    def test_filters_only_read_and_never_mutate_assets(self):
+        def snapshot():
+            return sorted(
+                (row.id, row.object_key, row.scope, row.status, row.mime_type)
+                for row in self.asset_rows()
+            )
+
+        before = snapshot()
+        statements = []
+
+        def _capture(conn, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        event.listen(self.engine.sync_engine, "before_cursor_execute", _capture)
+        try:
+            self.list_assets(scope="product", assigned="true", type="image")
+            self.list_assets(placement="true")
+            self.list_assets(unassigned="true")
+        finally:
+            event.remove(self.engine.sync_engine, "before_cursor_execute", _capture)
+
+        self.assertEqual(snapshot(), before, "filters must never mutate media rows")
+        self.assertTrue(statements)
+        for statement in statements:
+            head = statement.lstrip().split(None, 1)[0].upper() if statement.strip() else ""
+            self.assertEqual(head, "SELECT", statement)

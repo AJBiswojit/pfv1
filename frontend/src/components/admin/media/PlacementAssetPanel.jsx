@@ -83,10 +83,11 @@ export default function PlacementAssetPanel({ onRegistered }) {
     <AdminPanel
       title={
         <span className="inline-flex items-center gap-2">
-          <ImagePlay size={14} className="text-pf-burgundy" /> Homepage placement art
+          <ImagePlay size={14} className="text-pf-burgundy" /> Homepage placement art (hero/ and
+          marketing/)
         </span>
       }
-      description="Register hero/ and marketing/ images so they can be used by the homepage hero and each homepage section's MEDIA slots. Registration is explicit: upload then register, or register an object that is already in storage."
+      description="Register hero/ and marketing/ images here, then attach them in Homepage Content — hero slides and each section's MEDIA slots only use these registered assets. Registration is explicit: upload then register, or register an object that is already in storage."
       className="mb-6"
     >
       <div className="grid gap-5 lg:grid-cols-2">

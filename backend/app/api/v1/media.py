@@ -20,6 +20,9 @@ URL mapping:
   POST   /media/objects                             ← upload (media.upload)
   POST   /media/products/{product_id}/objects       ← upload for a product (media.upload)
   DELETE /media/objects/{object_key}                ← delete one object (media.delete)
+  GET    /media/assets                              ← registered-asset page (media.view)
+  GET    /media/assets/summary                      ← registry KPI counts, read only
+                                                       (media.view)
   GET    /media/storage/readiness                   ← full storage config validation
                                                        (media.view)
   GET    /media/audit/orphans                       ← orphan report, DRY RUN only
@@ -43,11 +46,12 @@ Security notes
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, File, Form, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, StreamingResponse
 
@@ -78,10 +82,12 @@ from sqlalchemy import update
 from app.schemas.media.media import (
     DEFAULT_PRODUCT_MEDIA_ROLE,
     MEDIA_ASSET_SCOPE_PRODUCT,
+    MEDIA_ASSET_SCOPE_MARKETING,
     MEDIA_ASSET_STATUS_UPLOADED,
     MEDIA_UPLOAD_NAMESPACES,
     PRODUCT_MEDIA_ROLE_VALUES,
     MediaAssetListResponse,
+    MediaAssetSummaryResponse,
     MediaObjectMetaResponse,
     MediaObjectResponse,
     MediaOrphanReportResponse,
@@ -103,6 +109,11 @@ from app.services.media.placement_asset_service import (
 )
 from app.api.v1.response_docs import canonical_error_responses
 from app.services.media.media_service import MediaService
+from app.services.media.media_integrity import (
+    CHECKSUM_MISMATCH_MESSAGE,
+    checksum_conflict,
+    should_compensate,
+)
 from app.services.media.media_validation import MediaValidationError
 from app.services.media.media_reference_audit import (
     audit_object_references,
@@ -192,6 +203,12 @@ async def _register_product_asset(
     row = (
         await db.execute(select(MediaAssetModel).where(MediaAssetModel.object_key == key))
     ).scalars().first()
+    # A-15 / S-06: idempotency must not become "trust the key". The row is a
+    # snapshot of the object at first registration; if the stored bytes have
+    # since changed, reusing the row would publish stale MIME/size/checksum.
+    # Verification only — the row and the object are left untouched.
+    if row is not None and checksum_conflict(meta.checksum_sha256, row.checksum_sha256):
+        raise ConflictException(CHECKSUM_MISMATCH_MESSAGE)
     if row is None:
         row = MediaAssetModel(
             object_key=key,
@@ -933,6 +950,256 @@ async def register_placement_media_object(
     }
 
 
+# ---------------------------------------------------------------------------
+# Registered-media summary (Batch 1 — read only)
+# ---------------------------------------------------------------------------
+
+#: The "large file" ceiling the admin library reports: 1.5 MiB.
+#: Declared once and returned in the payload so a client never has to guess
+#: the boundary it is being measured against.
+LARGE_MEDIA_FILE_BYTES = 1_572_864
+
+#: Namespace prefixes that imply a media class. These mirror the two real
+#: registration paths — ``hero/``/``marketing/`` via
+#: ``POST /media/register-placement`` and ``products/`` via the product paths.
+#: They are used ONLY for the read-only ``namespaceClassification`` diagnostic;
+#: every card is calculated from the database's declared ``scope`` (R4).
+_MARKETING_KEY_PREFIXES = ("hero/", "marketing/")
+_PRODUCT_KEY_PREFIX = "products/"
+
+#: Human-readable statement of what the summary counts. Returned verbatim so
+#: the caller does not have to infer it from the endpoint name.
+_MEDIA_SUMMARY_COUNTING_SCOPE = "all registered media assets (media_media_asset)"
+
+
+def _summary_int(value: object) -> int:
+    """`SUM()` over an empty set is NULL; `COUNT()` is always an integer."""
+    return int(value) if value is not None else 0
+
+
+def _is_sha256_hex(db: AsyncSession, normalized_checksum):
+    """SQL predicate: ``normalized_checksum`` is 64 lowercase hex characters.
+
+    The two databases this application runs on spell "hexadecimal only"
+    differently, so the predicate is built per dialect:
+
+      · SQLite has no regex operator. ``GLOB`` is case-sensitive and the value
+        is already lowercased, so ``*[^0-9a-f]*`` rejects anything non-hex;
+        the length check pins the digest width.
+      · PostgreSQL uses its POSIX regex operator with an anchored pattern.
+
+    An engine this code has not been taught is a hard error rather than a
+    silently weaker test: approximate duplicate counts would be worse than a
+    visible failure. SQLite executes the full suite; the PostgreSQL predicate
+    is compile-checked by the same suite.
+    """
+    dialect = db.get_bind().dialect.name
+    if dialect == "sqlite":
+        return and_(
+            func.length(normalized_checksum) == 64,
+            ~normalized_checksum.op("GLOB")("*[^0-9a-f]*"),
+        )
+    if dialect == "postgresql":
+        return normalized_checksum.op("~")(r"^[0-9a-f]{64}$")
+    raise RuntimeError(
+        f"SHA-256 validation is not implemented for the '{dialect}' database; "
+        "refusing to report duplicate counts without validating checksums."
+    )
+
+
+async def _media_asset_summary(db: AsyncSession) -> dict:
+    """Read-only registry counts for the eight admin cards (Batch 1).
+
+    ONE SELECT: every figure is derived from ``media_media_asset`` in a single
+    statement, so the cards cannot disagree with each other through separate
+    snapshots. No row is inserted, updated, deleted or reclassified, and no
+    object store is touched.
+
+    Truthfulness rules:
+
+      · a row with an unusable checksum (NULL, blank, or not a valid
+        64-character hexadecimal SHA-256 after trimming) is counted in
+        ``unknownChecksums`` and is NEVER placed in a duplicate group — two
+        unknown values are not "the same bytes";
+      · a row without a usable byte size (NULL or <= 0) is counted in
+        ``unknownFileSize`` and can never satisfy the large-file threshold; it
+        is not treated as a zero-byte file;
+      · ``productMapped`` / ``unassigned`` read the real ``media_product_media``
+        rows through a DISTINCT subquery, so an asset mapped to several
+        products is still counted once (no join fan-out);
+      · declared ``scope`` is authoritative for every card. A namespace that
+        disagrees with it is reported in ``namespaceClassification`` and
+        changes nothing.
+    """
+    # NULL-safe comparisons: `scope`/`mime_type` are NOT NULL in the schema, so
+    # this only guards against a legacy import that slipped a NULL through.
+    mime_type = func.lower(func.coalesce(MediaAssetModel.mime_type, ""))
+    scope = func.coalesce(MediaAssetModel.scope, "")
+
+    is_image = mime_type.like("image/%")
+    is_video = mime_type.like("video/%")
+    is_product_scope = scope == MEDIA_ASSET_SCOPE_PRODUCT
+    is_marketing_scope = scope == MEDIA_ASSET_SCOPE_MARKETING
+
+    # A checksum is only usable when it is a VALID SHA-256 digest: exactly 64
+    # hexadecimal characters. Case and surrounding whitespace are normalized
+    # BEFORE both validation and grouping, so "AB…", "ab…" and " ab… " describe
+    # the same bytes, while a non-hex 64-character value is unknown and can
+    # never establish duplicate-content evidence.
+    checksum_norm = func.lower(func.trim(func.coalesce(MediaAssetModel.checksum_sha256, "")))
+    checksum_known = _is_sha256_hex(db, checksum_norm)
+    file_size_known = and_(
+        MediaAssetModel.file_size.is_not(None),
+        MediaAssetModel.file_size > 0,
+    )
+
+    key_is_marketing = or_(
+        *[MediaAssetModel.object_key.like(f"{prefix}%") for prefix in _MARKETING_KEY_PREFIXES]
+    )
+    key_is_product = MediaAssetModel.object_key.like(f"{_PRODUCT_KEY_PREFIX}%")
+    key_is_undetermined = and_(~key_is_marketing, ~key_is_product)
+
+    # DISTINCT so an asset mapped to several products is one row here.
+    mapped_media = select(ProductMediaModel.media_id.label("media_id")).distinct().subquery()
+
+    # Checksum groups with two or more members, across every scope (R1).
+    # Grouped on the NORMALIZED digest, not the raw column, so mixed casing and
+    # surrounding whitespace cannot split one digest into several groups.
+    duplicate_groups = (
+        select(
+            checksum_norm.label("checksum"),
+            func.count().label("assets"),
+        )
+        .where(checksum_known)
+        .group_by(checksum_norm)
+        .having(func.count() >= 2)
+        .subquery()
+    )
+    duplicate_assets = (
+        select(func.coalesce(func.sum(duplicate_groups.c.assets), 0))
+        .select_from(duplicate_groups)
+        .scalar_subquery()
+    )
+    duplicate_groups_total = (
+        select(func.count()).select_from(duplicate_groups).scalar_subquery()
+    )
+
+    def _count_where(condition):
+        """Portable conditional count (`SUM(CASE WHEN …)` on every dialect)."""
+        return func.sum(case((condition, 1), else_=0))
+
+    statement = (
+        select(
+            func.count(MediaAssetModel.id).label("total"),
+            _count_where(is_image).label("images"),
+            _count_where(is_video).label("videos"),
+            _count_where(and_(~is_image, ~is_video)).label("other_mime_types"),
+            _count_where(and_(is_product_scope, mapped_media.c.media_id.is_not(None))).label(
+                "product_mapped"
+            ),
+            _count_where(is_marketing_scope).label("marketing"),
+            _count_where(and_(is_product_scope, mapped_media.c.media_id.is_(None))).label(
+                "unassigned"
+            ),
+            _count_where(
+                and_(file_size_known, MediaAssetModel.file_size >= LARGE_MEDIA_FILE_BYTES)
+            ).label("large_files"),
+            _count_where(~file_size_known).label("unknown_file_size"),
+            _count_where(~checksum_known).label("unknown_checksums"),
+            _count_where(
+                and_(
+                    ~key_is_undetermined,
+                    or_(
+                        and_(key_is_marketing, is_marketing_scope),
+                        and_(key_is_product, is_product_scope),
+                    ),
+                )
+            ).label("namespace_matches"),
+            _count_where(
+                and_(
+                    ~key_is_undetermined,
+                    or_(
+                        and_(key_is_marketing, ~is_marketing_scope),
+                        and_(key_is_product, ~is_product_scope),
+                    ),
+                )
+            ).label("namespace_mismatches"),
+            _count_where(key_is_undetermined).label("namespace_undetermined"),
+            duplicate_assets.label("duplicate_assets"),
+            duplicate_groups_total.label("duplicate_groups"),
+        )
+        .select_from(MediaAssetModel)
+        .outerjoin(mapped_media, mapped_media.c.media_id == MediaAssetModel.id)
+    )
+
+    row = (await db.execute(statement)).one()
+
+    return {
+        "ok": True,
+        "countingScope": _MEDIA_SUMMARY_COUNTING_SCOPE,
+        "largeFileThresholdBytes": LARGE_MEDIA_FILE_BYTES,
+        "total": _summary_int(row.total),
+        "images": _summary_int(row.images),
+        "videos": _summary_int(row.videos),
+        "otherMimeTypes": _summary_int(row.other_mime_types),
+        "productMapped": _summary_int(row.product_mapped),
+        "marketing": _summary_int(row.marketing),
+        "unassigned": _summary_int(row.unassigned),
+        "largeFiles": _summary_int(row.large_files),
+        "unknownFileSize": _summary_int(row.unknown_file_size),
+        "sameByteCopies": {
+            "assets": _summary_int(row.duplicate_assets),
+            "groups": _summary_int(row.duplicate_groups),
+            "unknownChecksums": _summary_int(row.unknown_checksums),
+        },
+        "namespaceClassification": {
+            "matches": _summary_int(row.namespace_matches),
+            "mismatches": _summary_int(row.namespace_mismatches),
+            "undetermined": _summary_int(row.namespace_undetermined),
+        },
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get(
+    "/assets/summary",
+    response_model=MediaAssetSummaryResponse,
+    summary="Registered media summary counts (admin)",
+    responses=canonical_error_responses(401, 403, 500),
+)
+async def media_asset_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_admin),
+):
+    """Read-only KPI snapshot of the durable media registry.
+
+    Same authorization as `GET /media/assets`: an admin session holding
+    `media.view`. Authentication and permission failures keep their existing
+    401/403 semantics, and a database failure propagates to the canonical
+    error handlers — this route never converts an error into a zero-valued
+    success.
+
+    The summary takes no parameters and is independent of pagination: it
+    always describes the whole registry, so page 2 of the list can never
+    change a card.
+
+    UNKNOWN VALUES. `unknownFileSize` counts rows whose byte size is NULL or
+    not positive; they can never satisfy `largeFiles`, and they are not
+    treated as zero-byte files. `sameByteCopies.unknownChecksums` counts rows
+    whose checksum is NULL, blank or not a valid 64-character hexadecimal
+    SHA-256 (compared case-insensitively after trimming); such rows are never
+    grouped together, because two unknown values are not evidence of
+    identical bytes. Nothing is downloaded or hashed to fill those gaps.
+
+    DECLARED SCOPE WINS. `productMapped`, `unassigned` and `marketing` follow
+    the stored `scope` column. `namespaceClassification` reports where the
+    object-key namespace disagrees with it, and changes no count: this route
+    never reclassifies, rewrites or repairs a row.
+    """
+    await require_admin_permission(current_user, db, "media.view")
+    return await _media_asset_summary(db)
+
+
 @router.get(
     "/assets",
     response_model=MediaAssetListResponse,
@@ -945,6 +1212,23 @@ async def list_media_assets(
     q: Optional[str] = Query(default=None),
     scope: Optional[str] = Query(default=None),
     mime: Optional[str] = Query(default=None),
+    media_type: Optional[str] = Query(
+        default=None,
+        alias="type",
+        description="Media type: 'image' or 'video' (matched on the sniffed mime_type).",
+    ),
+    assigned: Optional[bool] = Query(
+        default=None,
+        description="Product-scope assets that have a product mapping.",
+    ),
+    unassigned: Optional[bool] = Query(
+        default=None,
+        description="Product-scope assets that have no product mapping.",
+    ),
+    placement: Optional[bool] = Query(
+        default=None,
+        description="Marketing-scope placement art (hero/ and marketing/).",
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_admin),
 ):
@@ -962,11 +1246,34 @@ async def list_media_assets(
     means the same unfiltered newest-first page. Every item additionally
     carries its `scope` and, when product-mapped, the owning product's
     name/SKU so the registered-media picker can show context.
+
+    Batch 2 filters (all optional, all additive — `total` is always the
+    filtered count, never the page length):
+
+      · `type=image|video` — the sniffed `mime_type` prefix. `media_type` is
+        a duplicated column the writers hardcode to "image", so the summary
+        cards and this filter both classify by MIME; anything else is a 422.
+      · `assigned=true` — product-scope assets WITH a product mapping.
+      · `unassigned=true` — product-scope assets WITHOUT one. The two flags
+        partition the product scope, so sending both is a 422.
+      · `placement=true` — the whole marketing scope, i.e. hero/ AND
+        marketing/ placement art.
+
+    Supplying none of them leaves the response byte-identical to the previous
+    page shape. Filters narrow; they never reclassify or rewrite a row.
     """
     # Reads use the view permission (least privilege); uploads stay on
     # media.upload and deletion on media.delete.
     await require_admin_permission(current_user, db, "media.view")
-    conditions = normalize_asset_page_filters(q, scope, mime)
+    conditions = normalize_asset_page_filters(
+        q,
+        scope,
+        mime,
+        media_type=media_type,
+        assigned=assigned,
+        unassigned=unassigned,
+        placement=placement,
+    )
     total = (
         await db.execute(select(func.count()).select_from(MediaAssetModel).where(*conditions))
     ).scalar() or 0
@@ -1089,7 +1396,7 @@ async def _compensate_failed_registration(db, stored: Optional[Dict[str, Any]]) 
     `GET /media/audit/orphans` (`objectsWithoutAssetRows`) rather than
     disappearing silently.
     """
-    if not stored or not stored.get("created") or not stored.get("key"):
+    if not should_compensate(stored):
         return
     key = stored["key"]
     try:
