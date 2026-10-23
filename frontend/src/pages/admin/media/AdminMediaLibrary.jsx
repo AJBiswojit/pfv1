@@ -108,7 +108,7 @@ export default function AdminMediaLibrary() {
 
           <div
             aria-busy={summaryState.status === "loading"}
-            className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
+            className="mb-6 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
           >
             {summaryState.cards.map((card) => (
               <AdminMetricCard

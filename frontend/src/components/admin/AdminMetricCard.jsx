@@ -9,9 +9,11 @@ import { cn } from "../../utils/cn";
  *   an optional gold-brown supporting figure
  *   a hairline footer reserved for a sparkline / composition bar
  *
- * Cards are equal-height by construction (`h-full`, flex column), so a row
- * of four never produces a ragged fold. No arbitrary decorative geometry:
- * the only ornament is the fine champagne icon plate and the 1px rule.
+ * Cards are equal-height within a grid row by construction (`h-full`, flex
+ * column), while their height stays content-driven. The label and icon share
+ * one header row so neither can encroach on the value or supporting copy.
+ * No arbitrary decorative geometry: the only ornament is the fine champagne
+ * icon plate and the 1px rule.
  */
 export default function AdminMetricCard({
   label,
@@ -28,21 +30,21 @@ export default function AdminMetricCard({
   return (
     <article
       className={cn(
-        "flex h-full min-h-[164px] flex-col rounded-[var(--radius-pf-panel)] border p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.65),0_10px_30px_rgb(74_7_24/0.055)] transition-colors sm:p-[22px]",
+        "flex h-full min-w-0 flex-col rounded-[var(--radius-pf-panel)] border p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.65),0_10px_30px_rgb(74_7_24/0.055)] transition-colors",
         alert
           ? "border-pf-error/30 bg-pf-error/[0.035]"
           : "border-pf-border bg-pf-card hover:border-pf-gold-line",
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-ui text-[12px] font-semibold uppercase leading-snug tracking-[.16em] text-pf-muted">
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 break-words font-ui text-[12px] font-semibold uppercase leading-[1.45] tracking-[.12em] text-pf-muted">
           {label}
         </p>
         {Icon ? (
           <span
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-pf-control)] border",
               alert
                 ? "border-pf-error/25 bg-pf-error/10 text-pf-error"
                 : "border-pf-gold/25 bg-pf-gold/[0.12] text-pf-gold-text"
@@ -69,12 +71,21 @@ export default function AdminMetricCard({
         </p>
       ) : null}
 
-      <div className="mt-auto pt-4">
-        {children}
-        {hint ? (
-          <p className="mt-2 font-ui text-[12px] leading-relaxed text-pf-muted">{hint}</p>
-        ) : null}
-      </div>
+      {children || hint ? (
+        <div className="mt-auto pt-4">
+          {children}
+          {hint ? (
+            <p
+              className={cn(
+                "font-ui text-[12px] leading-relaxed text-pf-muted",
+                children ? "mt-2" : ""
+              )}
+            >
+              {hint}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

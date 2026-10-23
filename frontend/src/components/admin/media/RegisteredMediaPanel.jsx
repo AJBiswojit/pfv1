@@ -91,41 +91,51 @@ export default function RegisteredMediaPanel({
       title={title}
       description="Every durable asset registered in the database. Server-side search, filters and paging."
       className="mb-6"
+      headerClassName="py-5 sm:py-5"
+      bodyClassName="py-5 sm:py-5"
     >
-      {/* Tabs — the six approved views, each mapping to a backend filter. */}
-      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Media view">
-        {MEDIA_REGISTRY_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`registry-tab-${tab.id}`}
-            aria-selected={tabId === tab.id}
-            aria-controls="registered-media"
-            onClick={() => selectTab(tab.id)}
-            className={cn(
-              "border px-3 py-1.5 font-ui text-[10px] uppercase tracking-[.14em] transition-colors",
-              tabId === tab.id
-                ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
-                : "border-pf-border bg-pf-card text-pf-cocoa hover:border-pf-burgundy"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Filters share one controlled rhythm; the search stays full-width on
+          narrow screens and aligns beside the wrapping tabs on wide panels. */}
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        {/* Tabs — the six approved views, each mapping to a backend filter. */}
+        <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="tablist" aria-label="Media view">
+          {MEDIA_REGISTRY_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`registry-tab-${tab.id}`}
+              aria-selected={tabId === tab.id}
+              aria-controls="registered-media"
+              onClick={() => selectTab(tab.id)}
+              className={cn(
+                "inline-flex min-h-9 items-center justify-center border px-3.5 py-2 font-ui text-[11px] uppercase leading-none tracking-[.12em] transition-colors",
+                tabId === tab.id
+                  ? "border-pf-burgundy bg-pf-burgundy text-pf-ivory"
+                  : "border-pf-border bg-pf-card text-pf-cocoa hover:border-pf-burgundy"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Search runs on the server (object key, product name/SKU). */}
-      <label className="relative mb-5 block">
-        <span className="sr-only">Search registered media</span>
-        <Search size={15} className="absolute left-3 top-3 text-pf-muted" aria-hidden="true" />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search object key, product name or SKU…"
-          className="w-full border border-pf-border bg-pf-card py-2.5 pl-9 pr-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
-        />
-      </label>
+        {/* Search runs on the server (object key, product name/SKU). */}
+        <label className="relative block w-full xl:w-80 xl:shrink-0">
+          <span className="sr-only">Search registered media</span>
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-pf-muted"
+            aria-hidden="true"
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search object key, product name or SKU…"
+            className="min-h-11 w-full border border-pf-border bg-pf-card py-2.5 pl-9 pr-3 font-ui text-sm text-pf-text outline-none focus:border-pf-gold-deep"
+          />
+        </label>
+      </div>
 
       <div id="registered-media" role="tabpanel" aria-labelledby={`registry-tab-${tabId}`}>
         {state.status === "loading" ? (
