@@ -117,6 +117,11 @@ AVIF_BYTES = b"\x00\x00\x00\x1c" + b"ftypavif" + b"\x00\x00\x00\x00avifmif1" + b
 SEED_PRODUCT_ID = "PF-W-SAR-SIL-0001"
 LEGACY_IMAGE = f"/images/products/{SEED_PRODUCT_ID}/primary.avif"
 NEW_PRODUCT_ID = "PF-W-TST-NEW-0001"
+# Seeded DRAFT product assigned to P7-EMP-002 — the cross-employee target.
+OTHER_EMPLOYEE_PRODUCT_ID = "PF-W-TST-OTH-0002"
+# The homepage-batch employee who holds `media.upload`; F3 assignment tests
+# give this actor a real profile so the employee-code contract is exercised.
+HP_UPLOADER_CODE = "P7-HP-EMP-001"
 # Authoritative taxonomy rows the product writes are validated against.
 SEED_CATEGORY_ID = "cat-p7-sarees"
 SEED_SUBCATEGORY_ID = "cat-p7-sarees-silk"
@@ -996,8 +1001,14 @@ class _HomepageBatchCase(Phase7LifecycleCase):
             )
             await session.flush()
             session.add(UserRoleModel(user_id=hp_admin.id, role_id=builtin_admin_role.id))
+            session.add(
+                EmployeeProfileModel(
+                    user_id=hp_uploader.id, employee_code=HP_UPLOADER_CODE, designation="Stylist"
+                )
+            )
             await session.commit()
 
+            self.hp_uploader_code = HP_UPLOADER_CODE
             self.hp_admin_id = hp_admin.id
             self.hp_super_id = hp_super.id
             self.hp_custom_id = hp_custom.id
@@ -1129,6 +1140,19 @@ class _HomepageBatchCase(Phase7LifecycleCase):
 
     def _draft(self):
         self._set_product_status("DRAFT", published=False)
+
+    def _assign_product(self, product_id, employee_reference):
+        """Set (or clear, with None) a product's assignment inside the DB."""
+
+        async def _go():
+            async with self.Session() as session:
+                product = (
+                    await session.execute(select(ProductModel).where(ProductModel.id == product_id))
+                ).scalars().first()
+                product.assigned_employee_id = employee_reference
+                await session.commit()
+
+        self._run(_go())
 
 
 class HomepageRbacTests(_HomepageBatchCase):
@@ -1725,8 +1749,24 @@ class EmployeeProductMediaTests(_HomepageBatchCase):
     """Track C — employee upload/register: products/ only, explicit media.upload.
 
     Employee-lane writes are further hardened: DRAFT / PENDING_REVIEW only
-    (PUBLISHED and ARCHIVED are admin territory), never primary.
+    (PUBLISHED and ARCHIVED are admin territory), never primary, and only on
+    products ASSIGNED to the calling employee (F3 — same policy as the
+    employee product PATCH lane).
     """
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        # F3: the employee lane honours the product-assignment policy, so the
+        # shared seeded product belongs to the uploading employee here. The
+        # other-employee product (OTHER_EMPLOYEE_PRODUCT_ID) stays assigned to
+        # P7-EMP-002 — it is the cross-employee target in the F3 tests below.
+        async with self.Session() as session:
+            product = (
+                await session.execute(select(ProductModel).where(ProductModel.id == SEED_PRODUCT_ID))
+            ).scalars().first()
+            product.assigned_employee_id = self.hp_uploader_code
+            await session.commit()
+
 
     def test_employee_without_media_upload_is_403_on_both_routes(self):
         self.as_hp_plain_employee()
@@ -1970,6 +2010,160 @@ class EmployeeProductMediaTests(_HomepageBatchCase):
         self.assertFalse(by_key[key_a].is_primary, "old primary must be demoted by the admin register")
         self.assertTrue(by_key[key_b].is_primary, "admin-set primary must win")
         self.assertEqual(by_key[key_b].role, "cover")
+
+    # -- F3: employee product-assignment authorization ------------------------
+
+    def objects_on_disk(self, product_id):
+        """Every object currently stored under `products/{product_id}/`."""
+        directory = os.path.join(self.media_root, "products", product_id)
+        if not os.path.isdir(directory):
+            return []
+        found = []
+        for root, _dirs, names in os.walk(directory):
+            for name in names:
+                path = os.path.join(root, name)
+                relative = os.path.relpath(path, directory).replace(os.sep, "/")
+                found.append(f"products/{product_id}/{relative}")
+        return sorted(found)
+
+    def object_bytes(self, object_key):
+        with open(os.path.join(self.media_root, *object_key.split("/")), "rb") as handle:
+            return handle.read()
+
+    def test_f3_employee_upload_to_own_assigned_draft_product_is_allowed(self):
+        # Control: the same actor, same route, same DRAFT status, only the
+        # assignment differs from the denial tests below.
+        self._draft()
+        self.as_hp_uploader_employee()
+        uploaded = self.employee_upload(SEED_PRODUCT_ID, "own-draft.png", PNG_BYTES, "image/png")
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        key = uploaded.json()["object"]["key"]
+        self.assertIn(key, self.objects_on_disk(SEED_PRODUCT_ID))
+        self.assertEqual(len([row for row in self.asset_rows() if row.object_key == key]), 1)
+        self.assertEqual(len(self.mapping_rows(SEED_PRODUCT_ID)), 1)
+
+    def test_f3_employee_cannot_upload_to_another_employees_draft_product(self):
+        # OTHER_EMPLOYEE_PRODUCT_ID is DRAFT (so the status gate passes) and
+        # assigned to P7-EMP-002 — assignment is the only failing condition.
+        self.as_hp_uploader_employee()
+        denied = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID, "trespass.png", PNG_BYTES, "image/png"
+        )
+        self.assertEqual(denied.status_code, 403, denied.text)
+        self.assertIn("not assigned to this product", denied.text)
+        # A denied upload writes NOTHING: no object, no asset, no association.
+        self.assertEqual(self.objects_on_disk(OTHER_EMPLOYEE_PRODUCT_ID), [])
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID), [])
+
+    def test_f3_employee_cannot_register_an_object_on_another_employees_product(self):
+        key = f"products/{OTHER_EMPLOYEE_PRODUCT_ID}/borrowed.png"
+        self.plant_object(key, PNG_BYTES)
+        self.as_hp_uploader_employee()
+        denied = self.employee_register(key, OTHER_EMPLOYEE_PRODUCT_ID, role="gallery")
+        self.assertEqual(denied.status_code, 403, denied.text)
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID), [])
+        # The pre-planted bytes are untouched — a denial never deletes either.
+        self.assertEqual(self.object_bytes(key), PNG_BYTES)
+
+    def test_f3_client_supplied_assignment_claims_are_ignored(self):
+        # Never trust client-supplied identity/assignment: the caller is the
+        # authenticated session, whatever the form says.
+        self.as_hp_uploader_employee()
+        denied = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID,
+            "spoofed.png",
+            PNG_BYTES,
+            "image/png",
+            assigned_employee_id=self.hp_uploader_code,
+            assignedEmployeeId=self.hp_uploader_code,
+            employee_id=self.hp_uploader_code,
+            employeeId=self.hp_uploader_code,
+        )
+        self.assertEqual(denied.status_code, 403, denied.text)
+        self.assertEqual(self.objects_on_disk(OTHER_EMPLOYEE_PRODUCT_ID), [])
+        self.assertEqual(self.asset_rows(), [])
+
+    def test_f3_replacement_attempt_on_a_foreign_product_is_denied_and_mutates_nothing(self):
+        # The rightful owner's media is created through the ADMIN lane first.
+        self.as_admin()
+        seeded = self.upload(OTHER_EMPLOYEE_PRODUCT_ID, "owned.png", PNG_BYTES, "image/png")
+        self.assertEqual(seeded.status_code, 201, seeded.text)
+        key = seeded.json()["object"]["key"]
+        before_bytes = self.object_bytes(key)
+        before_objects = self.objects_on_disk(OTHER_EMPLOYEE_PRODUCT_ID)
+        before_assets = [(row.id, row.object_key, row.checksum_sha256) for row in self.asset_rows()]
+        before_mappings = [
+            (m.media_id, m.role, m.sort_order, m.is_primary)
+            for m in self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID)
+        ]
+
+        # Both replacement shapes an employee could attempt:
+        #   · re-registering the existing key with new role/sort/primary;
+        #   · re-uploading the same filename+bytes (the admin lane's 409
+        #     replacement path — employees have no replace_existing flag).
+        self.as_hp_uploader_employee()
+        re_register = self.employee_register(key, OTHER_EMPLOYEE_PRODUCT_ID, role="cover", sort_order=99)
+        self.assertEqual(re_register.status_code, 403, re_register.text)
+        re_upload = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID, "owned.png", PNG_BYTES, "image/png"
+        )
+        self.assertEqual(re_upload.status_code, 403, re_upload.text)
+
+        self.assertEqual(self.object_bytes(key), before_bytes)
+        self.assertEqual(self.objects_on_disk(OTHER_EMPLOYEE_PRODUCT_ID), before_objects)
+        self.assertEqual(
+            [(row.id, row.object_key, row.checksum_sha256) for row in self.asset_rows()], before_assets
+        )
+        self.assertEqual(
+            [
+                (m.media_id, m.role, m.sort_order, m.is_primary)
+                for m in self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID)
+            ],
+            before_mappings,
+        )
+
+    def test_f3_unassigned_product_is_not_writable_by_employees(self):
+        # Established policy (ProductService.update_product_employee and
+        # submit_for_review): an empty assignment never matches the allow-set.
+        self._assign_product(OTHER_EMPLOYEE_PRODUCT_ID, None)
+        self.as_hp_uploader_employee()
+        denied_upload = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID, "unassigned.png", PNG_BYTES, "image/png"
+        )
+        self.assertEqual(denied_upload.status_code, 403, denied_upload.text)
+        key = f"products/{OTHER_EMPLOYEE_PRODUCT_ID}/unassigned.png"
+        self.plant_object(key, PNG_BYTES)
+        denied_register = self.employee_register(key, OTHER_EMPLOYEE_PRODUCT_ID)
+        self.assertEqual(denied_register.status_code, 403, denied_register.text)
+        self.assertEqual(self.asset_rows(), [])
+        self.assertEqual(self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID), [])
+
+    def test_f3_legacy_user_id_assignment_still_authorizes(self):
+        # Legacy rows assigned to the user UUID keep working — the same
+        # fallback `update_product_employee(employee_user_id=...)` honours.
+        self._assign_product(OTHER_EMPLOYEE_PRODUCT_ID, str(self.hp_uploader_id))
+        self.as_hp_uploader_employee()
+        uploaded = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID, "legacy-row.png", PNG_BYTES, "image/png"
+        )
+        self.assertEqual(uploaded.status_code, 201, uploaded.text)
+        self.assertEqual(len(self.mapping_rows(OTHER_EMPLOYEE_PRODUCT_ID)), 1)
+
+    def test_f3_admin_and_super_admin_lanes_are_unchanged(self):
+        # Admin surface: assignment is irrelevant, as before.
+        for label, become in (("admin", self.as_hp_admin), ("super-admin", self.as_hp_super)):
+            become()
+            uploaded = self.upload(OTHER_EMPLOYEE_PRODUCT_ID, f"{label}.png", PNG_BYTES, "image/png")
+            self.assertEqual(uploaded.status_code, 201, (label, uploaded.text))
+        # Employee routes still refuse any admin session outright — unchanged.
+        self.as_hp_admin()
+        denied = self.employee_upload(
+            OTHER_EMPLOYEE_PRODUCT_ID, "admin-on-employee-route.png", PNG_BYTES, "image/png"
+        )
+        self.assertEqual(denied.status_code, 403, denied.text)
+        self.assertIn("Employee authentication required", denied.text)
 
 
 class ProductMediaSetVisibilityTests(_HomepageBatchCase):
