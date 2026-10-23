@@ -133,7 +133,12 @@ def test_migration_graph_one_new_head():
             revisions[values["revision"]] = values.get("down_revision")
     refs = {v for p in revisions.values() for v in (p if isinstance(p, tuple) else (p,)) if v}
     assert refs <= revisions.keys()
-    assert revisions.keys() - refs == {"p3hp20261016a"}
+    heads = revisions.keys() - refs
+    assert len(heads) == 1, f"exactly one migration head, found {sorted(heads)}"
+    # The head advances whenever a later additive revision is merged
+    # (p3hp20261016a → w3b4c5d6e7f8 adds the marketing mobile asset column).
+    # Update this constant only together with a reviewed revision.
+    assert heads == {"w3b4c5d6e7f8"}
 
 
 @pytest.mark.asyncio

@@ -54,6 +54,88 @@ _HTTP_STATUS_CODES = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# Database failure classification
+# --------------------------------------------------------------------------- #
+#
+# PostgreSQL reports three very different situations through the same DBAPI
+# exception family:
+#
+#   * the schema object is absent       → undefined_table (42P01) /
+#                                         undefined_column (42703): the client
+#                                         needs the migration advice;
+#   * the query itself is invalid       → undefined_function (42883) for
+#                                         "operator does not exist", datatype
+#                                         mismatch (42804), no implicit cast
+#                                         (42846), ambiguous function (42725):
+#                                         valid schema, broken query — a
+#                                         migration cannot help;
+#   * the server is unreachable         → connection class 08 / server shutdown
+#                                         57P01-57P03.
+#
+# Matching on the phrase "does not exist" alone (the previous behaviour)
+# classified "operator does not exist: jsonb = character varying" as a missing
+# column and told operators to run migrations — which is what disguised the
+# media-deletion defect.
+_SCHEMA_SQLSTATES = {"42P01": "table", "42703": "column"}
+_QUERY_SQLSTATES = {"42883", "42804", "42846", "42725", "42P18"}
+_CONNECTION_SQLSTATES = {
+    "08000", "08001", "08003", "08004", "08006", "08007", "08P01",
+    "57P01", "57P02", "57P03",
+}
+
+
+def postgres_sqlstate(exc: BaseException) -> str:
+    """The five-character SQLSTATE of a wrapped DBAPI exception, if any.
+
+    asyncpg exposes ``sqlstate``; psycopg2 exposes ``pgcode``. Only the wrapped
+    driver exception is inspected — SQLAlchemy's own attributes are not a
+    reliable source and may be absent.
+    """
+    for candidate in (getattr(exc, "orig", None), exc):
+        if candidate is None:
+            continue
+        for attr in ("sqlstate", "pgcode"):
+            value = getattr(candidate, attr, None)
+            if isinstance(value, str) and len(value) == 5:
+                return value.upper()
+    return ""
+
+
+def classify_database_error(exc: BaseException) -> str:
+    """Return ``"schema"``, ``"query"`` or ``"unavailable"`` for a DB error.
+
+    ``"schema"`` keeps the historical migration advice; ``"query"`` is a
+    server-side query defect and must never tell the client to migrate;
+    ``"unavailable"`` preserves the existing connection-failure response.
+    """
+    state = postgres_sqlstate(exc)
+    if state in _SCHEMA_SQLSTATES:
+        return "schema"
+    if state in _QUERY_SQLSTATES:
+        return "query"
+    if state in _CONNECTION_SQLSTATES:
+        return "unavailable"
+
+    text = str(exc).lower()
+    # Order matters: "operator does not exist" also contains "does not exist".
+    if "operator does not exist" in text:
+        return "query"
+    if "undefined_table" in text or "undefined_column" in text:
+        return "schema"
+    if "relation" in text and "does not exist" in text:
+        return "schema"
+    if "column" in text and "does not exist" in text:
+        return "schema"
+    if state == "" and any(
+        marker in text
+        for marker in ("connection", "could not connect", "server closed",
+                       "connection refused", "terminating connection", "timeout")
+    ):
+        return "unavailable"
+    return "unavailable"
+
+
 def register_error_handlers(app: FastAPI) -> None:
     """Register custom exception handlers on FastAPI instance."""
 
@@ -133,19 +215,30 @@ def register_error_handlers(app: FastAPI) -> None:
         @app.exception_handler(OperationalError)
         @app.exception_handler(DBAPIError)
         async def db_connection_exception_handler(request: Request, exc: Exception):
-            err_str = str(exc).lower()
-            if "does not exist" in err_str or "undefined" in err_str:
+            kind = classify_database_error(exc)
+            if kind == "schema":
+                status_code = 503
                 code = "DATABASE_SCHEMA_ERROR"
                 message = "A required database table or column is missing. Please run: alembic upgrade heads"
+            elif kind == "query":
+                # The schema is intact; the statement is not. Migration advice
+                # would be wrong, and the raw SQL must never reach the client.
+                status_code = 500
+                code = "DATABASE_QUERY_ERROR"
+                message = "A database query failed while processing this request. The failure has been logged."
             else:
+                status_code = 503
                 code = "DATABASE_UNAVAILABLE"
                 message = "Database connection failed. Please ensure PostgreSQL is running."
+            # Full detail stays in the server log (with the SQL); the response
+            # carries only the code, a fixed sentence and an empty details map.
             logger.error(
-                "Database error path=%s method=%s: %s",
-                request.url.path, request.method, str(exc),
+                "Database error path=%s method=%s kind=%s state=%s: %s",
+                request.url.path, request.method, kind,
+                postgres_sqlstate(exc) or "-", str(exc),
             )
             return JSONResponse(
-                status_code=503,
+                status_code=status_code,
                 content={
                     "success": False,
                     "error": {

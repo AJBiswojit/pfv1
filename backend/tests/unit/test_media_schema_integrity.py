@@ -54,6 +54,9 @@ from app.testing.local_postgres import (
 
 SCHEMA = "pratikshya"
 
+#: The repository's single migration head. Update only with a reviewed revision.
+EXPECTED_HEAD = "w3b4c5d6e7f8"
+
 _REASON = unavailable_reason()
 if _REASON is not None:
     pytest.skip(
@@ -175,17 +178,25 @@ def _constraint(exc: Exception) -> str:
 # 1. The migrated schema itself
 # --------------------------------------------------------------------------- #
 def test_migration_reached_head(throwaway: ThrowawayDatabase) -> None:
-    """`alembic upgrade head` on a fresh database lands on the media revision."""
+    """`alembic upgrade head` on a fresh database lands on the single head.
+
+    The media revision `b6b5dcfb675b` is an ancestor of this head, not the head
+    itself — later additive revisions (… → p3hp20261016a → w3b4c5d6e7f8) moved
+    it. The media tables it creates are asserted directly below.
+    """
     current = alembic_current(throwaway)
-    assert "b6b5dcfb675b" in current, current
-    assert "(head)" in current, current
+    heads = [line for line in alembic_heads().splitlines() if "(head)" in line]
+    assert len(heads) == 1, heads
+    head_rev = heads[0].split()[0]
+    assert f"{head_rev} (head)" in current, current
+    assert head_rev == EXPECTED_HEAD, head_rev
 
 
 def test_heads_is_exactly_one() -> None:
     """The revision graph has a single head (no branching)."""
     heads = [line for line in alembic_heads().splitlines() if "(head)" in line]
     assert len(heads) == 1, f"expected exactly one head, got {heads}"
-    assert "b6b5dcfb675b" in heads[0], heads
+    assert heads[0].split()[0] == EXPECTED_HEAD, heads
 
 
 def test_tables_primary_keys_and_constraints(connection) -> None:

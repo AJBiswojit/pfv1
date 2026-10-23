@@ -76,6 +76,7 @@ from app.models.rbac.role import RoleModel  # noqa: E402
 from app.models.rbac.role_permission import RolePermissionModel  # noqa: E402
 from app.models.rbac.user_role import UserRoleModel  # noqa: E402
 from app.services.media.media_reference_audit import (  # noqa: E402
+    _legacy_predicates,
     audit_object_references,
     orphan_report,
 )
@@ -394,6 +395,28 @@ class MediaReferenceAuditCase(unittest.IsolatedAsyncioTestCase):
         asset_id = self._make_asset()
         self._set_product_columns(primary_media_id=asset_id)
         self.assertEqual(self._delete().status_code, 409)
+
+    def test_legacy_json_columns_are_never_compared_with_equality(self):
+        """PostgreSQL rejects `jsonb = character varying`.
+
+        The JSON id columns (`additional_images`, `media_ids`,
+        `gallery_media_ids`) are JSONB in the migrated schema. SQLite's dynamic
+        typing hides the mistake, so this pins the PostgreSQL spelling: the
+        audit must render those columns to text instead of comparing them to a
+        string. A regression here surfaces as a 503 DATABASE_SCHEMA_ERROR on
+        `DELETE /media/objects/{key}` and is misreported as a missing column.
+        """
+        from sqlalchemy.dialects import postgresql
+
+        dialect = postgresql.dialect()
+        needle = "marketing/media1.png"
+        for column in (ProductModel.additional_images, ProductModel.media_ids, ProductModel.gallery_media_ids):
+            sql = str(_legacy_predicates(column, [needle]).compile(dialect=dialect))
+            self.assertNotIn(f"{column.name} = ", sql, sql)
+            self.assertIn("LIKE", sql.upper(), sql)
+
+        text_sql = str(_legacy_predicates(ProductModel.image, [needle]).compile(dialect=dialect))
+        self.assertIn("image = ", text_sql, "plain text columns keep the cheaper equality form")
 
     # -- D-2: homepage sections must never be cascade-deleted -----------------
 
