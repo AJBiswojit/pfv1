@@ -48,12 +48,19 @@ export default function useAdminProductSearch({
   const requestIdRef = useRef(0);
   const mountedRef = useRef(true);
 
-  useEffect(
-    () => () => {
+  /* StrictMode-safe mount guard (MEDIA-UPLOAD-031).
+     React StrictMode (development) runs every effect as setup → cleanup →
+     setup on the first mount. A guard that is only ever flipped in cleanup
+     therefore stays `false` after the simulated unmount: every later search
+     response was discarded as "unmounted" and the picker spun forever even
+     though the server answered 200. Re-arming on setup keeps the guard
+     honest — it is false only between a REAL unmount and collection. */
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, []);
 
   /* Debounce the typed query. */
   useEffect(() => {

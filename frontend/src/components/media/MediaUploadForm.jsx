@@ -11,7 +11,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
+  Upload,
 } from "lucide-react";
 import { AtelierButton } from "../../design-system";
 import MediaUploadDropzone, { titleFromFileName, validateFile } from "./MediaUploadDropzone";
@@ -26,8 +26,6 @@ import {
   MEDIA_TYPES,
   PRODUCT_MEDIA_ROLES,
   UPLOAD_LIMITS,
-  UPLOAD_NOTICE,
-  UPLOAD_NOTICE_COPY,
   formatFileSize,
   rolesForType,
 } from "../../config/mediaTypes";
@@ -155,12 +153,18 @@ export default function MediaUploadForm({
   const abortRef = useRef(null);
   const mountedRef = useRef(true);
 
-  useEffect(
-    () => () => {
+  /* StrictMode-safe mount guard (MEDIA-UPLOAD-031) — same hazard as in
+     `useAdminProductSearch`: StrictMode's setup → cleanup → setup cycle left
+     this ref permanently `false` in development, so the authoritative product
+     read (and every post-upload reconciliation) was discarded as "unmounted"
+     and the form stayed stuck on "reading the product's media". Re-arm on
+     setup; flip only on a real unmount. */
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, []);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -758,26 +762,13 @@ export default function MediaUploadForm({
     navigate(`${workspacePrefix}/products/${encodeURIComponent(String(productId))}`);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Notice — one line, with the pipeline explanation behind a disclosure.
-          The banner used to occupy ~90px of a 768px viewport to say something
-          an operator reads once. */}
-      <div className="border border-pf-warning/40 bg-pf-warning/[0.06] px-3 py-2">
-        <div className="flex items-start gap-2">
-          <Sparkles size={14} className="mt-0.5 shrink-0 text-pf-warning" aria-hidden="true" />
-          <details className="min-w-0 flex-1" open={scope === MEDIA_SCOPES.MARKETING}>
-            <summary className="cursor-pointer select-none font-ui text-[10px] font-semibold uppercase tracking-[.18em] text-ink">
-              {UPLOAD_NOTICE}
-            </summary>
-            <p className="mt-1 font-ui text-[11px] leading-relaxed text-cocoa/80">
-              {UPLOAD_NOTICE_COPY}
-              {scope === MEDIA_SCOPES.MARKETING
-                ? " Marketing placement art is registered from the Homepage placement art panel on the Media Management page; it is a separate explicit assignment and is never promoted automatically from a product upload."
-                : ""}
-            </p>
-          </details>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* No pipeline banner here on purpose (MEDIA-UPLOAD-032). The page header
+          already states what this form does; the old implementation-status
+          disclosure spoke in backend internals (phase numbering, storage
+          layers) and cost a tenth of a 768px viewport. Server-confirmed status
+          is still reported where it belongs: per file, in the queue and in the
+          upload progress panel. */}
 
       {/* Scope Selector: Product vs Marketing */}
       {allowScopeChange && canManageMarketing ? (
@@ -823,6 +814,11 @@ export default function MediaUploadForm({
               Marketing Media
             </button>
           </div>
+          <p className="font-ui text-[10px] leading-relaxed text-taupe">
+            Product media is attached to the product you select here. Marketing placement art is registered
+            from the Homepage placement art panel on the Media Management page; it is a separate explicit
+            assignment and is never promoted automatically from a product upload.
+          </p>
         </div>
       ) : null}
 
@@ -1063,8 +1059,10 @@ export default function MediaUploadForm({
         )}
       </div>
 
-      {/* Dropzone — the label is bound to the real file input it names. */}
-      <div className="space-y-2">
+      {/* Dropzone — the label is bound to the real file input it names.
+          Same card treatment as the destination block above so the form reads
+          as one column of panels, not floating fragments. */}
+      <div className="space-y-3 border border-mist/80 bg-canvas p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <label
             className="font-ui text-[11px] uppercase tracking-[.18em] text-taupe"
@@ -1202,53 +1200,78 @@ export default function MediaUploadForm({
         </div>
       ) : null}
 
-      {/* Submission Actions */}
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-mist/80 bg-canvas/95 pt-4 pb-2 backdrop-blur">
-        <div className="font-ui text-xs text-taupe">
-          {queue.length ? (
-            <span>
-              {queue.length} {queue.length === 1 ? "file" : "files"} ready to{" "}
-              {isEmployeeSession ? "submit" : "upload"}
-            </span>
-          ) : (
-            <span>{uploadedResults.length ? "Nothing left to send" : "No files selected"}</span>
-          )}
-        </div>
+      {/* Submission Actions — the form footer (MEDIA-UPLOAD-033).
 
-        <div className="flex items-center gap-3">
-          <AtelierButton
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={requestCancel}
-          >
-            Cancel
-          </AtelierButton>
+          Hierarchy follows the admin system's own button language (cf. the
+          product review desk): the primary write action is a solid house
+          burgundy plate with ivory type and a gold focus ring; Cancel is a
+          gold-hairline outline that only warms to burgundy on hover, so it
+          stays visually subordinate. The old footer buttons asked the Atelier
+          scale for a size that does not exist and therefore inherited NO
+          padding at all, which is why the footer read cramped; both controls
+          now carry explicit, equal padding and a real minimum width.
 
-          <AtelierButton
-            type="submit"
-            size="sm"
-            disabled={
-              busy ||
-              !queue.length ||
-              !isAuthorizedToUpload ||
-              contextLoading ||
-              contextUnverified ||
-              blocked
-            }
-            className="min-w-36 bg-ink text-ivory hover:bg-cocoa"
-          >
-            {busy ? (
-              <span className="flex items-center gap-2">
-                <Loader2 size={13} className="animate-spin" />
-                Uploading...
+          Layout: status copy left, actions right on one row from tablet up;
+          on narrow phones the pair stacks full-width (primary first) so
+          neither label can clip, wrap mid-word or overflow horizontally.
+          The bar stays sticky so the primary action is never below the fold
+          on 1366×768 or shorter desktops. */}
+      <div className="sticky bottom-0 z-10 border-t border-pf-border bg-pf-card/95 px-4 py-3 backdrop-blur sm:py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-ui text-[11px] text-pf-muted" role="status">
+            {queue.length ? (
+              <span>
+                {queue.length} {queue.length === 1 ? "file" : "files"} ready to{" "}
+                {isEmployeeSession ? "submit" : "upload"}
               </span>
-            ) : scope === MEDIA_SCOPES.MARKETING ? (
-              "Assign Marketing Media"
             ) : (
-              "Upload & Register Media"
+              <span>{uploadedResults.length ? "Nothing left to send" : "No files selected"}</span>
             )}
-          </AtelierButton>
+          </p>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {/* Cancel keeps ONE safe outcome: with no uncommitted work it
+                returns to the media desk; with a selection or an in-flight
+                upload it opens the confirm dialog whose copy states exactly
+                what leaving does (a stopped upload may already have stored
+                files — the product is then verified, never called failed).
+                It is therefore deliberately NOT disabled while busy. */}
+            <AtelierButton
+              type="button"
+              variant="outline"
+              onClick={requestCancel}
+              className="w-full border-pf-border-strong px-6 py-2.5 text-[10px] tracking-[.16em] text-pf-muted hover:border-pf-burgundy hover:bg-transparent hover:text-pf-burgundy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pf-gold-deep disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              Cancel
+            </AtelierButton>
+
+            <AtelierButton
+              type="submit"
+              disabled={
+                busy ||
+                !queue.length ||
+                !isAuthorizedToUpload ||
+                contextLoading ||
+                contextUnverified ||
+                blocked
+              }
+              className="w-full border border-pf-burgundy bg-pf-burgundy px-6 py-2.5 text-[10px] tracking-[.16em] text-pf-ivory shadow-[0_10px_24px_rgb(74_7_24/0.18)] hover:border-pf-wine-soft hover:bg-pf-wine-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pf-gold-deep disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none sm:w-auto sm:min-w-56"
+            >
+              {busy ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                  Uploading…
+                </span>
+              ) : scope === MEDIA_SCOPES.MARKETING ? (
+                "Assign Marketing Media"
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <Upload size={13} aria-hidden="true" />
+                  Upload &amp; Register Media
+                </span>
+              )}
+            </AtelierButton>
+          </div>
         </div>
       </div>
 

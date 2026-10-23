@@ -28,3 +28,4 @@ tests/*
 !tests/mediaProductSearch.test.js
 !tests/mediaUploadSurface.test.js
 !tests/mediaUploadRecovery.test.js
+!tests/mediaUploadSearchRemediation.test.js

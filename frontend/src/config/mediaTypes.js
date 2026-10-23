@@ -520,6 +520,10 @@ export const isAllowedUploadFormat = (file, type) => {
   return extensionOk || mimeOk;
 };
 
+/* LEGACY copy — retained only for the un-routed `MediaUploadPanel` component.
+   The live upload form no longer shows pipeline internals ("Phase 7",
+   "object store") to operators; server-confirmed status is reported per file
+   in the queue instead (MEDIA-UPLOAD-032). */
 export const UPLOAD_NOTICE = "DURABLE MEDIA PIPELINE ACTIVE";
 
 export const UPLOAD_NOTICE_COPY =
