@@ -223,7 +223,7 @@ export const staffPortal = {
   muted: "#6F5D52", // 5.97:1 on card (was #88786E at 4.05:1 — failed WCAG AA)
   border: "#EDE4D8", // decorative hairline only
   borderLight: "#F5EDE3",
-  borderStrong: "#A68A68", // structural boundaries (3.11:1 on card)
+  borderStrong: "#A48766", // structural boundaries (3.09:1 on ivory, 3.22:1 on card — WCAG 1.4.11)
   success: "#4A7C59",
   warning: "#8F660F", // 4.93:1 on card (was #C4922A at 2.68:1)
   error: "#A84448",

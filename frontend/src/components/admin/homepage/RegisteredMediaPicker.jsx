@@ -15,7 +15,11 @@ const SCOPE_FILTERS = [
   { value: 'marketing', label: 'Marketing art' },
 ];
 
-export default function RegisteredMediaPicker({ admin, value, onChange, disabled = false }) {
+/* F-18 (Batch 3): `disabled` used to be applied to the <fieldset>, which also
+   disabled the "Retry media library" button — with no media.view the picker
+   could never recover. The fieldset now only groups; each interactive control
+   is disabled individually and Retry stays reachable. */
+export default function RegisteredMediaPicker({ admin, value, onChange, disabled = false, disabledReason = '' }) {
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState('');
@@ -41,8 +45,11 @@ export default function RegisteredMediaPicker({ admin, value, onChange, disabled
     return () => { cancelled = true; };
   }, [admin, page, attempt, debouncedQuery, scopeFilter]);
 
-  return <fieldset disabled={disabled} className="space-y-3 border border-pf-border p-3">
+  /* No aria-disabled on the group: Retry inside stays operable by design, and a
+     group announced as disabled while one child works is inconsistent. */
+  return <fieldset className="space-y-3 border border-pf-border-strong p-3">
     <legend className="px-1 font-ui text-xs">Registered image library</legend>
+    {disabled && disabledReason && <p role="status" className="text-xs">{disabledReason}</p>}
     {value && <p className="break-all text-xs" role="status">Selected: {value.objectKey} · not saved yet</p>}
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
       <label className="block text-xs">
@@ -50,17 +57,19 @@ export default function RegisteredMediaPicker({ admin, value, onChange, disabled
         <input
           type="search"
           value={query}
+          disabled={disabled}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="e.g. Banarasi or PF-W-SAR-SIL-0001"
-          className="mt-1 w-full border border-pf-border bg-transparent px-2 py-1"
+          className="mt-1 w-full border border-pf-border-strong bg-transparent px-2 py-1"
         />
       </label>
       <label className="block text-xs">
         <span className="block">Scope</span>
         <select
           value={scopeFilter}
+          disabled={disabled}
           onChange={(event) => setScopeFilter(event.target.value)}
-          className="mt-1 w-full border border-pf-border bg-transparent px-2 py-1"
+          className="mt-1 w-full border border-pf-border-strong bg-transparent px-2 py-1"
         >
           {SCOPE_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
@@ -71,17 +80,17 @@ export default function RegisteredMediaPicker({ admin, value, onChange, disabled
       <>
         {!state.items.length && <p>No safe registered images match this page. Register media through the existing media library, adjust the search, or try another page.</p>}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-          {state.items.map((asset) => <button key={asset.id} type="button" aria-pressed={value?.id === asset.id}
-            onClick={() => onChange(asset)} className={`min-w-0 border p-2 text-left ${value?.id === asset.id ? 'border-pf-gold-deep bg-pf-ivory' : 'border-pf-border'}`}>
+          {state.items.map((asset) => <button key={asset.id} type="button" aria-pressed={value?.id === asset.id} disabled={disabled}
+            onClick={() => onChange(asset)} className={`min-w-0 border p-2 text-left disabled:opacity-40 ${value?.id === asset.id ? 'border-pf-gold-deep bg-pf-ivory' : 'border-pf-border-strong'}`}>
             <img src={registeredImageUrl(asset)} alt="" loading="lazy" className="h-24 w-full object-cover" />
             <span className="mt-2 block break-all text-[11px]">{asset.objectKey}</span>
             {asset.productName && <span className="block break-all text-[11px] text-pf-muted">{asset.productName}{asset.productSku ? ` · ${asset.productSku}` : ''}</span>}
           </button>)}
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <button type="button" disabled={page === 1} onClick={() => setPage((v) => v - 1)}>Previous media</button>
+          <button type="button" disabled={disabled || page === 1} onClick={() => setPage((v) => v - 1)}>Previous media</button>
           <span>Page {page} · {state.total} registered assets</span>
-          <button type="button" disabled={page * 24 >= state.total} onClick={() => setPage((v) => v + 1)}>Next media</button>
+          <button type="button" disabled={disabled || page * 24 >= state.total} onClick={() => setPage((v) => v + 1)}>Next media</button>
         </div>
       </>}
   </fieldset>;

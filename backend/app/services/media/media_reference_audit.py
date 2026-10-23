@@ -80,7 +80,16 @@ def _legacy_predicates(column, needles: List[str]):
     """
     from sqlalchemy import String, cast
 
-    clauses = [column == needle for needle in needles]
+    # Equality is only valid on the genuinely textual columns. The JSON id
+    # columns are JSONB in the migrated schema (597f883749d8), and PostgreSQL
+    # rejects `jsonb = character varying` with
+    # `operator does not exist: jsonb = character varying` — which the API maps
+    # to DATABASE_SCHEMA_ERROR and misreports as a missing column. Render those
+    # columns to text and search them instead; SQLite (the unit-test shim)
+    # accepts the same spelling.
+    clauses = []
+    if isinstance(column.type, String):
+        clauses.extend(column == needle for needle in needles)
     clauses.extend(cast(column, String).like(f"%{needle}%") for needle in needles)
     return or_(*clauses)
 

@@ -125,7 +125,7 @@
   /* Structural boundary tier — 3.11:1 on card. Use where the boundary
      itself carries structure (inputs, active plates); pf-border stays a
      purely decorative hairline. */
-  --color-pf-border-strong: #A68A68;
+  --color-pf-border-strong: #A48766;
   --color-pf-success: #4A7C59;
   --color-pf-warning: #8F660F;
   --color-pf-error: #A84448;

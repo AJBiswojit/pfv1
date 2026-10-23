@@ -1,7 +1,7 @@
 /** Real React components + existing API clients; all HTTP mocked, no database. */
 import test, { before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import React, { act } from 'react';
 import { create } from 'react-test-renderer';
 import { MemoryRouter } from 'react-router-dom';
@@ -133,14 +133,30 @@ after(async () => {
   }
 });
 
-test('section inventory matches all twelve reference components in order', () => {
-  const home = readFileSync(`${root}../home-page/src/pages/Home.jsx`, 'utf8');
-  const names = ['Hero', 'CategoryCollage', 'SareeLookbook', 'BridalCampaign', 'JewelleryTheatre', 'PromoBanner', 'MensEditorial', 'KidsPlayground', 'Bestsellers', 'KurtiLookbook', 'Newsletter', 'TrustStrip'];
-  const offsets = names.map((name) => home.indexOf(`<${name} />`));
-  assert.ok(offsets.every((offset, index) => offset >= 0 && (!index || offset > offsets[index - 1])));
-  assert.equal(model.HOMEPAGE_SECTIONS.length, 12);
-  assert.equal(model.HOMEPAGE_SECTIONS.filter((s) => s.live).length, 1);
+/* F-26 (Batch 4): the reference design directory (`home-page/`) is NOT part of
+   this checkout, so the old single test hard-failed with ENOENT and masked real
+   regressions in this file. The application's own inventory is now asserted
+   unconditionally; only the comparison against the missing reference file is a
+   declared, visible skip. Nothing was deleted or weakened. */
+const REFERENCE_NAMES = ['Hero', 'CategoryCollage', 'SareeLookbook', 'BridalCampaign', 'JewelleryTheatre', 'PromoBanner', 'MensEditorial', 'KidsPlayground', 'Bestsellers', 'KurtiLookbook', 'Newsletter', 'TrustStrip'];
+const REFERENCE_HOME = `${root}../home-page/src/pages/Home.jsx`;
+
+test('section inventory lists all twelve sections and the model invariants hold', () => {
+  assert.equal(model.HOMEPAGE_SECTIONS.length, REFERENCE_NAMES.length);
+  /* F-21 (Batch 3): a static `live` flag claimed only the hero was live.
+     The model now names the pipeline; liveness itself comes from the read. */
+  assert.equal(model.HOMEPAGE_SECTIONS.filter((s) => s.pipeline === 'marketing').length, 1);
+  assert.equal(model.HOMEPAGE_SECTIONS.every((s) => !('live' in s)), true);
   assert.equal(model.HOMEPAGE_SECTIONS[0].placement, 'HOME_HERO');
+  assert.deepEqual(model.HOMEPAGE_SECTIONS.map((s) => s.id).slice(0, 3), ['hero', 'categories', 'sarees']);
+});
+
+test('the twelve sections still appear in the reference design order', {
+  skip: existsSync(REFERENCE_HOME) ? false : 'home-page/ reference design is not part of this checkout',
+}, () => {
+  const home = readFileSync(REFERENCE_HOME, 'utf8');
+  const offsets = REFERENCE_NAMES.map((name) => home.indexOf(`<${name} />`));
+  assert.ok(offsets.every((offset, index) => offset >= 0 && (!index || offset > offsets[index - 1])));
 });
 
 test('RBAC uses real capability expansion, status checks and separate delete authority', () => {
@@ -177,7 +193,12 @@ test('unauthorized page and read-only editor expose no write controls', async ()
   assert.match(text(denied.root), /access denied/); assert.equal(requests.length, 0);
   const tree = await mount(Panel, {}, reader);
   assert.match(text(tree.root), /Saved campaign/);
-  assert.equal(tree.root.findAllByType('button').some((b) => /Edit|Remove|Activate|Add registered/.test(text(b))), false);
+  /* Exact control names: the "Edit" TAB of the Batch 1 preview strip is a view
+     switch, not a write control, so a loose /Edit/ match would be a false
+     positive. A read-only actor must expose none of the actual mutations. */
+  const writeControls = tree.root.findAllByType('button').map((b) => text(b))
+    .filter((label) => ['Edit entry', 'Edit text', 'Remove entry', 'Activate', 'Deactivate', 'Add registered media', 'Save to backend'].includes(label));
+  assert.deepEqual(writeControls, []);
 });
 
 test('product admission excludes draft, review, archived, unpublished, hidden and inline records', async () => {
@@ -311,7 +332,8 @@ test('product selection is never auto-cleared by paging/retry/refresh and is nev
 test('picker search is server-side: typing issues a debounced filtered catalogue request (B-10)', async () => {
   const tree = await mount(Products, { actor: { admin: owner } });
   requests = [];
-  const input = tree.root.findByProps({ className: 'ml-2 border border-pf-border bg-pf-card p-2' });
+  /* F-25 (Batch 3): structural input borders moved to pf-border-strong. */
+  const input = tree.root.findByProps({ className: 'ml-2 border border-pf-border-strong bg-pf-card p-2' });
   await act(async () => { input.props.onChange({ target: { value: 'silk' } }); });
   assert.equal(requests.some((r) => r.query?.get('q') === 'silk'), false,
     'no request before the debounce fires (typing is not a request-per-keypress)');
@@ -335,9 +357,14 @@ test('unsupported section text and newsletter operations have no fake save or su
   const newsletter = tree.root.findAllByType('button').find((b) => text(b).includes('Newsletter'));
   await act(async () => newsletter.props.onClick());
   await click(tree, 'TEXT');
+  await flush();
   assert.match(text(tree.root), /No verified subscription endpoint/);
-  assert.equal(tree.root.findAllByType('form').length, 0);
-  assert.equal(tree.root.findAllByType('button').some((b) => text(b) === 'Save to backend'), false);
+  /* Batch 1 (F-02): an unconfigured section may be drafted locally so it can be
+     previewed. What must never exist is a way to write it, and no write
+     request may have been issued. (This fixture returns no allowedSlots, so
+     the editor correctly reports that no TEXT slot is registered.) */
+  assert.equal(text(tree.root).includes('Save to backend') || text(tree.root).includes('Save section entry'), false);
+  assert.equal(requests.some((r) => r.method !== 'GET'), false);
 });
 
 test('The customer storefront is the sole customer homepage while design authority and backend auth constraints remain preserved', () => {
