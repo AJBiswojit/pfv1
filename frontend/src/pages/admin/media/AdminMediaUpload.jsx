@@ -22,7 +22,10 @@ export default function AdminMediaUpload() {
         </AtelierButton>
       }
     >
-      <AdminPanel eyebrow="Product media registration" title="Upload Product Media">
+      {/* One page title above (AdminPage). The panel keeps a single short
+          second-level heading instead of repeating "Upload Product Media",
+          which had produced two H1-weight titles on one screen. */}
+      <AdminPanel title="Registration">
         {/* Batch 6 — this page registers PRODUCT media only: the destination
             switch is off and the form starts in the product scope. */}
         <MediaUploadForm

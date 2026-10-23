@@ -4,12 +4,44 @@ import {
   formatFileSize,
   rolesForType,
 } from "../../config/mediaTypes";
+import { PRODUCT_MEDIA_STAGES } from "../../services/media/productMediaService";
 import { cn } from "../../utils/cn";
 
 const field =
-  "w-full border border-mist bg-canvas px-2.5 py-1.5 font-ui text-xs text-ink outline-none transition-colors focus:border-accent";
-const label = "font-ui text-[9px] uppercase tracking-[.16em] text-taupe";
+  "w-full border border-mist bg-canvas px-2.5 py-1.5 font-ui text-xs text-ink outline-none transition-colors focus:border-accent disabled:cursor-not-allowed disabled:bg-surface/60 disabled:text-taupe";
+const labelCls = "font-ui text-[9px] uppercase tracking-[.16em] text-taupe";
 
+/** Stages after which the server owns the record — inputs become read-only. */
+const LOCKED_STAGES = new Set([
+  PRODUCT_MEDIA_STAGES.UPLOADING,
+  PRODUCT_MEDIA_STAGES.UPLOADED,
+  PRODUCT_MEDIA_STAGES.REGISTERING,
+  PRODUCT_MEDIA_STAGES.ASSIGNED,
+  PRODUCT_MEDIA_STAGES.UNCONFIRMED,
+]);
+
+const STAGE_COPY = {
+  [PRODUCT_MEDIA_STAGES.SELECTED]: { text: "Ready", tone: "text-taupe" },
+  [PRODUCT_MEDIA_STAGES.UPLOADING]: { text: "Uploading…", tone: "text-cocoa" },
+  [PRODUCT_MEDIA_STAGES.UPLOADED]: { text: "Stored — assigning…", tone: "text-cocoa" },
+  [PRODUCT_MEDIA_STAGES.REGISTERING]: { text: "Assigning…", tone: "text-cocoa" },
+  [PRODUCT_MEDIA_STAGES.ASSIGNED]: { text: "Registered & assigned", tone: "text-pf-success" },
+  [PRODUCT_MEDIA_STAGES.UNCONFIRMED]: { text: "Not confirmed — verifying", tone: "text-pf-warning" },
+  [PRODUCT_MEDIA_STAGES.FAILED]: { text: "Failed", tone: "text-pf-error" },
+};
+
+/**
+ * The queue: one row per file, with the metadata that will travel WITH the
+ * file on its upload request.
+ *
+ * Three truths this component keeps:
+ *   · there is no caption field — the backend has no caption column, so a
+ *     caption input could only ever be collected and thrown away;
+ *   · once a file's bytes have left the browser the server owns its metadata
+ *     (`title` / `alt_text` are create-only), so the row freezes and says so;
+ *   · "awaiting confirmation" is not "failed" — an unanswered request may have
+ *     succeeded, and the row keeps that distinction visible.
+ */
 export default function MediaUploadQueue({
   queue,
   onRemoveItem,
@@ -19,6 +51,8 @@ export default function MediaUploadQueue({
   disabled = false,
 }) {
   if (!queue.length) return null;
+
+  const locked = (item) => LOCKED_STAGES.has(item?.stage);
 
   return (
     <div className="space-y-4">
@@ -45,15 +79,28 @@ export default function MediaUploadQueue({
         {queue.map((item, index) => {
           const isVid = item.type === MEDIA_TYPES.VIDEO;
           const roles = rolesForType(item.type);
+          const stage = item.stage ?? PRODUCT_MEDIA_STAGES.SELECTED;
+          const copy = STAGE_COPY[stage] ?? { text: `${stage}…`, tone: "text-taupe" };
+          const isLocked = locked(item);
+          const stageMessage =
+            item.stageMessage ||
+            (stage === PRODUCT_MEDIA_STAGES.FAILED ? "the server rejected the request" : "");
+          const busy =
+            stage === PRODUCT_MEDIA_STAGES.UPLOADING ||
+            stage === PRODUCT_MEDIA_STAGES.UPLOADED ||
+            stage === PRODUCT_MEDIA_STAGES.REGISTERING;
 
           return (
             <li
               key={item.key}
-              className="border border-mist/90 bg-surface/40 p-3 transition-colors hover:bg-surface/70"
+              className={cn(
+                "border bg-surface/40 p-3 transition-colors hover:bg-surface/70",
+                stage === PRODUCT_MEDIA_STAGES.FAILED ? "border-pf-error/40" : "border-mist/90"
+              )}
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start">
                 {/* Thumbnail & Badges */}
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden bg-canvas-deep border border-mist">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden border border-mist bg-canvas-deep">
                   {isVid ? (
                     <video
                       src={item.previewUrl}
@@ -84,38 +131,28 @@ export default function MediaUploadQueue({
                 <div className="min-w-0 flex-1 space-y-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-xs text-ink font-medium">
+                      <p className="truncate font-mono text-xs font-medium text-ink">
                         {item.file.name}
                       </p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2 font-ui text-[10px] text-taupe">
                         <span>{formatFileSize(item.file.size)}</span>
-                        <span>•</span>
+                        <span aria-hidden="true">•</span>
                         <span
-                          className={cn(
-                            "inline-flex items-center gap-1 font-medium",
-                            item.stage === "failed"
-                              ? "text-accent"
-                              : item.stage === "assigned"
-                                ? "text-sage"
-                                : item.stage
-                                  ? "text-amber-800"
-                                  : "text-emerald-700",
-                          )}
+                          className={cn("inline-flex items-center gap-1 font-medium", copy.tone)}
+                          role="status"
                         >
                           <CheckCircle2
                             size={11}
                             aria-hidden="true"
-                            className={item.stage === "failed" ? "hidden" : ""}
+                            className={stage === PRODUCT_MEDIA_STAGES.FAILED ? "hidden" : ""}
                           />
-                          {!item.stage
-                            ? "Ready"
-                            : item.stage === "assigned"
-                              ? "Registered & assigned"
-                              : item.stage === "failed"
-                                ? `Failed — ${item.stageMessage || "server rejected the request"}`
-                                : `${item.stage}…`}
+                          {stage === PRODUCT_MEDIA_STAGES.FAILED
+                            ? `Failed — ${stageMessage}`
+                            : stage === PRODUCT_MEDIA_STAGES.UNCONFIRMED
+                              ? `${copy.text}${stageMessage ? ` — ${stageMessage}` : ""}`
+                              : copy.text}
                         </span>
-                        <span>•</span>
+                        <span aria-hidden="true">•</span>
                         <span>Asset #{index + 1}</span>
                         {item.mediaId ? (
                           <span className="font-mono text-[9px] text-charcoal/45">
@@ -127,56 +164,82 @@ export default function MediaUploadQueue({
 
                     <button
                       type="button"
-                      disabled={disabled}
+                      disabled={disabled || busy}
                       onClick={() => onRemoveItem(item.key)}
                       aria-label={`Remove ${item.file.name} from upload queue`}
-                      className="p-1 text-taupe transition-colors hover:text-accent disabled:opacity-50"
+                      className="p-1 text-taupe transition-colors hover:text-accent disabled:opacity-30"
                     >
                       <Trash2 size={16} strokeWidth={1.4} aria-hidden="true" />
                     </button>
                   </div>
 
+                  {/* Real, per-file progress from actual stage events. */}
+                  {busy || stage === PRODUCT_MEDIA_STAGES.ASSIGNED ? (
+                    <div
+                      className="h-1 w-full overflow-hidden bg-mist/60"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Number(item.progress) || 0}
+                      aria-label={`Upload progress for ${item.file.name}`}
+                    >
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-300",
+                          stage === PRODUCT_MEDIA_STAGES.ASSIGNED ? "bg-pf-success" : "bg-accent"
+                        )}
+                        style={{ width: `${Number(item.progress) || 0}%` }}
+                      />
+                    </div>
+                  ) : null}
+
                   {/* Form inputs for metadata */}
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-1">
-                      <label htmlFor={`title-${item.key}`} className={label}>
+                      <label htmlFor={`title-${item.key}`} className={labelCls}>
                         Title <span className="text-accent">*</span>
                       </label>
                       <input
                         id={`title-${item.key}`}
                         type="text"
                         value={item.title}
-                        disabled={disabled}
+                        disabled={disabled || isLocked}
                         onChange={(e) => onUpdateItem(item.key, { title: e.target.value })}
                         placeholder="Asset title"
+                        maxLength={160}
                         className={field}
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label htmlFor={`alt-${item.key}`} className={label}>
+                      <label htmlFor={`alt-${item.key}`} className={labelCls}>
                         Alt text {isVid ? "(optional)" : <span className="text-accent">*</span>}
                       </label>
                       <input
                         id={`alt-${item.key}`}
                         type="text"
                         value={item.alt}
-                        disabled={disabled}
+                        disabled={disabled || isLocked}
                         onChange={(e) => onUpdateItem(item.key, { alt: e.target.value })}
-                        placeholder="Descriptive alt text for accessibility"
+                        placeholder="Describe the image for screen readers"
+                        maxLength={300}
+                        aria-describedby={`alt-help-${item.key}`}
                         className={field}
                       />
+                      <p id={`alt-help-${item.key}`} className="font-ui text-[9px] text-taupe">
+                        Describe what is visible, not the product name again.
+                      </p>
                     </div>
 
                     {isProductMedia ? (
                       <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-                        <label htmlFor={`role-${item.key}`} className={label}>
+                        <label htmlFor={`role-${item.key}`} className={labelCls}>
                           Media role <span className="text-accent">*</span>
                         </label>
                         <select
                           id={`role-${item.key}`}
                           value={item.role ?? ""}
-                          disabled={disabled}
+                          disabled={disabled || isLocked}
                           onChange={(e) => onUpdateItem(item.key, { role: e.target.value })}
                           className={field}
                         >
@@ -188,22 +251,17 @@ export default function MediaUploadQueue({
                         </select>
                       </div>
                     ) : null}
-
-                    <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                      <label htmlFor={`caption-${item.key}`} className={label}>
-                        Caption <span className="text-taupe lowercase font-normal">(optional)</span>
-                      </label>
-                      <input
-                        id={`caption-${item.key}`}
-                        type="text"
-                        value={item.caption || ""}
-                        disabled={disabled}
-                        onChange={(e) => onUpdateItem(item.key, { caption: e.target.value })}
-                        placeholder="Editorial caption or notes on craftsmanship..."
-                        className={field}
-                      />
-                    </div>
                   </div>
+
+                  {isLocked ? (
+                    <p className="font-ui text-[10px] leading-relaxed text-taupe">
+                      {stage === PRODUCT_MEDIA_STAGES.ASSIGNED
+                        ? "Stored and attached. Title and alt text are written when the file is stored, so they can no longer be edited here."
+                        : stage === PRODUCT_MEDIA_STAGES.UNCONFIRMED
+                          ? "This request ended without a server answer. Its details are locked until the product's media has been read back."
+                          : "This file is already on its way to the server — its details can no longer be edited."}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </li>

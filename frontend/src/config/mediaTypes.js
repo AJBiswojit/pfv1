@@ -480,6 +480,26 @@ export const UPLOAD_RULES = {
   },
 };
 
+/**
+ * Client-side upload limits.
+ *
+ * `MAX_FILES_PER_BATCH` is a deliberate, conservative cap on the operator's
+ * batch: the pipeline sends one request per file, so an accidental 300-file
+ * drop would be 300 sequential uploads. The SERVER remains the authority on
+ * every dimension below — these figures mirror the configured policy
+ * (`app/config.py: MAX_IMAGE_SIZE_MB / MAX_IMAGE_PIXELS /
+ * MAX_IMAGE_DIMENSION_PX`) purely so the page can state them before a file is
+ * chosen. If the deployment changes the server values, update these labels.
+ */
+export const UPLOAD_LIMITS = Object.freeze({
+  MAX_FILES_PER_BATCH: 24,
+  MAX_IMAGE_PIXELS: 50_000_000,
+  MAX_IMAGE_DIMENSION_PX: 8_000,
+});
+
+/** The role a newly queued product image takes when the operator chooses none. */
+export const DEFAULT_PRODUCT_UPLOAD_ROLE = PRODUCT_MEDIA_ROLES.GALLERY;
+
 /** The `accept` attribute for uploads that feed the image-only pipeline (B-05).
  * Video types are intentionally excluded — the backend validator rejects them.
  * Existing video display paths remain for data that might already exist. */
@@ -528,6 +548,8 @@ export default {
   MARKETING_PLACEMENT_OPTIONS,
   RETIRED_PLACEMENTS,
   UPLOAD_RULES,
+  UPLOAD_LIMITS,
+  DEFAULT_PRODUCT_UPLOAD_ROLE,
   UPLOAD_ACCEPT,
   isAllowedUploadFormat,
 };

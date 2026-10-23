@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { AtelierButton } from "../../design-system";
-import { MEDIA_TYPES, UPLOAD_ACCEPT, UPLOAD_RULES } from "../../config/mediaTypes";
+import { MEDIA_TYPES, UPLOAD_ACCEPT, UPLOAD_LIMITS, UPLOAD_RULES } from "../../config/mediaTypes";
 import { cn } from "../../utils/cn";
 import { extensionOf, typeOfFile, validateFile } from "../../services/media/uploadValidation";
 
@@ -12,9 +12,27 @@ export const titleFromFileName = (name = "") => {
   return stem ? stem.charAt(0).toUpperCase() + stem.slice(1) : "Untitled asset";
 };
 
+/**
+ * The file chooser / drop target.
+ *
+ * `compact` is used once files are queued: the same control stays available
+ * (drag-and-drop keeps working) but stops reserving a third of the screen for
+ * a step the operator has already completed.
+ *
+ * The `id` on the input is the anchor the page's "Select Files" label points
+ * at, so clicking that label opens the picker like any other form control.
+ *
+ * NOTE (MEDIA-UPLOAD-027 / F2): `dragleave` fires on the container every time
+ * the pointer crosses INTO one of its children, because the child's own
+ * `dragleave` bubbles up. Clearing the highlight on those events made the
+ * drop target flicker. The handler now ignores a leave whose `relatedTarget`
+ * is still inside the container, so the highlight is cleared only when the
+ * pointer really leaves the dropzone.
+ */
 export default function MediaUploadDropzone({
   onFilesSelected,
   disabled = false,
+  compact = false,
   className = "",
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -25,7 +43,11 @@ export default function MediaUploadDropzone({
     if (!disabled) setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (event) => {
+    // Containment guard: a `dragleave` whose destination is still inside the
+    // dropzone is a child-to-child move, not the pointer leaving. Ignoring it
+    // keeps the highlight stable; a real exit still clears it.
+    if (event.currentTarget.contains(event.relatedTarget)) return;
     setIsDragging(false);
   };
 
@@ -45,13 +67,17 @@ export default function MediaUploadDropzone({
     }
   };
 
+  const rules = UPLOAD_RULES[MEDIA_TYPES.IMAGE];
+  const extensions = rules.extensions.map((ext) => ext.replace(".", "").toUpperCase()).join(", ");
+
   return (
     <div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "relative flex flex-col items-center justify-center border-2 border-dashed p-8 text-center transition-all duration-200",
+        "relative flex flex-col items-center justify-center border-2 border-dashed text-center transition-all duration-200",
+        compact ? "gap-2 p-4 sm:flex-row sm:justify-between sm:text-left" : "p-6 sm:p-8",
         isDragging
           ? "border-accent bg-accent/[0.08] shadow-inner"
           : "border-mist/90 bg-surface/40 hover:border-ink/40 hover:bg-surface/70",
@@ -59,16 +85,36 @@ export default function MediaUploadDropzone({
         className
       )}
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-canvas border border-mist shadow-sm">
-        <UploadCloud size={26} strokeWidth={1.4} className="text-accent" aria-hidden="true" />
+      <div className={cn("flex items-center gap-3", compact ? "" : "flex-col")}>
+        <div
+          className={cn(
+            "flex items-center justify-center rounded-full border border-mist bg-canvas shadow-sm",
+            compact ? "h-9 w-9" : "h-14 w-14"
+          )}
+        >
+          <UploadCloud
+            size={compact ? 17 : 26}
+            strokeWidth={1.4}
+            className="text-accent"
+            aria-hidden="true"
+          />
+        </div>
+        <div className={compact ? "" : "mt-1"}>
+          <h3
+            className={cn(
+              "font-display font-normal tracking-wide text-ink",
+              compact ? "text-sm" : "mt-2 text-base sm:text-lg"
+            )}
+          >
+            {compact ? "Add more files" : "Drag & drop files here"}
+          </h3>
+          <p className="mt-0.5 font-ui text-xs text-taupe">
+            {compact
+              ? "Drop them here, or browse from your device."
+              : "or use the button below to browse from your device"}
+          </p>
+        </div>
       </div>
-
-      <h3 className="mt-4 font-display text-base font-normal tracking-wide text-ink sm:text-lg">
-        Drag & drop files here
-      </h3>
-      <p className="mt-1 font-ui text-xs text-taupe">
-        or use the button below to browse from your device
-      </p>
 
       <input
         ref={inputRef}
@@ -82,7 +128,7 @@ export default function MediaUploadDropzone({
         aria-label="Browse and upload images"
       />
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+      <div className={cn("flex flex-wrap items-center justify-center gap-3", compact ? "" : "mt-4")}>
         <AtelierButton
           type="button"
           size="sm"
@@ -95,21 +141,23 @@ export default function MediaUploadDropzone({
         </AtelierButton>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-4 border-t border-mist/60 pt-4 font-ui text-[11px] text-taupe">
-        <span className="inline-flex items-center gap-1.5">
-          <ImageIcon size={13} className="text-cocoa" aria-hidden="true" />
-          <span>
-            <strong>Images:</strong>{" "}
-            {UPLOAD_RULES[MEDIA_TYPES.IMAGE].extensions
-              .map((ext) => ext.replace(".", "").toUpperCase())
-              .join(", ")}{" "}
-            (up to {UPLOAD_RULES[MEDIA_TYPES.IMAGE].maxLabel})
+      {compact ? null : (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-mist/60 pt-4 font-ui text-[11px] text-taupe">
+          <span className="inline-flex items-center gap-1.5">
+            <ImageIcon size={13} className="text-cocoa" aria-hidden="true" />
+            <span>
+              <strong>Images:</strong> {extensions} (up to {rules.maxLabel} each)
+            </span>
           </span>
-        </span>
-        <span className="rounded bg-canvas px-2 py-0.5 text-[10px] uppercase tracking-wider text-taupe border border-mist">
-          Multiple files supported
-        </span>
-      </div>
+          <span className="rounded border border-mist bg-canvas px-2 py-0.5 text-[10px] uppercase tracking-wider text-taupe">
+            Up to {UPLOAD_LIMITS.MAX_FILES_PER_BATCH} files per upload
+          </span>
+          <span className="text-[10px] text-taupe">
+            Longest side ≤ {UPLOAD_LIMITS.MAX_IMAGE_DIMENSION_PX.toLocaleString("en-IN")} px,
+            ≤ {(UPLOAD_LIMITS.MAX_IMAGE_PIXELS / 1_000_000).toLocaleString("en-IN")} MP
+          </span>
+        </div>
+      )}
     </div>
   );
 }

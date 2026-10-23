@@ -128,13 +128,51 @@ export async function apiUploadMediaObject(file, { productId = null, namespace =
   }
 }
 
-/** Upload scoped to one product — the key namespace cannot be spoofed. */
-export async function apiUploadProductMediaObject(productId, file, { scope = "admin" } = {}) {
+/**
+ * Upload scoped to one product — the key namespace cannot be spoofed.
+ *
+ * THE single write for product media. The route stores the object AND creates
+ * the `media_media_asset` row and the `media_product_media` association in the
+ * same transaction, then commits before answering 201
+ * (`app/api/v1/media.py::upload_product_media_object`). Everything the
+ * operator chose therefore has to travel on THIS request — a second
+ * `/media/register` call would only re-write values that are already correct,
+ * and its failure would be mistaken for an upload failure.
+ *
+ * Every metadata field is optional and appended only when supplied, so callers
+ * that pass just a file (the pre-existing contract) send exactly the same
+ * multipart body they always did.
+ *
+ * `is_primary` is refused for employee scope here AND in the service: the
+ * employee lane must never request primacy (`_require_employee_write_scope`
+ * would reject it, turning a valid upload into a failure).
+ */
+export async function apiUploadProductMediaObject(productId, file, options = {}) {
+  const {
+    scope = "admin",
+    role = null,
+    sortOrder = null,
+    isPrimary = false,
+    title = null,
+    altText = null,
+    replaceExisting = false,
+    signal = null,
+    timeoutMs = 0,
+  } = options || {};
+
   const id = String(productId || "").trim();
   if (!id) return { ok: false, error: "No product id supplied." };
   if (!file) return { ok: false, error: "No file selected." };
   const form = new FormData();
   form.append("file", file);
+  if (role) form.append("role", String(role));
+  if (sortOrder !== null && sortOrder !== undefined) {
+    form.append("sort_order", String(Number(sortOrder) || 0));
+  }
+  if (isPrimary === true && scope !== "employee") form.append("is_primary", "true");
+  if (title) form.append("title", String(title));
+  if (altText) form.append("alt_text", String(altText));
+  if (replaceExisting === true) form.append("replace_existing", "true");
   // Employee sessions use the dedicated employee product-media route (the
   // admin surface refuses their tokens by design); the server enforces the
   // media.upload grant, a non-archived product and the products/ namespace.
@@ -143,7 +181,7 @@ export async function apiUploadProductMediaObject(productId, file, { scope = "ad
       ? `/employee/media/products/${encodeURIComponent(id)}/objects`
       : `/media/products/${encodeURIComponent(id)}/objects`;
   try {
-    const data = await apiClient.upload(path, form, { scope });
+    const data = await apiClient.upload(path, form, { scope, signal, timeoutMs });
     return { ok: true, data, object: data?.object ?? null };
   } catch (error) {
     return handleError(error, "Upload failed.");

@@ -19,5 +19,12 @@ Thumbs.db
 # Media ingestion working files
 scripts/.tmp/
 
-#test files
-tests/
+# Test files
+# The suite directory is intentionally not committed wholesale, but the media
+# upload regression suites below must be reviewable in version control.
+tests/*
+!tests/mediaUploadContract.test.js
+!tests/mediaUploadReconciliation.test.js
+!tests/mediaProductSearch.test.js
+!tests/mediaUploadSurface.test.js
+!tests/mediaUploadRecovery.test.js

@@ -376,6 +376,22 @@ async function request(method, path, body, options = {}) {
     isRetry = false,
     headers: extraHeaders = {},
     rawBody,
+    /**
+     * OPT-IN cancellation — media uploads only.
+     *
+     * `timeoutMs` and `signal` are additive and default to "off". When neither
+     * is supplied NO AbortController is created and the request is byte-for-
+     * byte the one this client has always issued, so every existing caller is
+     * unaffected. Only `apiUploadProductMediaObject` opts in.
+     *
+     * A timed-out or aborted multipart request is genuinely ambiguous: the
+     * server may have committed before the socket dropped. Those two cases
+     * therefore raise distinct codes (`TIMEOUT`, `CANCELLED`) instead of the
+     * generic `NETWORK_ERROR`, so the media pipeline can reconcile them
+     * against the authoritative read rather than calling them failures.
+     */
+    timeoutMs = 0,
+    signal: externalSignal = null,
   } = options;
 
   const activeScope = resolveRequestScope(path, options);
@@ -402,10 +418,56 @@ async function request(method, path, body, options = {}) {
         : {}),
   };
 
+  /* Opt-in only: no controller, no timer, no `signal` for existing callers. */
+  let controller = null;
+  let timer = null;
+  let timedOut = false;
+  let detachSignal = null;
+
+  if (timeoutMs > 0 || externalSignal) {
+    controller = new AbortController();
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort();
+      } else {
+        const forward = () => controller.abort();
+        externalSignal.addEventListener("abort", forward, { once: true });
+        detachSignal = () => externalSignal.removeEventListener("abort", forward);
+      }
+    }
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutMs);
+    }
+    fetchOptions.signal = controller.signal;
+  }
+
   let res;
   try {
     res = await fetch(url, fetchOptions);
   } catch (networkError) {
+    if (timedOut) {
+      throw new ApiError(
+        `The request timed out after ${Math.max(1, Math.round(timeoutMs / 1000))}s.`,
+        0,
+        null,
+        "TIMEOUT",
+        null,
+        true
+      );
+    }
+    if (externalSignal?.aborted || networkError?.name === "AbortError") {
+      throw new ApiError(
+        "The request was cancelled.",
+        0,
+        null,
+        "CANCELLED",
+        null,
+        false
+      );
+    }
     throw new ApiError(
       "Network error. Check your connection.",
       0,
@@ -414,6 +476,9 @@ async function request(method, path, body, options = {}) {
       null,
       true
     );
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (detachSignal) detachSignal();
   }
 
   // Auto-refresh on 401 (one retry only), isolated strictly to the active scope.
