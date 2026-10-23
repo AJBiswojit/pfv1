@@ -13,6 +13,34 @@ import { LineReveal, FadeUp, MaskReveal } from '../ui/Reveal.jsx';
 import { cx } from '../../utils/format.js';
 import { ease } from '../../utils/motion.js';
 
+/* F-27: the catalogue files a piece under the path it actually publishes
+   (`…/jewellery`, `women/sarees/banarasi`), so the design's fixed list of five
+   jewellery words produced tabs that could never match — the pieces this
+   section was curated with were reachable only through "All". The tab
+   vocabulary is derived from the curated products instead; the design's own
+   words stay as labels wherever the catalogue happens to use the same key, and
+   nothing is filtered by a type the section does not hold. */
+const labelFor = (key) => jewelleryTypes.find((t) => t.key === key)?.label
+  ?? String(key).replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+export function filterTabs(products = []) {
+  const keys = [];
+  for (const product of products) {
+    const key = String(product?.type ?? '').trim();
+    /* `all` is the adapter's "no type published" fallback, not a real type. */
+    if (!key || key === 'all' || keys.includes(key)) continue;
+    keys.push(key);
+  }
+  /* Design order first, then anything else the catalogue publishes. */
+  const designed = jewelleryTypes.map((t) => t.key).filter((key) => keys.includes(key));
+  const rest = keys.filter((key) => !designed.includes(key));
+  return [{ key: 'all', label: 'All' }, ...[...designed, ...rest].map((key) => ({ key, label: labelFor(key) }))];
+}
+
+/* The tab's row set, in one place so the tab count and the grid can never
+   disagree about what a tab means. */
+export const productsForTab = (products = [], key = 'all') => key === 'all' ? products : products.filter((p) => p.type === key);
+
 export default function JewelleryTheatre({ content }) {
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
@@ -20,7 +48,11 @@ export default function JewelleryTheatre({ content }) {
   const all = useMemo(() => content ? content.products('products') : [], [catalogueRevision, content]);
   const [type, setType] = useState('all');
   const [spot, setSpot] = useState(null);
-  const list = type === 'all' ? all : all.filter((p) => p.type === type);
+  const tabs = filterTabs(all);
+  /* A catalogue refresh can remove the selected type; fall back to "All"
+     rather than leaving the section on a filter with nothing behind it. */
+  const activeType = tabs.some((t) => t.key === type) ? type : 'all';
+  const list = productsForTab(all, activeType);
   /* Database-driven only: without authored content this section renders nothing. */
   if (!content) return null;
 
@@ -74,11 +106,11 @@ export default function JewelleryTheatre({ content }) {
 
           <div className="jewel__tabs" role="tablist" aria-label="Filter jewellery by type">
             <LayoutGroup id="jewel-tabs">
-              {jewelleryTypes.map((t) => {
-                const n = t.key === 'all' ? all.length : all.filter((p) => p.type === t.key).length;
+              {tabs.map((t) => {
+                const n = productsForTab(all, t.key).length;
                 return (
-                  <button key={t.key} type="button" role="tab" aria-selected={type === t.key} className={cx('jtab', type === t.key && 'is-active')} onClick={() => setType(t.key)}>
-                    {type === t.key && <motion.span layoutId="jtab-pill" className="jtab__pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+                  <button key={t.key} type="button" role="tab" aria-selected={activeType === t.key} className={cx('jtab', activeType === t.key && 'is-active')} onClick={() => setType(t.key)}>
+                    {activeType === t.key && <motion.span layoutId="jtab-pill" className="jtab__pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
                     <span className="jtab__label">{t.label}</span><sup>{n}</sup>
                   </button>
                 );

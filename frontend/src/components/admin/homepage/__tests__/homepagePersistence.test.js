@@ -21,9 +21,15 @@ const click = async (tree, label) => {
   assert.ok(node, label); assert.notEqual(node.props.disabled, true, `${label} enabled`);
   await act(async () => { node.props.onClick(); await new Promise(setImmediate); });
 };
+/* F-08 (Batch 3) renamed the visible copy labels; the locator follows the
+   label text case-insensitively. No assertion changed. */
+const fieldLabel = (l, field) => text(l).toLowerCase() === String(field).toLowerCase();
 const fill = async (tree, field, value) => act(async () => {
-  const label = tree.root.findAllByType('label').find((l) => text(l) === field);
-  assert.ok(label, field); label.findByType('input').props.onChange({ target: { value } });
+  const label = tree.root.findAllByType('label').find((l) => fieldLabel(l, field));
+  assert.ok(label, field);
+  /* F-08: subtitle is now a textarea; other copy fields stay inputs. */
+  const control = label.findAllByType('input')[0] ?? label.findAllByType('textarea')[0];
+  assert.ok(control, field); control.props.onChange({ target: { value } });
 });
 const submit = async (tree) => act(async () => { tree.root.findByType('form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate); });
 const mount = async (which = actor) => {
@@ -134,7 +140,7 @@ test('conflict retains unsaved edits, blocks automatic writes and requires reloa
   assert.equal(section.items.length, 0);
   assert.equal(tree.root.findAllByType('button').find((b) => text(b) === 'Save section entry').props.disabled, true);
   failed.write = null; await click(tree, 'Reload section and public content');
-  assert.equal(tree.root.findAllByType('label').find((l) => text(l) === 'title').findByType('input').props.value, '');
+  assert.equal(tree.root.findAllByType('label').find((l) => fieldLabel(l, 'title')).findByType('input').props.value, '');
 });
 
 test('confirmed write plus failed reload remains saved, and public refresh is requested', async () => {

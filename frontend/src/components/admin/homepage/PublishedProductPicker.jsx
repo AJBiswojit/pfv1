@@ -11,7 +11,16 @@ import { resolveMediaUrl } from '../../../services/media/mediaPaths';
    of the 24 loaded rows. */
 const SEARCH_DEBOUNCE_MS = 250;
 
-export default function PublishedProductPicker({ actor, onSelect, selectedId, disabled = false }) {
+/* F-11 (Batch 2): the grid used to *look* multi-select while the parent kept a
+   single product, so ticking a second tile silently replaced the first. In a
+   save context the picker is now genuinely multi-select (`multiple`), reports
+   every toggle, greys out products already used in this slot (a duplicate is a
+   guaranteed server 409) and stops at the slot's remaining capacity. The
+   read-only inspection mode (`onSelect` absent) is unchanged. */
+export default function PublishedProductPicker({
+  actor, onSelect, onToggle, selectedId, selectedIds = [], multiple = false,
+  disabled = false, disabledIds = [], remaining = null,
+}) {
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState('');
@@ -41,6 +50,12 @@ export default function PublishedProductPicker({ actor, onSelect, selectedId, di
 
   const items = (state.items ?? []).filter(eligibleHomepageProduct);
   const access = staffHomepageAccess(actor);
+  const isPicked = (product) => multiple ? selectedIds.includes(product.id) : selectedId === product.id;
+  const atCapacity = multiple && remaining !== null && selectedIds.length >= remaining;
+  const pick = (product, checked) => {
+    if (multiple) { onToggle?.(product, checked); return; }
+    onSelect?.(checked ? product : null);
+  };
   return <div className="space-y-4">
     {!onSelect && <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
       {access.write ? <>
@@ -52,19 +67,24 @@ export default function PublishedProductPicker({ actor, onSelect, selectedId, di
       </>}
     </div>}
     <div className="flex flex-wrap items-center gap-3">
-      <label className="text-xs">Search published catalogue (server-side) <input value={query} onChange={(e) => setQuery(e.target.value)} className="ml-2 border border-pf-border bg-pf-card p-2" /></label>
-      <button type="button" onClick={() => setAttempt((v) => v + 1)} className="border border-pf-border p-2 text-xs">Refresh published catalogue</button>
+      <label className="text-xs">Search published catalogue (server-side) <input value={query} onChange={(e) => setQuery(e.target.value)} className="ml-2 border border-pf-border-strong bg-pf-card p-2" /></label>
+      <button type="button" onClick={() => setAttempt((v) => v + 1)} className="border border-pf-border-strong bg-pf-card p-2 text-xs">Refresh published catalogue</button>
     </div>
     {state.status === 'loading' ? <p role="status">Loading published products…</p> : state.status === 'error' ?
       <div role="alert"><p>{state.error}</p><button type="button" onClick={() => setAttempt((v) => v + 1)}>Retry products</button></div> :
       <>
         {!items.length && <p>No eligible published products match. Drafts, review items and unpublished records cannot be selected.</p>}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((product) => <label key={product.id} className="flex gap-3 border border-pf-border p-3">
-            <input type="checkbox" disabled={disabled} checked={onSelect ? selectedId === product.id : selected.includes(product.id)} onChange={(e) => onSelect ? onSelect(e.target.checked ? product : null) : setSelected((ids) => e.target.checked ? [...ids, product.id] : ids.filter((id) => id !== product.id))} />
-            {product.image && <img src={resolveMediaUrl(product.image)} alt="" className="h-16 w-12 object-cover" />}
-            <span className="min-w-0"><span className="block text-sm">{product.name}</span><span className="block break-all text-xs text-pf-muted">{product.id} · Published</span></span>
-          </label>)}
+          {items.map((product) => {
+            const used = disabledIds.includes(product.id);
+            const lock = disabled || used || (!isPicked(product) && atCapacity);
+            return <label key={product.id} className={`flex gap-3 border border-pf-border-strong bg-pf-card p-3 ${used ? 'opacity-60' : ''}`}>
+              <input type="checkbox" disabled={lock} checked={isPicked(product)} onChange={(e) => (onSelect || multiple ? pick(product, e.target.checked) : setSelected((ids) => e.target.checked ? [...ids, product.id] : ids.filter((id) => id !== product.id)))} />
+              {used && <span className="sr-only">Already added to this slot.</span>}
+              {product.image && <img src={resolveMediaUrl(product.image)} alt="" className="h-16 w-12 object-cover" />}
+              <span className="min-w-0"><span className="block text-sm">{product.name}</span><span className="block break-all text-xs text-pf-muted">{product.id} · Published{used ? ' · already added to this slot' : ''}</span></span>
+            </label>;
+          })}
         </div>
         <div className="flex items-center gap-4 text-xs">
           <button type="button" disabled={page === 1} onClick={() => setPage((v) => v - 1)}>Previous products</button>
@@ -72,6 +92,9 @@ export default function PublishedProductPicker({ actor, onSelect, selectedId, di
           <button type="button" disabled={page * 24 >= state.total} onClick={() => setPage((v) => v + 1)}>Next products</button>
         </div>
       </>}
-    {!onSelect && <p role="status" className="text-xs">{selected.length} selected · not saved from this panel</p>}
+    {multiple && <p role="status" className="text-xs" data-product-staging>
+      Selected {selectedIds.length} products · will be added as {selectedIds.length} separate {selectedIds.length === 1 ? 'entry' : 'entries'} (one existing call each).{remaining !== null ? ` ${remaining} place${remaining === 1 ? '' : 's'} left in this slot.` : ''}
+    </p>}
+    {!onSelect && !multiple && <p role="status" className="text-xs">{selected.length} selected · not saved from this panel</p>}
   </div>;
 }

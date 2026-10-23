@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Copy, Database, Film, HardDrive, Image as ImageIcon, Layers, Plus, Sparkles, Tag } from "lucide-react";
 import AdminPage from "../../../components/admin/AdminPage";
@@ -36,6 +36,17 @@ export default function AdminMediaLibrary() {
      panel stays mounted so an in-flight upload, a chosen file and its feedback
      are never thrown away. */
   const [placementOpen, setPlacementOpen] = useState(true);
+
+  /* F-03 (Batch 2): the homepage control centre links here as
+     `/media#placement-art`. Landing on that hash opens the panel and scrolls
+     it into view, so "register art" stops dead-ending on the product uploader.
+     Collapsing afterwards is unaffected — this only reacts to the URL. */
+  const placementRef = useRef(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location?.hash !== "#placement-art") return;
+    setPlacementOpen(true);
+    placementRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, []);
 
   /* Permission-aware controls (restored in Batch 5A). `resolveMediaAccess` is
      the house's existing media authorization — the same resolver the page used
@@ -125,6 +136,20 @@ export default function AdminMediaLibrary() {
         </>
       )}
 
+      {/* F-19 (Batch 4): what deleting one asset actually costs, stated where an
+          operator reads the registry. The behaviour is unchanged and no count is
+          queried — this only replaces "the UI says nothing" with the truth:
+          deletion is refused while anything references the asset (409 from the
+          reference audit), a section entry's removal never deletes the artwork,
+          a section entry pointing at a vanished asset is removed by the database
+          (the media reference cascades), and a hero row keeps its stored object
+          key, so its plate simply stops resolving and is hidden on the storefront. */}
+      <p role="note" className="mb-4 border-l-2 border-pf-gold-deep bg-pf-card-soft p-3 text-xs text-pf-muted">
+        <strong className="text-pf-burgundy">Before deleting an asset:</strong> deletion is permanent and is refused while a
+        product, homepage entry or marketing placement still references it. Removing a homepage entry never deletes its
+        artwork. If an asset is removed elsewhere, the homepage entries that used it are removed with it, while hero
+        placement rows keep their stored object key and their image stops loading.
+      </p>
       {/* Batch 5 — ONE inventory: the durable registry, read from
           GET /media/assets. The previous in-memory "All Media" grid and the
           separate durable-asset panel are both gone. */}
@@ -134,7 +159,7 @@ export default function AdminMediaLibrary() {
           default. Same panel, same permission gate, same `onRegistered`
           refresh: a registration still re-reads the cards and the registry. */}
       {mediaAccess.canUpload ? (
-        <section className="mt-6" aria-labelledby="placement-art-toggle">
+        <section id="placement-art" ref={placementRef} className="mt-6 scroll-mt-24" aria-labelledby="placement-art-toggle">
           <button
             type="button"
             id="placement-art-toggle"

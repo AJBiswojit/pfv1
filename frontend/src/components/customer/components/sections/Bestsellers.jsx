@@ -19,12 +19,25 @@ const FILTERS = [
   { key: 'jewellery', label: 'Jewellery' },
 ];
 
+/* F-27: `sarees` is a parent category in the catalogue's own path
+   (`women/sarees/banarasi`, `bridal/the-bride/sarees`), never the leaf `type`,
+   so a type-only match left the Sarees tab empty. The adapter already publishes
+   every path segment — plus the documented design aliases — as `collections`,
+   which is the vocabulary this filter bar was written in. */
+export function matchesFilter(product, filter) {
+  if (filter === 'all') return true;
+  if (!product) return false;
+  return product.department === filter
+    || product.type === filter
+    || (Array.isArray(product.collections) && product.collections.includes(filter));
+}
+
 export default function Bestsellers({ content }) {
   const [filter, setFilter] = useState('all');
   /* The live catalogue arrives from the backend after mount, so this memo
      depends on the revision its boundary module publishes. */
   const catalogueRevision = useCatalogueRevision();
-  const list = useMemo(() => content ? content.products('products').filter((p) => filter === 'all' || p.department === filter || p.type === filter) : getFeaturedBy(filter, 8), [filter, catalogueRevision, content]);
+  const list = useMemo(() => content ? content.products('products').filter((p) => matchesFilter(p, filter)) : getFeaturedBy(filter, 8), [filter, catalogueRevision, content]);
   return (
     <section className="best" aria-labelledby="best-title">
       <div className="container">

@@ -199,10 +199,16 @@ const navTo = async (tree, key) => {
   assert.ok(button, `nav exists: ${key}`);
   await act(async () => { button.props.onClick(); }); await flush(); await flush();
 };
+/* F-08 (Batch 3) renamed the visible copy labels; the locator follows the
+   label text case-insensitively. No assertion changed. */
+const fieldLabel = (l, field) => text(l).toLowerCase() === String(field).toLowerCase();
 const fill = async (tree, field, value) => act(async () => {
-  const label = tree.root.findAllByType('label').find((l) => text(l) === field);
+  const label = tree.root.findAllByType('label').find((l) => fieldLabel(l, field));
   assert.ok(label, `field exists: ${field}`);
-  label.findByType('input').props.onChange({ target: { value } });
+  /* F-08: subtitle is now a textarea; other copy fields stay inputs. */
+  const control = label.findAllByType('input')[0] ?? label.findAllByType('textarea')[0];
+  assert.ok(control, `control exists: ${field}`);
+  control.props.onChange({ target: { value } });
 });
 const submit = async (tree) => { await act(async () => { tree.root.findByType('form').props.onSubmit({ preventDefault() {} }); }); await flush(); await flush(); };
 const ensureConfigured = async (tree) => {
@@ -242,12 +248,12 @@ test('sectionStatusLabel distinguishes missing, inactive, empty, ready and unava
   assert.equal(model.sectionStatusLabel({ configured: true, state: 'unavailable' }), 'Status unavailable');
 });
 
-test('a failed status read reports Status unavailable, never a fake configured state', async () => {
+test('a failed status read reports a retryable server error, never a fake configured state', async () => {
   fail.list = true;
   const tree = await mountPage();
   const labels = navLabels(tree);
-  assert.equal(labels.sarees, 'Status unavailable');
-  assert.equal(labels.trust, 'Status unavailable');
+  assert.equal(labels.sarees, 'Server error — retry');
+  assert.equal(labels.trust, 'Server error — retry');
 });
 
 // -- 2. editor selection ------------------------------------------------------
@@ -269,15 +275,25 @@ for (const key of Object.keys(REGISTRY)) {
   });
 }
 
-test('unsupported type/slot combinations say so honestly after configuration', async () => {
+/* Batch 2 (F-23): a type with no registered slot is disabled and labelled
+   `· none` BEFORE any write, so pressing Configure can no longer be the way to
+   discover that a tab is a dead end. The old flow configured the section first
+   and then printed "No … slot is registered"; that message remains in the
+   editor as a defensive fallback but is no longer reachable by clicking. */
+test('unsupported type/slot combinations are disabled before any write (F-23)', async () => {
   const tree = await mountPage();
   const cases = [['bestsellers', 'MEDIA'], ['trust', 'MEDIA'], ['trust', 'PRODUCT'], ['promotion', 'PRODUCT'], ['newsletter', 'PRODUCT']];
   for (const [key, kind] of cases) {
     await navTo(tree, key);
-    await click(tree, kind);
-    await ensureConfigured(tree);
-    assert.match(text(tree.root), new RegExp(`No ${kind} slot is registered`), `${key}/${kind}`);
+    const tab = tree.root.findAllByType('button').find((b) => text(b) === `${kind} · none`);
+    assert.ok(tab, `${key}/${kind} is labelled with no slots`);
+    assert.equal(tab.props.disabled, true, `${key}/${kind} cannot be opened`);
+    assert.equal(requests.filter((r) => r.method === 'PUT').length, 0, `${key}: selecting the section wrote nothing`);
   }
+  /* A live type stays enabled with its plain label. */
+  const textTab = tree.root.findAllByType('button').find((b) => text(b) === 'TEXT');
+  assert.ok(textTab, 'a registered type keeps its plain label');
+  assert.notEqual(textTab.props.disabled, true);
 });
 
 // -- 3-4. configure → save → reload per section --------------------------------
@@ -389,9 +405,9 @@ test('invalid payload rejection surfaces the backend message and allows retry', 
   await ensureConfigured(tree);
   // Empty copy is rejected by the backend shape check (422, no reload trap).
   await fill(tree, 'title', '   ');
-  await act(async () => { tree.root.findAllByType('label').find((l) => text(l) === 'title').findByType('input').props.onChange({ target: { value: 'x' } }); });
+  await act(async () => { tree.root.findAllByType('label').find((l) => fieldLabel(l, 'title')).findByType('input').props.onChange({ target: { value: 'x' } }); });
   // Force the 422 path by clearing again after dirty (submit with blank copy).
-  await act(async () => { tree.root.findAllByType('label').find((l) => text(l) === 'title').findByType('input').props.onChange({ target: { value: '   ' } }); });
+  await act(async () => { tree.root.findAllByType('label').find((l) => fieldLabel(l, 'title')).findByType('input').props.onChange({ target: { value: '   ' } }); });
   await submit(tree);
   assert.match(text(tree.root), /Text requires meaningful copy/);
   assert.doesNotMatch(text(tree.root), /Reload and reconcile/);
@@ -412,7 +428,7 @@ test('revision conflict preserves the draft and requires reload before retry', a
   assert.match(text(tree.root), /Reload and reconcile/);
   assert.equal(tree.root.findAllByType('button').find((b) => text(b) === 'Save section entry').props.disabled, true);
   await click(tree, 'Reload section and public content');
-  assert.equal(tree.root.findAllByType('label').find((l) => text(l) === 'title').findByType('input').props.value, '');
+  assert.equal(tree.root.findAllByType('label').find((l) => fieldLabel(l, 'title')).findByType('input').props.value, '');
 });
 
 // -- 7. entry operations --------------------------------------------------------
@@ -456,6 +472,8 @@ test('trust TEXT entries reorder as one group with exact membership', async () =
   await saveText(tree, 'Second trustee');
   const before = sectionState('trust').items.map((r) => r.id);
   await click(tree, 'Move entry up', { index: 1 }); // second entry moves above the first
+  assert.equal(requests.filter((r) => r.path.endsWith('/reorder')).length, 0, 'the move is local until committed');
+  await click(tree, 'Save order');
   const sent = requests.filter((r) => r.path.endsWith('/reorder')).at(-1).body;
   assert.equal(sent.slotKey, 'trust-items');
   assert.equal(sent.contentType, 'TEXT');
@@ -475,6 +493,7 @@ test('sarees lookbook MEDIA entries reorder as one group', async () => {
   await fill(tree, 'title', 'Frame two');
   await submit(tree);
   await click(tree, 'Move entry up', { index: 1 });
+  await click(tree, 'Save order');
   const sent = requests.filter((r) => r.path.endsWith('/reorder')).at(-1).body;
   assert.equal(sent.slotKey, 'lookbook');
   assert.equal(sent.contentType, 'MEDIA');
@@ -491,6 +510,7 @@ test('bestsellers PRODUCT entries reorder within their slot', async () => {
   await act(async () => { tree.root.findAllByProps({ type: 'checkbox' })[1].props.onChange({ target: { checked: true } }); });
   await submit(tree);
   await click(tree, 'Move entry up', { index: 1 });
+  await click(tree, 'Save order');
   const sent = requests.filter((r) => r.path.endsWith('/reorder')).at(-1).body;
   assert.equal(sent.slotKey, 'products');
   assert.equal(sent.contentType, 'PRODUCT');
@@ -538,7 +558,11 @@ test('a completely filled type replaces the create form with an honest message',
 // `document` during layout effects and therefore cannot mount under
 // react-test-renderer (node has no DOM). Browsers are unaffected. Both are
 // covered by the SSR preview test below, which skips layout effects.
-for (const key of ['categories', 'bridal', 'promotion', 'men', 'kids', 'kurtis', 'newsletter', 'trust']) {
+// kurtis joined them in Batch 1: the preview now renders all four structural
+// mood slots (placeholders instead of invented art), so its LayoutGroup /
+// layoutId projection runs where it previously rendered an empty selector.
+// The SSR test still covers kurtis with the same draft-copy assertion.
+for (const key of ['categories', 'bridal', 'promotion', 'men', 'kids', 'newsletter', 'trust']) {
   test(`${key}: preview tab renders the storefront section without crashing`, async () => {
     const tree = await mountPage();
     await navTo(tree, key);
@@ -549,7 +573,7 @@ for (const key of ['categories', 'bridal', 'promotion', 'men', 'kids', 'kurtis',
     await flush(); await flush();
     const body = text(tree.root);
     assert.doesNotMatch(body, /Preview unavailable/, `${key}: preview boundary tripped`);
-    assert.match(body, /Preview — not saved/, `${key}: preview header`);
+    assert.match(body, /Preview — saved content \(no unsaved changes\)/, `${key}: honest preview header`);
     assert.match(body, new RegExp(`${TITLES[key]} live`), `${key}: saved copy visible in preview`);
   });
 }
@@ -564,7 +588,7 @@ test('all eleven section previews render server-side, including the sarees rail'
     const section = { key, configured: true, state: 'ready', source: 'sections', isActive: true, revision: 2, allowedSlots, items: [] };
     const html = renderToStaticMarkup(React.createElement(MemoryRouter, null,
       React.createElement(SectionPreview, { sectionKey: key, draft: { eyebrow: 'E', title: `${TITLES[key]} SSR`, subtitle: 'S', ctaLabel: '', ctaHref: '', altText: '' }, asset: null, product: null, slot: firstText.slotKey, contentType: 'TEXT', section })));
-    assert.match(html, /Preview — not saved/, `${key}: SSR preview header`);
+    assert.match(html, /Preview — includes unsaved changes \(not saved\)/, `${key}: SSR preview header`);
     assert.match(html, new RegExp(`${TITLES[key]} SSR`), `${key}: SSR preview shows draft copy`);
   }
 });

@@ -9,7 +9,7 @@ import PublishedProductPicker from '../../../components/admin/homepage/Published
 import { useAdminAuth } from '../../../context/AdminAuthContext';
 import { useEmployeeAuth } from '../../../context/EmployeeAuthContext';
 import { hasAdminPermission } from '../../../config/adminAccess';
-import { HOMEPAGE_SECTIONS, homepageAccess, sectionStatusLabel } from '../../../services/homepage/homepageContentModel';
+import { HOMEPAGE_SECTIONS, homepageAccess, sectionListStatusLabel, sectionStatusLabel } from '../../../services/homepage/homepageContentModel';
 import { loadHomepagePlacement } from '../../../services/homepage/homepageContentService';
 
 /** One section/type workspace. No legacy browser-local assignment editor is
@@ -30,24 +30,27 @@ export default function AdminMarketingMedia() {
   const [type, setType] = useState('MEDIA');
   const [pending, setPending] = useState(false);
   const [statusTick, setStatusTick] = useState(0);
-  const [statuses, setStatuses] = useState({ state: 'idle', sections: {}, hero: null });
+  const [statuses, setStatuses] = useState({ state: 'idle', sections: {}, hero: null, sectionsStatus: null });
   const section = HOMEPAGE_SECTIONS.find((item) => item.id === sectionId);
   const loading = employeeWorkspace ? employeeAuth.isLoading : adminAuth.isLoading;
   /* Nav statuses are read from persisted backend state — the non-hero list
-     contract plus the existing HOME_HERO placement read — never from the
-     static HOMEPAGE_SECTIONS.live flag. Each helper fails closed without
+     contract plus the existing HOME_HERO placement read — never from a static
+     per-section flag (F-21 removed the last one). Each helper fails closed without
      HTTP when its capability is missing, so no unauthorized request is sent.
      Statuses refresh after any editor save via onSaved → statusTick. */
   useEffect(() => {
     if (loading || (!access.overview && !staff.view)) return undefined;
     let cancelled = false;
-    setStatuses({ state: 'loading', sections: {}, hero: null });
+    setStatuses({ state: 'loading', sections: {}, hero: null, sectionsStatus: null });
     (async () => {
-      const next = { sections: staff.view ? null : {}, hero: null };
+      const next = { sections: staff.view ? null : {}, hero: null, sectionsStatus: null };
       if (staff.view) {
         const list = await homepageRequest(actor, '/sections', 'get');
         if (cancelled) return;
         next.sections = list.ok ? Object.fromEntries((list.sections ?? []).map((s) => [s.key, s])) : null;
+        /* F-05: keep the HTTP status so a refusal (403) is not displayed as an
+           outage, and an outage (5xx/offline) is not displayed as a refusal. */
+        next.sectionsStatus = list.ok ? null : (list.status ?? 0);
       }
       next.hero = await loadHomepagePlacement(actor.employee ? actor : actor.admin, 'HOME_HERO');
       if (!cancelled) setStatuses({ state: 'ready', ...next });
@@ -55,18 +58,35 @@ export default function AdminMarketingMedia() {
     return () => { cancelled = true; };
   }, [actor, access.overview, staff.view, loading, statusTick]);
   const refreshStatuses = () => setStatusTick((v) => v + 1);
+  /* F-23 (Batch 2): the section list already carries `allowedSlots` for
+     configured AND unconfigured sections, so type availability is known before
+     any write. A tab with no registered slot is disabled and labelled `· none`
+     instead of letting the operator configure a section to discover it. When
+     the list has not loaded (or failed) nothing is disabled — a status we do
+     not know is not a reason to block the UI. */
+  const slotsFor = (id) => (statuses.state === 'ready' ? statuses.sections?.[id]?.allowedSlots : null);
+  const kindsFor = (id) => {
+    const slots = slotsFor(id);
+    if (!slots) return ['MEDIA', 'PRODUCT', 'TEXT'];
+    return ['MEDIA', 'PRODUCT', 'TEXT'].filter((kind) => slots.some((spec) => spec.contentType === kind));
+  };
+  const typeCount = (kind) => {
+    const slots = slotsFor(sectionId);
+    return slots ? slots.filter((spec) => spec.contentType === kind).length : null;
+  };
+  const typeLabel = (kind) => (typeCount(kind) === 0 ? `${kind} · none` : kind);
   const navLabel = (item) => {
     if (item.id === 'hero') {
       if (statuses.state !== 'ready') return statuses.state === 'loading' ? 'Checking status…' : 'Live when activated';
       const hero = statuses.hero;
-      if (!hero || !hero.ok) return hero?.status === 403 ? 'Requires media access' : 'Status unavailable';
+      if (!hero || !hero.ok) return hero?.status === 403 ? 'Requires media access' : sectionListStatusLabel(hero?.status ?? 0);
       const rows = hero.items ?? [];
       if (!rows.length) return 'No saved entries';
       return `${rows.length} saved · ${rows.filter((r) => r.isActive).length} active`;
     }
     if (!staff.view) return 'Requires marketing.view';
     if (statuses.state !== 'ready') return 'Checking status…';
-    if (!statuses.sections) return 'Status unavailable';
+    if (!statuses.sections) return sectionListStatusLabel(statuses.sectionsStatus);
     return sectionStatusLabel(statuses.sections[item.id]);
   };
   if (loading) return <p role="status">Verifying homepage content access…</p>;
@@ -75,7 +95,10 @@ export default function AdminMarketingMedia() {
     description="Twelve fixed homepage sections. Registered media, published product placements and editorial text are saved through workspace-scoped backend contracts."
     actions={access.view ? <div className="flex flex-wrap gap-2">
       <Link to={`${prefix}/media`} className="border border-pf-border p-2 text-xs">Registered media library</Link>
-      {access.create && <Link to={`${prefix}/media/upload`} className="border border-pf-border p-2 text-xs">Register media</Link>}
+      {/* F-03 (Batch 2): homepage art is registered in the media library's
+         placement panel, not the product uploader. The hash opens and focuses
+         that panel directly. */}
+      {access.create && <Link to={`${prefix}/media#placement-art`} className="border border-pf-border p-2 text-xs">Register placement art</Link>}
       {hasAdminPermission(actor.admin, 'catalogue.view') && <Link to={`${prefix}/products`} className="border border-pf-border p-2 text-xs">Product lifecycle workspace</Link>}
     </div> : null}>
     <div className="mb-6 border border-pf-border bg-pf-card p-4 text-sm">
@@ -84,13 +107,23 @@ export default function AdminMarketingMedia() {
     </div>
     {access.employeeOnly && !staff.view && <p role="status" className="mb-6 border border-amber-200 bg-amber-50 p-4 text-sm">Your media permission allows this overview and published-product inspection. The current registered-media and marketing APIs require an admin session and reject employee tokens. The new homepage routes additionally require explicit marketing grants; no admin credentials are reused here.</p>}
     <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
-      <nav aria-label="Homepage sections" className="space-y-1 self-start border border-pf-border bg-pf-ivory p-2 lg:sticky lg:top-4">
+      {/* F-17 (Batch 4): below `lg` the twelve-row rail stacked ~670 px of
+         navigation above the workspace. It is now a single horizontally
+         scrollable strip of section chips; the desktop rail is unchanged
+         (`lg:block lg:sticky`). Every chip keeps its number, title and status,
+         the buttons stay in DOM order, and no control is removed — the first
+         editable control is no longer pushed below the fold. */}
+      <nav aria-label="Homepage sections" className="flex min-w-0 snap-x gap-1 overflow-x-auto self-start border border-pf-border bg-pf-ivory p-2 lg:sticky lg:top-4 lg:block lg:space-y-1 lg:overflow-visible">
         {HOMEPAGE_SECTIONS.map((item, index) => <button key={item.id} type="button" disabled={pending} aria-current={item.id === sectionId ? 'true' : undefined}
-          onClick={() => { setSectionId(item.id); setType('MEDIA'); }}
-          className={`block w-full border-l-2 px-3 py-3 text-left disabled:opacity-50 ${item.id === sectionId ? 'border-pf-gold-deep bg-pf-ivory' : 'border-transparent'}`}>
+          onClick={() => {
+            const open = kindsFor(item.id);
+            setSectionId(item.id);
+            setType(open.includes(type) && open.length ? type : (open[0] || 'MEDIA'));
+          }}
+          className={`shrink-0 snap-start border-l-2 px-3 py-2 text-left disabled:opacity-50 lg:block lg:w-full lg:py-3 ${item.id === sectionId ? 'border-pf-gold-deep bg-pf-ivory' : 'border-transparent'}`}>
           <span className="mr-2 font-mono text-[10px] text-pf-muted">{String(index + 1).padStart(2, '0')}</span>
-          <span className="text-sm">{item.title}</span>
-          <span className="mt-1 block pl-6 text-[10px] uppercase tracking-wider text-pf-muted">{navLabel(item)}</span>
+          <span className="whitespace-nowrap text-sm lg:whitespace-normal">{item.title}</span>
+          <span className="mt-1 block text-[10px] uppercase tracking-wider text-pf-muted lg:pl-6">{navLabel(item)}</span>
         </button>)}
       </nav>
       <div className="min-w-0 space-y-5">
@@ -99,18 +132,27 @@ export default function AdminMarketingMedia() {
           <p className="mt-2 text-xs text-pf-muted">{section.id === 'hero' ? 'Existing HOME_HERO marketing owner.' : 'Fixed typed slots; authoring requires marketing.view/manage and any media grants.'}</p>
           <p role="status" className="mt-2 text-xs">{pending ? 'Pending changes — save or cancel before switching sections.' : 'No pending changes in this section.'}</p>
         </header>
+        {/* F-22 (Batch 3): one caveat per section, stated once and ABOVE the
+           fields it constrains. The editor used to repeat both sentences under
+           its own form, where they arrived after the operator had typed. */}
+        {section.id === 'newsletter' && <p className="border-l-2 border-pf-gold-deep bg-pf-card-soft p-3 text-xs" role="note">Content only. No verified subscription endpoint is connected, so no sign-up is simulated and no addresses are collected.</p>}
+        {section.id === 'promotion' && <p className="border-l-2 border-pf-gold-deep bg-pf-card-soft p-3 text-xs" role="note">Editorial banner only. This editor cannot create/apply discounts, codes or expiry dates.</p>}
         <div role="group" aria-label="Content type" className="flex gap-2">
-          {['MEDIA', 'PRODUCT', 'TEXT'].map((kind) => <button key={kind} type="button" aria-pressed={type === kind} disabled={pending}
-            onClick={() => setType(kind)} className={`border px-4 py-2 text-xs tracking-widest disabled:opacity-40 ${type === kind ? 'border-pf-burgundy bg-pf-burgundy text-pf-ivory' : 'border-pf-border'}`}>{kind}</button>)}
+          {['MEDIA', 'PRODUCT', 'TEXT'].map((kind) => {
+            const empty = typeCount(kind) === 0;
+            return <button key={kind} type="button" aria-pressed={type === kind} disabled={pending || empty}
+              aria-describedby={empty ? 'type-none-note' : undefined}
+              onClick={() => setType(kind)} className={`border px-4 py-2 text-xs tracking-widest disabled:opacity-40 ${type === kind ? 'border-pf-burgundy bg-pf-burgundy text-pf-ivory' : 'border-pf-border'}`}>{typeLabel(kind)}</button>;
+          })}
         </div>
-        {section.id === 'newsletter' && <p>No verified subscription endpoint is connected. Newsletter editing is content-only; subscription remains unavailable.</p>}
+        {['MEDIA', 'PRODUCT', 'TEXT'].some((kind) => typeCount(kind) === 0) && <p id="type-none-note" role="status" className="text-xs">A tab labelled <strong>· none</strong> has no registered slot in this section, so nothing can be saved there — no configuration write is needed to find that out.</p>}
         {/* B-06 — the "legacy marketing preparation" workflow for the six
            non-hero placements (SAREE_SECTION, BRIDAL_SECTION, JEWELLERY_SECTION,
            PROMOTION, GROOM_SECTION, KIDS_SECTION) saved rows the storefront
            never reads; its toggle is HIDDEN (default-deny UI change only —
            the endpoint, rows and schema are untouched, and the HOME_HERO
            placement panel below stays available). */}
-        {section.id !== 'hero' && staff.view ? <SectionContentEditor key={`${section.id}-${type}`} actor={actor} sectionKey={section.id} contentType={type} onDirtyChange={setPending} onSaved={refreshStatuses} /> :
+        {section.id !== 'hero' && staff.view ? <SectionContentEditor key={`${section.id}-${type}`} actor={actor} sectionKey={section.id} contentType={type} onDirtyChange={setPending} onSaved={refreshStatuses} registerHref={`${prefix}/media#placement-art`} seed={statuses.sections?.[section.id] ?? null} /> :
           type === 'PRODUCT' ? section.product ? <PublishedProductPicker key={section.id} actor={actor} /> : <AdminPanel title="No product slot"><p>This section does not accept product placements.</p></AdminPanel> :
           section.id === 'hero' && (access.view || staff.mediaView) ? <BackendHomeHeroPanel actor={actor} placement="HOME_HERO" contentType={type} onDirtyChange={setPending} onSaved={refreshStatuses} /> :
           <AdminPanel title={`${type} control unavailable`}><p>Explicit marketing.view/manage and any operation-specific media permissions are required. No unauthorized request is sent.</p></AdminPanel>}
