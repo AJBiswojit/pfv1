@@ -3,15 +3,20 @@
  *
  * These suites pin the contract the Phase 7 frontend integration introduced:
  *
- *   · upload → object key → registration → product assignment is a REAL
- *     two-HTTP-call orchestration, and the UI stage vocabulary only ever
- *     reflects server-confirmed transitions (a browser-held file is never
+ *   · upload → object → asset row → product assignment is ONE real HTTP call
+ *     (the upload route commits all three), and the UI stage vocabulary only
+ *     ever reflects server-confirmed transitions (a browser-held file is never
  *     described as uploaded);
+ *   · title / alt text / role / sort order / is_primary ride on that single
+ *     request, because the server creates them once and never edits them;
  *   · failures surface the server's own message, stop the batch at the
- *     failure point and NEVER mint or carry forward a fake media id;
- *   · primary / cover and ordering are re-registered through the idempotent
- *     register endpoint, then the authoritative media-set and product DTO are
- *     re-read from the server — the UI never assumes the write;
+ *     failure point (unless the caller opts into continuing) and NEVER mint or
+ *     carry forward a fake media id — the upload response has none;
+ *   · an unanswered request (timeout / drop / cancel) is `unconfirmed`, not
+ *     `failed`, and is reconciled against the authoritative media-set;
+ *   · employee requests never carry `is_primary`;
+ *   · the authoritative media-set and product DTO are re-read from the server
+ *     — the UI never assumes the write;
  *   · the durable read model (media-set) remains independent of the product
  *     write contract, and media refresh never issues a product PATCH;
  *   · nothing is written to localStorage: the durable registry is the only
@@ -202,49 +207,55 @@ test("a registration rejection returns the server's own message, never a fake id
 // 4. Upload + registration orchestration
 // ===========================================================================
 
-test("uploadAndRegisterProductImage runs upload → register with honest stage reports", async () => {
+test("uploadAndRegisterProductImage makes ONE request that carries the file and its metadata", async () => {
   const calls = mockFetch((url) => {
     if (String(url).endsWith("/media/products/PF-W-NEW-0001/objects")) {
-      return { ok: true, object: { key: "products/PF-W-NEW-0001/plate-one.png", url: "/api/v1/media/objects/products/PF-W-NEW-0001/plate-one.png" } };
-    }
-    if (String(url).endsWith("/media/register")) {
       return {
         ok: true,
-        assigned: true,
-        media: { id: "media-42", url: "/api/v1/media/objects/products/PF-W-NEW-0001/plate-one.png" },
-        assignment: { id: "asgmt-42", isPrimary: true },
+        object: { key: "products/PF-W-NEW-0001/plate-one.png", url: "/api/v1/media/objects/products/PF-W-NEW-0001/plate-one.png" },
+        status: 201,
       };
     }
-    throw new Error(`unexpected call ${url}`);
+    throw new Error(`no second call may be made, got ${url}`);
   });
 
   const stages = [];
   const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, {
+    role: "COVER",
+    sortOrder: 2,
     isPrimary: true,
+    title: "Cover plate",
+    altText: "A cream handloom sari on a wooden rail",
     onStage: (stage) => stages.push(stage),
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.media.id, "media-42");
   assert.equal(result.objectKey, "products/PF-W-NEW-0001/plate-one.png");
+  assert.equal(result.media, null, "the upload response carries no media id, so none is invented");
   assert.deepEqual(stages, [
     PRODUCT_MEDIA_STAGES.UPLOADING,
     PRODUCT_MEDIA_STAGES.UPLOADED,
-    PRODUCT_MEDIA_STAGES.REGISTERING,
     PRODUCT_MEDIA_STAGES.ASSIGNED,
   ]);
-  // Upload carries the file; registration carries the object key back.
-  assert.ok(formField(calls[0], "file") instanceof File);
-  assert.equal(formField(calls[1], "object_key"), "products/PF-W-NEW-0001/plate-one.png");
-  assert.equal(formField(calls[1], "is_primary"), "true");
+
+  // Exactly one HTTP call: the registration is done by the upload route.
+  assert.equal(calls.length, 1, "no /media/register follow-up");
+  const body = calls[0].options.body;
+  assert.ok(body instanceof FormData);
+  assert.ok(body.get("file") instanceof File);
+  assert.equal(body.get("role"), "COVER");
+  assert.equal(body.get("sort_order"), "2");
+  assert.equal(body.get("is_primary"), "true");
+  assert.equal(body.get("title"), "Cover plate");
+  assert.equal(body.get("alt_text"), "A cream handloom sari on a wooden rail");
 });
 
-test("an upload failure stops before registration and reports failed", async () => {
+test("an upload failure stops before anything else and reports failed", async () => {
   const calls = mockFetch((url) => {
     if (String(url).endsWith("/objects")) {
       return jsonResponse({ detail: "Only administrators may upload media." }, 403);
     }
-    throw new Error(`register must not run, got ${url}`);
+    throw new Error(`nothing else may run, got ${url}`);
   });
 
   const stages = [];
@@ -255,43 +266,66 @@ test("an upload failure stops before registration and reports failed", async () 
   assert.equal(result.ok, false);
   assert.equal(result.step, "upload");
   assert.match(result.error, /administrators/);
+  assert.equal(result.failureKind, "auth");
+  assert.equal(result.uncertain, false);
   assert.deepEqual(stages, [PRODUCT_MEDIA_STAGES.UPLOADING, PRODUCT_MEDIA_STAGES.FAILED]);
-  assert.equal(calls.length, 1, "register was never attempted");
+  assert.equal(calls.length, 1);
+  assert.equal(result.media, undefined, "no media id may be minted on failure");
 });
 
-test("a registration failure carries the object key forward but never a media id", async () => {
-  mockFetch((url) => {
-    if (String(url).endsWith("/objects")) {
-      return { ok: true, object: { key: "products/PF-W-NEW-0001/plate-one.png" } };
-    }
-    return jsonResponse({ detail: "Product media registration requires media.upload." }, 422);
-  });
-
+test("a 409 collision is classified as a collision, never a silent success", async () => {
+  mockFetch(() => jsonResponse({ detail: "A different object already exists at this key." }, 409));
   const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG);
   assert.equal(result.ok, false);
-  assert.equal(result.step, "register");
-  assert.equal(result.objectKey, "products/PF-W-NEW-0001/plate-one.png");
-  assert.equal(result.media, undefined);
-  assert.match(result.error, /media\.upload/);
+  assert.equal(result.failureKind, "collision");
+  assert.equal(result.uncertain, false);
+  assert.equal(result.stage, PRODUCT_MEDIA_STAGES.FAILED);
+  assert.match(result.error, /already exists/);
 });
 
-test("uploadAndRegisterProductImages assigns in queue order and aborts on the first failure", async () => {
+test("a timed-out request is unconfirmed — not failed — and carries no id", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (url, options = {}) =>
+    new Promise((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      });
+    });
+
+  try {
+    const stages = [];
+    const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, {
+      timeoutMs: 5,
+      onStage: (stage) => stages.push(stage),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.uncertain, true);
+    assert.equal(result.failureKind, "timeout");
+    assert.equal(result.stage, PRODUCT_MEDIA_STAGES.UNCONFIRMED);
+    assert.equal(result.media, undefined);
+    assert.match(result.error, /may already be stored/i);
+    assert.deepEqual(stages, [PRODUCT_MEDIA_STAGES.UPLOADING, PRODUCT_MEDIA_STAGES.UNCONFIRMED]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("uploadAndRegisterProductImages sends queue order and aborts on the first failure", async () => {
   const uploads = [];
-  const registers = [];
   mockFetch((url, options) => {
-    const file = options?.body instanceof FormData ? options.body.get("file") : null;
-    const objectKey = options?.body instanceof FormData ? options.body.get("object_key") : null;
+    const body = options?.body;
+    const file = body instanceof FormData ? body.get("file") : null;
+    const sortOrder = body instanceof FormData ? body.get("sort_order") : null;
     if (String(url).endsWith("/objects")) {
-      uploads.push(file?.name);
+      uploads.push({ name: file?.name, sortOrder, role: body.get("role"), primary: body.get("is_primary") });
       if (file?.name === "plate-two.webp") {
         return jsonResponse({ detail: "Only image files are accepted." }, 415);
       }
       return { ok: true, object: { key: `products/PF-W-NEW-0001/${file?.name}` } };
     }
-    const sortOrder = options?.body?.get("sort_order");
-    const isPrimary = options?.body?.get("is_primary");
-    registers.push({ objectKey, sortOrder, isPrimary });
-    return { ok: true, assigned: true, media: { id: `media-${registers.length}` }, assignment: { id: `asgmt-${registers.length}` } };
+    throw new Error(`unexpected call ${url}`);
   });
 
   const result = await uploadAndRegisterProductImages(
@@ -303,56 +337,114 @@ test("uploadAndRegisterProductImages assigns in queue order and aborts on the fi
   assert.equal(result.ok, false, "the batch reports the failure");
   assert.equal(result.failedIndex, 1);
   assert.match(result.error, /image files/);
-  assert.deepEqual(uploads, ["plate-one.png", "plate-two.webp"], "the third file was never uploaded");
-  assert.deepEqual(registers, [
-    { objectKey: "products/PF-W-NEW-0001/plate-one.png", sortOrder: "0", isPrimary: "true" },
-  ]);
+  assert.deepEqual(
+    uploads.map((entry) => entry.name),
+    ["plate-one.png", "plate-two.webp"],
+    "the third file was never uploaded",
+  );
+  assert.deepEqual(uploads[0], { name: "plate-one.png", sortOrder: "0", role: "COVER", primary: "true" });
   assert.equal(result.results.length, 2, "the failed file's result is included for the UI");
 });
 
-test("queue order, roles and firstIsPrimary land on the register payload", async () => {
-  const registers = [];
+test("continueOnError runs the whole batch so a partial success is reported honestly", async () => {
+  const uploads = [];
+  mockFetch((url, options) => {
+    const file = options?.body?.get("file");
+    if (String(url).endsWith("/objects")) {
+      uploads.push(file?.name);
+      if (file?.name === "plate-two.webp") {
+        return jsonResponse({ detail: "Only image files are accepted." }, 415);
+      }
+      return { ok: true, object: { key: `products/PF-W-NEW-0001/${file?.name}` } };
+    }
+    throw new Error(`unexpected call ${url}`);
+  });
+
+  const result = await uploadAndRegisterProductImages(
+    "PF-W-NEW-0001",
+    [PNG, WEBP, AVIF],
+    { continueOnError: true },
+  );
+
+  assert.equal(result.ok, false, "a batch with a rejected file is never 'ok'");
+  assert.deepEqual(uploads, ["plate-one.png", "plate-two.webp", "plate-three.avif"]);
+  assert.equal(result.results.length, 3);
+  assert.deepEqual(
+    result.results.map((entry) => entry.ok),
+    [true, false, true],
+  );
+});
+
+test("queue order, roles, sort order and alt text land on the single upload payload", async () => {
+  const uploads = [];
   mockFetch((url, options) => {
     const body = options?.body;
     if (String(url).endsWith("/objects")) {
+      uploads.push({
+        key: body?.get("file")?.name,
+        role: body?.get("role"),
+        sort: body?.get("sort_order"),
+        primary: body?.get("is_primary"),
+        title: body?.get("title"),
+        alt: body?.get("alt_text"),
+      });
       return { ok: true, object: { key: `products/PF-W-NEW-0001/${body?.get("file")?.name}` } };
     }
-    registers.push({
-      key: body?.get("object_key"),
-      role: body?.get("role"),
-      sort: body?.get("sort_order"),
-      primary: body?.get("is_primary"),
-      title: body?.get("title"),
-    });
-    return { ok: true, assigned: true, media: { id: `media-${registers.length}` } };
+    throw new Error(`unexpected call ${url}`);
   });
 
   const result = await uploadAndRegisterProductImages(
     "PF-W-NEW-0001",
     [
-      { file: PNG, role: "COVER", title: "Cover plate" },
-      { file: WEBP, role: "GALLERY", title: "Gallery plate" },
+      { file: PNG, role: "COVER", title: "Cover plate", alt: "Cream sari folded on a rail" },
+      { file: WEBP, role: "GALLERY", title: "Gallery plate", alt: "Detail of the zari border" },
     ],
-    { firstIsPrimary: true },
+    { firstIsPrimary: true, sortOrder: 4 },
   );
 
   assert.equal(result.ok, true);
-  assert.deepEqual(registers, [
+  assert.deepEqual(uploads, [
     {
-      key: "products/PF-W-NEW-0001/plate-one.png",
+      key: "plate-one.png",
       role: "COVER",
-      sort: "0",
+      sort: "4",
       primary: "true",
       title: "Cover plate",
+      alt: "Cream sari folded on a rail",
     },
     {
-      key: "products/PF-W-NEW-0001/plate-two.webp",
+      key: "plate-two.webp",
       role: "GALLERY",
-      sort: "1",
+      sort: "5",
       primary: null,
       title: "Gallery plate",
+      alt: "Detail of the zari border",
     },
   ]);
+});
+
+test("an aborted batch stops before the next file and reports what was sent", async () => {
+  const controller = new AbortController();
+  const uploads = [];
+  mockFetch((url, options) => {
+    const file = options?.body?.get("file");
+    if (String(url).endsWith("/objects")) {
+      uploads.push(file?.name);
+      controller.abort();
+      return { ok: true, object: { key: `products/PF-W-NEW-0001/${file?.name}` } };
+    }
+    throw new Error(`unexpected call ${url}`);
+  });
+
+  const result = await uploadAndRegisterProductImages("PF-W-NEW-0001", [PNG, WEBP], {
+    signal: controller.signal,
+    continueOnError: true,
+  });
+
+  assert.equal(result.cancelled, true);
+  assert.equal(result.ok, false);
+  assert.deepEqual(uploads, ["plate-one.png"], "the second file was never sent");
+  assert.equal(result.results.length, 1);
 });
 
 // ===========================================================================
@@ -571,17 +663,41 @@ const employeeRegistrar = (url) => {
   return new Response(JSON.stringify({ detail: "not mocked" }), { status: 404, headers: { "content-type": "application/json" } });
 };
 
-test("scope 'employee' uploads and registers through the employee routes only", async () => {
-  const calls = mockFetch(employeeRegistrar);
-  const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
+test("scope 'employee' uploads through the employee route only and never sends is_primary", async () => {
+  const calls = mockFetch((url, options) => {
+    const path = new URL(String(url), "https://frontend.invalid").pathname;
+    if (path === "/api/v1/employee/media/products/PF-W-NEW-0001/objects") {
+      return jsonResponse(
+        {
+          ok: true,
+          object: { key: "products/PF-W-NEW-0001/team.png", url: "/api/v1/media/objects/products/PF-W-NEW-0001/team.png" },
+          status: 201,
+        },
+        201,
+      );
+    }
+    return jsonResponse({ detail: "not mocked" }, 404);
+  });
+
+  const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, {
+    scope: "employee",
+    isPrimary: true,
+    role: "GALLERY",
+    title: "Team plate",
+    altText: "Two staff members arranging saris",
+  });
   assert.ok(result.ok, result.error);
-  assert.equal(result.media?.id, "media-emp-1");
+  assert.equal(result.media, null, "ids come from the media-set read, not the upload response");
+
   const paths = calls.map((call) => new URL(String(call.url), "https://frontend.invalid").pathname);
-  assert.ok(paths.includes("/api/v1/employee/media/products/PF-W-NEW-0001/objects"), paths.join(","));
-  assert.ok(paths.includes("/api/v1/employee/media/register"), paths.join(","));
-  // The admin media surface is untouched by an employee session.
-  assert.ok(!paths.includes("/api/v1/media/products/PF-W-NEW-0001/objects"), paths.join(","));
-  assert.ok(!paths.includes("/api/v1/media/register"), paths.join(","));
+  assert.deepEqual(paths, ["/api/v1/employee/media/products/PF-W-NEW-0001/objects"]);
+  assert.ok(!paths.includes("/api/v1/employee/media/register"), "no second registration call");
+  assert.ok(!paths.includes("/api/v1/media/register"), "the admin register surface is untouched");
+
+  const body = calls[0].options.body;
+  assert.equal(body.get("is_primary"), null, "employee requests must never ask for primacy");
+  assert.equal(body.get("title"), "Team plate");
+  assert.equal(body.get("alt_text"), "Two staff members arranging saris");
 });
 
 test("employee upload failure surfaces the server message and stops the pipeline", async () => {
@@ -595,21 +711,41 @@ test("employee upload failure surfaces the server message and stops the pipeline
   const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
   assert.equal(result.ok, false);
   assert.match(String(result.error), /media\.upload/);
-  // Nothing reaches registration when the upload itself was denied.
+  assert.equal(result.failureKind, "auth");
   const paths = calls.map((call) => new URL(String(call.url), "https://frontend.invalid").pathname);
-  assert.equal(paths.includes("/api/v1/employee/media/register"), false);
+  assert.deepEqual(paths, ["/api/v1/employee/media/products/PF-W-NEW-0001/objects"]);
 });
 
-test("employee register-by-key denial keeps the server message verbatim", async () => {
+test("employee batch primacy stays off even when firstIsPrimary is requested", async () => {
+  const primaries = [];
+  mockFetch((url, options) => {
+    const path = new URL(String(url), "https://frontend.invalid").pathname;
+    if (path.endsWith("/objects")) {
+      primaries.push(options?.body?.get("is_primary"));
+      return jsonResponse(
+        { ok: true, object: { key: `products/PF-W-NEW-0001/${options?.body?.get("file")?.name}` }, status: 201 },
+        201,
+      );
+    }
+    return jsonResponse({ detail: "not mocked" }, 404);
+  });
+
+  const result = await uploadAndRegisterProductImages("PF-W-NEW-0001", [PNG, WEBP], {
+    scope: "employee",
+    firstIsPrimary: true,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(primaries, [null, null], "no employee request may carry is_primary");
+});
+
+test("a server rejection on the upload keeps the server message verbatim", async () => {
   mockFetch((url) => {
     const path = new URL(String(url), "https://frontend.invalid").pathname;
     if (path === "/api/v1/employee/media/products/PF-W-NEW-0001/objects") {
-      return jsonResponse({ ok: true, object: { key: "products/PF-W-NEW-0001/team.png" }, status: 201 }, 201);
-    }
-    if (path === "/api/v1/employee/media/register") {
       return jsonResponse({ detail: "Archived products cannot receive new media." }, 422);
     }
-    return employeeRegistrar(url);
+    return jsonResponse({ detail: "not mocked" }, 404);
   });
   const result = await uploadAndRegisterProductImage("PF-W-NEW-0001", PNG, { scope: "employee" });
   assert.equal(result.ok, false);

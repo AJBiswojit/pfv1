@@ -58,6 +58,7 @@ from starlette.responses import FileResponse, StreamingResponse
 from app.core.exceptions import (
     BusinessLogicException,
     ConflictException,
+    ForbiddenException,
     NotFoundException,
 )
 from app.core.logging import get_logger
@@ -75,6 +76,7 @@ from app.dependencies import (
 from app.core.rbac import ACCOUNT_LEVEL_SUPER_ADMIN
 from app.models.auth.user import UserModel
 from app.models.catalog.product import ProductModel
+from app.models.employee.employee import EmployeeProfileModel
 from app.models.media.media_asset import MediaAssetModel
 from app.models.media.product_media import ProductMediaModel
 from app.storage import get_storage_provider
@@ -324,6 +326,53 @@ def _require_employee_write_scope(product, is_primary: bool) -> None:
             "Employee uploads cannot become the primary image — an administrator "
             "sets the primary image for a product."
         )
+
+
+async def _require_employee_product_assignment(db, current_user, product) -> None:
+    """Employee writes are limited to products assigned to the caller.
+
+    Mirrors the repository's established employee product-update policy
+    (``ProductService.update_product_employee``): the assignment contract is
+    the employee CODE, read server-side from the caller's own employee
+    profile, plus the legacy user-UUID fallback for rows assigned before the
+    identity fix. Client-supplied identity is never consulted — the caller is
+    the authenticated session and nobody else.
+
+    An unassigned product is not writable through the employee lane, exactly
+    like the employee PATCH lane where an empty assignment can never match
+    the allow-set. SUPER_ADMIN keeps the same bypass the service honours.
+
+    Called after `_require_employee_write_scope` (so the existing status and
+    primary-slot decisions and their 422s are unchanged) and before any bytes
+    are stored, so a denial writes nothing to storage or the database.
+    """
+    roles, _permissions = await get_user_roles_and_permissions(current_user, db)
+    if resolve_account_level(current_user, roles) == ACCOUNT_LEVEL_SUPER_ADMIN:
+        return
+
+    employee_code = (
+        await db.execute(
+            select(EmployeeProfileModel.employee_code).where(
+                EmployeeProfileModel.user_id == current_user.id
+            )
+        )
+    ).scalars().first()
+
+    allowed_assignees = {str(current_user.id)}  # legacy UUID fallback
+    if employee_code:
+        allowed_assignees.add(str(employee_code))
+
+    assigned = product.assigned_employee_id
+    if not assigned or str(assigned) not in allowed_assignees:
+        raise ForbiddenException("You are not assigned to this product.")
+
+
+async def _require_employee_media_write(db, current_user, product_id: str, is_primary: bool):
+    """Resolve the product, then apply both employee write gates in order."""
+    product = await _require_writable_product(db, product_id)
+    _require_employee_write_scope(product=product, is_primary=is_primary)
+    await _require_employee_product_assignment(db, current_user, product)
+    return product
 
 
 async def _staff_can_read_unpublished_product_media(user, db) -> bool:
@@ -1434,6 +1483,9 @@ def _invalidate_asset_caches(*, asset, object_key: str) -> None:
 # admin-exclusive (`/media/register-placement`). The namespace is pinned to
 # an existing, non-archived product's own `products/{product_id}/` object
 # namespace, so no employee write can ever place an object anywhere else.
+# The product must also be ASSIGNED to the caller (employee code, with the
+# legacy user-UUID fallback) — the same policy as the employee product PATCH
+# lane — so media writes never cross an assignment boundary.
 
 
 @employee_router.post(
@@ -1460,11 +1512,13 @@ async def employee_upload_product_media_object(
       by default), checked from the server-side grant records, never UI claims;
     · the product must exist and be DRAFT or PENDING_REVIEW only;
       is_primary=true is rejected — the primary image is admin-set;
+    · the product must be assigned to the caller (403 otherwise); the
+      assignment is read from the server-side profile, never the request;
     · the object lands in `products/{product_id}/` and is registered +
       mapped atomically, exactly like the admin route.
     """
     await require_permission_for_user(current_user, db, "media.upload")
-    _require_employee_write_scope(product=await _require_writable_product(db, product_id), is_primary=is_primary)
+    await _require_employee_media_write(db, current_user, product_id, is_primary)
     try:
         role = coerce_product_media_role(role)
     except ValueError as exc:
@@ -1517,14 +1571,15 @@ async def employee_register_product_media_object(
 
     The key must live inside the product's own `products/{product_id}/`
     namespace: employees cannot bind hero/, marketing/, uploads/ or any
-    other product's objects to a product. The product must be DRAFT or
-    PENDING_REVIEW; is_primary=true is rejected; and re-registering an
+    other product's objects to a product. The product must be assigned to
+    the caller (403 otherwise), DRAFT or PENDING_REVIEW; is_primary=true is
+    rejected; and re-registering an
     already-mapped key leaves that mapping COMPLETELY untouched (role, sort
     order, primary flag), so the employee lane can never reshape an
     admin-set mapping.
     """
     await require_permission_for_user(current_user, db, "media.upload")
-    _require_employee_write_scope(product=await _require_writable_product(db, product_id), is_primary=is_primary)
+    await _require_employee_media_write(db, current_user, product_id, is_primary)
     try:
         role = coerce_product_media_role(role)
     except ValueError as exc:
