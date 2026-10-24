@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { MemoryRouter, useInRouterContext } from 'react-router-dom';
+import { Check, Circle, Eye, Layers, Pencil, Power, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { readHomepageSection, writeHomepageSection, staffHomepageAccess } from '../../../services/api/homepageApi';
 import { hydrateCatalog } from '../../../services/catalog/catalogStore';
 import { sectionReadFailureMessage, ctaErrors, isSafeMediaUrl } from '../../../services/homepage/homepageContentModel';
@@ -35,7 +36,11 @@ function PreviewRouter({ children }) {
   return inRouter ? children : <MemoryRouter>{children}</MemoryRouter>;
 }
 
-export default function SectionContentEditor({ actor, sectionKey, contentType, onDirtyChange, onSaved, registerHref, seed = null }) {
+/* `embedded` is presentation-only: inside the control-centre panel the editor
+   drops its own card chrome and lays its controls out as the approved status →
+   toolbar → media-card composition. Standalone mounts (and every existing
+   regression that mounts the editor directly) keep the shipped AdminPanel. */
+export default function SectionContentEditor({ actor, sectionKey, contentType, onDirtyChange, onSaved, registerHref, seed = null, embedded = false }) {
   const access = staffHomepageAccess(actor);
   /* F-20 (Batch 4): the workspace list already carries this exact section
      object, so the first paint uses it instead of a second full content build.
@@ -397,85 +402,135 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
     <p role="status">{pendingWork ? 'Pending changes — not saved.' : 'No unsaved entry changes.'}</p>
   </form>;
 
-  /* F-24: the section editor now wears the same AdminPanel chrome as the hero
-     editor, instead of a bare hairline div beside it. */
+  /* F-24: the section editor wears the shared AdminPanel chrome. Inside the
+     control centre (`embedded`) the card border/background are removed and its
+     header becomes a screen-reader label, because the page already supplies
+     the section heading; the entries heading is then rendered in the approved
+     position, after the toolbar. Every handler, guard and payload is unchanged. */
   const panelTitle = contentType === 'MEDIA' ? 'Media entries' : contentType === 'PRODUCT' ? 'Product entries' : 'Text entries';
-  return <AdminPanel title={panelTitle} eyebrow="Section content">
-    <p role="status">{configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · hidden on the storefront until configured and activated.'}</p>
+  const panelChrome = embedded
+    ? { className: 'pf-hcc-editor border-0 bg-transparent shadow-none', headerClassName: 'sr-only', bodyClassName: 'pf-hcc-editor-body px-0 py-0 sm:px-0' }
+    : {};
+
+  /* Each piece below is built once and placed per mode. Embedded (control
+     centre) gets the approved composition and its `pf-hcc-*` classes; the
+     standalone editor gets its original classes, markup and order. Handlers,
+     guards, payloads and copy are identical in both modes. */
+  const statusLine = <p role="status" className={embedded ? 'pf-hcc-publish-state' : undefined}>{configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · hidden on the storefront until configured and activated.'}</p>;
+  const ineligibleLine = summary.ineligible.length > 0 && <p role="status" className={embedded ? 'pf-hcc-publish-eligibility' : undefined}>Not publicly eligible, so never activated here: {summary.ineligible.map((row) => `${row.slotKey} (${row.warning})`).join('; ')}.</p>;
+  const publishBtn = <button type="button" className={embedded ? `${buttonClass('primary')} pf-hcc-publish-btn` : buttonClass('primary')} disabled={busy || blocked || blockers.length > 0 || nothingToPublish} onClick={() => publishSection()} aria-describedby="publish-reasons">{embedded && <Upload size={15} strokeWidth={1.9} aria-hidden="true" />}Publish section</button>;
+  const publishReasons = <p id="publish-reasons" role="status">{blockers.length ? blockers.join(' ') : 'Publishing activates each saved entry, then the section, using the existing requests one after another. It stops at the first failure and never retries.'}</p>;
+  const toolClass = (active) => (embedded ? `${button} pf-hcc-tool${active ? ' is-active' : ''}` : button);
+  const toggleGroup = <div role="group" aria-label="Section view" className={embedded ? 'pf-hcc-toggle' : 'flex gap-2'}>
+    <button type="button" aria-pressed={tab === 'edit'} className={toolClass(tab === 'edit')} onClick={() => setTab('edit')}>{embedded && <Pencil size={14} strokeWidth={1.8} aria-hidden="true" />}Edit</button>
+    <button type="button" aria-pressed={tab === 'preview'} className={toolClass(tab === 'preview')} onClick={() => setTab('preview')}>{embedded && <Eye size={14} strokeWidth={1.8} aria-hidden="true" />}Preview</button>
+  </div>;
+  const reloadBtn = <button type="button" className={toolClass(false)} disabled={busy} onClick={reload}>{embedded && <RefreshCw size={14} strokeWidth={1.8} aria-hidden="true" />}Reload section and public content</button>;
+  const configureBtn = !configured && access.write && <button type="button" className={toolClass(false)} disabled={busy || blocked} onClick={() => {
+    if (window.confirm('Switch this section to backend control? The first save is inactive and keeps the section hidden on the storefront until you activate it.')) run('', 'put', { expectedRevision: 0, isActive: false }, { configuring: true });
+  }}>Configure section (initially hidden)</button>;
+  const activateBtn = configured && access.write && <button type="button" className={embedded ? `${button} pf-hcc-tool pf-hcc-tool--danger` : button} aria-describedby={activationReason ? 'activation-reason' : undefined} disabled={busy || pendingWork || blocked || Boolean(activationReason)} onClick={() => run('', 'put', { expectedRevision: revision, isActive: !section.isActive }, { configuring: true })}>{embedded && <Power size={14} strokeWidth={1.8} aria-hidden="true" />}{section.isActive ? 'Deactivate section' : 'Activate section'}</button>;
+  const reasonLine = configured && access.write && activationReason && <p id="activation-reason" role="status" className={embedded ? 'pf-hcc-reason' : 'text-xs'}>{activationReason}</p>;
+  const previewBody = (
+    <PreviewErrorBoundary>
+      <Suspense fallback={<p>Loading preview…</p>}>
+        <PreviewRouter>
+          <SectionPreview
+            sectionKey={sectionKey}
+            draft={draft}
+            asset={asset}
+            product={product}
+            slot={slot || firstOpen || allowed[0]?.slotKey}
+            contentType={contentType}
+            section={section}
+            editingId={editing?.id ?? null}
+          />
+        </PreviewRouter>
+      </Suspense>
+    </PreviewErrorBoundary>
+  );
+
+  return <AdminPanel title={panelTitle} eyebrow="Section content" {...panelChrome}>
+    {!embedded && statusLine}
     {/* F-10: the publish pipeline, stated before the operator starts clicking. */}
-    <div className="space-y-2 border border-pf-border bg-pf-card p-3 text-xs" data-publish-summary>
-      <p className="text-sm">{summary.text}</p>
-      <ol className="space-y-1">
-        {summary.checklist.map((step) => <li key={step.id}>{step.done ? 'Done' : 'To do'} — {step.text}</li>)}
+    <div className={embedded ? 'pf-hcc-publish' : 'space-y-2 border border-pf-border bg-pf-card p-3 text-xs'} data-publish-summary>
+      {embedded && <div className="pf-hcc-publish-summary">
+        <span className="pf-hcc-publish-icon" aria-hidden="true"><Layers size={18} strokeWidth={1.6} /></span>
+        <div className="min-w-0">
+          {statusLine}
+          <p className="pf-hcc-publish-line">{summary.text}</p>
+          {ineligibleLine}
+        </div>
+      </div>}
+      {!embedded && <p className="text-sm">{summary.text}</p>}
+      <ol className={embedded ? 'pf-hcc-checklist' : 'space-y-1'}>
+        {summary.checklist.map((step) => <li key={step.id} className={embedded ? (step.done ? 'is-done' : 'is-todo') : undefined}>
+          {embedded && (step.done ? <Check size={12} strokeWidth={2.4} aria-hidden="true" /> : <Circle size={11} strokeWidth={2} aria-hidden="true" />)}
+          <span>{step.done ? 'Done' : 'To do'} — {step.text}</span>
+        </li>)}
       </ol>
-      {summary.ineligible.length > 0 && <p role="status">Not publicly eligible, so never activated here: {summary.ineligible.map((row) => `${row.slotKey} (${row.warning})`).join('; ')}.</p>}
-      {configured && access.write && <>
-        <button type="button" className={buttonClass('primary')} disabled={busy || blocked || blockers.length > 0 || nothingToPublish} onClick={() => publishSection()} aria-describedby="publish-reasons">Publish section</button>
-        <p id="publish-reasons" role="status">{blockers.length ? blockers.join(' ') : 'Publishing activates each saved entry, then the section, using the existing requests one after another. It stops at the first failure and never retries.'}</p>
-      </>}
+      {!embedded && ineligibleLine}
+      {configured && access.write && (embedded ? <div className="pf-hcc-publish-action">{publishBtn}{publishReasons}</div> : <>{publishBtn}{publishReasons}</>)}
     </div>
     {/* Batch 5 / F-07: this is a toggle, not a tab set. Selecting Preview only
-       ADDS the preview above; the list, the form and the reload control stay in
-       view. `role="tab"` without a panel swap promised behaviour that never
-       happened, so the switcher is a named toggle group and each button states
-       its own pressed state. */}
-    <div role="group" aria-label="Section view" className="flex gap-2">
-      <button type="button" aria-pressed={tab === 'edit'} className={button} onClick={() => setTab('edit')}>Edit</button>
-      <button type="button" aria-pressed={tab === 'preview'} className={button} onClick={() => setTab('preview')}>Preview</button>
-    </div>
-    {tab === 'preview' && (
-      <PreviewErrorBoundary>
-        <Suspense fallback={<p>Loading preview…</p>}>
-          <PreviewRouter>
-            <SectionPreview
-              sectionKey={sectionKey}
-              draft={draft}
-              asset={asset}
-              product={product}
-              slot={slot || firstOpen || allowed[0]?.slotKey}
-              contentType={contentType}
-              section={section}
-              editingId={editing?.id ?? null}
-            />
-          </PreviewRouter>
-        </Suspense>
-      </PreviewErrorBoundary>
-    )}
-    <button type="button" className={button} disabled={busy} onClick={reload}>Reload section and public content</button>
-    {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
-    {conflict && <div role="alert" className="space-y-2 border border-amber-300 bg-amber-50 p-3 text-sm">
+       ADDS the preview; the list, the form and the reload control stay in view. */}
+    {embedded ? <div className="pf-hcc-toolbar">{toggleGroup}{reloadBtn}{configureBtn}{activateBtn}</div> : toggleGroup}
+    {embedded && reasonLine}
+    {tab === 'preview' && (embedded ? <div className="pf-hcc-preview">{previewBody}</div> : previewBody)}
+    {!embedded && reloadBtn}
+    {message && <p role="status" className={embedded ? 'pf-hcc-message' : undefined}>{message}</p>}{error && <p role="alert" className={embedded ? 'pf-hcc-message pf-hcc-message--error' : undefined}>{error}</p>}
+    {conflict && <div role="alert" className={embedded ? 'pf-hcc-alert' : 'space-y-2 border border-amber-300 bg-amber-50 p-3 text-sm'}>
       <p><strong>Someone else saved this section while you were editing.</strong> {conflict.message}</p>
       <p>Your draft is preserved exactly as typed. This edit was based on revision {conflict.revision}. No retry has been attempted and nothing was overwritten.</p>
       <p>Reconciling only re-reads the section. If you then save, every copy field in this form is written — including fields the other operator changed.</p>
-      <div className="flex flex-wrap gap-2">
+      <div className={embedded ? 'pf-hcc-alert-actions' : 'flex flex-wrap gap-2'}>
         <button type="button" className={button} disabled={busy} onClick={reconcile}>Reload and reconcile (keep my draft)</button>
         <button type="button" className={button} disabled={busy} onClick={reload}>Discard my draft and reload</button>
       </div>
     </div>}
-    {needsReload && !conflict && <div role="status" className="space-y-2">
+    {needsReload && !conflict && <div role="status" className={embedded ? 'pf-hcc-alert' : 'space-y-2'}>
       <p>The section could not be re-read, so writes are paused. Your draft is preserved; no automatic retry is performed.</p>
       <button type="button" className={button} disabled={busy} onClick={reconcile}>Reload and reconcile (keep my draft)</button>
     </div>}
-    {!configured && access.write && <button type="button" className={button} disabled={busy || blocked} onClick={() => {
-      if (window.confirm('Switch this section to backend control? The first save is inactive and keeps the section hidden on the storefront until you activate it.')) run('', 'put', { expectedRevision: 0, isActive: false }, { configuring: true });
-    }}>Configure section (initially hidden)</button>}
-    {/* F-09: the media rule that used to disable this button in silence is now
-       stated, and the button points at the explanation. */}
-    {configured && access.write && activationReason && <p id="activation-reason" role="status" className="text-xs">{activationReason}</p>}
-    {configured && access.write && <button type="button" className={button} aria-describedby={activationReason ? 'activation-reason' : undefined} disabled={busy || pendingWork || blocked || Boolean(activationReason)} onClick={() => run('', 'put', { expectedRevision: revision, isActive: !section.isActive }, { configuring: true })}>{section.isActive ? 'Deactivate section' : 'Activate section'}</button>}
-    {!configured && canWrite && allowed.length > 0 && <p id="local-draft-note" role="status" data-local-draft>
+    {!embedded && configureBtn}
+    {!embedded && reasonLine}
+    {!embedded && activateBtn}
+    {!configured && canWrite && allowed.length > 0 && <p id="local-draft-note" role="status" className={embedded ? 'pf-hcc-reason' : undefined} data-local-draft>
       Draft only — this section is not configured yet, so nothing typed here is saved and no request is made. Use Preview to review it, then configure the section to save.
     </p>}
-    {!allowed.length ? <p>No {contentType} slot is registered for this section.</p> : <>
-      {configured && <ul className="space-y-2">{orderedEntries.map((row) => {
+    {!allowed.length ? <p className={embedded ? 'pf-hcc-reason' : undefined}>No {contentType} slot is registered for this section.</p> : <>
+      {embedded && <div className="pf-hcc-entries-head">
+        <h3 className="pf-hcc-entries-title"><span aria-hidden="true" className="pf-hcc-entries-rule" />{panelTitle} <span className="pf-hcc-entries-count">({entries.length})</span></h3>
+        {/* The only ordering mechanism that exists is the composed move up/down
+            + one reorder request. No decorative sort or view switch is added. */}
+        {pendingGroups.length > 0 && <span className="pf-hcc-order-note" role="status">Custom order — unsaved</span>}
+      </div>}
+      {configured && <ul className={embedded ? 'pf-hcc-entries' : 'space-y-2'}>{orderedEntries.map((row) => {
         const group = groupOf(row);
         const members = group ? rowsForGroup(group) : [];
         const index = members.findIndex((r) => r.id === row.id);
         const canReorder = Boolean(group) && members.length > 1;
         /* F-06: thumbnail + human slot label + real title + chip. The raw
            asset identifier only appears when there is no art to show. */
+        const editLabel = embedded ? <>Edit<span className="sr-only"> entry</span></> : 'Edit entry';
+        const toggleLabel = embedded
+          ? <>{row.isActive ? 'Deactivate' : 'Activate'}<span className="sr-only"> entry</span></>
+          : (row.isActive ? 'Deactivate entry' : 'Activate entry');
+        const removeLabel = embedded ? <>Remove<span className="sr-only"> entry</span></> : 'Remove entry';
+        const upLabel = embedded ? <>Move <span className="sr-only">entry </span>up</> : 'Move entry up';
+        const downLabel = embedded ? <>Move <span className="sr-only">entry </span>down</> : 'Move entry down';
+        const entryClass = (base, extra = '') => (embedded ? `${base} pf-hcc-entry-action${extra}` : base);
+        const moveUpBtn = <button type="button" className={entryClass(button)} disabled={busy || blocked || index === 0} onClick={() => {
+          const ids = members.map((r) => r.id); [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
+          setOrders((old) => ({ ...old, [group]: ids }));
+        }}>{upLabel}</button>;
+        const moveDownBtn = <button type="button" className={entryClass(button)} disabled={busy || blocked || index === members.length - 1} onClick={() => {
+          const ids = members.map((r) => r.id); [ids[index + 1], ids[index]] = [ids[index], ids[index + 1]];
+          setOrders((old) => ({ ...old, [group]: ids }));
+        }}>{downLabel}</button>;
         return <EntryRow
           key={row.id}
+          variant={embedded ? 'card' : 'row'}
           expectArt={contentType === 'MEDIA'}
           thumbnail={isSafeMediaUrl(row.media?.url) ? resolveMediaUrl(row.media.url) : ''}
           thumbnailAlt={row.altText || ''}
@@ -486,21 +541,12 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
           meta={[row.productId && !row.title ? row.productId : '', row.mediaAssetId && !row.media ? row.mediaAssetId : '']}
         >
           {canWrite && <>
-            <button type="button" className={button} disabled={busy || pendingWork || blocked} onClick={() => { setEditing(row); setSlot(row.slotKey); setDraft(Object.fromEntries(fields.map((k) => [k, row[k] || '']))); setAsset(null); setStaged([]); }}>Edit entry</button>
-            <button type="button" className={button} disabled={busy || pendingWork || blocked} onClick={() => run(`/items/${encodeURIComponent(row.id)}`, 'patch', { expectedRevision: revision, isActive: !row.isActive })}>{row.isActive ? 'Deactivate entry' : 'Activate entry'}</button>
+            <button type="button" className={entryClass(button)} disabled={busy || pendingWork || blocked} onClick={() => { setEditing(row); setSlot(row.slotKey); setDraft(Object.fromEntries(fields.map((k) => [k, row[k] || '']))); setAsset(null); setStaged([]); }}>{embedded && <Pencil size={13} strokeWidth={1.8} aria-hidden="true" />}{editLabel}</button>
+            <button type="button" className={entryClass(button)} disabled={busy || pendingWork || blocked} onClick={() => run(`/items/${encodeURIComponent(row.id)}`, 'patch', { expectedRevision: revision, isActive: !row.isActive })}>{embedded && <Power size={13} strokeWidth={1.8} aria-hidden="true" />}{toggleLabel}</button>
           </>}
-          {access.write && (contentType !== 'MEDIA' || access.mediaDelete) && <button type="button" className={buttonClass('destructive')} disabled={busy || pendingWork || blocked} onClick={() => { if (window.confirm('Remove only this homepage entry? Its product/media object is not deleted.')) run(`/items/${encodeURIComponent(row.id)}?expectedRevision=${revision}`, 'delete', undefined, { deleting: true }); }}>Remove entry</button>}
+          {access.write && (contentType !== 'MEDIA' || access.mediaDelete) && <button type="button" className={entryClass(buttonClass('destructive'), ' pf-hcc-entry-action--danger')} disabled={busy || pendingWork || blocked} onClick={() => { if (window.confirm('Remove only this homepage entry? Its product/media object is not deleted.')) run(`/items/${encodeURIComponent(row.id)}?expectedRevision=${revision}`, 'delete', undefined, { deleting: true }); }}>{embedded && <Trash2 size={13} strokeWidth={1.8} aria-hidden="true" />}{removeLabel}</button>}
           {/* F-16: arrows compose a local order; ONE request is sent on commit. */}
-          {canWrite && canReorder && <>
-            <button type="button" className={button} disabled={busy || blocked || index === 0} onClick={() => {
-              const ids = members.map((r) => r.id); [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-              setOrders((old) => ({ ...old, [group]: ids }));
-            }}>Move entry up</button>
-            <button type="button" className={button} disabled={busy || blocked || index === members.length - 1} onClick={() => {
-              const ids = members.map((r) => r.id); [ids[index + 1], ids[index]] = [ids[index], ids[index + 1]];
-              setOrders((old) => ({ ...old, [group]: ids }));
-            }}>Move entry down</button>
-          </>}
+          {canWrite && canReorder && (embedded ? <div className="pf-hcc-entry-reorder">{moveUpBtn}{moveDownBtn}</div> : <>{moveUpBtn}{moveDownBtn}</>)}
         </EntryRow>;
       })}</ul>}
       {configured && canWrite && pendingGroups.map((group) => {
@@ -509,7 +555,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
            exact membership, so the commit is blocked and Cancel stays available. */
         const members = rowsForGroup(group);
         const stale = members.length !== (orders[group] ?? []).length || members.length < 2;
-        return <div key={group} className="flex flex-wrap items-center gap-2 text-xs" role="status">
+        return <div key={group} className={embedded ? 'pf-hcc-order-bar' : 'flex flex-wrap items-center gap-2 text-xs'} role="status">
           <span>Order changed locally{pendingGroups.length > 1 ? ` in ${group}` : ''} — nothing has been sent yet.</span>
           {stale && <span>The saved rows changed since this order was composed; cancel it and reorder the remaining rows.</span>}
           <button type="button" className={button} disabled={busy || blocked || stale} onClick={async () => {
@@ -523,7 +569,7 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
           <button type="button" className={button} disabled={busy} onClick={() => setOrders((old) => { const next = { ...old }; delete next[group]; return next; })}>Cancel order changes</button>
         </div>;
       })}
-      {configured && canWrite && (allFull ? <p role="status">All {contentType} slots are filled ({entries.length} saved). Edit or remove an entry above to make room — no further {contentType} entry can be saved here.</p> : draftForm)}
+      {configured && canWrite && (allFull ? <p role="status" className={embedded ? 'pf-hcc-reason' : undefined}>All {contentType} slots are filled ({entries.length} saved). Edit or remove an entry above to make room — no further {contentType} entry can be saved here.</p> : draftForm)}
       {!configured && draftForm}
     </>}
   </AdminPanel>;

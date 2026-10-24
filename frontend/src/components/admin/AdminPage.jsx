@@ -16,13 +16,26 @@ export default function AdminPage({
   actions = null,
   children,
   className = "",
+  /* Presentation-only, additive. The Homepage Content Control Center is the
+     one desk with an approved editorial image in its masthead. Every other
+     desk omits `headerMedia` and renders exactly as before. */
+  headerMedia = null,
 }) {
   return (
     <div className={cn("min-w-0 w-full max-w-full pb-16", className)}>
-      <header className="mb-8 flex flex-col gap-5 border-b border-pf-border/70 pb-7 md:flex-row md:items-end md:justify-between md:gap-8">
-        <div className="min-w-0 max-w-2xl">
+      <header className={cn(
+        "mb-8 flex flex-col gap-5 border-b border-pf-border/70 pb-7 md:flex-row md:items-end md:justify-between md:gap-8",
+        headerMedia && "relative pf-page-header--media overflow-hidden border-b-0"
+      )}>
+        {headerMedia ? (
+          <div aria-hidden="true" className="pf-page-header__media">
+            <img src={headerMedia} alt="" className="h-full w-full object-cover" />
+            <span className="pf-page-header__media-veil" />
+          </div>
+        ) : null}
+        <div className={cn("min-w-0 max-w-2xl", headerMedia && "relative")}>
           {eyebrow ? (
-            <p className="flex items-center gap-2.5 font-ui text-[11px] font-semibold uppercase tracking-[.3em] text-pf-gold-text">
+            <p className="pf-page-eyebrow flex items-center gap-2.5 font-ui text-[11px] font-semibold uppercase tracking-[.3em] text-pf-gold-text">
               <span aria-hidden="true" className="h-px w-6 bg-pf-gold/70" />
               {eyebrow}
             </p>
@@ -37,7 +50,7 @@ export default function AdminPage({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2.5 pb-0.5">{actions}</div>
+          <div className={cn("pf-page-actions flex shrink-0 flex-wrap items-center gap-2.5 pb-0.5", headerMedia && "relative")}>{actions}</div>
         ) : null}
       </header>
       {children}

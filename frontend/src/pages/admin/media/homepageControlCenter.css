@@ -1,0 +1,825 @@
+/* ==========================================================================
+   PRATIKSHYA FASHION — Homepage Content Control Center
+   Page-scoped editorial skin for /super-admin/media/marketing (and the two
+   mirrored workspaces). Every selector is rooted at `.pf-hcc`, so no other
+   admin, employee or storefront route is affected.
+
+   Only presentation lives here: colours come from the staff tokens in
+   src/index.css, the fonts are the self-hosted Cormorant Garamond /
+   Instrument Sans cuts, and no control, handler or data source is touched.
+   ========================================================================== */
+
+/* The shared portal masthead is taller than the reference's. Reclaim some of
+   the shell's top padding for THIS page only; other desks keep their rhythm. */
+@media (min-width: 1024px) {
+  .pf-hcc { margin-top: -18px; }
+}
+
+.pf-hcc {
+  --hcc-ink: #351a1b;
+  --hcc-muted: #6f5d52;
+  --hcc-line: #ede4d8;
+  --hcc-gold: #b98948;
+  --hcc-burgundy: #4a0718;
+  --hcc-cream: #fff9f2;
+  --hcc-inset: #f8ede0;
+}
+
+/* ---------------------------------------------------------------- masthead */
+
+.pf-hcc > header.pf-page-header--media {
+  min-height: 152px;
+  margin-bottom: 14px;
+  padding: 18px 22px 16px;
+  border: 1px solid var(--hcc-line);
+  border-radius: 14px;
+  background: linear-gradient(100deg, #fff9f2 0%, #fbf2e7 48%, #f3e2c9 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), 0 10px 30px rgb(74 7 24 / 0.055);
+}
+/* The three workspace links sit BELOW the headline, right-aligned — never
+   beside it (that squeezed the headline into three or four lines). */
+@media (min-width: 768px) {
+  .pf-hcc > header.pf-page-header--media { display: block; }
+  .pf-hcc > header.pf-page-header--media > div.relative:not(.pf-page-actions) { max-width: 100%; }
+  .pf-hcc .pf-page-actions { justify-content: flex-end; margin-top: 14px; }
+}
+@media (min-width: 1024px) {
+  .pf-hcc > header.pf-page-header--media { min-height: 168px; }
+  .pf-hcc > header.pf-page-header--media > div.relative:not(.pf-page-actions) { max-width: 63%; }
+  .pf-hcc .pf-page-actions { position: absolute; right: 22px; bottom: 16px; margin-top: 0; }
+}
+
+.pf-hcc .pf-page-header__media {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 52%;
+  pointer-events: none;
+}
+.pf-hcc .pf-page-header__media img {
+  object-position: 58% 38%;
+}
+.pf-hcc .pf-page-header__media-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(58 24 6 / 0) 58%, rgb(58 24 6 / 0.22) 100%),
+    linear-gradient(90deg,
+      #fff9f2 0%,
+      rgb(251 242 231 / 0.94) 14%,
+      rgb(246 231 209 / 0.46) 48%,
+      rgb(243 226 201 / 0.08) 100%);
+}
+.pf-hcc .pf-page-header__media::after {
+  content: "CURATE\A INSPIRE\A CONVERT";
+  white-space: pre;
+  position: absolute;
+  top: 24%;
+  right: 5%;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: 0.2em;
+  text-align: right;
+  color: rgb(255 249 242 / 0.94);
+  text-shadow: 0 1px 10px rgb(58 24 6 / 0.6);
+}
+
+.pf-hcc .pf-page-eyebrow {
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-page-eyebrow > span[aria-hidden="true"] { display: none; }
+.pf-hcc .pf-hcc-crumb-home { color: var(--hcc-burgundy); }
+.pf-hcc .pf-hcc-crumb-sep { color: var(--hcc-gold); margin: 0 1px; }
+
+.pf-hcc > header h1 {
+  margin-top: 9px;
+  font-size: clamp(30px, 3.1vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: #3a1806;
+}
+.pf-hcc > header h1::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 1px;
+  margin: 9px 0 0 2px;
+  background: linear-gradient(90deg, var(--hcc-gold), rgb(214 174 112 / 0.12));
+}
+.pf-hcc > header h1 + p {
+  margin-top: 9px;
+  max-width: 30rem;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hcc-muted);
+}
+@media (min-width: 1024px) {
+  .pf-hcc > header h1 + p { max-width: 21rem; }
+}
+.pf-hcc .pf-hcc-note--footer { margin: 16px 0 0; }
+
+.pf-hcc .pf-hcc-header-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-hcc .pf-hcc-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgb(74 7 24 / 0.14);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.82);
+  box-shadow: 0 2px 9px rgb(74 7 24 / 0.07);
+  color: var(--hcc-ink);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.pf-hcc .pf-hcc-header-action svg { color: var(--hcc-burgundy); }
+.pf-hcc .pf-hcc-header-action:hover { background: #fff; border-color: var(--hcc-gold); }
+
+@media (max-width: 899px) {
+  .pf-hcc .pf-page-header__media { display: none; }
+}
+
+/* ------------------------------------------------------------- house notice */
+
+.pf-hcc .pf-hcc-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--hcc-line);
+  border-left: 2px solid var(--hcc-gold);
+  border-radius: 10px;
+  background: rgb(255 249 242 / 0.75);
+  color: var(--hcc-muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.pf-hcc .pf-hcc-note p { margin: 0; }
+.pf-hcc .pf-hcc-note strong { color: var(--hcc-ink); font-weight: 600; }
+.pf-hcc .pf-hcc-note > svg { flex: none; margin-top: 2px; color: var(--color-pf-gold-text); }
+.pf-hcc .pf-hcc-note--warn {
+  display: block;
+  border-left-color: var(--color-pf-warning);
+  background: #fff8ea;
+  color: #6b4f13;
+}
+
+/* ------------------------------------------------------------------- layout */
+
+.pf-hcc .pf-hcc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .pf-hcc .pf-hcc-layout {
+    grid-template-columns: 238px minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+/* ------------------------------------------------------- sections navigator */
+
+.pf-hcc .pf-hcc-rail {
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), 0 8px 24px rgb(74 7 24 / 0.05);
+}
+.pf-hcc .pf-hcc-rail-head { display: none; }
+@media (min-width: 1024px) {
+  .pf-hcc .pf-hcc-rail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 8px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--hcc-line);
+  }
+}
+.pf-hcc .pf-hcc-rail-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.05;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-rail-head span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--hcc-inset);
+  color: var(--hcc-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pf-hcc .pf-hcc-rail-list { display: flex; gap: 5px; min-width: 0; }
+@media (min-width: 1024px) {
+  .pf-hcc .pf-hcc-rail-list {
+    display: block;
+    /* Fits the twelve rows inside the reference-height viewport; it still
+       scrolls whenever the rail is taller than the space the shell leaves. */
+    max-height: calc(100vh - 300px);
+    min-height: 200px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .pf-hcc .pf-hcc-rail-list > button + button { margin-top: 2px; }
+}
+
+.pf-hcc .pf-hcc-section-btn {
+  display: grid;
+  grid-template-columns: 18px 28px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 7px;
+  min-width: 194px;
+  min-height: 36px;
+  padding: 3px 7px;
+  border-radius: 9px;
+  border-left-width: 2px;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+@media (min-width: 1024px) {
+  .pf-hcc .pf-hcc-section-btn { min-width: 0; width: 100%; }
+}
+.pf-hcc .pf-hcc-section-btn:hover:not(:disabled) { background: var(--hcc-inset); }
+.pf-hcc .pf-hcc-section-btn.is-selected {
+  background: #fbf1e7;
+  border-left-color: var(--hcc-burgundy);
+  box-shadow: inset 0 0 0 1px rgb(74 7 24 / 0.07);
+}
+
+.pf-hcc .pf-hcc-section-num {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-pf-border-strong);
+}
+.pf-hcc .pf-hcc-section-btn.is-selected .pf-hcc-section-num { color: var(--hcc-burgundy); }
+.pf-hcc .pf-hcc-section-thumb {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--hcc-inset);
+  border: 1px solid rgb(74 7 24 / 0.07);
+}
+.pf-hcc .pf-hcc-section-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No saved artwork: a quiet champagne lozenge, never a second number and
+   never an invented photograph. */
+.pf-hcc .pf-hcc-section-thumb-mark {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  border: 1px solid var(--hcc-gold);
+  background: rgb(214 174 112 / 0.22);
+}
+.pf-hcc .pf-hcc-section-name {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-section-status {
+  position: relative;
+  grid-column: 3 / span 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-left: 11px;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-hcc-section-status::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: var(--color-pf-border-strong);
+}
+.pf-hcc .pf-hcc-section-status[data-tone="active"]::before { background: var(--color-pf-success); }
+.pf-hcc .pf-hcc-section-status[data-tone="idle"]::before { background: var(--color-pf-warning); }
+
+/* ------------------------------------------------------------- main panel */
+
+.pf-hcc .pf-hcc-workspace { min-width: 0; }
+.pf-hcc .pf-hcc-panel {
+  container: hcc / inline-size;
+  min-width: 0;
+  padding: 16px 16px 18px;
+  border-radius: 12px;
+}
+@media (max-width: 639px) {
+  .pf-hcc .pf-hcc-panel { padding: 15px 14px 17px; }
+}
+
+.pf-hcc .pf-hcc-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--hcc-line);
+}
+.pf-hcc .pf-hcc-section-index {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--hcc-inset);
+  color: var(--hcc-burgundy);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1;
+}
+.pf-hcc .pf-hcc-section-heading { min-width: 0; flex: 1; }
+.pf-hcc .pf-hcc-section-titleline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pf-hcc .pf-hcc-section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(23px, 2.2vw, 29px);
+  font-weight: 500;
+  line-height: 1.06;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pf-hcc .pf-hcc-badge--success { background: #e3f1e6; color: #2e6b3e; }
+.pf-hcc .pf-hcc-badge--warning { background: #fbefd8; color: #75520c; }
+.pf-hcc .pf-hcc-badge--muted { background: var(--hcc-inset); color: var(--hcc-muted); }
+.pf-hcc .pf-hcc-section-desc {
+  margin: 5px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-hcc-pending { margin: 3px 0 0; font-size: 11px; line-height: 1.4; color: var(--hcc-muted); }
+
+.pf-hcc .pf-hcc-caveat {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-left: 2px solid var(--hcc-gold);
+  border-radius: 0 8px 8px 0;
+  background: var(--hcc-inset);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hcc-muted);
+}
+
+/* -------------------------------------------------------------------- tabs */
+
+.pf-hcc .pf-hcc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pf-hcc .pf-hcc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--hcc-line);
+  border-radius: 9px;
+  background: var(--hcc-cream);
+  color: var(--hcc-muted);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.pf-hcc .pf-hcc-tab-label { display: inline-block; text-transform: lowercase; }
+.pf-hcc .pf-hcc-tab-label::first-letter { text-transform: uppercase; }
+.pf-hcc .pf-hcc-tab[data-count]::after {
+  content: attr(data-count);
+  margin-left: -3px;
+  font-weight: 500;
+  opacity: 0.78;
+}
+.pf-hcc .pf-hcc-tab svg { color: var(--color-pf-gold-text); }
+.pf-hcc .pf-hcc-tab:hover:not(:disabled) { background: var(--hcc-inset); border-color: var(--color-pf-border-strong); }
+.pf-hcc .pf-hcc-tab.is-active {
+  background: var(--hcc-burgundy);
+  border-color: var(--hcc-burgundy);
+  color: #fbf4eb;
+}
+.pf-hcc .pf-hcc-tab.is-active svg { color: var(--color-pf-gold); }
+.pf-hcc .pf-hcc-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+.pf-hcc .pf-hcc-tab-note { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--hcc-muted); }
+
+/* --------------------------------------------------------------- editor body */
+
+.pf-hcc .pf-hcc-editor-slot { margin-top: 14px; }
+.pf-hcc .pf-hcc-editor { display: block; }
+.pf-hcc .pf-hcc-editor-body { display: flex; flex-direction: column; gap: 14px; }
+
+.pf-hcc .pf-hcc-publish {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(152px, 0.82fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--hcc-line);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #fffdfa 0%, #fbf4eb 100%);
+}
+.pf-hcc .pf-hcc-publish-summary { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.pf-hcc .pf-hcc-publish-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--hcc-inset);
+  color: var(--hcc-burgundy);
+}
+.pf-hcc .pf-hcc-publish-state {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-publish-line { margin: 3px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--hcc-muted); }
+.pf-hcc .pf-hcc-publish-eligibility { margin: 4px 0 0; font-size: 11px; line-height: 1.4; color: var(--color-pf-error); }
+
+.pf-hcc .pf-hcc-checklist {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 1px 0 1px 16px;
+  list-style: none;
+  border-left: 1px solid var(--hcc-line);
+}
+.pf-hcc .pf-hcc-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-hcc-checklist li.is-done { color: #376b45; }
+.pf-hcc .pf-hcc-checklist svg { flex: none; }
+
+.pf-hcc .pf-hcc-publish-action {
+  display: grid;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 1px solid var(--hcc-line);
+}
+.pf-hcc .pf-hcc-publish-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.pf-hcc .pf-hcc-publish-action p { margin: 0; font-size: 10.5px; line-height: 1.4; color: var(--hcc-muted); }
+
+/* Fallback for engines without container queries, declared FIRST so the
+   container rules below always take precedence on narrow panels. */
+@media (max-width: 1023px) {
+  .pf-hcc .pf-hcc-publish { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pf-hcc .pf-hcc-publish-action {
+    grid-column: 1 / -1;
+    padding: 10px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hcc-line);
+  }
+  .pf-hcc .pf-hcc-publish-btn { width: auto; justify-self: start; padding-inline: 18px; }
+}
+@container hcc (max-width: 540px) {
+  .pf-hcc .pf-hcc-publish { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pf-hcc .pf-hcc-publish-action {
+    grid-column: 1 / -1;
+    padding: 10px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hcc-line);
+  }
+  .pf-hcc .pf-hcc-publish-btn { width: auto; justify-self: start; padding-inline: 18px; }
+}
+@container hcc (max-width: 340px) {
+  .pf-hcc .pf-hcc-publish { grid-template-columns: minmax(0, 1fr); }
+  .pf-hcc .pf-hcc-checklist { padding-left: 0; border-left: 0; }
+  .pf-hcc .pf-hcc-publish-action { grid-column: 1; }
+}
+
+/* ----------------------------------------------------------------- toolbar */
+
+.pf-hcc .pf-hcc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pf-hcc .pf-hcc-toggle { display: inline-flex; gap: 6px; }
+.pf-hcc .pf-hcc-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pf-hcc .pf-hcc-tool svg { flex: none; color: var(--color-pf-gold-text); }
+.pf-hcc .pf-hcc-tool.is-active {
+  background: var(--hcc-inset);
+  border-color: var(--color-pf-border-strong);
+  color: var(--hcc-burgundy);
+}
+.pf-hcc .pf-hcc-tool--danger { color: var(--color-pf-error); border-color: rgb(168 68 72 / 0.35); }
+.pf-hcc .pf-hcc-tool--danger svg { color: var(--color-pf-error); }
+
+.pf-hcc .pf-hcc-reason { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--hcc-muted); }
+.pf-hcc .pf-hcc-message {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: var(--hcc-inset);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-message--error { background: rgb(168 68 72 / 0.09); color: var(--color-pf-error); }
+.pf-hcc .pf-hcc-alert {
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px;
+  border: 1px solid #e8c98a;
+  border-radius: 10px;
+  background: #fff7e7;
+  color: #5b3a0b;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.pf-hcc .pf-hcc-alert p { margin: 0; }
+.pf-hcc .pf-hcc-alert-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-hcc .pf-hcc-preview { padding: 12px; border: 1px dashed var(--color-pf-border-strong); border-radius: 10px; overflow: hidden; }
+
+/* ------------------------------------------------------------ entries head */
+
+.pf-hcc .pf-hcc-entries-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pf-hcc .pf-hcc-entries-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-entries-rule { width: 18px; height: 1px; background: var(--hcc-gold); }
+.pf-hcc .pf-hcc-entries-count { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--hcc-muted); }
+.pf-hcc .pf-hcc-order-note { font-size: 10.5px; color: var(--color-pf-warning); white-space: nowrap; }
+
+/* ------------------------------------------------------------ media cards */
+
+.pf-hcc .pf-hcc-entries {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@container hcc (max-width: 639px) {
+  .pf-hcc .pf-hcc-entries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container hcc (max-width: 360px) {
+  .pf-hcc .pf-hcc-entries { grid-template-columns: minmax(0, 1fr); }
+}
+/* Fallback for engines without container queries. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 900px) { .pf-hcc .pf-hcc-entries { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 540px) { .pf-hcc .pf-hcc-entries { grid-template-columns: minmax(0, 1fr); } }
+}
+
+.pf-hcc .pf-hcc-entry {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 11px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 6px 18px rgb(74 7 24 / 0.06);
+  transition: box-shadow 180ms ease;
+}
+.pf-hcc .pf-hcc-entry:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 12px 26px rgb(74 7 24 / 0.11); }
+.pf-hcc .pf-hcc-entry-art {
+  position: relative;
+  aspect-ratio: 1 / 1.02;
+  overflow: hidden;
+  background: var(--hcc-inset);
+}
+.pf-hcc .pf-hcc-entry-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+.pf-hcc .pf-hcc-entry-noart {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-hcc-entry-tag {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  max-width: calc(100% - 18px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgb(255 249 242 / 0.94);
+  box-shadow: 0 1px 6px rgb(42 6 16 / 0.14);
+  color: var(--hcc-ink);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pf-hcc .pf-hcc-entry-status {
+  position: absolute;
+  bottom: 9px;
+  left: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: rgb(255 249 242 / 0.96);
+  box-shadow: 0 1px 6px rgb(42 6 16 / 0.12);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--hcc-muted);
+}
+.pf-hcc .pf-hcc-entry-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pf-hcc .pf-hcc-entry-status.is-active { color: #2e6b3e; }
+.pf-hcc .pf-hcc-entry-status.is-inactive { color: var(--color-pf-warning); }
+
+.pf-hcc .pf-hcc-entry-info { flex: 1; padding: 8px 8px 7px; }
+.pf-hcc .pf-hcc-entry-title {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-entry-meta { margin: 3px 0 0; font-size: 10px; line-height: 1.35; color: var(--hcc-muted); overflow-wrap: anywhere; }
+.pf-hcc .pf-hcc-entry-warning { margin: 5px 0 0; font-size: 10px; line-height: 1.35; color: var(--color-pf-error); }
+
+.pf-hcc .pf-hcc-entry-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: auto; padding: 0 8px 9px; }
+.pf-hcc .pf-hcc-entry-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+  padding: 0 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pf-hcc .pf-hcc-entry-action svg { width: 11px; height: 11px; }
+.pf-hcc .pf-hcc-entry-action svg { flex: none; }
+.pf-hcc .pf-hcc-entry-action--danger svg { color: var(--color-pf-error); }
+.pf-hcc .pf-hcc-entry-reorder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hcc-line);
+}
+
+/* Section 01 keeps its distinct legacy HOME_HERO editor and every one of its
+   controls. Page-scoped CSS alone removes the nested card border so it reads as
+   part of the same workspace instead of a second, heavier panel. */
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) > header {
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--hcc-line);
+}
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) > header h2 {
+  font-size: 22px;
+  line-height: 1.1;
+}
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) > div { padding: 14px 0 0; }
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) li {
+  border-color: var(--hcc-line);
+  border-radius: 10px;
+  background: var(--hcc-cream);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 6px 18px rgb(74 7 24 / 0.06);
+}
+.pf-hcc .pf-hcc-editor-slot > section:not(.pf-hcc-editor) li img {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.pf-hcc .pf-hcc-order-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--color-pf-border-strong);
+  border-radius: 9px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--hcc-muted);
+}
+
+/* The authoring form stays fully operational; it simply sits on a quieter
+   inset plate below the card grid. */
+.pf-hcc .pf-hcc-editor-body form {
+  padding: 14px;
+  border: 1px solid var(--hcc-line);
+  border-radius: 11px;
+  background: rgb(248 237 224 / 0.45);
+}
+.pf-hcc .pf-hcc-editor-body form h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--hcc-ink);
+}
+
+/* The shell already paints a gold focus ring everywhere. Restate it here so a
+   card, tab or pill's own box-shadow can never mask it in the cascade. */
+.pf-hcc :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-pf-gold-text);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(214 174 112 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-hcc *, .pf-hcc *::before, .pf-hcc *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
