@@ -176,95 +176,51 @@
 
 /* ------------------------------------------------------------------- layout */
 
+/* The approved composition: a horizontal sections topbar sits directly under
+   the editorial header, and the workspace takes the full width beneath it. */
 .pf-hcc .pf-hcc-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
   align-items: start;
 }
-@media (min-width: 1024px) {
-  .pf-hcc .pf-hcc-layout {
-    grid-template-columns: 238px minmax(0, 1fr);
-    gap: 18px;
-  }
-}
 
-/* ------------------------------------------------------- sections navigator */
+/* ----------------------------------------------------- sections topbar */
 
 .pf-hcc .pf-hcc-rail {
   border-radius: 12px;
   padding: 6px;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), 0 8px 24px rgb(74 7 24 / 0.05);
-}
-.pf-hcc .pf-hcc-rail-head { display: none; }
-@media (min-width: 1024px) {
-  .pf-hcc .pf-hcc-rail-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 2px 8px 8px;
-    margin-bottom: 4px;
-    border-bottom: 1px solid var(--hcc-line);
-  }
-}
-.pf-hcc .pf-hcc-rail-head h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 500;
-  line-height: 1.05;
-  color: var(--hcc-ink);
-}
-.pf-hcc .pf-hcc-rail-head span {
-  display: grid;
-  place-items: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--hcc-inset);
-  color: var(--hcc-muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.pf-hcc .pf-hcc-rail-list { display: flex; gap: 5px; min-width: 0; }
-@media (min-width: 1024px) {
-  .pf-hcc .pf-hcc-rail-list {
-    display: block;
-    /* Fits the twelve rows inside the reference-height viewport; it still
-       scrolls whenever the rail is taller than the space the shell leaves. */
-    max-height: calc(100vh - 300px);
-    min-height: 200px;
-    overflow-y: auto;
-    padding-right: 2px;
-  }
-  .pf-hcc .pf-hcc-rail-list > button + button { margin-top: 2px; }
+  scroll-padding-inline: 6px;
+  scrollbar-width: thin;
+  /* Horizontal scroll only: the shared .pf-scroll utility forces overflow-x
+     hidden, so the topbar must state its own axis explicitly. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .pf-hcc .pf-hcc-section-btn {
   display: grid;
-  grid-template-columns: 18px 28px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 30px minmax(0, 1fr);
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 7px;
-  min-width: 194px;
-  min-height: 36px;
-  padding: 3px 7px;
+  column-gap: 8px;
+  flex: 0 0 auto;
+  width: 216px;
+  min-height: 56px; /* touch-sized target */
+  padding: 6px 10px;
+  border: 1px solid transparent;
   border-radius: 9px;
-  border-left-width: 2px;
   transition: background-color 150ms ease, box-shadow 150ms ease;
 }
-@media (min-width: 1024px) {
-  .pf-hcc .pf-hcc-section-btn { min-width: 0; width: 100%; }
-}
 .pf-hcc .pf-hcc-section-btn:hover:not(:disabled) { background: var(--hcc-inset); }
+/* Restrained selection: soft champagne ground, a fine burgundy base rule. */
 .pf-hcc .pf-hcc-section-btn.is-selected {
   background: #fbf1e7;
-  border-left-color: var(--hcc-burgundy);
-  box-shadow: inset 0 0 0 1px rgb(74 7 24 / 0.07);
+  border-color: rgb(74 7 24 / 0.1);
+  box-shadow: inset 0 -2px 0 var(--hcc-burgundy);
 }
+.pf-hcc .pf-hcc-section-btn:focus-visible { outline-offset: 0; }
 
 .pf-hcc .pf-hcc-section-num {
   grid-column: 1;
@@ -282,8 +238,8 @@
   grid-row: 1 / span 2;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   overflow: hidden;
   border-radius: 6px;
   background: var(--hcc-inset);
@@ -313,7 +269,7 @@
 }
 .pf-hcc .pf-hcc-section-status {
   position: relative;
-  grid-column: 3 / span 2;
+  grid-column: 3;
   grid-row: 2;
   min-width: 0;
   overflow: hidden;
@@ -488,6 +444,17 @@
   line-height: 1.35;
   color: var(--hcc-ink);
 }
+.pf-hcc .pf-hcc-publish-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--hcc-ink);
+}
+.pf-hcc .pf-hcc-publish-desc { margin: 3px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--hcc-muted); }
+/* Actual backend state and revision: understated, never a headline. */
+.pf-hcc .pf-hcc-publish-meta { margin: 6px 0 0; font-size: 10.5px; line-height: 1.4; letter-spacing: 0.02em; color: var(--hcc-muted); }
 .pf-hcc .pf-hcc-publish-line { margin: 3px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--hcc-muted); }
 .pf-hcc .pf-hcc-publish-eligibility { margin: 4px 0 0; font-size: 11px; line-height: 1.4; color: var(--color-pf-error); }
 

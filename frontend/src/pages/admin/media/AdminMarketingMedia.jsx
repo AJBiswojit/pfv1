@@ -151,17 +151,13 @@ export default function AdminMarketingMedia() {
     {access.employeeOnly && !staff.view && <p role="status" className="pf-hcc-note pf-hcc-note--warn">Your media permission allows this overview and published-product inspection. The current registered-media and marketing APIs require an admin session and reject employee tokens. The new homepage routes additionally require explicit marketing grants; no admin credentials are reused here.</p>}
     <div className="pf-hcc-layout">
       {/* F-17 (Batch 4): below `lg` the twelve-row rail stacks ~670 px of
-         navigation above the workspace. It stays a single horizontally
-         scrollable strip of section chips; the desktop rail is sticky. Every
+         navigation above the workspace. It is a single horizontally
+         scrollable topbar of section chips beneath the page header. Every
          chip keeps its number, title and status, the buttons stay in DOM order,
          and no control is removed. */}
-      <nav aria-label="Homepage sections" className="pf-hcc-rail flex min-w-0 snap-x gap-1 self-start overflow-x-auto border border-pf-border bg-pf-card p-2 lg:sticky lg:top-4 lg:block lg:space-y-1 lg:overflow-visible">
-        <div className="pf-hcc-rail-head">
-          <h2>Homepage Sections</h2>
-          <span>{HOMEPAGE_SECTIONS.length}<span className="sr-only"> sections</span></span>
-        </div>
-        <div className="pf-hcc-rail-list pf-scroll pf-scroll--light">
-          {HOMEPAGE_SECTIONS.map((item, index) => {
+      <nav aria-label="Homepage sections" className="pf-hcc-rail flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain border border-pf-border bg-pf-card p-2">
+        <span className="sr-only">{HOMEPAGE_SECTIONS.length} sections</span>
+        {HOMEPAGE_SECTIONS.map((item, index) => {
             const number = String(index + 1).padStart(2, '0');
             const label = navLabel(item);
             const thumb = thumbnailFor(item);
@@ -171,7 +167,7 @@ export default function AdminMarketingMedia() {
                 setSectionId(item.id);
                 setType(open.includes(type) && open.length ? type : (open[0] || 'MEDIA'));
               }}
-              className={`pf-hcc-section-btn shrink-0 snap-start border-l-2 px-3 py-2 text-left disabled:opacity-50 lg:block lg:w-full lg:py-3 ${item.id === sectionId ? 'is-selected border-pf-gold-deep bg-pf-ivory' : 'border-transparent'}`}>
+              className={`pf-hcc-section-btn shrink-0 snap-start px-3 py-2 text-left disabled:opacity-50 ${item.id === sectionId ? 'is-selected' : ''}`}>
               <span className="pf-hcc-section-num">{number}</span>
               <span className="pf-hcc-section-thumb" aria-hidden="true">
                 {thumb ? <img src={thumb} alt="" loading="lazy" onError={hideBrokenThumb} /> : <span className="pf-hcc-section-thumb-mark" />}
@@ -180,7 +176,6 @@ export default function AdminMarketingMedia() {
               <span className="pf-hcc-section-status" data-tone={label === 'Active' ? 'active' : /inactive|hidden|no saved/i.test(label) ? 'idle' : 'muted'}>{label}</span>
             </button>;
           })}
-        </div>
       </nav>
       <div className="pf-hcc-workspace min-w-0">
         <section className="pf-hcc-panel pf-card" aria-label={`${section.title} workspace`}>
