@@ -457,7 +457,10 @@ export default function SectionContentEditor({ actor, sectionKey, contentType, o
       {embedded && <div className="pf-hcc-publish-summary">
         <span className="pf-hcc-publish-icon" aria-hidden="true"><Layers size={18} strokeWidth={1.6} /></span>
         <div className="min-w-0">
-          {statusLine}
+          <h3 className="pf-hcc-publish-title">Editorial Collection Overview</h3>
+          <p className="pf-hcc-publish-desc">Curating the stories, imagery and collections that define the PRATIKSHYA FASHION experience.</p>
+          {/* Actual backend state, revision and counts: data-driven, understated. */}
+          <p role="status" className="pf-hcc-publish-meta">{configured ? `Backend controlled · ${section.state} · revision ${revision}` : 'Not configured · hidden on the storefront until configured and activated.'}</p>
           <p className="pf-hcc-publish-line">{summary.text}</p>
           {ineligibleLine}
         </div>

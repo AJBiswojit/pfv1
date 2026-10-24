@@ -162,7 +162,9 @@ test('F-17 · the twelve sections stay in one DOM-ordered strip that scrolls bel
   assert.ok(nav, 'the sections rail exists');
   const classes = nav.props.className;
   for (const token of ['flex', 'overflow-x-auto', 'snap-x', 'min-w-0']) assert.match(classes, new RegExp(token), `mobile strip token: ${token}`);
-  for (const token of ['lg:block', 'lg:sticky', 'lg:space-y-1', 'lg:overflow-visible']) assert.match(classes, new RegExp(token.replace(':', '\\:')), `desktop rail token: ${token}`);
+  /* The navigator is a horizontal topbar at every width: it is no longer a
+     sticky vertical sidebar beside the workspace. */
+  for (const token of ['lg:sticky', 'lg:space-y-1', 'lg:block']) assert.doesNotMatch(classes, new RegExp(token), `no vertical sidebar token: ${token}`);
   const buttons = nav.findAllByType('button');
   assert.equal(buttons.length, 12, 'all twelve sections remain present and reachable');
   assert.match(text(buttons[0]), /Home hero/, 'the twelve sections keep their shipped order');
@@ -171,7 +173,7 @@ test('F-17 · the twelve sections stay in one DOM-ordered strip that scrolls bel
   assert.match(text(buttons[1]), /02/, 'the section number is still printed');
   assert.match(text(buttons[1]), /Category collage/);
   assert.ok(buttons.every((b) => String(b.props.className).includes('shrink-0')), 'chips do not squash each other');
-  assert.ok(buttons.every((b) => String(b.props.className).includes('lg:w-full')), 'the desktop rail still fills its column');
+  assert.ok(buttons.every((b) => String(b.props.className).includes('snap-start')), 'every topbar chip snaps into view');
 });
 
 /* ── F-20 · one content build, not two ───────────────────────────────────── */
